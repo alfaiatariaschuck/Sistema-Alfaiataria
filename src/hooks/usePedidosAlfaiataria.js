@@ -130,6 +130,7 @@ export function usePedidosAlfaiataria() {
         if (errTec) throw errTec;
       }
       await recarregar();
+      return pecaRow.id;
     });
   }
 

@@ -3,7 +3,7 @@ import { CheckCircle2, Clock, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { BRASS_SOFT, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 
-export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, irParaPedido, irParaAlfaiataria }) {
+export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, irParaPedido, irParaPeca }) {
   const [busca, setBusca] = useState("");
   const [filtroFornecedor, setFiltroFornecedor] = useState("Todos");
   const [filtroStatus, setFiltroStatus] = useState("Pendente");
@@ -70,7 +70,7 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
 
   function abrirItem(item) {
     if (item.origem === "camisa") irParaPedido(item.pedidoId);
-    else irParaAlfaiataria();
+    else irParaPeca(item.pedidoId);
   }
 
   return (

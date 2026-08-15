@@ -1,0 +1,237 @@
+import React from "react";
+import { CheckCircle2, Clock, Printer, Trash2 } from "lucide-react";
+import { Card, Field, Pill } from "../components/ui";
+import { CampoComOpcoes } from "../components/CampoComOpcoes";
+import {
+  BRASS,
+  BRASS_SOFT,
+  CARACTERISTICAS_TRAJE,
+  LINE,
+  MEDIDAS_ALFAIATARIA,
+  PECA_SECOES,
+  STATUS,
+  STATUS_STYLE,
+  TEXT_MUTED,
+  inputStyle,
+} from "../lib/constants";
+import { brl, fmtData } from "../lib/helpers";
+import { supabase } from "../supabaseClient";
+
+const CHAVE_TELEFONE_ICARO = "telefone_icaro";
+
+function statusPagamentoDe(p) {
+  const total = parseFloat(p.valorTotal) || 0;
+  const pago = parseFloat(p.pago) || 0;
+  if (total > 0 && pago >= total) return "Pago";
+  if (pago > 0) return "Parcial";
+  return "Pendente";
+}
+const STATUS_PAGAMENTO_STYLE = {
+  Pago: { bg: "#DCEBDD", fg: "#2C6E31" },
+  Parcial: { bg: "#FCEFC7", fg: "#8A6A0C" },
+  Pendente: { bg: "#F6E3D9", fg: "#9C4A1E" },
+};
+
+export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCaracteristica, onRemover, onAddTecido, onTecido }) {
+  function set(campo, valor) {
+    onCampo(p.id, campo, valor);
+  }
+
+  async function enviarIcaro() {
+    const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_TELEFONE_ICARO).maybeSingle();
+    const telIcaro = data?.valor || "";
+    const digitos = telIcaro.replace(/\D/g, "");
+    const linhas = [`Oi Icaro! Pedido: ${p.tipoPeca} do cliente ${p.cliente || "—"}.`];
+    const secoes = PECA_SECOES[p.tipoPeca] || [];
+    secoes.forEach((secKey) => {
+      const valores = Object.entries(p.medidas?.[secKey] || {}).filter(([, v]) => v);
+      if (valores.length) linhas.push(`${MEDIDAS_ALFAIATARIA[secKey].titulo}: ` + valores.map(([k, v]) => `${k} ${v}`).join(", "));
+    });
+    const caract = Object.entries(p.caracteristicas || {}).filter(([, v]) => v);
+    if (caract.length) linhas.push("Características: " + caract.map(([k, v]) => `${k}: ${v}`).join(", "));
+    const tecidosComCodigo = (p.tecidos || []).filter((t) => t.codigo);
+    if (tecidosComCodigo.length) {
+      linhas.push("Tecido: " + tecidosComCodigo.map((t) => `Código ${t.codigo} · Qtd ${t.qtd}${t.numero ? " · Obs: " + t.numero : ""}`).join(" | "));
+    }
+    if (p.observacoes) linhas.push(`Obs: ${p.observacoes}`);
+    const mensagem = encodeURIComponent(linhas.join("\n"));
+    const url = digitos ? `https://wa.me/${digitos}?text=${mensagem}` : `https://wa.me/?text=${mensagem}`;
+    window.open(url, "_blank");
+  }
+
+  const total = parseFloat(p.valorTotal) || 0;
+  const pago = parseFloat(p.pago) || 0;
+  const saldo = total - pago;
+
+  return (
+    <div>
+      <button onClick={onVoltar} className="mb-4 flex items-center gap-1" style={{ color: BRASS, fontSize: 13, fontWeight: 600 }}>
+        ← voltar para pedidos de alfaiataria
+      </button>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <div className="uppercase" style={{ color: BRASS, fontSize: 11, letterSpacing: 1.5, fontWeight: 600 }}>
+            {p.tipoPeca}
+          </div>
+          <div className="flex items-center gap-2">
+            <h1 className="fx-serif" style={{ fontSize: 26, fontWeight: 600 }}>
+              {p.cliente}
+            </h1>
+            <Pill text={p.status} style={STATUS_STYLE[p.status]} />
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            if (confirm("Excluir este lançamento?")) onRemover(p.id);
+          }}
+          className="flex items-center gap-1"
+          style={{ color: "#9C4A1E", fontSize: 13 }}
+        >
+          <Trash2 size={14} /> Excluir
+        </button>
+      </div>
+
+      <button
+        onClick={enviarIcaro}
+        className="flex items-center gap-2 mb-6"
+        style={{ background: "#25D366", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+      >
+        <Printer size={15} /> Enviar medidas pro Icaro (WhatsApp)
+      </button>
+
+      <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
+        <Card style={{ padding: 20 }}>
+          <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
+            Status da peça
+          </div>
+          <Field label="Status">
+            <select style={inputStyle} value={p.status} onChange={(e) => set("status", e.target.value)}>
+              {STATUS.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Previsão de entrega">
+            <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
+          </Field>
+        </Card>
+
+        <Card style={{ padding: 20 }}>
+          <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
+            Financeiro (Icaro)
+          </div>
+          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <Field label="Valor devido ao Icaro (R$)">
+              <input type="number" step="0.01" style={inputStyle} value={p.valorTotal} onChange={(e) => set("valorTotal", e.target.value)} />
+            </Field>
+            <Field label="Valor pago (R$)">
+              <input type="number" step="0.01" style={inputStyle} value={p.pago} onChange={(e) => set("pago", e.target.value)} />
+            </Field>
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <span className="fx-mono" style={{ fontSize: 13, color: TEXT_MUTED }}>
+              saldo {brl(saldo)}
+            </span>
+            <Pill text={statusPagamentoDe(p)} style={STATUS_PAGAMENTO_STYLE[statusPagamentoDe(p)]} />
+          </div>
+        </Card>
+      </div>
+
+      {(PECA_SECOES[p.tipoPeca] || []).map((secKey) => {
+        const sec = MEDIDAS_ALFAIATARIA[secKey];
+        return (
+          <Card key={secKey} style={{ padding: 20 }} className="mt-6">
+            <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
+              {sec.titulo}
+            </div>
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+              {sec.campos.map((campo) => (
+                <Field key={campo.label} label={campo.label}>
+                  <input
+                    type="number"
+                    step="0.5"
+                    style={inputStyle}
+                    value={p.medidas[secKey]?.[campo.label] || ""}
+                    onChange={(e) => onMedida(p.id, secKey, campo.label, e.target.value)}
+                  />
+                  {campo.obs && <span style={{ fontSize: 10, color: TEXT_MUTED }}>{campo.obs}</span>}
+                </Field>
+              ))}
+            </div>
+          </Card>
+        );
+      })}
+
+      {(PECA_SECOES[p.tipoPeca] || []).includes("corpo") && (
+        <Card style={{ padding: 20 }} className="mt-6">
+          <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
+            Características
+          </div>
+          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            {CARACTERISTICAS_TRAJE.map((campo) => (
+              <CampoComOpcoes
+                key={campo.label}
+                label={campo.label}
+                opcoes={campo.opcoes}
+                obs={campo.obs}
+                valor={p.caracteristicas[campo.label] || ""}
+                onChange={(v) => onCaracteristica(p.id, campo.label, v)}
+              />
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <Card style={{ padding: 20 }} className="mt-6">
+        <div className="flex items-center justify-between mb-1">
+          <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+            Tecido
+          </div>
+          <button type="button" onClick={() => onAddTecido(p.id)} style={{ color: BRASS, fontSize: 13, fontWeight: 600 }}>
+            + adicionar item
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED }} className="mb-3">
+          "Fornecedor" é uso interno seu — nunca aparece na mensagem enviada pro Icaro. Marque "comprado" quando fechar a compra.
+        </div>
+        {p.tecidos.length === 0 && <div style={{ fontSize: 12, color: TEXT_MUTED }}>Nenhum tecido lançado ainda.</div>}
+        {p.tecidos.map((t) => (
+          <div key={t.id} className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 pb-2 items-center" style={{ borderBottom: `1px solid ${LINE}` }}>
+            <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(p.id, t.id, "codigo", e.target.value)} />
+            <input
+              style={{ ...inputStyle, background: BRASS_SOFT }}
+              placeholder="Fornecedor (interno)"
+              value={t.fornecedor || ""}
+              onChange={(e) => onTecido(p.id, t.id, "fornecedor", e.target.value)}
+            />
+            <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => onTecido(p.id, t.id, "qtd", e.target.value)} />
+            <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => onTecido(p.id, t.id, "numero", e.target.value)} />
+            <button
+              type="button"
+              onClick={() => onTecido(p.id, t.id, "comprado", !t.comprado)}
+              className="flex items-center justify-center gap-1"
+              style={{
+                background: t.comprado ? "#DCEBDD" : "#F6E3D9",
+                color: t.comprado ? "#2C6E31" : "#9C4A1E",
+                padding: "8px 10px",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {t.comprado ? (
+                <>
+                  <CheckCircle2 size={13} /> Comprado
+                </>
+              ) : (
+                <>
+                  <Clock size={13} /> Comprar
+                </>
+              )}
+            </button>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}

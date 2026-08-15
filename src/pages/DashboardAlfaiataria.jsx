@@ -63,7 +63,7 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
             return (
               <button
                 key={p.id}
-                onClick={irPara}
+                onClick={() => irPara(p.id)}
                 className="w-full flex items-center justify-between py-2.5"
                 style={{ borderBottom: `1px solid ${LINE}`, textAlign: "left" }}
               >

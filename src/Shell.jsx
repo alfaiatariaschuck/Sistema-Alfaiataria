@@ -4,6 +4,7 @@ import {
   ClipboardList,
   FileText,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Menu,
   PieChart,
@@ -31,6 +32,7 @@ import Relatorio from "./pages/Relatorio";
 import Backup from "./pages/Backup";
 import FluxoDeCaixa from "./pages/FluxoDeCaixa";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
+import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import Configuracoes from "./pages/Configuracoes";
 
 const NAV = [
@@ -38,8 +40,9 @@ const NAV = [
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true },
   { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true },
   { id: "compras", label: "Compras", icon: ShoppingCart, primary: true },
-  { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: true },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true },
+  { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true },
+  { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false },
   { id: "clientes", label: "Clientes", icon: Users, primary: false },
   { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false },
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false },
@@ -53,6 +56,7 @@ export default function Shell() {
   const { sair } = useAuth();
   const [tab, setTab] = useState("dashboard");
   const [selecionado, setSelecionado] = useState(null);
+  const [selecionadaPeca, setSelecionadaPeca] = useState(null);
   const [mostrarMais, setMostrarMais] = useState(false);
 
   const { pedidos, loading, erro, saving, recarregar, limparErro, criarPedido, atualizarCampo, atualizarSubcampo, removerPedido, adicionarTecido, atualizarTecido } =
@@ -88,6 +92,11 @@ export default function Shell() {
     setSelecionado(id);
   }
 
+  function irParaPeca(id) {
+    setTab("pedidos-alfaiataria");
+    setSelecionadaPeca(id);
+  }
+
   async function salvarNovoPedido(p) {
     const id = await criarPedido(p);
     await recarregarNomesClientes();
@@ -96,8 +105,9 @@ export default function Shell() {
   }
 
   async function salvarNovaPeca(p) {
-    await criarPeca(p);
+    const id = await criarPeca(p);
     await recarregarNomesClientes();
+    irParaPeca(id);
   }
 
   const acoesPedido = {
@@ -109,6 +119,29 @@ export default function Shell() {
     },
     onAddTecido: adicionarTecido,
     onTecido: atualizarTecido,
+  };
+
+  function atualizarMedidaPeca(pecaId, secKey, label, valor) {
+    const peca = pecas.find((p) => p.id === pecaId);
+    const medidas = { ...(peca?.medidas || {}), [secKey]: { ...(peca?.medidas?.[secKey] || {}), [label]: valor } };
+    atualizarCampoPeca(pecaId, "medidas", medidas);
+  }
+  function atualizarCaracteristicaPeca(pecaId, label, valor) {
+    const peca = pecas.find((p) => p.id === pecaId);
+    const caracteristicas = { ...(peca?.caracteristicas || {}), [label]: valor };
+    atualizarCampoPeca(pecaId, "caracteristicas", caracteristicas);
+  }
+
+  const acoesPeca = {
+    onCampo: atualizarCampoPeca,
+    onMedida: atualizarMedidaPeca,
+    onCaracteristica: atualizarCaracteristicaPeca,
+    onRemover: (id) => {
+      removerPeca(id);
+      setSelecionadaPeca(null);
+    },
+    onAddTecido: adicionarTecidoPeca,
+    onTecido: atualizarTecidoPeca,
   };
 
   return (
@@ -136,6 +169,7 @@ export default function Shell() {
                   onClick={() => {
                     setTab(item.id);
                     setSelecionado(null);
+                    setSelecionadaPeca(null);
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded"
                   style={{
@@ -172,6 +206,7 @@ export default function Shell() {
                   onClick={() => {
                     setTab(item.id);
                     setSelecionado(null);
+                    setSelecionadaPeca(null);
                     setMostrarMais(false);
                   }}
                   className="flex flex-col items-center gap-0.5 px-2 py-1"
@@ -204,6 +239,7 @@ export default function Shell() {
                     onClick={() => {
                       setTab(item.id);
                       setSelecionado(null);
+                      setSelecionadaPeca(null);
                       setMostrarMais(false);
                     }}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded"
@@ -254,22 +290,13 @@ export default function Shell() {
                   onTecidoPedido={atualizarTecido}
                   onTecidoPeca={atualizarTecidoPeca}
                   irParaPedido={irPara}
-                  irParaAlfaiataria={() => setTab("alfaiataria")}
+                  irParaPeca={irParaPeca}
                 />
               )}
-              {tab === "painel-alfaiataria" && !loadingPecas && (
-                <DashboardAlfaiataria pecas={pecas} irPara={() => setTab("alfaiataria")} />
-              )}
-              {tab === "alfaiataria" && !loadingPecas && (
-                <PedidoAlfaiataria
-                  pecas={pecas}
-                  onCriar={salvarNovaPeca}
-                  onCampo={atualizarCampoPeca}
-                  onRemover={removerPeca}
-                  onAddTecido={adicionarTecidoPeca}
-                  onTecido={atualizarTecidoPeca}
-                  nomesClientes={nomesClientes}
-                />
+              {tab === "painel-alfaiataria" && !loadingPecas && <DashboardAlfaiataria pecas={pecas} irPara={irParaPeca} />}
+              {tab === "alfaiataria" && !loadingPecas && <PedidoAlfaiataria onCriar={salvarNovaPeca} nomesClientes={nomesClientes} />}
+              {tab === "pedidos-alfaiataria" && !loadingPecas && (
+                <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={setSelecionadaPeca} {...acoesPeca} />
               )}
               {tab === "relatorio" && <Relatorio pedidos={pedidos} />}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
