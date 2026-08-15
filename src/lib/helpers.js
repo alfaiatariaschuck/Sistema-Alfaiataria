@@ -1,0 +1,44 @@
+import { MEDIDA_REGRAS } from "./constants";
+
+export function finalDaMedida(label, mp) {
+  const r = MEDIDA_REGRAS[label];
+  const n = parseFloat(mp);
+  if (!r || isNaN(n)) return null;
+  let v = n + (r.ajuste || 0);
+  if (r.divisor) v = v / r.divisor;
+  v = v + (r.extra || 0);
+  return Math.round(v * 100) / 100;
+}
+
+export function novoId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+export function hojeISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function fmtData(iso) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+export function diasAte(iso) {
+  if (!iso) return null;
+  const alvo = new Date(iso + "T00:00:00");
+  const hoje = new Date(hojeISO() + "T00:00:00");
+  return Math.round((alvo - hoje) / 86400000);
+}
+
+export function brl(v) {
+  return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+export function debounce(fn, ms) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}

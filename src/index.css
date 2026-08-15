@@ -1,0 +1,60 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #16212e;
+  --ink-soft: #2a3b4d;
+  --canvas: #f5f1e8;
+  --card: #ffffff;
+  --brass: #a9793e;
+  --brass-soft: #efe1cc;
+  --line: #e4decf;
+  --text-muted: #6b7280;
+}
+
+.fx-serif {
+  font-family: "Fraunces", serif;
+}
+.fx-mono {
+  font-family: "IBM Plex Mono", monospace;
+}
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+}
+input,
+select,
+textarea {
+  font-family: "Inter", sans-serif;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #ficha-print,
+  #ficha-print * {
+    visibility: visible;
+  }
+  #ficha-print {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

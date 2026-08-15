@@ -1,0 +1,228 @@
+import React, { useMemo, useState } from "react";
+import {
+  AlertCircle,
+  ClipboardList,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Plus,
+  Ruler,
+  ShieldCheck,
+  ShoppingCart,
+  Users,
+  Wallet,
+} from "lucide-react";
+import { useAuth } from "./contexts/AuthContext";
+import { usePedidos } from "./hooks/usePedidos";
+import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
+import Dashboard from "./pages/Dashboard";
+import NovoPedido from "./pages/NovoPedido";
+import Pedidos from "./pages/Pedidos";
+import Clientes from "./pages/Clientes";
+import Compras from "./pages/Compras";
+import Relatorio from "./pages/Relatorio";
+import Backup from "./pages/Backup";
+import FluxoDeCaixa from "./pages/FluxoDeCaixa";
+
+const NAV = [
+  { id: "dashboard", label: "Painel", icon: LayoutDashboard, primary: true },
+  { id: "novo", label: "Novo Pedido", icon: Plus, primary: true },
+  { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true },
+  { id: "compras", label: "Compras", icon: ShoppingCart, primary: true },
+  { id: "clientes", label: "Clientes", icon: Users, primary: false },
+  { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false },
+  { id: "relatorio", label: "Relatório", icon: FileText, primary: false },
+  { id: "backup", label: "Backup", icon: ShieldCheck, primary: false },
+];
+const NAV_PRIMARIA = NAV.filter((n) => n.primary);
+const NAV_SECUNDARIA = NAV.filter((n) => !n.primary);
+
+export default function Shell() {
+  const { sair } = useAuth();
+  const [tab, setTab] = useState("dashboard");
+  const [selecionado, setSelecionado] = useState(null);
+  const [mostrarMais, setMostrarMais] = useState(false);
+
+  const { pedidos, loading, erro, saving, recarregar, limparErro, criarPedido, atualizarCampo, atualizarSubcampo, removerPedido, adicionarTecido, atualizarTecido } =
+    usePedidos();
+
+  const clientes = useMemo(() => {
+    const map = new Map();
+    pedidos.forEach((p) => {
+      const key = p.cliente.trim().toLowerCase();
+      if (!key) return;
+      if (!map.has(key)) map.set(key, { nome: p.cliente.trim(), pedidos: [] });
+      map.get(key).pedidos.push(p);
+    });
+    return [...map.values()].sort((a, b) => b.pedidos.length - a.pedidos.length);
+  }, [pedidos]);
+
+  function irPara(id) {
+    setTab("pedidos");
+    setSelecionado(id);
+  }
+
+  async function salvarNovoPedido(p) {
+    const id = await criarPedido(p);
+    setTab("pedidos");
+    setSelecionado(id);
+  }
+
+  const acoesPedido = {
+    onCampo: atualizarCampo,
+    onSub: atualizarSubcampo,
+    onRemover: (id) => {
+      removerPedido(id);
+      setSelecionado(null);
+    },
+    onAddTecido: adicionarTecido,
+    onTecido: atualizarTecido,
+  };
+
+  return (
+    <div style={{ background: CANVAS, minHeight: "100vh", fontFamily: "'Inter', sans-serif", color: INK }}>
+      <div className="flex min-h-screen">
+        <aside style={{ background: INK, width: 220, flexShrink: 0 }} className="hidden md:flex flex-col">
+          <div className="px-6 pt-8 pb-6">
+            <div className="flex items-center gap-2">
+              <Ruler size={20} color={BRASS} />
+              <span className="fx-serif" style={{ color: "#F5F1E8", fontSize: 18, fontWeight: 600 }}>
+                Ateliê
+              </span>
+            </div>
+            <div style={{ color: "#8593A3", fontSize: 11, letterSpacing: 1 }} className="mt-1 uppercase">
+              Controle de Pedidos
+            </div>
+          </div>
+          <nav className="flex-1 px-3">
+            {NAV.map((item) => {
+              const Icon = item.icon;
+              const active = tab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setTab(item.id);
+                    setSelecionado(null);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded"
+                  style={{
+                    background: active ? INK_SOFT : "transparent",
+                    borderLeft: active ? `3px solid ${BRASS}` : "3px solid transparent",
+                    color: active ? "#FFFFFF" : "#A9B4C0",
+                    fontSize: 14,
+                    fontWeight: active ? 600 : 500,
+                    transition: "all .15s",
+                  }}
+                >
+                  <Icon size={16} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+          <button onClick={sair} className="mx-3 mb-2 flex items-center gap-3 px-3 py-2.5 rounded" style={{ color: "#A9B4C0", fontSize: 13, fontWeight: 500 }}>
+            <LogOut size={15} /> Sair
+          </button>
+          <div className="px-6 py-5" style={{ color: "#6B7A8C", fontSize: 11 }}>
+            {saving ? "Salvando…" : "Sincronizado"}
+          </div>
+        </aside>
+
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-20" style={{ background: INK, borderTop: `1px solid ${INK_SOFT}` }}>
+          <div className="flex justify-around py-2">
+            {NAV_PRIMARIA.map((item) => {
+              const Icon = item.icon;
+              const active = tab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setTab(item.id);
+                    setSelecionado(null);
+                    setMostrarMais(false);
+                  }}
+                  className="flex flex-col items-center gap-0.5 px-2 py-1"
+                >
+                  <Icon size={18} color={active ? BRASS : "#8593A3"} />
+                  <span style={{ fontSize: 9, color: active ? "#FFF" : "#8593A3" }}>{item.label}</span>
+                </button>
+              );
+            })}
+            <button onClick={() => setMostrarMais(true)} className="flex flex-col items-center gap-0.5 px-2 py-1">
+              <Menu size={18} color={NAV_SECUNDARIA.some((n) => n.id === tab) ? BRASS : "#8593A3"} />
+              <span style={{ fontSize: 9, color: NAV_SECUNDARIA.some((n) => n.id === tab) ? "#FFF" : "#8593A3" }}>Mais</span>
+            </button>
+          </div>
+        </div>
+
+        {mostrarMais && (
+          <div className="md:hidden" style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 30 }} onClick={() => setMostrarMais(false)}>
+            <div
+              style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: INK, borderRadius: "16px 16px 0 0", padding: "20px 12px 28px" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ color: "#8593A3", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, padding: "0 12px 12px" }}>Mais opções</div>
+              {NAV_SECUNDARIA.map((item) => {
+                const Icon = item.icon;
+                const active = tab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setTab(item.id);
+                      setSelecionado(null);
+                      setMostrarMais(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded"
+                    style={{ background: active ? INK_SOFT : "transparent", color: active ? "#FFF" : "#A9B4C0", fontSize: 15, fontWeight: 500 }}
+                  >
+                    <Icon size={18} /> {item.label}
+                  </button>
+                );
+              })}
+              <button onClick={sair} className="w-full flex items-center gap-3 px-3 py-3 rounded" style={{ color: "#A9B4C0", fontSize: 15, fontWeight: 500 }}>
+                <LogOut size={18} /> Sair
+              </button>
+            </div>
+          </div>
+        )}
+
+        <main className="flex-1 px-5 md:px-10 py-8 pb-24 md:pb-8" style={{ maxWidth: 1100 }}>
+          {erro && (
+            <div className="mb-4 px-4 py-3 rounded" style={{ background: "#F6E3D9", color: "#9C4A1E" }}>
+              <div className="flex items-start gap-2">
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} /> <span>{erro}</span>
+              </div>
+              <button
+                onClick={() => {
+                  limparErro();
+                  recarregar();
+                }}
+                className="mt-2"
+                style={{ background: "#9C4A1E", color: "#FFF", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+              >
+                Recarregar dados
+              </button>
+            </div>
+          )}
+          {loading ? (
+            <div style={{ color: "#6B7280" }}>Carregando…</div>
+          ) : (
+            <>
+              {tab === "dashboard" && <Dashboard pedidos={pedidos} irPara={irPara} />}
+              {tab === "novo" && <NovoPedido onSalvar={salvarNovoPedido} nomesClientes={clientes.map((c) => c.nome)} />}
+              {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
+              {tab === "clientes" && <Clientes clientes={clientes} irParaPedido={irPara} />}
+              {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} irParaPedido={irPara} />}
+              {tab === "compras" && <Compras pedidos={pedidos} onTecido={atualizarTecido} irParaPedido={irPara} />}
+              {tab === "relatorio" && <Relatorio pedidos={pedidos} />}
+              {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
+            </>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
