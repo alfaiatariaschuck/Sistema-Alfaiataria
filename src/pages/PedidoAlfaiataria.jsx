@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, Clock, Printer, Scissors, Search, Trash2, Wallet } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronUp, Clock, Printer, Scissors, Search, Trash2, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import {
   BRASS,
+  BRASS_SOFT,
   CARACTERISTICAS_TRAJE,
   INK,
   INK_SOFT,
@@ -34,13 +35,14 @@ function statusDe(p) {
   return "Pendente";
 }
 
-export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, nomesClientes }) {
+export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, onAddTecido, onTecido, nomesClientes }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("Todos");
   const [telIcaro, setTelIcaro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [expandida, setExpandida] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -58,6 +60,16 @@ export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, 
   function setCaracteristica(label, valor) {
     setNovaPeca((prev) => ({ ...prev, caracteristicas: { ...prev.caracteristicas, [label]: valor } }));
   }
+  function setTecido(i, campo, valor) {
+    setNovaPeca((prev) => {
+      const t = [...prev.tecidos];
+      t[i] = { ...t[i], [campo]: valor };
+      return { ...prev, tecidos: t };
+    });
+  }
+  function addTecido() {
+    setNovaPeca((prev) => ({ ...prev, tecidos: [...prev.tecidos, { codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }));
+  }
 
   function enviarIcaro(p) {
     const digitos = telIcaro.replace(/\D/g, "");
@@ -69,6 +81,10 @@ export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, 
     });
     const caract = Object.entries(p.caracteristicas || {}).filter(([, v]) => v);
     if (caract.length) linhas.push("Características: " + caract.map(([k, v]) => `${k}: ${v}`).join(", "));
+    const tecidosComCodigo = (p.tecidos || []).filter((t) => t.codigo);
+    if (tecidosComCodigo.length) {
+      linhas.push("Tecido: " + tecidosComCodigo.map((t) => `Código ${t.codigo} · Qtd ${t.qtd}${t.numero ? " · Obs: " + t.numero : ""}`).join(" | "));
+    }
     if (p.observacoes) linhas.push(`Obs: ${p.observacoes}`);
     linhas.push(`Valor: ${brl(parseFloat(p.valorTotal) || 0)}`);
     const mensagem = encodeURIComponent(linhas.join("\n"));
@@ -215,6 +231,33 @@ export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, 
             </div>
           )}
 
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <div className="fx-serif" style={{ fontSize: 14, fontWeight: 600, color: BRASS }}>
+                Tecido
+              </div>
+              <button type="button" onClick={addTecido} style={{ color: BRASS, fontSize: 13, fontWeight: 600 }}>
+                + adicionar item
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }} className="mb-3">
+              O campo "Fornecedor" é só de uso interno — nunca aparece na mensagem enviada pro Icaro.
+            </div>
+            {novaPeca.tecidos.map((t, i) => (
+              <div key={i} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+                <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => setTecido(i, "codigo", e.target.value)} />
+                <input
+                  style={{ ...inputStyle, background: BRASS_SOFT }}
+                  placeholder="Fornecedor (interno)"
+                  value={t.fornecedor}
+                  onChange={(e) => setTecido(i, "fornecedor", e.target.value)}
+                />
+                <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => setTecido(i, "qtd", e.target.value)} />
+                <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => setTecido(i, "numero", e.target.value)} />
+              </div>
+            ))}
+          </div>
+
           {erro && (
             <div className="mb-4 px-4 py-3 rounded" style={{ background: "#F6E3D9", color: "#9C4A1E", fontSize: 13 }}>
               {erro}
@@ -259,50 +302,105 @@ export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, 
           const total = parseFloat(p.valorTotal) || 0;
           const pago = parseFloat(p.pago) || 0;
           const saldo = total - pago;
+          const aberta = expandida === p.id;
           return (
-            <div
-              key={p.id}
-              className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
-              style={{ borderBottom: i < filtradas.length - 1 ? `1px solid ${LINE}` : "none" }}
-            >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente}</div>
-                <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-                  {p.tipoPeca} · {fmtData(p.dataPedido)}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
-                    {brl(total)}
-                  </div>
-                  <label className="flex items-center gap-1 justify-end" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                    pago
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={p.pago}
-                      onChange={(e) => onCampo(p.id, "pago", e.target.value)}
-                      style={{ width: 70, padding: "2px 4px", borderRadius: 4, border: `1px solid ${LINE}`, fontSize: 11 }}
-                      className="fx-mono"
-                    />
-                  </label>
-                  <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                    saldo {brl(saldo)}
+            <div key={p.id} style={{ borderBottom: i < filtradas.length - 1 ? `1px solid ${LINE}` : "none" }}>
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente}</div>
+                  <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                    {p.tipoPeca} · {fmtData(p.dataPedido)}
                   </div>
                 </div>
-                <Pill text={statusDe(p)} style={STATUS_PECA_STYLE[statusDe(p)]} />
-                <button onClick={() => enviarIcaro(p)} title="Enviar pro Icaro no WhatsApp" style={{ background: "#25D366", color: "#FFF", padding: "6px 10px", borderRadius: 6 }}>
-                  <Printer size={13} />
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm("Excluir este lançamento?")) onRemover(p.id);
-                  }}
-                >
-                  <Trash2 size={14} color="#9C4A1E" />
-                </button>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
+                      {brl(total)}
+                    </div>
+                    <label className="flex items-center gap-1 justify-end" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                      pago
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={p.pago}
+                        onChange={(e) => onCampo(p.id, "pago", e.target.value)}
+                        style={{ width: 70, padding: "2px 4px", borderRadius: 4, border: `1px solid ${LINE}`, fontSize: 11 }}
+                        className="fx-mono"
+                      />
+                    </label>
+                    <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                      saldo {brl(saldo)}
+                    </div>
+                  </div>
+                  <Pill text={statusDe(p)} style={STATUS_PECA_STYLE[statusDe(p)]} />
+                  <button
+                    onClick={() => setExpandida(aberta ? null : p.id)}
+                    title="Tecido / compras"
+                    style={{ background: aberta ? BRASS_SOFT : "transparent", border: `1px solid ${LINE}`, padding: "6px 8px", borderRadius: 6 }}
+                  >
+                    <Scissors size={13} color={BRASS} />
+                    {aberta ? <ChevronUp size={13} style={{ marginLeft: 2 }} /> : <ChevronDown size={13} style={{ marginLeft: 2 }} />}
+                  </button>
+                  <button onClick={() => enviarIcaro(p)} title="Enviar pro Icaro no WhatsApp" style={{ background: "#25D366", color: "#FFF", padding: "6px 10px", borderRadius: 6 }}>
+                    <Printer size={13} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm("Excluir este lançamento?")) onRemover(p.id);
+                    }}
+                  >
+                    <Trash2 size={14} color="#9C4A1E" />
+                  </button>
+                </div>
               </div>
+
+              {aberta && (
+                <div className="px-5 pb-4" style={{ background: "#FCFAF5" }}>
+                  <div className="flex items-center justify-between mb-1 pt-2">
+                    <div style={{ fontSize: 12, fontWeight: 600, color: INK_SOFT }}>Tecido / compras</div>
+                    <button type="button" onClick={() => onAddTecido(p.id)} style={{ color: BRASS, fontSize: 12, fontWeight: 600 }}>
+                      + adicionar item
+                    </button>
+                  </div>
+                  {p.tecidos.length === 0 && <div style={{ fontSize: 12, color: TEXT_MUTED }}>Nenhum tecido lançado ainda.</div>}
+                  {p.tecidos.map((t) => (
+                    <div key={t.id} className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 pb-2 items-center" style={{ borderBottom: `1px solid ${LINE}` }}>
+                      <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(p.id, t.id, "codigo", e.target.value)} />
+                      <input
+                        style={{ ...inputStyle, background: BRASS_SOFT }}
+                        placeholder="Fornecedor (interno)"
+                        value={t.fornecedor || ""}
+                        onChange={(e) => onTecido(p.id, t.id, "fornecedor", e.target.value)}
+                      />
+                      <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => onTecido(p.id, t.id, "qtd", e.target.value)} />
+                      <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => onTecido(p.id, t.id, "numero", e.target.value)} />
+                      <button
+                        type="button"
+                        onClick={() => onTecido(p.id, t.id, "comprado", !t.comprado)}
+                        className="flex items-center justify-center gap-1"
+                        style={{
+                          background: t.comprado ? "#DCEBDD" : "#F6E3D9",
+                          color: t.comprado ? "#2C6E31" : "#9C4A1E",
+                          padding: "8px 10px",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {t.comprado ? (
+                          <>
+                            <CheckCircle2 size={13} /> Comprado
+                          </>
+                        ) : (
+                          <>
+                            <Clock size={13} /> Comprar
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}

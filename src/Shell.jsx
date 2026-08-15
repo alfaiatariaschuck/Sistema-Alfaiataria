@@ -63,6 +63,8 @@ export default function Shell() {
     criarPeca,
     atualizarCampo: atualizarCampoPeca,
     removerPeca,
+    adicionarTecido: adicionarTecidoPeca,
+    atualizarTecido: atualizarTecidoPeca,
   } = usePedidosAlfaiataria();
 
   const { nomesClientes, recarregarNomesClientes } = useNomesClientes();
@@ -242,9 +244,26 @@ export default function Shell() {
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
               {tab === "clientes" && <Clientes clientes={clientes} irParaPedido={irPara} />}
               {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} irParaPedido={irPara} />}
-              {tab === "compras" && <Compras pedidos={pedidos} onTecido={atualizarTecido} irParaPedido={irPara} />}
+              {tab === "compras" && (
+                <Compras
+                  pedidos={pedidos}
+                  pecas={pecas}
+                  onTecidoPedido={atualizarTecido}
+                  onTecidoPeca={atualizarTecidoPeca}
+                  irParaPedido={irPara}
+                  irParaAlfaiataria={() => setTab("alfaiataria")}
+                />
+              )}
               {tab === "alfaiataria" && !loadingPecas && (
-                <PedidoAlfaiataria pecas={pecas} onCriar={salvarNovaPeca} onCampo={atualizarCampoPeca} onRemover={removerPeca} nomesClientes={nomesClientes} />
+                <PedidoAlfaiataria
+                  pecas={pecas}
+                  onCriar={salvarNovaPeca}
+                  onCampo={atualizarCampoPeca}
+                  onRemover={removerPeca}
+                  onAddTecido={adicionarTecidoPeca}
+                  onTecido={atualizarTecidoPeca}
+                  nomesClientes={nomesClientes}
+                />
               )}
               {tab === "relatorio" && <Relatorio pedidos={pedidos} />}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}

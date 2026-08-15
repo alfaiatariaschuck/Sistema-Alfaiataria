@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { CheckCircle2, Clock, Search } from "lucide-react";
-import { Card, Empty, PageTitle } from "../components/ui";
-import { INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { Card, Empty, PageTitle, Pill } from "../components/ui";
+import { BRASS_SOFT, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 
-export default function Compras({ pedidos, onTecido, irParaPedido }) {
+export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, irParaPedido, irParaAlfaiataria }) {
   const [busca, setBusca] = useState("");
   const [filtroFornecedor, setFiltroFornecedor] = useState("Todos");
   const [filtroStatus, setFiltroStatus] = useState("Pendente");
@@ -13,6 +13,7 @@ export default function Compras({ pedidos, onTecido, irParaPedido }) {
     (p.tecidos || []).forEach((t) => {
       if (!t.codigo && !t.fornecedor) return;
       itens.push({
+        origem: "camisa",
         pedidoId: p.id,
         tecidoId: t.id,
         cliente: p.cliente,
@@ -22,6 +23,24 @@ export default function Compras({ pedidos, onTecido, irParaPedido }) {
         fornecedor: t.fornecedor || "Sem fornecedor definido",
         comprado: !!t.comprado,
         dataPedido: p.dataPedido,
+      });
+    });
+  });
+  (pecas || []).forEach((p) => {
+    (p.tecidos || []).forEach((t) => {
+      if (!t.codigo && !t.fornecedor) return;
+      itens.push({
+        origem: "alfaiataria",
+        pedidoId: p.id,
+        tecidoId: t.id,
+        cliente: p.cliente,
+        codigo: t.codigo,
+        qtd: t.qtd,
+        numero: t.numero,
+        fornecedor: t.fornecedor || "Sem fornecedor definido",
+        comprado: !!t.comprado,
+        dataPedido: p.dataPedido,
+        tipoPeca: p.tipoPeca,
       });
     });
   });
@@ -43,6 +62,16 @@ export default function Compras({ pedidos, onTecido, irParaPedido }) {
   });
 
   const pendentes = itens.filter((i) => !i.comprado).length;
+
+  function alternarComprado(item) {
+    if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "comprado", !item.comprado);
+    else onTecidoPeca(item.pedidoId, item.tecidoId, "comprado", !item.comprado);
+  }
+
+  function abrirItem(item) {
+    if (item.origem === "camisa") irParaPedido(item.pedidoId);
+    else irParaAlfaiataria();
+  }
 
   return (
     <div>
@@ -86,18 +115,21 @@ export default function Compras({ pedidos, onTecido, irParaPedido }) {
           </div>
           {lista.map((item, i) => (
             <div
-              key={item.pedidoId + "-" + item.tecidoId}
+              key={item.origem + "-" + item.pedidoId + "-" + item.tecidoId}
               className="flex items-center justify-between px-4 py-3"
               style={{ borderBottom: i < lista.length - 1 ? `1px solid ${LINE}` : "none" }}
             >
-              <button onClick={() => irParaPedido(item.pedidoId)} className="text-left flex-1">
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{item.cliente}</div>
+              <button onClick={() => abrirItem(item)} className="text-left flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{item.cliente}</span>
+                  {item.origem === "alfaiataria" && <Pill text={item.tipoPeca} style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />}
+                </div>
                 <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
                   Código {item.codigo || "—"} · Qtd {item.qtd} {item.numero ? `· Obs: ${item.numero}` : ""}
                 </div>
               </button>
               <button
-                onClick={() => onTecido(item.pedidoId, item.tecidoId, "comprado", !item.comprado)}
+                onClick={() => alternarComprado(item)}
                 className="flex items-center gap-1 flex-shrink-0"
                 style={{
                   background: item.comprado ? "#DCEBDD" : "#F6E3D9",

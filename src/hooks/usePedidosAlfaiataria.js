@@ -14,6 +14,7 @@ export function pecaVazia() {
     // medidas fica agrupada por seção — { corpo: { label: valor }, calca: {...}, colete: {...} }
     medidas: {},
     caracteristicas: {},
+    tecidos: [{ codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
   };
 }
 
@@ -29,10 +30,21 @@ function rowParaPeca(row) {
     observacoes: row.observacoes || "",
     medidas: row.medidas || {},
     caracteristicas: row.caracteristicas || {},
+    tecidos: (row.tecidos || [])
+      .slice()
+      .sort((a, b) => a.ordem - b.ordem)
+      .map((t) => ({
+        id: t.id,
+        codigo: t.codigo || "",
+        qtd: t.qtd ?? 1,
+        numero: t.numero || "",
+        fornecedor: t.fornecedor || "",
+        comprado: !!t.comprado,
+      })),
   };
 }
 
-const SELECT = "*, clientes(nome)";
+const SELECT = "*, clientes(nome), tecidos(*)";
 
 const CAMPO_PARA_COLUNA = {
   tipoPeca: "tipo_peca",
@@ -78,17 +90,37 @@ export function usePedidosAlfaiataria() {
   async function criarPeca(p) {
     return comIndicador(async () => {
       const clienteId = await encontrarOuCriarCliente(p.cliente);
-      const { error } = await supabase.from("pedidos_alfaiataria").insert({
-        cliente_id: clienteId,
-        tipo_peca: p.tipoPeca,
-        data_pedido: p.dataPedido,
-        valor_total: p.valorTotal === "" ? null : Number(p.valorTotal),
-        valor_pago: p.pago === "" ? 0 : Number(p.pago),
-        medidas: p.medidas,
-        caracteristicas: p.caracteristicas,
-        observacoes: p.observacoes || null,
-      });
+      const { data: pecaRow, error } = await supabase
+        .from("pedidos_alfaiataria")
+        .insert({
+          cliente_id: clienteId,
+          tipo_peca: p.tipoPeca,
+          data_pedido: p.dataPedido,
+          valor_total: p.valorTotal === "" ? null : Number(p.valorTotal),
+          valor_pago: p.pago === "" ? 0 : Number(p.pago),
+          medidas: p.medidas,
+          caracteristicas: p.caracteristicas,
+          observacoes: p.observacoes || null,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      const tecidosParaInserir = (p.tecidos || [])
+        .filter((t) => t.codigo || t.fornecedor || t.numero)
+        .map((t, i) => ({
+          pedido_alfaiataria_id: pecaRow.id,
+          codigo: t.codigo || null,
+          qtd: Number(t.qtd) || 1,
+          numero: t.numero || null,
+          fornecedor: t.fornecedor || null,
+          comprado: !!t.comprado,
+          ordem: i,
+        }));
+      if (tecidosParaInserir.length) {
+        const { error: errTec } = await supabase.from("tecidos").insert(tecidosParaInserir);
+        if (errTec) throw errTec;
+      }
       await recarregar();
     });
   }
@@ -112,6 +144,42 @@ export function usePedidosAlfaiataria() {
     });
   }
 
+  async function adicionarTecido(pecaId) {
+    const peca = pecas.find((p) => p.id === pecaId);
+    const ordem = peca ? peca.tecidos.length : 0;
+    await comIndicador(async () => {
+      const { data, error } = await supabase
+        .from("tecidos")
+        .insert({ pedido_alfaiataria_id: pecaId, qtd: 1, comprado: false, ordem })
+        .select()
+        .single();
+      if (error) {
+        setErro(error.message);
+        return;
+      }
+      setPecas((prev) =>
+        prev.map((p) =>
+          p.id === pecaId
+            ? { ...p, tecidos: [...p.tecidos, { id: data.id, codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }
+            : p
+        )
+      );
+    });
+  }
+
+  async function atualizarTecido(pecaId, tecidoId, campo, valor) {
+    setPecas((prev) =>
+      prev.map((p) =>
+        p.id === pecaId ? { ...p, tecidos: p.tecidos.map((t) => (t.id === tecidoId ? { ...t, [campo]: valor } : t)) } : p
+      )
+    );
+    const valorFinal = campo === "qtd" ? Number(valor) || 1 : valor;
+    await comIndicador(async () => {
+      const { error } = await supabase.from("tecidos").update({ [campo]: valorFinal }).eq("id", tecidoId);
+      if (error) setErro(error.message);
+    });
+  }
+
   return {
     pecas,
     loading,
@@ -122,5 +190,7 @@ export function usePedidosAlfaiataria() {
     criarPeca,
     atualizarCampo,
     removerPeca,
+    adicionarTecido,
+    atualizarTecido,
   };
 }
