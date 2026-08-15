@@ -93,7 +93,7 @@ export default function Compras({ pedidos, onTecido, irParaPedido }) {
               <button onClick={() => irParaPedido(item.pedidoId)} className="text-left flex-1">
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{item.cliente}</div>
                 <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  Código {item.codigo || "—"} · Qtd {item.qtd} {item.numero ? `· Nº ${item.numero}` : ""}
+                  Código {item.codigo || "—"} · Qtd {item.qtd} {item.numero ? `· Obs: ${item.numero}` : ""}
                 </div>
               </button>
               <button

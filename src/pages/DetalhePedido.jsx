@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { CheckCircle2, Clock, Printer, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
-import { BRASS, BRASS_SOFT, DESC_LABELS, FORMAS_PAGAMENTO, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { CampoDescricao } from "../components/CampoComOpcoes";
+import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { finalDaMedida } from "../lib/helpers";
 import FichaImprimivel from "./FichaImprimivel";
 
@@ -30,6 +31,7 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               {p.cliente}
             </h1>
             {p.recompra && <Pill text="↻ Recompra" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
+            {p.assinatura && <Pill text="📦 Assinatura" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
           </div>
         </div>
         <button
@@ -73,6 +75,26 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               <input type="number" style={inputStyle} value={p.qtEntregue} onChange={(e) => set("qtEntregue", e.target.value)} />
             </Field>
           </div>
+          {p.assinatura && (
+            <div className="mt-3">
+              <div className="flex justify-between mb-1" style={{ fontSize: 12, color: INK_SOFT }}>
+                <span>Progresso da assinatura</span>
+                <span className="fx-mono">
+                  {p.qtEntregue || 0} / {p.quantidade || 0}
+                </span>
+              </div>
+              <div style={{ background: LINE, borderRadius: 4, height: 8 }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, ((parseFloat(p.qtEntregue) || 0) / (parseFloat(p.quantidade) || 1)) * 100)}%`,
+                    background: BRASS,
+                    height: 8,
+                    borderRadius: 4,
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </Card>
 
         <Card style={{ padding: 20 }}>
@@ -148,10 +170,8 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
           Características
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-          {DESC_LABELS.map((label) => (
-            <Field key={label} label={label}>
-              <input style={inputStyle} value={p.descricao[label]} onChange={(e) => setSub("descricao", label, e.target.value)} />
-            </Field>
+          {DESC_CAMPOS.map((campo) => (
+            <CampoDescricao key={campo.label} campo={campo} valor={p.descricao[campo.label]} onChange={(v) => setSub("descricao", campo.label, v)} />
           ))}
         </div>
       </Card>
@@ -178,7 +198,7 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               onChange={(e) => onTecido(p.id, t.id, "fornecedor", e.target.value)}
             />
             <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => onTecido(p.id, t.id, "qtd", e.target.value)} />
-            <input style={inputStyle} placeholder="Número" value={t.numero} onChange={(e) => onTecido(p.id, t.id, "numero", e.target.value)} />
+            <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => onTecido(p.id, t.id, "numero", e.target.value)} />
             <button
               type="button"
               onClick={() => onTecido(p.id, t.id, "comprado", !t.comprado)}

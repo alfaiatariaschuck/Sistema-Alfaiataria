@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { DESC_LABELS, MEDIDA_LABELS } from "../lib/constants";
+import { encontrarOuCriarCliente } from "../lib/clientes";
 
 function medidasVazias() {
   return Object.fromEntries(MEDIDA_LABELS.map((l) => [l, ""]));
@@ -21,6 +22,7 @@ export function pedidoVazio() {
     aReceber: { valor: "", statusPagamento: "Pendente" },
     formaPagamento: "",
     recompra: false,
+    assinatura: false,
     pagoFabiana: { valor: "", statusPagamento: "Pendente" },
     medidas: medidasVazias(),
     descricao: descricaoVazia(),
@@ -43,6 +45,7 @@ function rowParaPedido(row) {
     aReceber: { valor: row.valor_receber ?? "", statusPagamento: row.status_pagamento_receber },
     formaPagamento: row.forma_pagamento || "",
     recompra: row.recompra,
+    assinatura: row.plano_assinatura,
     pagoFabiana: { valor: row.valor_pago_fabiana ?? "", statusPagamento: row.status_pagamento_fabiana },
     medidas: { ...medidasVazias(), ...(row.medidas || {}) },
     descricao: { ...descricaoVazia(), ...(row.descricao || {}) },
@@ -72,6 +75,7 @@ const CAMPO_PARA_COLUNA = {
   qtEntregue: "qt_entregue",
   formaPagamento: "forma_pagamento",
   recompra: "recompra",
+  assinatura: "plano_assinatura",
   medidas: "medidas",
   descricao: "descricao",
   observacoes: "observacoes",
@@ -108,19 +112,6 @@ export function usePedidos() {
     recarregar();
   }, [recarregar]);
 
-  async function encontrarOuCriarCliente(nome) {
-    const nomeNormalizado = nome.trim().toLowerCase();
-    const { data: existente } = await supabase
-      .from("clientes")
-      .select("id")
-      .eq("nome_normalizado", nomeNormalizado)
-      .maybeSingle();
-    if (existente) return existente.id;
-    const { data: criado, error } = await supabase.from("clientes").insert({ nome: nome.trim() }).select("id").single();
-    if (error) throw error;
-    return criado.id;
-  }
-
   async function criarPedido(p) {
     return comIndicador(async () => {
       const clienteId = await encontrarOuCriarCliente(p.cliente);
@@ -138,6 +129,7 @@ export function usePedidos() {
           status_pagamento_receber: p.aReceber.statusPagamento,
           forma_pagamento: p.formaPagamento || null,
           recompra: !!p.recompra,
+          plano_assinatura: !!p.assinatura,
           valor_pago_fabiana: p.pagoFabiana.valor === "" ? null : Number(p.pagoFabiana.valor),
           status_pagamento_fabiana: p.pagoFabiana.statusPagamento,
           medidas: p.medidas,

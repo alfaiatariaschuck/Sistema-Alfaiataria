@@ -16,11 +16,6 @@ export default function FichaImprimivel({ pedido: p, onFechar }) {
     })();
   }, []);
 
-  async function salvarTelefone(v) {
-    setTelefone(v);
-    await supabase.from("config").upsert({ chave: CHAVE_TELEFONE, valor: v });
-  }
-
   function imprimir() {
     window.print();
   }
@@ -48,7 +43,7 @@ export default function FichaImprimivel({ pedido: p, onFechar }) {
     if (tecidosComCodigo.length) {
       linhas.push(``);
       linhas.push(`*Tecido*`);
-      tecidosComCodigo.forEach((t) => linhas.push(`Código ${t.codigo} · Qtd ${t.qtd}${t.numero ? " · Nº " + t.numero : ""}`));
+      tecidosComCodigo.forEach((t) => linhas.push(`Código ${t.codigo} · Qtd ${t.qtd}${t.numero ? " · Obs: " + t.numero : ""}`));
     }
     if (p.observacoes) {
       linhas.push(``);
@@ -107,14 +102,15 @@ export default function FichaImprimivel({ pedido: p, onFechar }) {
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "#16212E" }}>
             Opção em PDF (funciona melhor no computador ou no navegador do celular)
           </div>
-          <div className="flex flex-col md:flex-row gap-2 mb-3">
-            <input
-              placeholder="WhatsApp da Fabi (com DDD)"
-              value={telefone}
-              onChange={(e) => salvarTelefone(e.target.value)}
-              style={{ ...inputStyle, maxWidth: 260 }}
-            />
-          </div>
+          {telefone ? (
+            <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 10 }}>
+              WhatsApp configurado: <strong style={{ color: "#16212E" }}>{telefone}</strong>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: "#9C4A1E", marginBottom: 10 }}>
+              Número da Fabi ainda não configurado — configure uma vez em <strong>Configurações</strong> no menu, e não precisa digitar de novo.
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             <button
               onClick={imprimir}
@@ -214,7 +210,7 @@ export default function FichaImprimivel({ pedido: p, onFechar }) {
             <tr>
               <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Código</th>
               <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Qtd</th>
-              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Número</th>
+              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Observação</th>
             </tr>
           </thead>
           <tbody>

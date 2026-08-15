@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
-import { BRASS, BRASS_SOFT, DESC_LABELS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { CampoDescricao } from "../components/CampoComOpcoes";
+import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { finalDaMedida } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
@@ -51,7 +52,7 @@ export default function NovoPedido({ onSalvar, nomesClientes }) {
 
   return (
     <div>
-      <PageTitle eyebrow="Novo lançamento" title="Novo Pedido" />
+      <PageTitle eyebrow="Novo lançamento" title="Pedido Camisas" />
       <form onSubmit={submeter}>
         <Card style={{ padding: 20 }} className="mb-5">
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
@@ -148,6 +149,28 @@ export default function NovoPedido({ onSalvar, nomesClientes }) {
               />
             </Field>
           </div>
+
+          <div
+            className="mt-4 p-4"
+            style={{ background: p.assinatura ? BRASS_SOFT : "#F7F5EF", border: `2px solid ${p.assinatura ? BRASS : LINE}`, borderRadius: 8 }}
+          >
+            <label className="flex items-center gap-2" style={{ cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={p.assinatura}
+                onChange={(e) => set("assinatura", e.target.checked)}
+                style={{ width: 18, height: 18, accentColor: BRASS }}
+              />
+              <span style={{ fontWeight: 700, fontSize: 14, color: INK }}>📦 Cliente Plano de Assinatura</span>
+            </label>
+            {p.assinatura && (
+              <div style={{ fontSize: 12, color: INK_SOFT, marginTop: 6 }}>
+                Marque a <strong>Quantidade</strong> acima com o total do plano (ex: 12 camisas). Depois, na tela do
+                pedido, você vai atualizando o campo "Qtd entregue" a cada entrega mensal — dá pra acompanhar o
+                progresso (ex: 3 de 12) direto no painel.
+              </div>
+            )}
+          </div>
         </Card>
 
         <Card style={{ padding: 20 }} className="mb-5">
@@ -183,10 +206,8 @@ export default function NovoPedido({ onSalvar, nomesClientes }) {
             Características
           </div>
           <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-            {DESC_LABELS.map((label) => (
-              <Field key={label} label={label}>
-                <input style={inputStyle} value={p.descricao[label]} onChange={(e) => setDesc(label, e.target.value)} />
-              </Field>
+            {DESC_CAMPOS.map((campo) => (
+              <CampoDescricao key={campo.label} campo={campo} valor={p.descricao[campo.label]} onChange={(v) => setDesc(campo.label, v)} />
             ))}
           </div>
         </Card>
@@ -213,7 +234,12 @@ export default function NovoPedido({ onSalvar, nomesClientes }) {
                 onChange={(e) => setTecido(i, "fornecedor", e.target.value)}
               />
               <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => setTecido(i, "qtd", e.target.value)} />
-              <input style={inputStyle} placeholder="Número" value={t.numero} onChange={(e) => setTecido(i, "numero", e.target.value)} />
+              <input
+                style={inputStyle}
+                placeholder="Observação (ex: colarinho windsor)"
+                value={t.numero}
+                onChange={(e) => setTecido(i, "numero", e.target.value)}
+              />
             </div>
           ))}
         </Card>

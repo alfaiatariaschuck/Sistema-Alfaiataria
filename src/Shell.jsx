@@ -8,6 +8,8 @@ import {
   Menu,
   Plus,
   Ruler,
+  Scissors,
+  Settings,
   ShieldCheck,
   ShoppingCart,
   Users,
@@ -15,6 +17,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePedidos } from "./hooks/usePedidos";
+import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
+import { useNomesClientes } from "./hooks/useNomesClientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
 import Dashboard from "./pages/Dashboard";
 import NovoPedido from "./pages/NovoPedido";
@@ -24,16 +28,20 @@ import Compras from "./pages/Compras";
 import Relatorio from "./pages/Relatorio";
 import Backup from "./pages/Backup";
 import FluxoDeCaixa from "./pages/FluxoDeCaixa";
+import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
+import Configuracoes from "./pages/Configuracoes";
 
 const NAV = [
   { id: "dashboard", label: "Painel", icon: LayoutDashboard, primary: true },
-  { id: "novo", label: "Novo Pedido", icon: Plus, primary: true },
+  { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true },
   { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true },
   { id: "compras", label: "Compras", icon: ShoppingCart, primary: true },
+  { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true },
   { id: "clientes", label: "Clientes", icon: Users, primary: false },
   { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false },
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false },
   { id: "backup", label: "Backup", icon: ShieldCheck, primary: false },
+  { id: "config", label: "Configurações", icon: Settings, primary: false },
 ];
 const NAV_PRIMARIA = NAV.filter((n) => n.primary);
 const NAV_SECUNDARIA = NAV.filter((n) => !n.primary);
@@ -46,6 +54,18 @@ export default function Shell() {
 
   const { pedidos, loading, erro, saving, recarregar, limparErro, criarPedido, atualizarCampo, atualizarSubcampo, removerPedido, adicionarTecido, atualizarTecido } =
     usePedidos();
+
+  const {
+    pecas,
+    loading: loadingPecas,
+    erro: erroPecas,
+    saving: savingPecas,
+    criarPeca,
+    atualizarCampo: atualizarCampoPeca,
+    removerPeca,
+  } = usePedidosAlfaiataria();
+
+  const { nomesClientes, recarregarNomesClientes } = useNomesClientes();
 
   const clientes = useMemo(() => {
     const map = new Map();
@@ -65,8 +85,14 @@ export default function Shell() {
 
   async function salvarNovoPedido(p) {
     const id = await criarPedido(p);
+    await recarregarNomesClientes();
     setTab("pedidos");
     setSelecionado(id);
+  }
+
+  async function salvarNovaPeca(p) {
+    await criarPeca(p);
+    await recarregarNomesClientes();
   }
 
   const acoesPedido = {
@@ -126,7 +152,7 @@ export default function Shell() {
             <LogOut size={15} /> Sair
           </button>
           <div className="px-6 py-5" style={{ color: "#6B7A8C", fontSize: 11 }}>
-            {saving ? "Salvando…" : "Sincronizado"}
+            {saving || savingPecas ? "Salvando…" : "Sincronizado"}
           </div>
         </aside>
 
@@ -190,10 +216,10 @@ export default function Shell() {
         )}
 
         <main className="flex-1 px-5 md:px-10 py-8 pb-24 md:pb-8" style={{ maxWidth: 1100 }}>
-          {erro && (
+          {(erro || erroPecas) && (
             <div className="mb-4 px-4 py-3 rounded" style={{ background: "#F6E3D9", color: "#9C4A1E" }}>
               <div className="flex items-start gap-2">
-                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} /> <span>{erro}</span>
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} /> <span>{erro || erroPecas}</span>
               </div>
               <button
                 onClick={() => {
@@ -212,13 +238,17 @@ export default function Shell() {
           ) : (
             <>
               {tab === "dashboard" && <Dashboard pedidos={pedidos} irPara={irPara} />}
-              {tab === "novo" && <NovoPedido onSalvar={salvarNovoPedido} nomesClientes={clientes.map((c) => c.nome)} />}
+              {tab === "novo" && <NovoPedido onSalvar={salvarNovoPedido} nomesClientes={nomesClientes} />}
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
               {tab === "clientes" && <Clientes clientes={clientes} irParaPedido={irPara} />}
               {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} irParaPedido={irPara} />}
               {tab === "compras" && <Compras pedidos={pedidos} onTecido={atualizarTecido} irParaPedido={irPara} />}
+              {tab === "alfaiataria" && !loadingPecas && (
+                <PedidoAlfaiataria pecas={pecas} onCriar={salvarNovaPeca} onCampo={atualizarCampoPeca} onRemover={removerPeca} nomesClientes={nomesClientes} />
+              )}
               {tab === "relatorio" && <Relatorio pedidos={pedidos} />}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
+              {tab === "config" && <Configuracoes />}
             </>
           )}
         </main>
