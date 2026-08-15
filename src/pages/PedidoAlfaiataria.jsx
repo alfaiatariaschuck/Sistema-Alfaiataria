@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, ChevronDown, ChevronUp, Clock, Printer, Scissors, Search, Trash2, Wallet } from "lucide-react";
-import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
+import { CheckCircle2, ChevronDown, ChevronUp, Clock, Printer, Scissors, Search, Trash2 } from "lucide-react";
+import { Card, Empty, Field, PageTitle, Pill } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
+import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
 import {
   BRASS,
   BRASS_SOFT,
@@ -11,6 +12,8 @@ import {
   LINE,
   MEDIDAS_ALFAIATARIA,
   PECA_SECOES,
+  STATUS,
+  STATUS_STYLE,
   TEXT_MUTED,
   TIPOS_PECA,
   inputStyle,
@@ -38,7 +41,8 @@ function statusDe(p) {
 export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, onAddTecido, onTecido, nomesClientes }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [busca, setBusca] = useState("");
-  const [filtroStatus, setFiltroStatus] = useState("Todos");
+  const [filtroPagamento, setFiltroPagamento] = useState("Todos");
+  const [statusFiltro, setStatusFiltro] = useState(new Set());
   const [telIcaro, setTelIcaro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
@@ -109,12 +113,10 @@ export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, 
 
   const filtradas = pecas.filter((p) => {
     const bateBusca = p.cliente.toLowerCase().includes(busca.toLowerCase());
-    const bateStatus = filtroStatus === "Todos" || statusDe(p) === filtroStatus;
-    return bateBusca && bateStatus;
+    const batePagamento = filtroPagamento === "Todos" || statusDe(p) === filtroPagamento;
+    const bateStatus = statusFiltro.size === 0 || statusFiltro.has(p.status);
+    return bateBusca && batePagamento && bateStatus;
   });
-
-  const totalGeral = pecas.reduce((s, p) => s + (parseFloat(p.valorTotal) || 0), 0);
-  const pagoGeral = pecas.reduce((s, p) => s + (parseFloat(p.pago) || 0), 0);
 
   return (
     <div>
@@ -131,13 +133,6 @@ export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, 
           </div>
         )}
       </Card>
-
-      <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-        <StatCard label="Peças lançadas" value={pecas.length} icon={Scissors} />
-        <StatCard label="Total (R$)" value={brl(totalGeral)} icon={Wallet} />
-        <StatCard label="Pago ao Icaro" value={brl(pagoGeral)} icon={CheckCircle2} />
-        <StatCard label="Saldo devedor" value={brl(totalGeral - pagoGeral)} icon={Clock} />
-      </div>
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
@@ -168,6 +163,21 @@ export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, 
             </Field>
             <Field label="Data">
               <input type="date" style={inputStyle} value={novaPeca.dataPedido} onChange={(e) => setNovaPeca({ ...novaPeca, dataPedido: e.target.value })} />
+            </Field>
+            <Field label="Previsão de entrega">
+              <input
+                type="date"
+                style={inputStyle}
+                value={novaPeca.previsaoEntrega}
+                onChange={(e) => setNovaPeca({ ...novaPeca, previsaoEntrega: e.target.value })}
+              />
+            </Field>
+            <Field label="Status">
+              <select style={inputStyle} value={novaPeca.status} onChange={(e) => setNovaPeca({ ...novaPeca, status: e.target.value })}>
+                {STATUS.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Valor total (R$)">
               <input
@@ -274,7 +284,7 @@ export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, 
         </form>
       </Card>
 
-      <div className="flex flex-col md:flex-row gap-3 mb-4">
+      <div className="flex flex-col md:flex-row gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1" style={{ ...inputStyle, padding: "6px 10px" }}>
           <Search size={14} color={TEXT_MUTED} />
           <input
@@ -284,12 +294,15 @@ export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, 
             style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
           />
         </div>
-        <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)} style={{ ...inputStyle, maxWidth: 180 }}>
+        <select value={filtroPagamento} onChange={(e) => setFiltroPagamento(e.target.value)} style={{ ...inputStyle, maxWidth: 180 }}>
           <option>Todos</option>
           <option>Pendente</option>
           <option>Parcial</option>
           <option>Pago</option>
         </select>
+      </div>
+      <div className="mb-4">
+        <FiltroStatusMulti opcoes={STATUS} estilos={STATUS_STYLE} selecionados={statusFiltro} onChange={setStatusFiltro} />
       </div>
 
       <Card>
@@ -310,9 +323,30 @@ export default function PedidoAlfaiataria({ pecas, onCriar, onCampo, onRemover, 
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente}</div>
                   <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                     {p.tipoPeca} · {fmtData(p.dataPedido)}
+                    {p.previsaoEntrega ? ` · entrega ${fmtData(p.previsaoEntrega)}` : ""}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  <select
+                    value={p.status}
+                    onChange={(e) => onCampo(p.id, "status", e.target.value)}
+                    className="fx-mono"
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      border: `1px solid ${(STATUS_STYLE[p.status] || {}).fg || LINE}`,
+                      background: (STATUS_STYLE[p.status] || {}).bg || "#FFF",
+                      color: (STATUS_STYLE[p.status] || {}).fg || INK_SOFT,
+                    }}
+                  >
+                    {STATUS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
                   <div className="text-right">
                     <div className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
                       {brl(total)}

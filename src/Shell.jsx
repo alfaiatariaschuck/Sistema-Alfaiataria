@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  PieChart,
   Plus,
   Ruler,
   Scissors,
@@ -21,6 +22,7 @@ import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
 import { useNomesClientes } from "./hooks/useNomesClientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
 import Dashboard from "./pages/Dashboard";
+import DashboardAlfaiataria from "./pages/DashboardAlfaiataria";
 import NovoPedido from "./pages/NovoPedido";
 import Pedidos from "./pages/Pedidos";
 import Clientes from "./pages/Clientes";
@@ -32,10 +34,11 @@ import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import Configuracoes from "./pages/Configuracoes";
 
 const NAV = [
-  { id: "dashboard", label: "Painel", icon: LayoutDashboard, primary: true },
+  { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true },
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true },
   { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true },
   { id: "compras", label: "Compras", icon: ShoppingCart, primary: true },
+  { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: true },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true },
   { id: "clientes", label: "Clientes", icon: Users, primary: false },
   { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false },
@@ -253,6 +256,9 @@ export default function Shell() {
                   irParaPedido={irPara}
                   irParaAlfaiataria={() => setTab("alfaiataria")}
                 />
+              )}
+              {tab === "painel-alfaiataria" && !loadingPecas && (
+                <DashboardAlfaiataria pecas={pecas} irPara={() => setTab("alfaiataria")} />
               )}
               {tab === "alfaiataria" && !loadingPecas && (
                 <PedidoAlfaiataria
