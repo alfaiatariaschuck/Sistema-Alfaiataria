@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ClipboardList,
   FileText,
+  Layers,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -33,6 +34,7 @@ import Clientes from "./pages/Clientes";
 import Compras from "./pages/Compras";
 import Relatorio from "./pages/Relatorio";
 import RelatorioAlfaiataria from "./pages/RelatorioAlfaiataria";
+import Consolidado from "./pages/Consolidado";
 import Backup from "./pages/Backup";
 import FluxoDeCaixa from "./pages/FluxoDeCaixa";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
@@ -49,6 +51,7 @@ const NAV = [
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false },
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false },
+  { id: "consolidado", label: "Consolidado", icon: Layers, primary: false },
   { id: "clientes", label: "Clientes", icon: Users, primary: false },
   { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false },
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false },
@@ -417,6 +420,9 @@ export default function Shell() {
               )}
               {tab === "relatorio" && <Relatorio pedidos={pedidos} planos={planos} />}
               {tab === "relatorio-alfaiataria" && !loadingPecas && <RelatorioAlfaiataria pecas={pecas} />}
+              {tab === "consolidado" && !loadingPecas && !loadingPlanos && (
+                <Consolidado pedidos={pedidos} pecas={pecas} planos={planos} irPara={irPara} irParaPeca={irParaPeca} />
+              )}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
               {tab === "config" && <Configuracoes />}
             </>
