@@ -1,29 +1,33 @@
 import React from "react";
-import { Package, Users, Wallet } from "lucide-react";
+import { PackageCheck, Shirt, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData } from "../lib/helpers";
 
+const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto");
+
 export default function Dashboard({ pedidos, irPara }) {
   const abertos = pedidos.filter((p) => p.status !== "Entregue");
-  const aReceberPendente = pedidos.filter((p) => p.aReceber.statusPagamento === "Pendente" && parseFloat(p.aReceber.valor) > 0);
   const fabPendente = pedidos.filter((p) => p.pagoFabiana.statusPagamento === "Pendente" && parseFloat(p.pagoFabiana.valor) > 0);
   const proximos = [...abertos]
     .filter((p) => p.previsaoEntrega)
     .sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega))
     .slice(0, 6);
 
-  const somaReceber = aReceberPendente.reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
   const somaFab = fabPendente.reduce((s, p) => s + (parseFloat(p.pagoFabiana.valor) || 0), 0);
+  const camisasEmProducao = abertos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
+  const camisasEntregues = abertos.reduce((s, p) => s + (parseFloat(p.qtEntregue) || 0), 0);
+  const saldoAEntregar = Math.max(0, camisasEmProducao - camisasEntregues);
 
   return (
     <div>
       <PageTitle eyebrow="Visão geral — camisaria" title="Painel Camisaria" />
       <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-        <StatCard label="Pedidos em aberto" value={abertos.length} icon={Package} />
-        <StatCard label="A receber pendente" value={brl(somaReceber)} icon={Wallet} />
-        <StatCard label="A pagar Fabiana" value={brl(somaFab)} icon={Wallet} />
         <StatCard label="Total de clientes" value={new Set(pedidos.map((p) => p.cliente.trim().toLowerCase())).size} icon={Users} />
+        <StatCard label="Camisas em produção" value={camisasEmProducao} icon={Shirt} />
+        <StatCard label="Entregue parcial" value={camisasEntregues} icon={PackageCheck} />
+        <StatCard label="Saldo a entregar" value={saldoAEntregar} icon={Shirt} />
+        <StatCard label="Valor devido à Fabiana" value={brl(somaFab)} icon={Wallet} />
       </div>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "1.3fr 1fr" }}>
@@ -60,9 +64,9 @@ export default function Dashboard({ pedidos, irPara }) {
           <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
             Pedidos por status
           </div>
-          {STATUS.map((s) => {
+          {STATUS_PAINEL.map((s) => {
             const n = pedidos.filter((p) => p.status === s).length;
-            const max = Math.max(1, ...STATUS.map((st) => pedidos.filter((p) => p.status === st).length));
+            const max = Math.max(1, ...STATUS_PAINEL.map((st) => pedidos.filter((p) => p.status === st).length));
             return (
               <div key={s} className="mb-3">
                 <div className="flex justify-between mb-1" style={{ fontSize: 12, color: INK_SOFT }}>

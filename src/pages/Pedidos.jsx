@@ -65,6 +65,10 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <span className="fx-mono" style={{ fontSize: 12, color: TEXT_MUTED }}>
+                {parseFloat(p.quantidade) || 0} un · entregue {parseFloat(p.qtEntregue) || 0} · saldo{" "}
+                {Math.max(0, (parseFloat(p.quantidade) || 0) - (parseFloat(p.qtEntregue) || 0))}
+              </span>
               <Pill text={p.status} style={STATUS_STYLE[p.status]} />
               <ChevronRight size={16} color={TEXT_MUTED} />
             </div>
