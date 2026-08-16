@@ -1,20 +1,22 @@
 import React from "react";
-import { PackageCheck, Shirt, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, PackageCheck, Shirt, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData } from "../lib/helpers";
 
 const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto");
+const VERMELHO = "#9C4A1E";
 
 export default function Dashboard({ pedidos, irPara }) {
   const abertos = pedidos.filter((p) => p.status !== "Entregue");
   const fabPendente = pedidos.filter((p) => p.pagoFabiana.statusPagamento === "Pendente" && parseFloat(p.pagoFabiana.valor) > 0);
-  const proximos = [...abertos]
-    .filter((p) => p.previsaoEntrega)
-    .sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega))
-    .slice(0, 6);
+  const fabPaga = pedidos.filter((p) => p.pagoFabiana.statusPagamento === "Pago" && parseFloat(p.pagoFabiana.valor) > 0);
+  const comPrevisao = [...abertos].filter((p) => p.previsaoEntrega).sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega));
+  const atrasados = comPrevisao.filter((p) => diasAte(p.previsaoEntrega) < 0);
+  const proximos = comPrevisao.filter((p) => diasAte(p.previsaoEntrega) >= 0).slice(0, 6);
 
   const somaFab = fabPendente.reduce((s, p) => s + (parseFloat(p.pagoFabiana.valor) || 0), 0);
+  const somaFabPaga = fabPaga.reduce((s, p) => s + (parseFloat(p.pagoFabiana.valor) || 0), 0);
   const camisasEmProducao = abertos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
   const camisasEntregues = abertos.reduce((s, p) => s + (parseFloat(p.qtEntregue) || 0), 0);
   const saldoAEntregar = Math.max(0, camisasEmProducao - camisasEntregues);
@@ -27,8 +29,37 @@ export default function Dashboard({ pedidos, irPara }) {
         <StatCard label="Camisas em produção" value={camisasEmProducao} icon={Shirt} />
         <StatCard label="Entregue parcial" value={camisasEntregues} icon={PackageCheck} />
         <StatCard label="Saldo a entregar" value={saldoAEntregar} icon={Shirt} />
-        <StatCard label="Valor devido à Fabiana" value={brl(somaFab)} icon={Wallet} />
+        <StatCard label="Pedidos atrasados" value={atrasados.length} icon={AlertTriangle} accent={atrasados.length > 0 ? VERMELHO : undefined} />
+        <StatCard label="Pago à Fabiana" value={brl(somaFabPaga)} icon={CheckCircle2} />
+        <StatCard label="Devido à Fabiana" value={brl(somaFab)} icon={Wallet} />
       </div>
+
+      {atrasados.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-3 flex items-center gap-2" style={{ fontSize: 16, fontWeight: 600, color: VERMELHO }}>
+            <AlertTriangle size={16} /> Atrasados ({atrasados.length})
+          </div>
+          {atrasados.map((p) => {
+            const dias = diasAte(p.previsaoEntrega);
+            return (
+              <button
+                key={p.id}
+                onClick={() => irPara(p.id)}
+                className="w-full flex items-center justify-between py-2.5"
+                style={{ borderBottom: `1px solid ${LINE}`, textAlign: "left" }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</div>
+                  <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                    {fmtData(p.previsaoEntrega)} · {p.status}
+                  </div>
+                </div>
+                <Pill text={`${Math.abs(dias)}d atrasado`} style={{ bg: "#F6E3D9", fg: VERMELHO }} />
+              </button>
+            );
+          })}
+        </Card>
+      )}
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "1.3fr 1fr" }}>
         <Card style={{ padding: 20 }}>
@@ -51,10 +82,7 @@ export default function Dashboard({ pedidos, irPara }) {
                     {fmtData(p.previsaoEntrega)} · {p.status}
                   </div>
                 </div>
-                <Pill
-                  text={dias < 0 ? `${Math.abs(dias)}d atrasado` : dias === 0 ? "hoje" : `em ${dias}d`}
-                  style={dias < 0 ? { bg: "#F6E3D9", fg: "#9C4A1E" } : { bg: BRASS_SOFT, fg: "#A9793E" }}
-                />
+                <Pill text={dias === 0 ? "hoje" : `em ${dias}d`} style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />
               </button>
             );
           })}

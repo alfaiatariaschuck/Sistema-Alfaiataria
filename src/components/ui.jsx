@@ -53,14 +53,15 @@ export function Field({ label, children }) {
   );
 }
 
-export function StatCard({ label, value, icon: Icon }) {
+export function StatCard({ label, value, icon: Icon, accent }) {
+  const cor = accent || BRASS;
   return (
     <Card style={{ padding: 16 }}>
       <div className="flex items-center justify-between mb-2">
         <span style={{ fontSize: 12, color: TEXT_MUTED, fontWeight: 600 }}>{label}</span>
-        <Icon size={15} color={BRASS} />
+        <Icon size={15} color={cor} />
       </div>
-      <div className="fx-serif" style={{ fontSize: 22, fontWeight: 600, color: INK }}>
+      <div className="fx-serif" style={{ fontSize: 22, fontWeight: 600, color: accent || INK }}>
         {value}
       </div>
     </Card>
