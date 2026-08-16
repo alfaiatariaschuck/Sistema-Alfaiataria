@@ -16,6 +16,7 @@ export function planoVazio() {
     vendedor: "",
     quantidade: 12,
     valorReceber: "",
+    valorFabiana: "",
     formaPagamento: "",
     medidas: medidasVazias(),
     descricao: descricaoVazia(),
@@ -33,6 +34,7 @@ function rowParaPlano(row) {
     quantidade: row.quantidade,
     qtEntregue: row.qt_entregue,
     valorReceber: row.valor_receber ?? "",
+    valorFabiana: row.valor_pago_fabiana ?? "",
     formaPagamento: row.forma_pagamento || "",
     medidas: { ...medidasVazias(), ...(row.medidas || {}) },
     descricao: { ...descricaoVazia(), ...(row.descricao || {}) },
@@ -49,6 +51,7 @@ const CAMPO_PARA_COLUNA = {
   quantidade: "quantidade",
   qtEntregue: "qt_entregue",
   valorReceber: "valor_receber",
+  valorFabiana: "valor_pago_fabiana",
   formaPagamento: "forma_pagamento",
   medidas: "medidas",
   descricao: "descricao",
@@ -96,6 +99,7 @@ export function usePlanosAssinatura() {
         vendedor: pl.vendedor || null,
         quantidade: Number(pl.quantidade) || 1,
         valor_receber: pl.valorReceber === "" ? null : Number(pl.valorReceber),
+        valor_pago_fabiana: pl.valorFabiana === "" || pl.valorFabiana == null ? null : Number(pl.valorFabiana),
         forma_pagamento: pl.formaPagamento || null,
         medidas: pl.medidas,
         descricao: pl.descricao,
@@ -111,7 +115,7 @@ export function usePlanosAssinatura() {
     setPlanos((prev) => prev.map((pl) => (pl.id === planoId ? { ...pl, [campo]: valor } : pl)));
     const coluna = CAMPO_PARA_COLUNA[campo];
     if (!coluna) return;
-    const valorFinal = ["quantidade", "qtEntregue", "valorReceber"].includes(campo) ? (valor === "" ? null : Number(valor)) : valor;
+    const valorFinal = ["quantidade", "qtEntregue", "valorReceber", "valorFabiana"].includes(campo) ? (valor === "" ? null : Number(valor)) : valor;
     await comIndicador(async () => {
       const { error } = await supabase.from("planos_assinatura").update({ [coluna]: valorFinal }).eq("id", planoId);
       if (error) setErro(error.message);

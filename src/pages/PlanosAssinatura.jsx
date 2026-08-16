@@ -129,6 +129,10 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
                     <Field label="Valor por emissão (R$)">
                       <input type="number" step="0.01" style={inputStyle} value={pl.valorReceber} onChange={(e) => onCampo(pl.id, "valorReceber", e.target.value)} />
                     </Field>
+                    <Field label="Valor Fabiana (R$)">
+                      <input type="number" step="0.01" style={inputStyle} value={pl.valorFabiana} onChange={(e) => onCampo(pl.id, "valorFabiana", e.target.value)} />
+                      <span style={{ fontSize: 10, color: TEXT_MUTED }}>Só entra no Painel Camisaria quando você emitir o pedido.</span>
+                    </Field>
                     <Field label="Ativo">
                       <select
                         style={inputStyle}
