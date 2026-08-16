@@ -10,11 +10,13 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState(new Set());
 
-  const filtrados = pedidos.filter((p) => {
-    const bateBusca = p.cliente.toLowerCase().includes(busca.toLowerCase());
-    const bateStatus = statusFiltro.size === 0 || statusFiltro.has(p.status);
-    return bateBusca && bateStatus;
-  });
+  const filtrados = pedidos
+    .filter((p) => {
+      const bateBusca = p.cliente.toLowerCase().includes(busca.toLowerCase());
+      const bateStatus = statusFiltro.size === 0 || statusFiltro.has(p.status);
+      return bateBusca && bateStatus;
+    })
+    .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
 
   const atual = pedidos.find((p) => p.id === selecionado);
 
