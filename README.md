@@ -1,4 +1,4 @@
-# Sistema de Gestão de Pedidos — Ateliê
+# Sistema de Gestão de Pedidos — Schuck
 
 App de controle de pedidos de alfaiataria (clientes, medidas, produção, tecidos/compras, financeiro). React + Vite no front-end, Supabase (Postgres + Auth) como banco de dados, deploy na Vercel.
 

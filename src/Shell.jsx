@@ -212,7 +212,7 @@ export default function Shell() {
             <div className="flex items-center gap-2">
               <Ruler size={20} color={BRASS} />
               <span className="fx-serif" style={{ color: "#F5F1E8", fontSize: 18, fontWeight: 600 }}>
-                Ateliê
+                Schuck
               </span>
             </div>
             <div style={{ color: "#8593A3", fontSize: 11, letterSpacing: 1 }} className="mt-1 uppercase">

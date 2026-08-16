@@ -33,7 +33,7 @@ export default function Login() {
         <div className="flex items-center gap-2 justify-center mb-1">
           <Ruler size={22} color={BRASS} />
           <span className="fx-serif" style={{ fontSize: 22, fontWeight: 600 }}>
-            Ateliê
+            Schuck
           </span>
         </div>
         <div className="text-center uppercase mb-8" style={{ color: TEXT_MUTED, fontSize: 11, letterSpacing: 1 }}>
