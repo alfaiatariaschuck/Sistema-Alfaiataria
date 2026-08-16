@@ -90,23 +90,35 @@ export default function Dashboard({ pedidos, irPara }) {
 
         <Card style={{ padding: 20 }}>
           <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
-            Pedidos por status
+            Camisas por status
           </div>
           {STATUS_PAINEL.map((s) => {
-            const n = pedidos.filter((p) => p.status === s).length;
-            const max = Math.max(1, ...STATUS_PAINEL.map((st) => pedidos.filter((p) => p.status === st).length));
+            const camisas = pedidos.filter((p) => p.status === s).reduce((acc, p) => acc + (parseFloat(p.quantidade) || 0), 0);
+            const pedidosNoStatus = pedidos.filter((p) => p.status === s).length;
+            const max = Math.max(
+              1,
+              ...STATUS_PAINEL.map((st) => pedidos.filter((p) => p.status === st).reduce((acc, p) => acc + (parseFloat(p.quantidade) || 0), 0))
+            );
             return (
               <div key={s} className="mb-3">
                 <div className="flex justify-between mb-1" style={{ fontSize: 12, color: INK_SOFT }}>
-                  <span>{s}</span>
-                  <span className="fx-mono">{n}</span>
+                  <span>
+                    {s} <span style={{ color: TEXT_MUTED }}>({pedidosNoStatus} ped.)</span>
+                  </span>
+                  <span className="fx-mono">{camisas} un</span>
                 </div>
                 <div style={{ background: LINE, borderRadius: 4, height: 6 }}>
-                  <div style={{ width: `${(n / max) * 100}%`, background: STATUS_STYLE[s].fg, height: 6, borderRadius: 4 }} />
+                  <div style={{ width: `${(camisas / max) * 100}%`, background: STATUS_STYLE[s].fg, height: 6, borderRadius: 4 }} />
                 </div>
               </div>
             );
           })}
+          <div className="flex justify-between pt-2 mt-1" style={{ borderTop: `1px solid ${LINE}`, fontSize: 12, fontWeight: 700 }}>
+            <span>Total</span>
+            <span className="fx-mono">
+              {pedidos.reduce((acc, p) => acc + (parseFloat(p.quantidade) || 0), 0)} un · {pedidos.length} ped.
+            </span>
+          </div>
         </Card>
       </div>
     </div>
