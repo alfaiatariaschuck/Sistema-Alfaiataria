@@ -1,20 +1,35 @@
 import React, { useState } from "react";
-import { CheckCircle2, Clock, Printer, Save, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Printer, RefreshCw, Save, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { finalDaMedida } from "../lib/helpers";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido }) {
+export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
+  const [convertendo, setConvertendo] = useState(false);
 
   function set(campo, valor) {
     onCampo(p.id, campo, valor);
   }
   function setSub(grupo, sub, valor) {
     onSub(p.id, grupo, sub, valor);
+  }
+  async function converter() {
+    if (
+      !confirm(
+        `Converter o pedido de ${p.cliente} num Plano de Assinatura? Ele sai da lista de Pedidos e vira um plano de controle — você emite o pedido de verdade quando quiser, na aba Planos de Assinatura.`
+      )
+    )
+      return;
+    setConvertendo(true);
+    try {
+      await onConverterPlano(p);
+    } finally {
+      setConvertendo(false);
+    }
   }
   function salvar() {
     setConfirmado(true);
@@ -99,6 +114,17 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             />
             <span style={{ fontSize: 13, fontWeight: 600 }}>📦 Cliente Plano de Assinatura</span>
           </label>
+          {p.assinatura && (
+            <button
+              type="button"
+              onClick={converter}
+              disabled={convertendo}
+              className="flex items-center gap-2 mt-2"
+              style={{ background: BRASS, color: "#FFF", padding: "7px 14px", borderRadius: 6, fontWeight: 600, fontSize: 12, opacity: convertendo ? 0.7 : 1 }}
+            >
+              <RefreshCw size={13} /> {convertendo ? "Convertendo…" : "Converter em Plano de Assinatura"}
+            </button>
+          )}
           <div className="mt-3">
             <div className="flex justify-between mb-1" style={{ fontSize: 12, color: INK_SOFT }}>
               <span>Progresso do pedido</span>

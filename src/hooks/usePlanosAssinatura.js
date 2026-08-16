@@ -98,6 +98,7 @@ export function usePlanosAssinatura() {
         cliente_id: clienteId,
         vendedor: pl.vendedor || null,
         quantidade: Number(pl.quantidade) || 1,
+        qt_entregue: Number(pl.qtEntregue) || 0,
         valor_receber: pl.valorReceber === "" ? null : Number(pl.valorReceber),
         valor_pago_fabiana: pl.valorFabiana === "" || pl.valorFabiana == null ? null : Number(pl.valorFabiana),
         forma_pagamento: pl.formaPagamento || null,

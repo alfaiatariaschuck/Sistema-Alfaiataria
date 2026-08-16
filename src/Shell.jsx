@@ -146,6 +146,26 @@ export default function Shell() {
     setTab("planos-assinatura");
   }
 
+  async function converterPedidoEmPlano(p) {
+    await criarPlano({
+      cliente: p.cliente,
+      vendedor: p.vendedor,
+      quantidade: p.quantidade,
+      qtEntregue: p.qtEntregue,
+      valorReceber: p.aReceber.valor,
+      valorFabiana: p.pagoFabiana.valor,
+      formaPagamento: p.formaPagamento,
+      medidas: p.medidas,
+      descricao: p.descricao,
+      tecidos: p.tecidos,
+      observacoes: p.observacoes,
+    });
+    await removerPedido(p.id);
+    await recarregarNomesClientes();
+    setSelecionado(null);
+    setTab("planos-assinatura");
+  }
+
   async function emitirPedidoDoPlano(plano) {
     const id = await criarPedido({
       cliente: plano.cliente,
@@ -180,6 +200,7 @@ export default function Shell() {
     },
     onAddTecido: adicionarTecido,
     onTecido: atualizarTecido,
+    onConverterPlano: converterPedidoEmPlano,
   };
 
   function atualizarMedidaPeca(pecaId, secKey, label, valor) {
