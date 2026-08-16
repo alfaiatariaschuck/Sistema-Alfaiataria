@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { AlertCircle, CheckCircle2, Download, FileText, Package, Wallet } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, FileText, Package, Shirt, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { FORMAS_PAGAMENTO, PAG_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
@@ -21,6 +21,9 @@ export default function Relatorio({ pedidos }) {
     .sort((a, b) => a.dataPedido.localeCompare(b.dataPedido));
 
   const total = filtrados.reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
+  const camisas = filtrados.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
+  const ticketMedioPedido = filtrados.length ? total / filtrados.length : 0;
+  const ticketMedioCamisa = camisas ? total / camisas : 0;
 
   const porForma = FORMAS_PAGAMENTO.map((f) => ({
     forma: f,
@@ -83,7 +86,10 @@ export default function Relatorio({ pedidos }) {
 
       <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
         <StatCard label="Pedidos no período" value={filtrados.length} icon={Package} />
+        <StatCard label="Camisas no período" value={camisas} icon={Shirt} />
         <StatCard label="Total (R$)" value={brl(total)} icon={Wallet} />
+        <StatCard label="Ticket médio (pedido)" value={brl(ticketMedioPedido)} icon={TrendingUp} />
+        <StatCard label="Ticket médio (camisa)" value={brl(ticketMedioCamisa)} icon={TrendingUp} />
         {porForma.map((f) => (
           <StatCard key={f.forma} label={f.forma} value={`${brl(f.total)} · ${f.qtd}x`} icon={FileText} />
         ))}
