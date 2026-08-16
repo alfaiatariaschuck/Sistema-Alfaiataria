@@ -130,9 +130,6 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes }) {
                 onChange={(e) => setNovaPeca({ ...novaPeca, pago: e.target.value })}
               />
             </Field>
-            <Field label="Observações">
-              <input style={inputStyle} value={novaPeca.observacoes} onChange={(e) => setNovaPeca({ ...novaPeca, observacoes: e.target.value })} />
-            </Field>
           </div>
 
           {(PECA_SECOES[novaPeca.tipoPeca] || []).map((secKey) => {
@@ -206,6 +203,17 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes }) {
               <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => setTecido(i, "numero", e.target.value)} />
             </div>
           ))}
+        </Card>
+
+        <Card style={{ padding: 20 }} className="mb-5">
+          <Field label="Observações">
+            <textarea
+              style={{ ...inputStyle, minHeight: 90 }}
+              placeholder="Detalhes da peça pro Icaro (ex: acabamento, ajustes específicos, preferências do cliente...)"
+              value={novaPeca.observacoes}
+              onChange={(e) => setNovaPeca({ ...novaPeca, observacoes: e.target.value })}
+            />
+          </Field>
         </Card>
 
         {erro && (

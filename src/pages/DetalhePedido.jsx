@@ -72,9 +72,28 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
             </Field>
             <Field label="Qtd entregue">
-              <input type="number" style={inputStyle} value={p.qtEntregue} onChange={(e) => set("qtEntregue", e.target.value)} />
+              <div className="flex gap-1">
+                <input type="number" style={inputStyle} value={p.qtEntregue} onChange={(e) => set("qtEntregue", e.target.value)} />
+                <button
+                  type="button"
+                  onClick={() => set("qtEntregue", (parseFloat(p.qtEntregue) || 0) + 1)}
+                  title="Dar baixa de +1 entrega"
+                  style={{ background: BRASS_SOFT, color: BRASS, padding: "0 12px", borderRadius: 6, fontWeight: 700, fontSize: 14 }}
+                >
+                  +1
+                </button>
+              </div>
             </Field>
           </div>
+          <label className="flex items-center gap-2 mt-3" style={{ cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={!!p.assinatura}
+              onChange={(e) => set("assinatura", e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: BRASS }}
+            />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>📦 Cliente Plano de Assinatura</span>
+          </label>
           {p.assinatura && (
             <div className="mt-3">
               <div className="flex justify-between mb-1" style={{ fontSize: 12, color: INK_SOFT }}>

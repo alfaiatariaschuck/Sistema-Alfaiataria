@@ -212,6 +212,17 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
           </div>
         ))}
       </Card>
+
+      <Card style={{ padding: 20 }} className="mt-6">
+        <Field label="Observações">
+          <textarea
+            style={{ ...inputStyle, minHeight: 90 }}
+            placeholder="Detalhes da peça pro Icaro (ex: acabamento, ajustes específicos, preferências do cliente...)"
+            value={p.observacoes || ""}
+            onChange={(e) => set("observacoes", e.target.value)}
+          />
+        </Field>
+      </Card>
     </div>
   );
 }
