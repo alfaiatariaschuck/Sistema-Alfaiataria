@@ -150,26 +150,11 @@ export default function NovoPedido({ onSalvar, nomesClientes }) {
             </Field>
           </div>
 
-          <div
-            className="mt-4 p-4"
-            style={{ background: p.assinatura ? BRASS_SOFT : "#F7F5EF", border: `2px solid ${p.assinatura ? BRASS : LINE}`, borderRadius: 8 }}
-          >
-            <label className="flex items-center gap-2" style={{ cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={p.assinatura}
-                onChange={(e) => set("assinatura", e.target.checked)}
-                style={{ width: 18, height: 18, accentColor: BRASS }}
-              />
-              <span style={{ fontWeight: 700, fontSize: 14, color: INK }}>📦 Cliente Plano de Assinatura</span>
-            </label>
-            {p.assinatura && (
-              <div style={{ fontSize: 12, color: INK_SOFT, marginTop: 6 }}>
-                Marque a <strong>Quantidade</strong> acima com o total do plano (ex: 12 camisas). Depois, na tela do
-                pedido, você vai atualizando o campo "Qtd entregue" a cada entrega mensal — dá pra acompanhar o
-                progresso (ex: 3 de 12) direto no painel.
-              </div>
-            )}
+          <div className="mt-4 p-4" style={{ background: "#F7F5EF", border: `1px solid ${LINE}`, borderRadius: 8 }}>
+            <div style={{ fontSize: 12, color: INK_SOFT }}>
+              Cliente de plano de assinatura (recorrente)? Cadastre em <strong>Planos de Assinatura</strong> no menu —
+              lá você define as medidas uma vez só e todo mês só clica em "Emitir pedido do mês".
+            </div>
           </div>
         </Card>
 

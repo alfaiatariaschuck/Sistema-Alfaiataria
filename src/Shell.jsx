@@ -7,6 +7,7 @@ import {
   ListChecks,
   LogOut,
   Menu,
+  PackageCheck,
   PieChart,
   Plus,
   Ruler,
@@ -20,8 +21,10 @@ import {
 import { useAuth } from "./contexts/AuthContext";
 import { usePedidos } from "./hooks/usePedidos";
 import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
+import { usePlanosAssinatura } from "./hooks/usePlanosAssinatura";
 import { useNomesClientes } from "./hooks/useNomesClientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
+import { hojeISO } from "./lib/helpers";
 import Dashboard from "./pages/Dashboard";
 import DashboardAlfaiataria from "./pages/DashboardAlfaiataria";
 import NovoPedido from "./pages/NovoPedido";
@@ -33,6 +36,7 @@ import Backup from "./pages/Backup";
 import FluxoDeCaixa from "./pages/FluxoDeCaixa";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
+import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 
 const NAV = [
@@ -42,6 +46,7 @@ const NAV = [
   { id: "compras", label: "Compras", icon: ShoppingCart, primary: true },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true },
+  { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false },
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false },
   { id: "clientes", label: "Clientes", icon: Users, primary: false },
   { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false },
@@ -73,6 +78,18 @@ export default function Shell() {
     adicionarTecido: adicionarTecidoPeca,
     atualizarTecido: atualizarTecidoPeca,
   } = usePedidosAlfaiataria();
+
+  const {
+    planos,
+    loading: loadingPlanos,
+    erro: erroPlanos,
+    saving: savingPlanos,
+    criarPlano,
+    atualizarCampo: atualizarCampoPlano,
+    atualizarMedida: atualizarMedidaPlano,
+    atualizarDescricao: atualizarDescricaoPlano,
+    removerPlano,
+  } = usePlanosAssinatura();
 
   const { nomesClientes, recarregarNomesClientes } = useNomesClientes();
 
@@ -108,6 +125,31 @@ export default function Shell() {
     const id = await criarPeca(p);
     await recarregarNomesClientes();
     irParaPeca(id);
+  }
+
+  async function emitirPedidoDoPlano(plano) {
+    const id = await criarPedido({
+      cliente: plano.cliente,
+      vendedor: plano.vendedor,
+      dataPedido: hojeISO(),
+      previsaoEntrega: "",
+      quantidade: 1,
+      status: "Aguardando Produção",
+      qtEntregue: 0,
+      aReceber: { valor: plano.valorReceber, statusPagamento: "Pendente" },
+      formaPagamento: plano.formaPagamento,
+      recompra: true,
+      assinatura: false,
+      origemPlanoId: plano.id,
+      pagoFabiana: { valor: "", statusPagamento: "Pendente" },
+      medidas: plano.medidas,
+      descricao: plano.descricao,
+      tecidos: [{ codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
+      observacoes: plano.observacoes,
+    });
+    await atualizarCampoPlano(plano.id, "qtEntregue", (plano.qtEntregue || 0) + 1);
+    await recarregarNomesClientes();
+    irPara(id);
   }
 
   const acoesPedido = {
@@ -191,7 +233,7 @@ export default function Shell() {
             <LogOut size={15} /> Sair
           </button>
           <div className="px-6 py-5" style={{ color: "#6B7A8C", fontSize: 11 }}>
-            {saving || savingPecas ? "Salvando…" : "Sincronizado"}
+            {saving || savingPecas || savingPlanos ? "Salvando…" : "Sincronizado"}
           </div>
         </aside>
 
@@ -257,10 +299,10 @@ export default function Shell() {
         )}
 
         <main className="flex-1 px-5 md:px-10 py-8 pb-24 md:pb-8" style={{ maxWidth: 1100 }}>
-          {(erro || erroPecas) && (
+          {(erro || erroPecas || erroPlanos) && (
             <div className="mb-4 px-4 py-3 rounded" style={{ background: "#F6E3D9", color: "#9C4A1E" }}>
               <div className="flex items-start gap-2">
-                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} /> <span>{erro || erroPecas}</span>
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} /> <span>{erro || erroPecas || erroPlanos}</span>
               </div>
               <button
                 onClick={() => {
@@ -297,6 +339,18 @@ export default function Shell() {
               {tab === "alfaiataria" && !loadingPecas && <PedidoAlfaiataria onCriar={salvarNovaPeca} nomesClientes={nomesClientes} />}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
                 <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={setSelecionadaPeca} {...acoesPeca} />
+              )}
+              {tab === "planos-assinatura" && !loadingPlanos && (
+                <PlanosAssinatura
+                  planos={planos}
+                  onCriar={criarPlano}
+                  onCampo={atualizarCampoPlano}
+                  onMedida={atualizarMedidaPlano}
+                  onDescricao={atualizarDescricaoPlano}
+                  onRemover={removerPlano}
+                  onEmitir={emitirPedidoDoPlano}
+                  nomesClientes={nomesClientes}
+                />
               )}
               {tab === "relatorio" && <Relatorio pedidos={pedidos} />}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}

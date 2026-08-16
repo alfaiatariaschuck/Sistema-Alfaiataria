@@ -130,6 +130,7 @@ export function usePedidos() {
           forma_pagamento: p.formaPagamento || null,
           recompra: !!p.recompra,
           plano_assinatura: !!p.assinatura,
+          origem_plano_id: p.origemPlanoId || null,
           valor_pago_fabiana: p.pagoFabiana.valor === "" ? null : Number(p.pagoFabiana.valor),
           status_pagamento_fabiana: p.pagoFabiana.statusPagamento,
           medidas: p.medidas,

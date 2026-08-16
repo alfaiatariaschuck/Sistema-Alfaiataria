@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CheckCircle2, Clock, Printer, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Printer, Save, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import {
@@ -32,9 +32,15 @@ const STATUS_PAGAMENTO_STYLE = {
 
 export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCaracteristica, onRemover, onAddTecido, onTecido }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
+  const [confirmado, setConfirmado] = useState(false);
 
   function set(campo, valor) {
     onCampo(p.id, campo, valor);
+  }
+
+  function salvar() {
+    setConfirmado(true);
+    setTimeout(() => setConfirmado(false), 2500);
   }
 
   const total = parseFloat(p.valorTotal) || 0;
@@ -223,6 +229,19 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
           />
         </Field>
       </Card>
+
+      <div className="flex items-center gap-3 mt-6">
+        <button
+          onClick={salvar}
+          className="flex items-center gap-2"
+          style={{ background: confirmado ? "#2C6E31" : "#16212E", color: "#FFF", padding: "10px 22px", borderRadius: 8, fontWeight: 600, fontSize: 14 }}
+        >
+          <Save size={15} /> {confirmado ? "Salvo ✓" : "Salvar"}
+        </button>
+        {!confirmado && (
+          <span style={{ fontSize: 12, color: TEXT_MUTED }}>Cada campo já é salvo sozinho assim que você edita — este botão é só pra confirmar.</span>
+        )}
+      </div>
     </div>
   );
 }
