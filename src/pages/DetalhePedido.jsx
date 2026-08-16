@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CheckCircle2, Clock, Printer, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Printer, Save, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle } from "../lib/constants";
@@ -8,12 +8,17 @@ import FichaImprimivel from "./FichaImprimivel";
 
 export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
+  const [confirmado, setConfirmado] = useState(false);
 
   function set(campo, valor) {
     onCampo(p.id, campo, valor);
   }
   function setSub(grupo, sub, valor) {
     onSub(p.id, grupo, sub, valor);
+  }
+  function salvar() {
+    setConfirmado(true);
+    setTimeout(() => setConfirmado(false), 2500);
   }
 
   return (
@@ -94,26 +99,24 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             />
             <span style={{ fontSize: 13, fontWeight: 600 }}>📦 Cliente Plano de Assinatura</span>
           </label>
-          {p.assinatura && (
-            <div className="mt-3">
-              <div className="flex justify-between mb-1" style={{ fontSize: 12, color: INK_SOFT }}>
-                <span>Progresso da assinatura</span>
-                <span className="fx-mono">
-                  {p.qtEntregue || 0} / {p.quantidade || 0}
-                </span>
-              </div>
-              <div style={{ background: LINE, borderRadius: 4, height: 8 }}>
-                <div
-                  style={{
-                    width: `${Math.min(100, ((parseFloat(p.qtEntregue) || 0) / (parseFloat(p.quantidade) || 1)) * 100)}%`,
-                    background: BRASS,
-                    height: 8,
-                    borderRadius: 4,
-                  }}
-                />
-              </div>
+          <div className="mt-3">
+            <div className="flex justify-between mb-1" style={{ fontSize: 12, color: INK_SOFT }}>
+              <span>Progresso do pedido</span>
+              <span className="fx-mono">
+                {p.qtEntregue || 0} / {p.quantidade || 0}
+              </span>
             </div>
-          )}
+            <div style={{ background: LINE, borderRadius: 4, height: 8 }}>
+              <div
+                style={{
+                  width: `${Math.min(100, ((parseFloat(p.qtEntregue) || 0) / (parseFloat(p.quantidade) || 1)) * 100)}%`,
+                  background: BRASS,
+                  height: 8,
+                  borderRadius: 4,
+                }}
+              />
+            </div>
+          </div>
         </Card>
 
         <Card style={{ padding: 20 }}>
@@ -244,6 +247,19 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
           </div>
         ))}
       </Card>
+
+      <div className="flex items-center gap-3 mt-6">
+        <button
+          onClick={salvar}
+          className="flex items-center gap-2"
+          style={{ background: confirmado ? "#2C6E31" : "#16212E", color: "#FFF", padding: "10px 22px", borderRadius: 8, fontWeight: 600, fontSize: 14 }}
+        >
+          <Save size={15} /> {confirmado ? "Salvo ✓" : "Salvar"}
+        </button>
+        {!confirmado && (
+          <span style={{ fontSize: 12, color: TEXT_MUTED }}>Cada campo já é salvo sozinho assim que você edita — este botão é só pra confirmar.</span>
+        )}
+      </div>
     </div>
   );
 }
