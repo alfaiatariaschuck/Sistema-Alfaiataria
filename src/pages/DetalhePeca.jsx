@@ -7,6 +7,7 @@ import {
   BRASS,
   BRASS_SOFT,
   CARACTERISTICAS_TRAJE,
+  FORMAS_PAGAMENTO,
   LINE,
   MEDIDAS_ALFAIATARIA,
   PECA_SECOES,
@@ -139,6 +140,14 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
         <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
           Financeiro (cliente)
         </div>
+        <Field label="Forma de pagamento">
+          <select style={inputStyle} value={p.formaPagamento || ""} onChange={(e) => set("formaPagamento", e.target.value)}>
+            <option value="">Selecione</option>
+            {FORMAS_PAGAMENTO.map((f) => (
+              <option key={f}>{f}</option>
+            ))}
+          </select>
+        </Field>
         <CampoPagamento
           labelValor="Valor de venda (R$)"
           labelPago="Recebido"

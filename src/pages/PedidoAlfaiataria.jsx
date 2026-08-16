@@ -6,6 +6,7 @@ import {
   BRASS,
   BRASS_SOFT,
   CARACTERISTICAS_TRAJE,
+  FORMAS_PAGAMENTO,
   INK,
   LINE,
   MEDIDAS_ALFAIATARIA,
@@ -148,6 +149,14 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes }) {
             <div className="fx-serif mb-2" style={{ fontSize: 14, fontWeight: 600 }}>
               Valor de venda (cliente)
             </div>
+            <Field label="Forma de pagamento">
+              <select style={inputStyle} value={novaPeca.formaPagamento} onChange={(e) => setNovaPeca({ ...novaPeca, formaPagamento: e.target.value })}>
+                <option value="">Selecione</option>
+                {FORMAS_PAGAMENTO.map((f) => (
+                  <option key={f}>{f}</option>
+                ))}
+              </select>
+            </Field>
             <CampoPagamento
               labelValor="Valor de venda (R$)"
               labelPago="Recebido"
