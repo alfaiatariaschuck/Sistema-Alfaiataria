@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, Clock, Phone, Scissors, Wallet } from "lucide-react";
+import { CheckCircle2, Clock, Gift, Phone, Scissors, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_ICARO = "telefone_icaro";
+const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação");
 
 export default function DashboardAlfaiataria({ pecas, irPara }) {
   const [telIcaro, setTelIcaro] = useState("");
@@ -17,9 +18,14 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
     })();
   }, []);
 
-  const abertas = pecas.filter((p) => p.status !== "Entregue");
+  // Doação não conta como venda pro cliente, mas o custo de produção
+  // (Icaro) continua contando normal — a peça foi feita do mesmo jeito.
+  const naoDoacao = (p) => p.status !== "Doação";
+  const doacoes = pecas.filter((p) => p.status === "Doação");
+  const abertas = pecas.filter((p) => p.status !== "Entregue" && naoDoacao(p));
   const totalGeral = pecas.reduce((s, p) => s + (parseFloat(p.valorTotal) || 0), 0);
   const pagoGeral = pecas.reduce((s, p) => s + (parseFloat(p.pago) || 0), 0);
+  const totalVenda = pecas.filter(naoDoacao).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
   const proximas = [...abertas]
     .filter((p) => p.previsaoEntrega)
     .sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega))
@@ -47,9 +53,11 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
 
       <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         <StatCard label="Peças em aberto" value={abertas.length} icon={Scissors} />
-        <StatCard label="Total (R$)" value={brl(totalGeral)} icon={Wallet} />
+        <StatCard label="Vendido (R$)" value={brl(totalVenda)} icon={Wallet} />
+        <StatCard label="Total devido (Icaro)" value={brl(totalGeral)} icon={Wallet} />
         <StatCard label="Pago ao Icaro" value={brl(pagoGeral)} icon={CheckCircle2} />
         <StatCard label="Saldo devedor (Icaro)" value={brl(totalGeral - pagoGeral)} icon={Clock} />
+        <StatCard label="Doações" value={doacoes.length} icon={Gift} />
       </div>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "1.3fr 1fr" }}>
@@ -86,9 +94,9 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
           <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
             Peças por status
           </div>
-          {STATUS.map((s) => {
+          {STATUS_PAINEL.map((s) => {
             const n = pecas.filter((p) => p.status === s).length;
-            const max = Math.max(1, ...STATUS.map((st) => pecas.filter((p) => p.status === st).length));
+            const max = Math.max(1, ...STATUS_PAINEL.map((st) => pecas.filter((p) => p.status === st).length));
             return (
               <div key={s} className="mb-3">
                 <div className="flex justify-between mb-1" style={{ fontSize: 12, color: INK_SOFT }}>

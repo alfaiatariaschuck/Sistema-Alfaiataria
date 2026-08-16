@@ -15,7 +15,14 @@ export function planoVazio() {
     cliente: "",
     vendedor: "",
     quantidade: 12,
+    dataVenda: "",
     valorReceber: "",
+    statusPagamentoVenda: "Pendente",
+    pagamentoDividido: false,
+    valorEntrada: "",
+    statusEntrada: "Pendente",
+    valorRestante: "",
+    statusRestante: "Pendente",
     valorFabiana: "",
     formaPagamento: "",
     medidas: medidasVazias(),
@@ -33,7 +40,14 @@ function rowParaPlano(row) {
     vendedor: row.vendedor || "",
     quantidade: row.quantidade,
     qtEntregue: row.qt_entregue,
+    dataVenda: row.data_venda || "",
     valorReceber: row.valor_receber ?? "",
+    statusPagamentoVenda: row.status_pagamento_venda || "Pendente",
+    pagamentoDividido: !!row.pagamento_dividido,
+    valorEntrada: row.valor_entrada ?? "",
+    statusEntrada: row.status_entrada || "Pendente",
+    valorRestante: row.valor_restante ?? "",
+    statusRestante: row.status_restante || "Pendente",
     valorFabiana: row.valor_pago_fabiana ?? "",
     formaPagamento: row.forma_pagamento || "",
     medidas: { ...medidasVazias(), ...(row.medidas || {}) },
@@ -50,7 +64,14 @@ const CAMPO_PARA_COLUNA = {
   vendedor: "vendedor",
   quantidade: "quantidade",
   qtEntregue: "qt_entregue",
+  dataVenda: "data_venda",
   valorReceber: "valor_receber",
+  statusPagamentoVenda: "status_pagamento_venda",
+  pagamentoDividido: "pagamento_dividido",
+  valorEntrada: "valor_entrada",
+  statusEntrada: "status_entrada",
+  valorRestante: "valor_restante",
+  statusRestante: "status_restante",
   valorFabiana: "valor_pago_fabiana",
   formaPagamento: "forma_pagamento",
   medidas: "medidas",
@@ -99,7 +120,14 @@ export function usePlanosAssinatura() {
         vendedor: pl.vendedor || null,
         quantidade: Number(pl.quantidade) || 1,
         qt_entregue: Number(pl.qtEntregue) || 0,
+        data_venda: pl.dataVenda || null,
         valor_receber: pl.valorReceber === "" ? null : Number(pl.valorReceber),
+        status_pagamento_venda: pl.statusPagamentoVenda || null,
+        pagamento_dividido: !!pl.pagamentoDividido,
+        valor_entrada: pl.valorEntrada === "" ? null : Number(pl.valorEntrada),
+        status_entrada: pl.statusEntrada || null,
+        valor_restante: pl.valorRestante === "" ? null : Number(pl.valorRestante),
+        status_restante: pl.statusRestante || null,
         valor_pago_fabiana: pl.valorFabiana === "" || pl.valorFabiana == null ? null : Number(pl.valorFabiana),
         forma_pagamento: pl.formaPagamento || null,
         medidas: pl.medidas,
@@ -116,7 +144,11 @@ export function usePlanosAssinatura() {
     setPlanos((prev) => prev.map((pl) => (pl.id === planoId ? { ...pl, [campo]: valor } : pl)));
     const coluna = CAMPO_PARA_COLUNA[campo];
     if (!coluna) return;
-    const valorFinal = ["quantidade", "qtEntregue", "valorReceber", "valorFabiana"].includes(campo) ? (valor === "" ? null : Number(valor)) : valor;
+    const valorFinal = ["quantidade", "qtEntregue", "valorReceber", "valorFabiana", "valorEntrada", "valorRestante"].includes(campo)
+      ? valor === ""
+        ? null
+        : Number(valor)
+      : valor;
     await comIndicador(async () => {
       const { error } = await supabase.from("planos_assinatura").update({ [coluna]: valorFinal }).eq("id", planoId);
       if (error) setErro(error.message);

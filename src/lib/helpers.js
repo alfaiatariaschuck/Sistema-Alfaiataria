@@ -35,6 +35,14 @@ export function brl(v) {
   return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+export function totalDividido(valorEntrada, valorRestante) {
+  return (parseFloat(valorEntrada) || 0) + (parseFloat(valorRestante) || 0);
+}
+
+export function statusDividido(statusEntrada, statusRestante, labelPago) {
+  return statusEntrada === labelPago && statusRestante === labelPago ? labelPago : "Pendente";
+}
+
 export function debounce(fn, ms) {
   let t;
   return (...args) => {

@@ -1,32 +1,17 @@
 import React, { useState } from "react";
-import { AlertCircle, CheckCircle2, Download, FileText, Package, Shirt, TrendingUp, Wallet } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, FileText, Package, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { FORMAS_PAGAMENTO, PAG_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
 
-export default function Relatorio({ pedidos, planos }) {
+export default function RelatorioAlfaiataria({ pecas }) {
   const [dataIni, setDataIni] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [forma, setForma] = useState("Todas");
   const [status, setStatus] = useState(null);
 
-  // Pedidos comuns entram normal, exceto Doação (não é venda) e os que vieram
-  // de emissão de plano de assinatura (esses não geram receita nova — o
-  // dinheiro já foi contado na venda do plano). A venda do plano entra uma
-  // vez só, na data da venda (competência), com a quantidade total do plano.
-  const pedidosProprios = pedidos.filter((p) => !p.origemPlanoId && p.status !== "Doação");
-  const vendasPlano = (planos || [])
-    .filter((pl) => pl.dataVenda && (parseFloat(pl.valorReceber) || 0) > 0)
-    .map((pl) => ({
-      id: "plano-" + pl.id,
-      cliente: pl.cliente,
-      dataPedido: pl.dataVenda,
-      quantidade: pl.quantidade,
-      formaPagamento: pl.formaPagamento,
-      aReceber: { valor: pl.valorReceber, statusPagamento: pl.statusPagamentoVenda || "Pendente" },
-    }));
-
-  const filtrados = [...pedidosProprios, ...vendasPlano]
+  const filtrados = pecas
+    .filter((p) => p.status !== "Doação")
     .filter((p) => {
       if (!p.dataPedido) return false;
       if (dataIni && p.dataPedido < dataIni) return false;
@@ -36,27 +21,26 @@ export default function Relatorio({ pedidos, planos }) {
     })
     .sort((a, b) => a.dataPedido.localeCompare(b.dataPedido));
 
-  const total = filtrados.reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
-  const camisas = filtrados.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
-  const ticketMedioPedido = filtrados.length ? total / filtrados.length : 0;
-  const ticketMedioCamisa = camisas ? total / camisas : 0;
+  const total = filtrados.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+  const ticketMedio = filtrados.length ? total / filtrados.length : 0;
 
   const porForma = FORMAS_PAGAMENTO.map((f) => ({
     forma: f,
-    total: filtrados.filter((p) => p.formaPagamento === f).reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0),
+    total: filtrados.filter((p) => p.formaPagamento === f).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0),
     qtd: filtrados.filter((p) => p.formaPagamento === f).length,
   })).filter((x) => x.qtd > 0);
 
   function exportarCSV() {
     const linhas = [
-      ["Data do Pedido", "Cliente", "Valor (R$)", "Forma de Pagamento", "Status do Pagamento"].join(";"),
+      ["Data do Pedido", "Cliente", "Peça", "Valor de venda (R$)", "Forma de Pagamento", "Status do Pagamento"].join(";"),
       ...filtrados.map((p) =>
         [
           fmtData(p.dataPedido),
           p.cliente.replace(/;/g, ","),
-          (parseFloat(p.aReceber.valor) || 0).toFixed(2).replace(".", ","),
+          p.tipoPeca || "—",
+          (parseFloat(p.valorVenda) || 0).toFixed(2).replace(".", ","),
           p.formaPagamento || "—",
-          p.aReceber.statusPagamento,
+          p.statusPagamentoVenda || "Pendente",
         ].join(";")
       ),
     ];
@@ -66,7 +50,7 @@ export default function Relatorio({ pedidos, planos }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `relatorio-pedidos-${dataIni || "inicio"}_a_${dataFim || "hoje"}.csv`;
+      a.download = `relatorio-alfaiataria-${dataIni || "inicio"}_a_${dataFim || "hoje"}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -79,7 +63,7 @@ export default function Relatorio({ pedidos, planos }) {
 
   return (
     <div>
-      <PageTitle eyebrow="Para a contabilidade" title="Relatório" />
+      <PageTitle eyebrow="Para a contabilidade — alfaiataria" title="Relatório Alfaiataria" />
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
@@ -101,11 +85,9 @@ export default function Relatorio({ pedidos, planos }) {
       </Card>
 
       <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-        <StatCard label="Pedidos no período" value={filtrados.length} icon={Package} />
-        <StatCard label="Camisas no período" value={camisas} icon={Shirt} />
+        <StatCard label="Peças no período" value={filtrados.length} icon={Package} />
         <StatCard label="Total (R$)" value={brl(total)} icon={Wallet} />
-        <StatCard label="Ticket médio (pedido)" value={brl(ticketMedioPedido)} icon={TrendingUp} />
-        <StatCard label="Ticket médio (camisa)" value={brl(ticketMedioCamisa)} icon={TrendingUp} />
+        <StatCard label="Ticket médio (peça)" value={brl(ticketMedio)} icon={TrendingUp} />
         {porForma.map((f) => (
           <StatCard key={f.forma} label={f.forma} value={`${brl(f.total)} · ${f.qtd}x`} icon={FileText} />
         ))}
@@ -128,7 +110,7 @@ export default function Relatorio({ pedidos, planos }) {
       <Card>
         {filtrados.length === 0 && (
           <div className="p-6">
-            <Empty texto="Nenhum pedido no período/filtro selecionado." />
+            <Empty texto="Nenhuma peça no período/filtro selecionado." />
           </div>
         )}
         {filtrados.map((p, i) => (
@@ -136,14 +118,14 @@ export default function Relatorio({ pedidos, planos }) {
             <div>
               <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</div>
               <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-                {fmtData(p.dataPedido)} · {p.formaPagamento || "forma não informada"}
+                {p.tipoPeca} · {fmtData(p.dataPedido)} · {p.formaPagamento || "forma não informada"}
               </div>
             </div>
             <div className="flex items-center gap-3">
               <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
-                {brl(parseFloat(p.aReceber.valor) || 0)}
+                {brl(parseFloat(p.valorVenda) || 0)}
               </span>
-              <Pill text={p.aReceber.statusPagamento} style={PAG_STYLE[p.aReceber.statusPagamento]} />
+              <Pill text={p.statusPagamentoVenda || "Pendente"} style={PAG_STYLE[p.statusPagamentoVenda || "Pendente"]} />
             </div>
           </div>
         ))}

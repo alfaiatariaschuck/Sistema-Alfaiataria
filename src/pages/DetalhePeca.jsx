@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { CheckCircle2, Clock, Printer, Save, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
+import { CampoPagamento } from "../components/CampoPagamento";
 import {
   BRASS,
   BRASS_SOFT,
@@ -14,7 +15,7 @@ import {
   TEXT_MUTED,
   inputStyle,
 } from "../lib/constants";
-import { brl, fmtData } from "../lib/helpers";
+import { brl, fmtData, statusDividido, totalDividido } from "../lib/helpers";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
 function statusPagamentoDe(p) {
@@ -41,6 +42,14 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
   function salvar() {
     setConfirmado(true);
     setTimeout(() => setConfirmado(false), 2500);
+  }
+  function setPagamento(patch) {
+    Object.entries(patch).forEach(([k, v]) => set(k, v));
+    const next = { ...p, ...patch };
+    if (next.pagamentoDividido) {
+      set("valorVenda", totalDividido(next.valorEntrada, next.valorRestante));
+      set("statusPagamentoVenda", statusDividido(next.statusEntrada, next.statusRestante, "Recebido"));
+    }
   }
 
   const total = parseFloat(p.valorTotal) || 0;
@@ -97,6 +106,9 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
               ))}
             </select>
           </Field>
+          <Field label="Data do pedido">
+            <input type="date" style={inputStyle} value={p.dataPedido} onChange={(e) => set("dataPedido", e.target.value)} />
+          </Field>
           <Field label="Previsão de entrega">
             <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
           </Field>
@@ -122,6 +134,30 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
           </div>
         </Card>
       </div>
+
+      <Card style={{ padding: 20 }} className="mt-6">
+        <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
+          Financeiro (cliente)
+        </div>
+        <CampoPagamento
+          labelValor="Valor de venda (R$)"
+          labelPago="Recebido"
+          valor={p.valorVenda}
+          statusPagamento={p.statusPagamentoVenda}
+          onValor={(v) => set("valorVenda", v)}
+          onStatus={(v) => set("statusPagamentoVenda", v)}
+          dividido={p.pagamentoDividido}
+          onToggleDividido={(v) => setPagamento({ pagamentoDividido: v })}
+          valorEntrada={p.valorEntrada}
+          statusEntrada={p.statusEntrada}
+          onValorEntrada={(v) => setPagamento({ valorEntrada: v })}
+          onStatusEntrada={(v) => setPagamento({ statusEntrada: v })}
+          valorRestante={p.valorRestante}
+          statusRestante={p.statusRestante}
+          onValorRestante={(v) => setPagamento({ valorRestante: v })}
+          onStatusRestante={(v) => setPagamento({ statusRestante: v })}
+        />
+      </Card>
 
       {(PECA_SECOES[p.tipoPeca] || []).map((secKey) => {
         const sec = MEDIDAS_ALFAIATARIA[secKey];

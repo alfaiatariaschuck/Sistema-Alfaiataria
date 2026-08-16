@@ -7,7 +7,7 @@ export const BRASS_SOFT = "#EFE1CC";
 export const LINE = "#E4DECF";
 export const TEXT_MUTED = "#6B7280";
 
-export const STATUS = ["Aguardando Produção", "Em Produção", "Prova", "Pronto", "Entregue Parcial", "Entregue"];
+export const STATUS = ["Aguardando Produção", "Em Produção", "Prova", "Pronto", "Entregue Parcial", "Entregue", "Doação"];
 
 export const STATUS_STYLE = {
   "Aguardando Produção": { bg: "#F6E3D9", fg: "#9C4A1E" },
@@ -16,6 +16,7 @@ export const STATUS_STYLE = {
   Pronto: { bg: "#DCEBDD", fg: "#2C6E31" },
   "Entregue Parcial": { bg: "#D9EEF5", fg: "#1E6E8C" },
   Entregue: { bg: "#DCE4EE", fg: "#2E4A6B" },
+  Doação: { bg: "#F5DCE8", fg: "#9C2E63" },
 };
 
 export const PAG_STYLE = {

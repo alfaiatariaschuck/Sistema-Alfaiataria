@@ -12,6 +12,13 @@ export function pecaVazia() {
     status: "Aguardando Produção",
     valorTotal: "",
     pago: "",
+    valorVenda: "",
+    statusPagamentoVenda: "Pendente",
+    pagamentoDividido: false,
+    valorEntrada: "",
+    statusEntrada: "Pendente",
+    valorRestante: "",
+    statusRestante: "Pendente",
     observacoes: "",
     // medidas fica agrupada por seção — { corpo: { label: valor }, calca: {...}, colete: {...} }
     medidas: {},
@@ -31,6 +38,13 @@ function rowParaPeca(row) {
     status: row.status,
     valorTotal: row.valor_total ?? "",
     pago: row.valor_pago ?? 0,
+    valorVenda: row.valor_venda ?? "",
+    statusPagamentoVenda: row.status_pagamento_venda || "Pendente",
+    pagamentoDividido: !!row.pagamento_dividido,
+    valorEntrada: row.valor_entrada ?? "",
+    statusEntrada: row.status_entrada || "Pendente",
+    valorRestante: row.valor_restante ?? "",
+    statusRestante: row.status_restante || "Pendente",
     observacoes: row.observacoes || "",
     medidas: row.medidas || {},
     caracteristicas: row.caracteristicas || {},
@@ -57,6 +71,13 @@ const CAMPO_PARA_COLUNA = {
   status: "status",
   valorTotal: "valor_total",
   pago: "valor_pago",
+  valorVenda: "valor_venda",
+  statusPagamentoVenda: "status_pagamento_venda",
+  pagamentoDividido: "pagamento_dividido",
+  valorEntrada: "valor_entrada",
+  statusEntrada: "status_entrada",
+  valorRestante: "valor_restante",
+  statusRestante: "status_restante",
   observacoes: "observacoes",
   medidas: "medidas",
   caracteristicas: "caracteristicas",
@@ -106,6 +127,13 @@ export function usePedidosAlfaiataria() {
           status: p.status,
           valor_total: p.valorTotal === "" ? null : Number(p.valorTotal),
           valor_pago: p.pago === "" ? 0 : Number(p.pago),
+          valor_venda: p.valorVenda === "" ? null : Number(p.valorVenda),
+          status_pagamento_venda: p.statusPagamentoVenda || null,
+          pagamento_dividido: !!p.pagamentoDividido,
+          valor_entrada: p.valorEntrada === "" ? null : Number(p.valorEntrada),
+          status_entrada: p.statusEntrada || null,
+          valor_restante: p.valorRestante === "" ? null : Number(p.valorRestante),
+          status_restante: p.statusRestante || null,
           medidas: p.medidas,
           caracteristicas: p.caracteristicas,
           observacoes: p.observacoes || null,
@@ -138,7 +166,7 @@ export function usePedidosAlfaiataria() {
     setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, [campo]: valor } : p)));
     const coluna = CAMPO_PARA_COLUNA[campo];
     if (!coluna) return;
-    const valorFinal = ["valorTotal", "pago"].includes(campo) ? (valor === "" ? null : Number(valor)) : valor;
+    const valorFinal = ["valorTotal", "pago", "valorVenda", "valorEntrada", "valorRestante"].includes(campo) ? (valor === "" ? null : Number(valor)) : valor;
     await comIndicador(async () => {
       const { error } = await supabase.from("pedidos_alfaiataria").update({ [coluna]: valorFinal }).eq("id", pecaId);
       if (error) setErro(error.message);

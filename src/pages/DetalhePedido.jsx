@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { CheckCircle2, Clock, Printer, RefreshCw, Save, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
+import { CampoPagamento } from "../components/CampoPagamento";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { finalDaMedida } from "../lib/helpers";
+import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import FichaImprimivel from "./FichaImprimivel";
 
 export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano }) {
@@ -34,6 +35,14 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
   function salvar() {
     setConfirmado(true);
     setTimeout(() => setConfirmado(false), 2500);
+  }
+  function setPagamento(patch) {
+    Object.entries(patch).forEach(([k, v]) => set(k, v));
+    const next = { ...p, ...patch };
+    if (next.pagamentoDividido) {
+      setSub("aReceber", "valor", totalDividido(next.valorEntrada, next.valorRestante));
+      setSub("aReceber", "statusPagamento", statusDividido(next.statusEntrada, next.statusRestante, "Recebido"));
+    }
   }
 
   return (
@@ -88,6 +97,9 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             </select>
           </Field>
           <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <Field label="Data do pedido">
+              <input type="date" style={inputStyle} value={p.dataPedido} onChange={(e) => set("dataPedido", e.target.value)} />
+            </Field>
             <Field label="Previsão de entrega">
               <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
             </Field>
@@ -149,22 +161,31 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
           <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
             Financeiro
           </div>
-          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <Field label="A receber (R$)">
-              <input type="number" step="0.01" style={inputStyle} value={p.aReceber.valor} onChange={(e) => setSub("aReceber", "valor", e.target.value)} />
-            </Field>
+          <CampoPagamento
+            labelValor="A receber (R$)"
+            labelPago="Recebido"
+            valor={p.aReceber.valor}
+            statusPagamento={p.aReceber.statusPagamento}
+            onValor={(v) => setSub("aReceber", "valor", v)}
+            onStatus={(v) => setSub("aReceber", "statusPagamento", v)}
+            dividido={p.pagamentoDividido}
+            onToggleDividido={(v) => setPagamento({ pagamentoDividido: v })}
+            valorEntrada={p.valorEntrada}
+            statusEntrada={p.statusEntrada}
+            onValorEntrada={(v) => setPagamento({ valorEntrada: v })}
+            onStatusEntrada={(v) => setPagamento({ statusEntrada: v })}
+            valorRestante={p.valorRestante}
+            statusRestante={p.statusRestante}
+            onValorRestante={(v) => setPagamento({ valorRestante: v })}
+            onStatusRestante={(v) => setPagamento({ statusRestante: v })}
+          />
+          <div className="grid gap-3 mt-3 pt-3" style={{ gridTemplateColumns: "1fr 1fr", borderTop: `1px solid ${LINE}` }}>
             <Field label="Forma de pagamento">
               <select style={inputStyle} value={p.formaPagamento || ""} onChange={(e) => set("formaPagamento", e.target.value)}>
                 <option value="">Selecione</option>
                 {FORMAS_PAGAMENTO.map((f) => (
                   <option key={f}>{f}</option>
                 ))}
-              </select>
-            </Field>
-            <Field label="Status recebimento">
-              <select style={inputStyle} value={p.aReceber.statusPagamento} onChange={(e) => setSub("aReceber", "statusPagamento", e.target.value)}>
-                <option>Pendente</option>
-                <option>Recebido</option>
               </select>
             </Field>
             <Field label="Valor Fabiana (R$)">

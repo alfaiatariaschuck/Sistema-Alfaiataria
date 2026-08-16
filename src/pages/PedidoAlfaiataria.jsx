@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
+import { CampoPagamento } from "../components/CampoPagamento";
 import {
   BRASS,
   BRASS_SOFT,
@@ -14,6 +15,7 @@ import {
   TIPOS_PECA,
   inputStyle,
 } from "../lib/constants";
+import { statusDividido, totalDividido } from "../lib/helpers";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
 export default function PedidoAlfaiataria({ onCriar, nomesClientes }) {
@@ -29,6 +31,16 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes }) {
   }
   function setCaracteristica(label, valor) {
     setNovaPeca((prev) => ({ ...prev, caracteristicas: { ...prev.caracteristicas, [label]: valor } }));
+  }
+  function setPagamento(patch) {
+    setNovaPeca((prev) => {
+      const next = { ...prev, ...patch };
+      if (next.pagamentoDividido) {
+        next.valorVenda = totalDividido(next.valorEntrada, next.valorRestante);
+        next.statusPagamentoVenda = statusDividido(next.statusEntrada, next.statusRestante, "Recebido");
+      }
+      return next;
+    });
   }
   function setTecido(i, campo, valor) {
     setNovaPeca((prev) => {
@@ -130,6 +142,30 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes }) {
                 onChange={(e) => setNovaPeca({ ...novaPeca, pago: e.target.value })}
               />
             </Field>
+          </div>
+
+          <div className="mt-4 pt-4 mb-4" style={{ borderTop: `1px solid ${LINE}` }}>
+            <div className="fx-serif mb-2" style={{ fontSize: 14, fontWeight: 600 }}>
+              Valor de venda (cliente)
+            </div>
+            <CampoPagamento
+              labelValor="Valor de venda (R$)"
+              labelPago="Recebido"
+              valor={novaPeca.valorVenda}
+              statusPagamento={novaPeca.statusPagamentoVenda}
+              onValor={(v) => setNovaPeca({ ...novaPeca, valorVenda: v })}
+              onStatus={(v) => setNovaPeca({ ...novaPeca, statusPagamentoVenda: v })}
+              dividido={novaPeca.pagamentoDividido}
+              onToggleDividido={(v) => setPagamento({ pagamentoDividido: v })}
+              valorEntrada={novaPeca.valorEntrada}
+              statusEntrada={novaPeca.statusEntrada}
+              onValorEntrada={(v) => setPagamento({ valorEntrada: v })}
+              onStatusEntrada={(v) => setPagamento({ statusEntrada: v })}
+              valorRestante={novaPeca.valorRestante}
+              statusRestante={novaPeca.statusRestante}
+              onValorRestante={(v) => setPagamento({ valorRestante: v })}
+              onStatusRestante={(v) => setPagamento({ statusRestante: v })}
+            />
           </div>
 
           {(PECA_SECOES[novaPeca.tipoPeca] || []).map((secKey) => {

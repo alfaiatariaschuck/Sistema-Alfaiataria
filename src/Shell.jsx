@@ -32,6 +32,7 @@ import Pedidos from "./pages/Pedidos";
 import Clientes from "./pages/Clientes";
 import Compras from "./pages/Compras";
 import Relatorio from "./pages/Relatorio";
+import RelatorioAlfaiataria from "./pages/RelatorioAlfaiataria";
 import Backup from "./pages/Backup";
 import FluxoDeCaixa from "./pages/FluxoDeCaixa";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
@@ -51,6 +52,7 @@ const NAV = [
   { id: "clientes", label: "Clientes", icon: Users, primary: false },
   { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false },
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false },
+  { id: "relatorio-alfaiataria", label: "Relatório Alfaiataria", icon: FileText, primary: false },
   { id: "backup", label: "Backup", icon: ShieldCheck, primary: false },
   { id: "config", label: "Configurações", icon: Settings, primary: false },
 ];
@@ -134,7 +136,14 @@ export default function Shell() {
       cliente: p.cliente,
       vendedor: p.vendedor,
       quantidade: p.quantidade,
+      dataVenda: p.dataPedido,
       valorReceber: p.aReceber.valor,
+      statusPagamentoVenda: p.aReceber.statusPagamento,
+      pagamentoDividido: p.pagamentoDividido,
+      valorEntrada: p.valorEntrada,
+      statusEntrada: p.statusEntrada,
+      valorRestante: p.valorRestante,
+      statusRestante: p.statusRestante,
       valorFabiana: p.pagoFabiana.valor,
       formaPagamento: p.formaPagamento,
       medidas: p.medidas,
@@ -152,7 +161,14 @@ export default function Shell() {
       vendedor: p.vendedor,
       quantidade: p.quantidade,
       qtEntregue: p.qtEntregue,
+      dataVenda: p.dataPedido,
       valorReceber: p.aReceber.valor,
+      statusPagamentoVenda: p.aReceber.statusPagamento,
+      pagamentoDividido: p.pagamentoDividido,
+      valorEntrada: p.valorEntrada,
+      statusEntrada: p.statusEntrada,
+      valorRestante: p.valorRestante,
+      statusRestante: p.statusRestante,
       valorFabiana: p.pagoFabiana.valor,
       formaPagamento: p.formaPagamento,
       medidas: p.medidas,
@@ -175,7 +191,14 @@ export default function Shell() {
       quantidade: 1,
       status: "Aguardando Produção",
       qtEntregue: 0,
-      aReceber: { valor: plano.valorReceber, statusPagamento: "Pendente" },
+      // A venda já foi contada na data da venda do plano — a emissão mensal
+      // só controla produção/entrega, não gera receita nova.
+      aReceber: { valor: "", statusPagamento: "Pendente" },
+      pagamentoDividido: false,
+      valorEntrada: "",
+      statusEntrada: "Pendente",
+      valorRestante: "",
+      statusRestante: "Pendente",
       formaPagamento: plano.formaPagamento,
       recompra: true,
       assinatura: false,
@@ -392,7 +415,8 @@ export default function Shell() {
                   onEmitir={emitirPedidoDoPlano}
                 />
               )}
-              {tab === "relatorio" && <Relatorio pedidos={pedidos} />}
+              {tab === "relatorio" && <Relatorio pedidos={pedidos} planos={planos} />}
+              {tab === "relatorio-alfaiataria" && !loadingPecas && <RelatorioAlfaiataria pecas={pecas} />}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
               {tab === "config" && <Configuracoes />}
             </>

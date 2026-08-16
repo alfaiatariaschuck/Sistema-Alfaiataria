@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
+import { CampoPagamento } from "../components/CampoPagamento";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { finalDaMedida } from "../lib/helpers";
+import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
 export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes }) {
@@ -28,6 +29,18 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes }) {
   }
   function addTecido() {
     setP((prev) => ({ ...prev, tecidos: [...prev.tecidos, { codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }));
+  }
+  function setPagamento(patch) {
+    setP((prev) => {
+      const next = { ...prev, ...patch };
+      if (next.pagamentoDividido) {
+        next.aReceber = {
+          valor: totalDividido(next.valorEntrada, next.valorRestante),
+          statusPagamento: statusDividido(next.statusEntrada, next.statusRestante, "Recebido"),
+        };
+      }
+      return next;
+    });
   }
 
   useEffect(() => {
@@ -126,15 +139,6 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes }) {
             <Field label="Quantidade">
               <input type="number" min="1" style={inputStyle} value={p.quantidade} onChange={(e) => set("quantidade", e.target.value)} />
             </Field>
-            <Field label="Valor a receber (R$)">
-              <input
-                type="number"
-                step="0.01"
-                style={inputStyle}
-                value={p.aReceber.valor}
-                onChange={(e) => set("aReceber", { ...p.aReceber, valor: e.target.value })}
-              />
-            </Field>
             <Field label="Forma de pagamento">
               <select style={inputStyle} value={p.formaPagamento} onChange={(e) => set("formaPagamento", e.target.value)}>
                 <option value="">Selecione</option>
@@ -152,6 +156,30 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes }) {
                 onChange={(e) => set("pagoFabiana", { ...p.pagoFabiana, valor: e.target.value })}
               />
             </Field>
+          </div>
+
+          <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${LINE}` }}>
+            <div className="fx-serif mb-2" style={{ fontSize: 14, fontWeight: 600 }}>
+              Valor a receber do cliente
+            </div>
+            <CampoPagamento
+              labelValor="Valor a receber (R$)"
+              labelPago="Recebido"
+              valor={p.aReceber.valor}
+              statusPagamento={p.aReceber.statusPagamento}
+              onValor={(v) => set("aReceber", { ...p.aReceber, valor: v })}
+              onStatus={(v) => set("aReceber", { ...p.aReceber, statusPagamento: v })}
+              dividido={p.pagamentoDividido}
+              onToggleDividido={(v) => setPagamento({ pagamentoDividido: v })}
+              valorEntrada={p.valorEntrada}
+              statusEntrada={p.statusEntrada}
+              onValorEntrada={(v) => setPagamento({ valorEntrada: v })}
+              onStatusEntrada={(v) => setPagamento({ statusEntrada: v })}
+              valorRestante={p.valorRestante}
+              statusRestante={p.statusRestante}
+              onValorRestante={(v) => setPagamento({ valorRestante: v })}
+              onStatusRestante={(v) => setPagamento({ statusRestante: v })}
+            />
           </div>
 
           <label className="flex items-center gap-2 mt-4" style={{ cursor: "pointer" }}>

@@ -1,14 +1,18 @@
 import React from "react";
-import { AlertTriangle, CheckCircle2, PackageCheck, Shirt, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Gift, PackageCheck, Shirt, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData } from "../lib/helpers";
 
-const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto");
+const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação");
 const VERMELHO = "#9C4A1E";
 
 export default function Dashboard({ pedidos, irPara }) {
-  const abertos = pedidos.filter((p) => p.status !== "Entregue");
+  // Doação não conta na produção nem no faturamento — é uma peça dada,
+  // não vendida, então sai das contas de quantidade/valor do cliente.
+  const naoDoacao = (p) => p.status !== "Doação";
+  const doacoes = pedidos.filter((p) => p.status === "Doação");
+  const abertos = pedidos.filter((p) => p.status !== "Entregue" && naoDoacao(p));
   const fabPendente = pedidos.filter((p) => p.pagoFabiana.statusPagamento === "Pendente" && parseFloat(p.pagoFabiana.valor) > 0);
   const fabPaga = pedidos.filter((p) => p.pagoFabiana.statusPagamento === "Pago" && parseFloat(p.pagoFabiana.valor) > 0);
   const comPrevisao = [...abertos].filter((p) => p.previsaoEntrega).sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega));
@@ -32,6 +36,7 @@ export default function Dashboard({ pedidos, irPara }) {
         <StatCard label="Pedidos atrasados" value={atrasados.length} icon={AlertTriangle} accent={atrasados.length > 0 ? VERMELHO : undefined} />
         <StatCard label="Pago à Fabiana" value={brl(somaFabPaga)} icon={CheckCircle2} />
         <StatCard label="Devido à Fabiana" value={brl(somaFab)} icon={Wallet} />
+        <StatCard label="Doações" value={doacoes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0)} icon={Gift} />
       </div>
 
       {atrasados.length > 0 && (
@@ -116,7 +121,8 @@ export default function Dashboard({ pedidos, irPara }) {
           <div className="flex justify-between pt-2 mt-1" style={{ borderTop: `1px solid ${LINE}`, fontSize: 12, fontWeight: 700 }}>
             <span>Total</span>
             <span className="fx-mono">
-              {pedidos.reduce((acc, p) => acc + (parseFloat(p.quantidade) || 0), 0)} un · {pedidos.length} ped.
+              {pedidos.filter(naoDoacao).reduce((acc, p) => acc + (parseFloat(p.quantidade) || 0), 0)} un ·{" "}
+              {pedidos.filter(naoDoacao).length} ped.
             </span>
           </div>
         </Card>

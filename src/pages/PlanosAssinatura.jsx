@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { CheckCircle2, ChevronDown, ChevronUp, Clock, PackageCheck, Search, Send, Trash2 } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
+import { CampoPagamento } from "../components/CampoPagamento";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, finalDaMedida } from "../lib/helpers";
+import { brl, finalDaMedida, fmtData, statusDividido, totalDividido } from "../lib/helpers";
 
 export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescricao, onAddTecido, onTecido, onRemover, onEmitir }) {
   const [busca, setBusca] = useState("");
@@ -20,6 +21,15 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
     }
   }
 
+  function setPagamentoPlano(pl, patch) {
+    Object.entries(patch).forEach(([k, v]) => onCampo(pl.id, k, v));
+    const next = { ...pl, ...patch };
+    if (next.pagamentoDividido) {
+      onCampo(pl.id, "valorReceber", totalDividido(next.valorEntrada, next.valorRestante));
+      onCampo(pl.id, "statusPagamentoVenda", statusDividido(next.statusEntrada, next.statusRestante, "Recebido"));
+    }
+  }
+
   const filtrados = planos.filter((pl) => pl.cliente.toLowerCase().includes(busca.toLowerCase()));
   const ativos = planos.filter((pl) => pl.ativo);
 
@@ -30,10 +40,11 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
       <Card style={{ padding: 16 }} className="mb-6">
         <p style={{ fontSize: 13, color: INK_SOFT, lineHeight: 1.6 }}>
           Pra cadastrar um plano novo, vá em <strong>Pedido Camisas</strong> e marque a opção "Plano de Assinatura"
-          antes de salvar — o formulário é o mesmo, com medidas, características e tecido. Aqui você só acompanha o
-          progresso, edita e emite o pedido do mês. O plano fica só de controle — não conta nos painéis nem nos
-          relatórios. Quando emitir, é criado um pedido de verdade, que vai pra aba <strong>Pedidos</strong> com tudo
-          preenchido, pronto pra mandar pra Fabi.
+          antes de salvar — o formulário é o mesmo, com medidas, características e tecido. A venda entra no{" "}
+          <strong>Relatório</strong> na data que você registrar aqui (competência), com o valor total do plano de uma
+          vez só. Depois, todo mês, você entra aqui e clica em <strong>"Emitir pedido do mês"</strong> — isso cria um
+          pedido de verdade na aba <strong>Pedidos</strong>, só pra controlar produção/entrega com a Fabi, sem contar
+          o valor de novo (já foi contado na venda).
         </p>
       </Card>
 
@@ -68,7 +79,8 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
                     {!pl.ativo && <Pill text="inativo" />}
                   </div>
                   <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-                    {brl(parseFloat(pl.valorReceber) || 0)} por emissão · {pl.formaPagamento || "forma não definida"}
+                    {brl(parseFloat(pl.valorReceber) || 0)} vendido{pl.dataVenda ? ` em ${fmtData(pl.dataVenda)}` : ""} ·{" "}
+                    {pl.formaPagamento || "forma não definida"}
                   </div>
                   <div className="mt-1" style={{ width: 160 }}>
                     <div className="flex justify-between mb-0.5" style={{ fontSize: 11, color: INK_SOFT }}>
@@ -126,12 +138,12 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
                         <input type="number" style={inputStyle} value={pl.qtEntregue} onChange={(e) => onCampo(pl.id, "qtEntregue", e.target.value)} />
                       </div>
                     </Field>
-                    <Field label="Valor por emissão (R$)">
-                      <input type="number" step="0.01" style={inputStyle} value={pl.valorReceber} onChange={(e) => onCampo(pl.id, "valorReceber", e.target.value)} />
+                    <Field label="Data da venda">
+                      <input type="date" style={inputStyle} value={pl.dataVenda} onChange={(e) => onCampo(pl.id, "dataVenda", e.target.value)} />
                     </Field>
                     <Field label="Valor Fabiana (R$)">
                       <input type="number" step="0.01" style={inputStyle} value={pl.valorFabiana} onChange={(e) => onCampo(pl.id, "valorFabiana", e.target.value)} />
-                      <span style={{ fontSize: 10, color: TEXT_MUTED }}>Só entra no Painel Camisaria quando você emitir o pedido.</span>
+                      <span style={{ fontSize: 10, color: TEXT_MUTED }}>É por emissão — conta no Painel Camisaria quando você emitir o pedido.</span>
                     </Field>
                     <Field label="Ativo">
                       <select
@@ -143,6 +155,30 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
                         <option value="nao">Não</option>
                       </select>
                     </Field>
+                  </div>
+
+                  <div className="mb-4 pb-4" style={{ borderBottom: `1px solid ${LINE}` }}>
+                    <div className="fx-serif mb-2" style={{ fontSize: 13, fontWeight: 600, color: BRASS }}>
+                      Venda do plano
+                    </div>
+                    <CampoPagamento
+                      labelValor="Valor da venda (R$)"
+                      labelPago="Recebido"
+                      valor={pl.valorReceber}
+                      statusPagamento={pl.statusPagamentoVenda}
+                      onValor={(v) => onCampo(pl.id, "valorReceber", v)}
+                      onStatus={(v) => onCampo(pl.id, "statusPagamentoVenda", v)}
+                      dividido={pl.pagamentoDividido}
+                      onToggleDividido={(v) => setPagamentoPlano(pl, { pagamentoDividido: v })}
+                      valorEntrada={pl.valorEntrada}
+                      statusEntrada={pl.statusEntrada}
+                      onValorEntrada={(v) => setPagamentoPlano(pl, { valorEntrada: v })}
+                      onStatusEntrada={(v) => setPagamentoPlano(pl, { statusEntrada: v })}
+                      valorRestante={pl.valorRestante}
+                      statusRestante={pl.statusRestante}
+                      onValorRestante={(v) => setPagamentoPlano(pl, { valorRestante: v })}
+                      onStatusRestante={(v) => setPagamentoPlano(pl, { statusRestante: v })}
+                    />
                   </div>
 
                   <div className="fx-serif mb-2" style={{ fontSize: 13, fontWeight: 600, color: BRASS }}>
