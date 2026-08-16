@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, Clock, Gift, Phone, Scissors, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Gift, Phone, Scissors, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData } from "../lib/helpers";
@@ -7,6 +7,7 @@ import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_ICARO = "telefone_icaro";
 const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação");
+const VERMELHO = "#9C4A1E";
 
 export default function DashboardAlfaiataria({ pecas, irPara }) {
   const [telIcaro, setTelIcaro] = useState("");
@@ -26,10 +27,9 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
   const totalGeral = pecas.reduce((s, p) => s + (parseFloat(p.valorTotal) || 0), 0);
   const pagoGeral = pecas.reduce((s, p) => s + (parseFloat(p.pago) || 0), 0);
   const totalVenda = pecas.filter(naoDoacao).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
-  const proximas = [...abertas]
-    .filter((p) => p.previsaoEntrega)
-    .sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega))
-    .slice(0, 6);
+  const comPrevisao = [...abertas].filter((p) => p.previsaoEntrega).sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega));
+  const atrasadas = comPrevisao.filter((p) => diasAte(p.previsaoEntrega) < 0);
+  const proximas = comPrevisao.filter((p) => diasAte(p.previsaoEntrega) >= 0).slice(0, 6);
 
   return (
     <div>
@@ -52,13 +52,42 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
       </Card>
 
       <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <StatCard label="Total de clientes" value={new Set(pecas.map((p) => p.cliente.trim().toLowerCase())).size} icon={Users} />
         <StatCard label="Peças em aberto" value={abertas.length} icon={Scissors} />
         <StatCard label="Vendido (R$)" value={brl(totalVenda)} icon={Wallet} />
         <StatCard label="Total devido (Icaro)" value={brl(totalGeral)} icon={Wallet} />
         <StatCard label="Pago ao Icaro" value={brl(pagoGeral)} icon={CheckCircle2} />
         <StatCard label="Saldo devedor (Icaro)" value={brl(totalGeral - pagoGeral)} icon={Clock} />
+        <StatCard label="Peças atrasadas" value={atrasadas.length} icon={AlertTriangle} accent={atrasadas.length > 0 ? VERMELHO : undefined} />
         <StatCard label="Doações" value={doacoes.length} icon={Gift} />
       </div>
+
+      {atrasadas.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-3 flex items-center gap-2" style={{ fontSize: 16, fontWeight: 600, color: VERMELHO }}>
+            <AlertTriangle size={16} /> Atrasadas ({atrasadas.length})
+          </div>
+          {atrasadas.map((p) => {
+            const dias = diasAte(p.previsaoEntrega);
+            return (
+              <button
+                key={p.id}
+                onClick={() => irPara(p.id)}
+                className="w-full flex items-center justify-between py-2.5"
+                style={{ borderBottom: `1px solid ${LINE}`, textAlign: "left" }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</div>
+                  <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                    {p.tipoPeca} · {fmtData(p.previsaoEntrega)} · {p.status}
+                  </div>
+                </div>
+                <Pill text={`${Math.abs(dias)}d atrasado`} style={{ bg: "#F6E3D9", fg: VERMELHO }} />
+              </button>
+            );
+          })}
+        </Card>
+      )}
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "1.3fr 1fr" }}>
         <Card style={{ padding: 20 }}>
@@ -81,10 +110,7 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
                     {p.tipoPeca} · {fmtData(p.previsaoEntrega)} · {p.status}
                   </div>
                 </div>
-                <Pill
-                  text={dias < 0 ? `${Math.abs(dias)}d atrasado` : dias === 0 ? "hoje" : `em ${dias}d`}
-                  style={dias < 0 ? { bg: "#F6E3D9", fg: "#9C4A1E" } : { bg: BRASS_SOFT, fg: "#A9793E" }}
-                />
+                <Pill text={dias === 0 ? "hoje" : `em ${dias}d`} style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />
               </button>
             );
           })}
@@ -109,6 +135,10 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
               </div>
             );
           })}
+          <div className="flex justify-between pt-2 mt-1" style={{ borderTop: `1px solid ${LINE}`, fontSize: 12, fontWeight: 700 }}>
+            <span>Total</span>
+            <span className="fx-mono">{pecas.filter(naoDoacao).length} peças</span>
+          </div>
         </Card>
       </div>
     </div>
