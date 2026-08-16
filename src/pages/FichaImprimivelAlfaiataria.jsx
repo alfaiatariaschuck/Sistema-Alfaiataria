@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { X, Printer } from "lucide-react";
 import { CARACTERISTICAS_TRAJE, MEDIDAS_ALFAIATARIA, PECA_SECOES, inputStyle } from "../lib/constants";
 import { fmtData, hojeISO } from "../lib/helpers";
+import { imprimirComNome } from "../lib/imprimirFicha";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_ICARO = "telefone_icaro";
@@ -20,7 +21,7 @@ export default function FichaImprimivelAlfaiataria({ peca: p, onFechar }) {
   const temCorpo = secoes.includes("corpo");
 
   function imprimir() {
-    window.print();
+    imprimirComNome(`Ficha - ${p.cliente || "cliente"} - ${p.tipoPeca}`);
   }
 
   function textoFicha() {
@@ -80,7 +81,7 @@ export default function FichaImprimivelAlfaiataria({ peca: p, onFechar }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 50, overflow: "auto" }}>
+    <div className="ficha-overlay" style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 50, overflow: "auto" }}>
       <div className="no-print" style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 0" }}>
         <div style={{ background: "#FFF", borderRadius: 10, padding: 16, marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: "#16212E" }}>Opção mais simples (funciona em qualquer lugar)</div>

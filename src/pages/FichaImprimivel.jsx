@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { X, Printer } from "lucide-react";
 import { DESC_LABELS, MEDIDA_LABELS, inputStyle } from "../lib/constants";
 import { finalDaMedida, fmtData, hojeISO } from "../lib/helpers";
+import { imprimirComNome } from "../lib/imprimirFicha";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE = "telefone_fabi";
@@ -17,7 +18,7 @@ export default function FichaImprimivel({ pedido: p, onFechar }) {
   }, []);
 
   function imprimir() {
-    window.print();
+    imprimirComNome(`Ficha - ${p.cliente || "cliente"}`);
   }
 
   function textoFicha() {
@@ -74,7 +75,7 @@ export default function FichaImprimivel({ pedido: p, onFechar }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 50, overflow: "auto" }}>
+    <div className="ficha-overlay" style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 50, overflow: "auto" }}>
       <div className="no-print" style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 0" }}>
         <div style={{ background: "#FFF", borderRadius: 10, padding: 16, marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: "#16212E" }}>Opção mais simples (funciona em qualquer lugar)</div>
