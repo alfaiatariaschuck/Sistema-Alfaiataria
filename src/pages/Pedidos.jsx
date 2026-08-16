@@ -1,10 +1,13 @@
 import React, { useState } from "react";
-import { ChevronRight, Search } from "lucide-react";
+import { AlertTriangle, ChevronRight, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
 import { LINE, STATUS, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { fmtData } from "../lib/helpers";
+import { diasAte, fmtData } from "../lib/helpers";
 import DetalhePedido from "./DetalhePedido";
+
+const VERMELHO = "#9C4A1E";
+const DIAS_LIMITE = 40;
 
 export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes }) {
   const [busca, setBusca] = useState("");
@@ -46,7 +49,10 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
             <Empty texto="Nenhum pedido encontrado." />
           </div>
         )}
-        {filtrados.map((p, i) => (
+        {filtrados.map((p, i) => {
+          const diasAberto = p.dataPedido ? -diasAte(p.dataPedido) : 0;
+          const atrasado40 = diasAberto > DIAS_LIMITE && p.status !== "Entregue" && p.status !== "Doação";
+          return (
           <button
             key={p.id}
             onClick={() => setSelecionado(p.id)}
@@ -55,7 +61,12 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
           >
             <div>
               <div className="flex items-center gap-1.5">
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</span>
+                {atrasado40 && (
+                  <span title={`${diasAberto} dias desde o pedido — mais de ${DIAS_LIMITE} dias sem entregar`} style={{ color: VERMELHO }}>
+                    <AlertTriangle size={14} />
+                  </span>
+                )}
+                <span style={{ fontWeight: 600, fontSize: 14, color: atrasado40 ? VERMELHO : undefined }}>{p.cliente || "Sem nome"}</span>
                 {p.recompra && (
                   <span style={{ color: "#A9793E", fontSize: 12 }} title="Cliente recompra">
                     ↻
@@ -75,7 +86,8 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
               <ChevronRight size={16} color={TEXT_MUTED} />
             </div>
           </button>
-        ))}
+          );
+        })}
       </Card>
     </div>
   );
