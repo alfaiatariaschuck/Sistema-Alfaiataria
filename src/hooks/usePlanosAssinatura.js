@@ -19,6 +19,7 @@ export function planoVazio() {
     formaPagamento: "",
     medidas: medidasVazias(),
     descricao: descricaoVazia(),
+    tecidos: [{ codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
     observacoes: "",
   };
 }
@@ -35,6 +36,7 @@ function rowParaPlano(row) {
     formaPagamento: row.forma_pagamento || "",
     medidas: { ...medidasVazias(), ...(row.medidas || {}) },
     descricao: { ...descricaoVazia(), ...(row.descricao || {}) },
+    tecidos: row.tecidos || [],
     observacoes: row.observacoes || "",
     ativo: row.ativo,
   };
@@ -50,6 +52,7 @@ const CAMPO_PARA_COLUNA = {
   formaPagamento: "forma_pagamento",
   medidas: "medidas",
   descricao: "descricao",
+  tecidos: "tecidos",
   observacoes: "observacoes",
   ativo: "ativo",
 };
@@ -96,6 +99,7 @@ export function usePlanosAssinatura() {
         forma_pagamento: pl.formaPagamento || null,
         medidas: pl.medidas,
         descricao: pl.descricao,
+        tecidos: pl.tecidos || [],
         observacoes: pl.observacoes || null,
       });
       if (error) throw error;
@@ -126,6 +130,18 @@ export function usePlanosAssinatura() {
     await atualizarCampo(planoId, "descricao", descricao);
   }
 
+  async function adicionarTecido(planoId) {
+    const plano = planos.find((pl) => pl.id === planoId);
+    const tecidos = [...(plano?.tecidos || []), { codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }];
+    await atualizarCampo(planoId, "tecidos", tecidos);
+  }
+
+  async function atualizarTecido(planoId, index, campo, valor) {
+    const plano = planos.find((pl) => pl.id === planoId);
+    const tecidos = (plano?.tecidos || []).map((t, i) => (i === index ? { ...t, [campo]: valor } : t));
+    await atualizarCampo(planoId, "tecidos", tecidos);
+  }
+
   async function removerPlano(planoId) {
     setPlanos((prev) => prev.filter((pl) => pl.id !== planoId));
     await comIndicador(async () => {
@@ -145,6 +161,8 @@ export function usePlanosAssinatura() {
     atualizarCampo,
     atualizarMedida,
     atualizarDescricao,
+    adicionarTecido,
+    atualizarTecido,
     removerPlano,
   };
 }

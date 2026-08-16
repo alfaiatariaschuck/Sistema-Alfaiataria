@@ -88,6 +88,8 @@ export default function Shell() {
     atualizarCampo: atualizarCampoPlano,
     atualizarMedida: atualizarMedidaPlano,
     atualizarDescricao: atualizarDescricaoPlano,
+    adicionarTecido: adicionarTecidoPlano,
+    atualizarTecido: atualizarTecidoPlano,
     removerPlano,
   } = usePlanosAssinatura();
 
@@ -127,6 +129,22 @@ export default function Shell() {
     irParaPeca(id);
   }
 
+  async function salvarNovoPlano(p) {
+    await criarPlano({
+      cliente: p.cliente,
+      vendedor: p.vendedor,
+      quantidade: p.quantidade,
+      valorReceber: p.aReceber.valor,
+      formaPagamento: p.formaPagamento,
+      medidas: p.medidas,
+      descricao: p.descricao,
+      tecidos: p.tecidos,
+      observacoes: p.observacoes,
+    });
+    await recarregarNomesClientes();
+    setTab("planos-assinatura");
+  }
+
   async function emitirPedidoDoPlano(plano) {
     const id = await criarPedido({
       cliente: plano.cliente,
@@ -144,7 +162,7 @@ export default function Shell() {
       pagoFabiana: { valor: "", statusPagamento: "Pendente" },
       medidas: plano.medidas,
       descricao: plano.descricao,
-      tecidos: [{ codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
+      tecidos: plano.tecidos && plano.tecidos.length ? plano.tecidos : [{ codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
       observacoes: plano.observacoes,
     });
     await atualizarCampoPlano(plano.id, "qtEntregue", (plano.qtEntregue || 0) + 1);
@@ -321,7 +339,7 @@ export default function Shell() {
           ) : (
             <>
               {tab === "dashboard" && <Dashboard pedidos={pedidos} irPara={irPara} />}
-              {tab === "novo" && <NovoPedido onSalvar={salvarNovoPedido} nomesClientes={nomesClientes} />}
+              {tab === "novo" && <NovoPedido onSalvar={salvarNovoPedido} onSalvarPlano={salvarNovoPlano} nomesClientes={nomesClientes} />}
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
               {tab === "clientes" && <Clientes clientes={clientes} irParaPedido={irPara} />}
               {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} irParaPedido={irPara} />}
@@ -343,13 +361,13 @@ export default function Shell() {
               {tab === "planos-assinatura" && !loadingPlanos && (
                 <PlanosAssinatura
                   planos={planos}
-                  onCriar={criarPlano}
                   onCampo={atualizarCampoPlano}
                   onMedida={atualizarMedidaPlano}
                   onDescricao={atualizarDescricaoPlano}
+                  onAddTecido={adicionarTecidoPlano}
+                  onTecido={atualizarTecidoPlano}
                   onRemover={removerPlano}
                   onEmitir={emitirPedidoDoPlano}
-                  nomesClientes={nomesClientes}
                 />
               )}
               {tab === "relatorio" && <Relatorio pedidos={pedidos} />}

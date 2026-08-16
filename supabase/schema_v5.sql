@@ -19,11 +19,15 @@ create table if not exists planos_assinatura (
   forma_pagamento text,
   medidas jsonb not null default '{}'::jsonb,
   descricao jsonb not null default '{}'::jsonb,
+  tecidos jsonb not null default '[]'::jsonb,
   observacoes text,
   ativo boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Caso a tabela já exista de uma execução anterior deste script, garante a coluna nova sem apagar nada.
+alter table planos_assinatura add column if not exists tecidos jsonb not null default '[]'::jsonb;
 
 drop trigger if exists planos_assinatura_set_updated_at on planos_assinatura;
 create trigger planos_assinatura_set_updated_at

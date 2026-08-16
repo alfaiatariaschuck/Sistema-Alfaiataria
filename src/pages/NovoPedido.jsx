@@ -5,7 +5,7 @@ import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, 
 import { finalDaMedida } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
-export default function NovoPedido({ onSalvar, nomesClientes }) {
+export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes }) {
   const [p, setP] = useState(pedidoVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
@@ -42,9 +42,13 @@ export default function NovoPedido({ onSalvar, nomesClientes }) {
     setSalvando(true);
     setErro(null);
     try {
-      await onSalvar(p);
+      if (p.assinatura) {
+        await onSalvarPlano(p);
+      } else {
+        await onSalvar(p);
+      }
     } catch (e) {
-      setErro("Não consegui salvar o pedido (" + e.message + "). Tente novamente.");
+      setErro("Não consegui salvar (" + e.message + "). Tente novamente.");
     } finally {
       setSalvando(false);
     }
@@ -150,12 +154,22 @@ export default function NovoPedido({ onSalvar, nomesClientes }) {
             </Field>
           </div>
 
-          <div className="mt-4 p-4" style={{ background: "#F7F5EF", border: `1px solid ${LINE}`, borderRadius: 8 }}>
-            <div style={{ fontSize: 12, color: INK_SOFT }}>
-              Cliente de plano de assinatura (recorrente)? Cadastre em <strong>Planos de Assinatura</strong> no menu —
-              lá você define as medidas uma vez só e todo mês só clica em "Emitir pedido do mês".
+          <label className="flex items-center gap-2 mt-4" style={{ cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={!!p.assinatura}
+              onChange={(e) => set("assinatura", e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: BRASS }}
+            />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>📦 Este pedido é de um Plano de Assinatura (recorrente)</span>
+          </label>
+          {p.assinatura && (
+            <div className="mt-2 p-3" style={{ background: BRASS_SOFT, borderRadius: 8, fontSize: 12, color: INK_SOFT }}>
+              Ao salvar, isso não vira um pedido — cria um <strong>Plano de Assinatura</strong> novo (fica guardado
+              na aba Planos de Assinatura, sem entrar no painel geral). Depois, todo mês, você entra lá e clica em
+              "Emitir pedido do mês" pra gerar o pedido de verdade pra Fabi.
             </div>
-          </div>
+          )}
         </Card>
 
         <Card style={{ padding: 20 }} className="mb-5">
@@ -246,7 +260,7 @@ export default function NovoPedido({ onSalvar, nomesClientes }) {
           disabled={salvando}
           style={{ background: INK, color: "#FFF", padding: "10px 22px", borderRadius: 8, fontWeight: 600, fontSize: 14, opacity: salvando ? 0.7 : 1 }}
         >
-          {salvando ? "Salvando…" : "Salvar Pedido"}
+          {salvando ? "Salvando…" : p.assinatura ? "Salvar Plano de Assinatura" : "Salvar Pedido"}
         </button>
       </form>
     </div>
