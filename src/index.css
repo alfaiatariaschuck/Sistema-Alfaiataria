@@ -40,6 +40,9 @@ textarea {
   background: var(--line);
   border-radius: 4px;
 }
+@page {
+  margin: 12mm;
+}
 @media print {
   body * {
     visibility: hidden;
@@ -49,10 +52,14 @@ textarea {
     visibility: visible;
   }
   #ficha-print {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   .no-print {
     display: none !important;

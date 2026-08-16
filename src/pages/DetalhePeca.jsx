@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { CheckCircle2, Clock, Printer, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
@@ -15,9 +15,7 @@ import {
   inputStyle,
 } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
-import { supabase } from "../supabaseClient";
-
-const CHAVE_TELEFONE_ICARO = "telefone_icaro";
+import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
 function statusPagamentoDe(p) {
   const total = parseFloat(p.valorTotal) || 0;
@@ -33,30 +31,10 @@ const STATUS_PAGAMENTO_STYLE = {
 };
 
 export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCaracteristica, onRemover, onAddTecido, onTecido }) {
+  const [mostrarFicha, setMostrarFicha] = useState(false);
+
   function set(campo, valor) {
     onCampo(p.id, campo, valor);
-  }
-
-  async function enviarIcaro() {
-    const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_TELEFONE_ICARO).maybeSingle();
-    const telIcaro = data?.valor || "";
-    const digitos = telIcaro.replace(/\D/g, "");
-    const linhas = [`Oi Icaro! Pedido: ${p.tipoPeca} do cliente ${p.cliente || "—"}.`];
-    const secoes = PECA_SECOES[p.tipoPeca] || [];
-    secoes.forEach((secKey) => {
-      const valores = Object.entries(p.medidas?.[secKey] || {}).filter(([, v]) => v);
-      if (valores.length) linhas.push(`${MEDIDAS_ALFAIATARIA[secKey].titulo}: ` + valores.map(([k, v]) => `${k} ${v}`).join(", "));
-    });
-    const caract = Object.entries(p.caracteristicas || {}).filter(([, v]) => v);
-    if (caract.length) linhas.push("Características: " + caract.map(([k, v]) => `${k}: ${v}`).join(", "));
-    const tecidosComCodigo = (p.tecidos || []).filter((t) => t.codigo);
-    if (tecidosComCodigo.length) {
-      linhas.push("Tecido: " + tecidosComCodigo.map((t) => `Código ${t.codigo} · Qtd ${t.qtd}${t.numero ? " · Obs: " + t.numero : ""}`).join(" | "));
-    }
-    if (p.observacoes) linhas.push(`Obs: ${p.observacoes}`);
-    const mensagem = encodeURIComponent(linhas.join("\n"));
-    const url = digitos ? `https://wa.me/${digitos}?text=${mensagem}` : `https://wa.me/?text=${mensagem}`;
-    window.open(url, "_blank");
   }
 
   const total = parseFloat(p.valorTotal) || 0;
@@ -92,12 +70,14 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
       </div>
 
       <button
-        onClick={enviarIcaro}
+        onClick={() => setMostrarFicha(true)}
         className="flex items-center gap-2 mb-6"
         style={{ background: "#25D366", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
       >
-        <Printer size={15} /> Enviar medidas pro Icaro (WhatsApp)
+        <Printer size={15} /> Gerar ficha em PDF (para o Icaro)
       </button>
+
+      {mostrarFicha && <FichaImprimivelAlfaiataria peca={p} onFechar={() => setMostrarFicha(false)} />}
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <Card style={{ padding: 20 }}>
