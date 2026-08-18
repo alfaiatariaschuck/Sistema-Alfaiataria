@@ -30,10 +30,11 @@ export default function FichaImprimivel({ pedido: p, onFechar }) {
     linhas.push(`Quantidade: ${p.quantidade}`);
     if (p.recompra) linhas.push(`Cliente: RECOMPRA (já tem pedido anterior)`);
     linhas.push(``);
-    linhas.push(`*Medidas (cm)*`);
+    linhas.push(`*Medidas (cm) — tirei → final*`);
     MEDIDA_LABELS.forEach((label) => {
-      const fin = finalDaMedida(label, p.medidas[label]);
-      if (fin !== null) linhas.push(`${label}: ${fin} cm`);
+      const bruto = p.medidas[label];
+      const fin = finalDaMedida(label, bruto);
+      if (fin !== null) linhas.push(`${label}: ${bruto} cm → ${fin} cm`);
     });
     linhas.push(``);
     linhas.push(`*Características*`);
@@ -176,13 +177,22 @@ export default function FichaImprimivel({ pedido: p, onFechar }) {
           Medidas (cm)
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 20 }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Medida</th>
+              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Tirei (cm)</th>
+              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Final p/ Fabi (cm)</th>
+            </tr>
+          </thead>
           <tbody>
             {MEDIDA_LABELS.map((label, i) => {
-              const fin = finalDaMedida(label, p.medidas[label]);
+              const bruto = p.medidas[label];
+              const fin = finalDaMedida(label, bruto);
               return (
                 <tr key={label} style={{ background: i % 2 === 0 ? "#F7F5EF" : "#FFF" }}>
                   <td style={{ padding: "5px 8px", fontWeight: 600 }}>{label}</td>
-                  <td style={{ padding: "5px 8px" }}>{fin !== null ? `${fin} cm` : "—"}</td>
+                  <td style={{ padding: "5px 8px" }}>{bruto !== "" && bruto != null ? `${bruto} cm` : "—"}</td>
+                  <td style={{ padding: "5px 8px", fontWeight: 600 }}>{fin !== null ? `${fin} cm` : "—"}</td>
                 </tr>
               );
             })}
