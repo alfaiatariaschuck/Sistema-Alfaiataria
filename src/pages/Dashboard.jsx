@@ -15,9 +15,16 @@ export default function Dashboard({ pedidos, irPara }) {
   const abertos = pedidos.filter((p) => p.status !== "Entregue" && naoDoacao(p));
   const fabPendente = pedidos.filter((p) => p.pagoFabiana.statusPagamento === "Pendente" && parseFloat(p.pagoFabiana.valor) > 0);
   const fabPaga = pedidos.filter((p) => p.pagoFabiana.statusPagamento === "Pago" && parseFloat(p.pagoFabiana.valor) > 0);
-  const comPrevisao = [...abertos].filter((p) => p.previsaoEntrega).sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega));
-  const atrasados = comPrevisao.filter((p) => diasAte(p.previsaoEntrega) < 0);
-  const proximos = comPrevisao.filter((p) => diasAte(p.previsaoEntrega) >= 0).slice(0, 6);
+
+  // Atrasado = pedido aberto há 45+ dias desde a data do pedido — não depende
+  // da previsão de entrega estar preenchida (nem sempre está).
+  const diasDesdePedido = (p) => (p.dataPedido ? -diasAte(p.dataPedido) : 0);
+  const atrasados = abertos.filter((p) => diasDesdePedido(p) >= 45);
+  const idsAtrasados = new Set(atrasados.map((p) => p.id));
+  const proximos = [...abertos]
+    .filter((p) => p.previsaoEntrega && !idsAtrasados.has(p.id))
+    .sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega))
+    .slice(0, 6);
 
   const somaFab = fabPendente.reduce((s, p) => s + (parseFloat(p.pagoFabiana.valor) || 0), 0);
   const somaFabPaga = fabPaga.reduce((s, p) => s + (parseFloat(p.pagoFabiana.valor) || 0), 0);
@@ -45,7 +52,7 @@ export default function Dashboard({ pedidos, irPara }) {
             <AlertTriangle size={16} /> Atrasados ({atrasados.length})
           </div>
           {atrasados.map((p) => {
-            const dias = diasAte(p.previsaoEntrega);
+            const dias = diasDesdePedido(p);
             return (
               <button
                 key={p.id}
@@ -56,10 +63,10 @@ export default function Dashboard({ pedidos, irPara }) {
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</div>
                   <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-                    {fmtData(p.previsaoEntrega)} · {p.status}
+                    Pedido {fmtData(p.dataPedido)} · {p.status}
                   </div>
                 </div>
-                <Pill text={`${Math.abs(dias)}d atrasado`} style={{ bg: "#F6E3D9", fg: VERMELHO }} />
+                <Pill text={`${dias}d desde o pedido`} style={{ bg: "#F6E3D9", fg: VERMELHO }} />
               </button>
             );
           })}

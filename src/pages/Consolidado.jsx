@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ChevronRight, Download, Package, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
-import { FORMAS_PAGAMENTO, LINE, PAG_STYLE, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { FORMAS_PAGAMENTO, LINE, PAG_STYLE, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
 
 const LINE_STYLE = {
@@ -88,6 +88,11 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
   const ticketMedio = totalPecas ? totalVendido / totalPecas : 0;
   const totalClientes = new Set(filtrados.map((l) => l.cliente.trim().toLowerCase())).size;
 
+  const porTipoPeca = TIPOS_PECA.map((t) => {
+    const doTipo = filtrados.filter((l) => l.linha === "Alfaiataria" && l.tipo === t);
+    return { tipo: t, qtd: doTipo.length, valor: doTipo.reduce((s, l) => s + l.valor, 0) };
+  }).filter((x) => x.qtd > 0);
+
   function abrirLinha(l) {
     if (l.linha === "Camisaria" && l.origemId) irPara(l.origemId);
     else if (l.linha === "Alfaiataria" && l.origemId) irParaPeca(l.origemId);
@@ -166,6 +171,27 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
         <StatCard label="Ticket médio (peça)" value={brl(ticketMedio)} icon={TrendingUp} />
         <StatCard label="Clientes no período" value={totalClientes} icon={Users} />
       </div>
+
+      {porTipoPeca.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
+            Alfaiataria por tipo de peça
+          </div>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))" }}>
+            {porTipoPeca.map((t) => (
+              <div key={t.tipo}>
+                <div style={{ fontSize: 12, color: TEXT_MUTED, fontWeight: 600 }}>{t.tipo}</div>
+                <div className="fx-serif" style={{ fontSize: 20, fontWeight: 600 }}>
+                  {t.qtd}
+                </div>
+                <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                  {brl(t.valor)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <button
         onClick={exportarCSV}
