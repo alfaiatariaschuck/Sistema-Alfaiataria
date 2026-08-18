@@ -3,9 +3,10 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CANVAS, INK } from "./lib/constants";
 import Login from "./pages/Login";
 import Shell from "./Shell";
+import ShellVendedor from "./ShellVendedor";
 
 function Gate() {
-  const { session, loading } = useAuth();
+  const { session, perfil, loading } = useAuth();
 
   if (loading) {
     return (
@@ -16,6 +17,8 @@ function Gate() {
   }
 
   if (!session) return <Login />;
+
+  if (perfil?.papel === "vendedor") return <ShellVendedor />;
 
   return <Shell />;
 }
