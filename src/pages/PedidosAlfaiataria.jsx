@@ -62,29 +62,36 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
             <Empty texto="Nenhuma peça encontrada." />
           </div>
         )}
-        {filtradas.map((p, i) => (
-          <button
-            key={p.id}
-            onClick={() => setSelecionada(p.id)}
-            className="w-full flex items-center justify-between px-5 py-3.5 text-left"
-            style={{ borderBottom: i < filtradas.length - 1 ? `1px solid ${LINE}` : "none" }}
-          >
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</span>
-                <Pill text={p.tipoPeca} style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />
+        {filtradas.map((p, i) => {
+          const naoEnviado = !p.enviadoIcaro;
+          return (
+            <button
+              key={p.id}
+              onClick={() => setSelecionada(p.id)}
+              className="w-full flex items-center justify-between px-5 py-3.5 text-left"
+              style={{
+                borderBottom: i < filtradas.length - 1 ? `1px solid ${LINE}` : "none",
+                background: naoEnviado ? "#FFF9E8" : "transparent",
+              }}
+            >
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</span>
+                  <Pill text={p.tipoPeca} style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />
+                  {naoEnviado && <Pill text="📨 Não enviado" style={{ bg: "#DCE4EE", fg: "#2E4A6B" }} />}
+                </div>
+                <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  Pedido {fmtData(p.dataPedido)}
+                  {p.previsaoEntrega ? ` · Entrega prevista ${fmtData(p.previsaoEntrega)}` : ""}
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-                Pedido {fmtData(p.dataPedido)}
-                {p.previsaoEntrega ? ` · Entrega prevista ${fmtData(p.previsaoEntrega)}` : ""}
+              <div className="flex items-center gap-3">
+                <Pill text={p.status} style={STATUS_STYLE[p.status]} />
+                <ChevronRight size={16} color={TEXT_MUTED} />
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Pill text={p.status} style={STATUS_STYLE[p.status]} />
-              <ChevronRight size={16} color={TEXT_MUTED} />
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </Card>
     </div>
   );

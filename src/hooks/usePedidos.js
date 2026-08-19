@@ -33,6 +33,7 @@ export function pedidoVazio() {
     descricao: descricaoVazia(),
     tecidos: [{ codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
     observacoes: "",
+    enviadoFabi: false,
   };
 }
 
@@ -71,6 +72,7 @@ function rowParaPedido(row) {
         comprado: !!t.comprado,
       })),
     observacoes: row.observacoes || "",
+    enviadoFabi: row.enviado_fabi === undefined ? true : !!row.enviado_fabi,
   };
 }
 
@@ -94,6 +96,7 @@ const CAMPO_PARA_COLUNA = {
   medidas: "medidas",
   descricao: "descricao",
   observacoes: "observacoes",
+  enviadoFabi: "enviado_fabi",
 };
 
 export function usePedidos() {
@@ -156,6 +159,7 @@ export function usePedidos() {
           medidas: p.medidas,
           descricao: p.descricao,
           observacoes: p.observacoes || null,
+          enviado_fabi: false,
         })
         .select("id")
         .single();

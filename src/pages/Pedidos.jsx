@@ -52,12 +52,16 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
         {filtrados.map((p, i) => {
           const diasAberto = p.dataPedido ? -diasAte(p.dataPedido) : 0;
           const atrasado40 = diasAberto > DIAS_LIMITE && p.status !== "Entregue" && p.status !== "Doação";
+          const naoEnviado = !p.enviadoFabi;
           return (
           <button
             key={p.id}
             onClick={() => setSelecionado(p.id)}
             className="w-full flex items-center justify-between px-5 py-3.5 text-left"
-            style={{ borderBottom: i < filtrados.length - 1 ? `1px solid ${LINE}` : "none" }}
+            style={{
+              borderBottom: i < filtrados.length - 1 ? `1px solid ${LINE}` : "none",
+              background: naoEnviado ? "#FFF9E8" : "transparent",
+            }}
           >
             <div>
               <div className="flex items-center gap-1.5">
@@ -72,6 +76,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
                     ↻
                   </span>
                 )}
+                {naoEnviado && <Pill text="📨 Não enviado" style={{ bg: "#DCE4EE", fg: "#2E4A6B" }} />}
               </div>
               <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                 Pedido {fmtData(p.dataPedido)} · Entrega prevista {fmtData(p.previsaoEntrega)}

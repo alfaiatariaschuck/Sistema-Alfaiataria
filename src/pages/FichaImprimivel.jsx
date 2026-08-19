@@ -7,7 +7,7 @@ import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE = "telefone_fabi";
 
-export default function FichaImprimivel({ pedido: p, onFechar }) {
+export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }) {
   const [telefone, setTelefone] = useState("");
 
   useEffect(() => {
@@ -19,6 +19,7 @@ export default function FichaImprimivel({ pedido: p, onFechar }) {
 
   function imprimir() {
     imprimirComNome(`Ficha - ${p.cliente || "cliente"}`);
+    onMarcarEnviado && onMarcarEnviado();
   }
 
   function textoFicha() {
@@ -73,6 +74,7 @@ export default function FichaImprimivel({ pedido: p, onFechar }) {
     );
     const url = digitos ? `https://wa.me/${digitos}?text=${mensagem}` : `https://wa.me/?text=${mensagem}`;
     window.open(url, "_blank");
+    onMarcarEnviado && onMarcarEnviado();
   }
 
   return (

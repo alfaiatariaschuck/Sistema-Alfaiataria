@@ -72,6 +72,7 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
               {p.cliente}
             </h1>
             <Pill text={p.status} style={STATUS_STYLE[p.status]} />
+            {!p.enviadoIcaro && <Pill text="📨 Não enviado pro Icaro" style={{ bg: "#DCE4EE", fg: "#2E4A6B" }} />}
           </div>
         </div>
         <button
@@ -85,15 +86,34 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
         </button>
       </div>
 
-      <button
-        onClick={() => setMostrarFicha(true)}
-        className="flex items-center gap-2 mb-6"
-        style={{ background: "#25D366", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
-      >
-        <Printer size={15} /> Gerar ficha em PDF (para o Icaro)
-      </button>
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <button
+          onClick={() => setMostrarFicha(true)}
+          className="flex items-center gap-2"
+          style={{ background: "#25D366", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+        >
+          <Printer size={15} /> Gerar ficha em PDF (para o Icaro)
+        </button>
+        <button
+          type="button"
+          onClick={() => set("enviadoIcaro", !p.enviadoIcaro)}
+          style={{
+            background: p.enviadoIcaro ? "transparent" : "#DCE4EE",
+            border: `1px solid ${p.enviadoIcaro ? LINE : "#2E4A6B"}`,
+            color: "#2E4A6B",
+            padding: "9px 14px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          {p.enviadoIcaro ? "↺ Marcar como não enviado" : "✓ Marcar como enviado pro Icaro"}
+        </button>
+      </div>
 
-      {mostrarFicha && <FichaImprimivelAlfaiataria peca={p} onFechar={() => setMostrarFicha(false)} />}
+      {mostrarFicha && (
+        <FichaImprimivelAlfaiataria peca={p} onFechar={() => setMostrarFicha(false)} onMarcarEnviado={() => set("enviadoIcaro", true)} />
+      )}
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <Card style={{ padding: 20 }}>

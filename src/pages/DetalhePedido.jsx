@@ -61,6 +61,7 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             </h1>
             {p.recompra && <Pill text="↻ Recompra" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
             {p.assinatura && <Pill text="📦 Assinatura" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
+            {!p.enviadoFabi && <Pill text="📨 Não enviado pra Fabi" style={{ bg: "#DCE4EE", fg: "#2E4A6B" }} />}
           </div>
         </div>
         <button
@@ -74,15 +75,34 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
         </button>
       </div>
 
-      <button
-        onClick={() => setMostrarFicha(true)}
-        className="flex items-center gap-2 mb-6"
-        style={{ background: BRASS, color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
-      >
-        <Printer size={15} /> Gerar ficha em PDF (para a Fabi)
-      </button>
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <button
+          onClick={() => setMostrarFicha(true)}
+          className="flex items-center gap-2"
+          style={{ background: BRASS, color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+        >
+          <Printer size={15} /> Gerar ficha em PDF (para a Fabi)
+        </button>
+        <button
+          type="button"
+          onClick={() => set("enviadoFabi", !p.enviadoFabi)}
+          style={{
+            background: p.enviadoFabi ? "transparent" : "#DCE4EE",
+            border: `1px solid ${p.enviadoFabi ? LINE : "#2E4A6B"}`,
+            color: "#2E4A6B",
+            padding: "9px 14px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          {p.enviadoFabi ? "↺ Marcar como não enviado" : "✓ Marcar como enviado pra Fabi"}
+        </button>
+      </div>
 
-      {mostrarFicha && <FichaImprimivel pedido={p} onFechar={() => setMostrarFicha(false)} />}
+      {mostrarFicha && (
+        <FichaImprimivel pedido={p} onFechar={() => setMostrarFicha(false)} onMarcarEnviado={() => set("enviadoFabi", true)} />
+      )}
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <Card style={{ padding: 20 }}>

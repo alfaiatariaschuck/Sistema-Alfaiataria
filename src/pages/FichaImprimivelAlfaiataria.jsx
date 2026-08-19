@@ -7,7 +7,7 @@ import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_ICARO = "telefone_icaro";
 
-export default function FichaImprimivelAlfaiataria({ peca: p, onFechar }) {
+export default function FichaImprimivelAlfaiataria({ peca: p, onFechar, onMarcarEnviado }) {
   const [telefone, setTelefone] = useState("");
 
   useEffect(() => {
@@ -22,6 +22,7 @@ export default function FichaImprimivelAlfaiataria({ peca: p, onFechar }) {
 
   function imprimir() {
     imprimirComNome(`Ficha - ${p.cliente || "cliente"} - ${p.tipoPeca}`);
+    onMarcarEnviado && onMarcarEnviado();
   }
 
   function textoFicha() {
@@ -78,6 +79,7 @@ export default function FichaImprimivelAlfaiataria({ peca: p, onFechar }) {
     );
     const url = digitos ? `https://wa.me/${digitos}?text=${mensagem}` : `https://wa.me/?text=${mensagem}`;
     window.open(url, "_blank");
+    onMarcarEnviado && onMarcarEnviado();
   }
 
   return (
