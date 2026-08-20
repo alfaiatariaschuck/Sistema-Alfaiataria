@@ -123,13 +123,15 @@ create policy "dono_acesso_total_config" on config
   for all to authenticated using (is_dono()) with check (is_dono());
 
 -- ------------------------------------------------------------------
--- 7) Quando for ativar de verdade, depois de criar o login do
---    vendedor no Supabase (Authentication > Users > Add user), rode
---    isso trocando o e-mail e o nome:
---
--- insert into perfis (id, papel, nome)
--- select id, 'vendedor', 'Nome do Vendedor'
--- from auth.users
--- where email = 'email-do-vendedor@exemplo.com'
--- on conflict (id) do update set papel = 'vendedor', nome = excluded.nome;
+-- 7) Marca o Deivid como vendedor — SÓ RODA ISSO DEPOIS de já ter
+--    criado o login dele no Supabase (Authentication > Users > Add
+--    user, com o e-mail dgranvilla@gmail.com e uma senha provisória).
+--    Se rodar antes de criar o login, não acha o e-mail e não faz
+--    nada — pode rodar de novo depois sem problema.
+-- ------------------------------------------------------------------
+insert into perfis (id, papel, nome)
+select id, 'vendedor', 'Deivid Luis Granvila'
+from auth.users
+where email = 'dgranvilla@gmail.com'
+on conflict (id) do update set papel = 'vendedor', nome = excluded.nome;
 -- ------------------------------------------------------------------
