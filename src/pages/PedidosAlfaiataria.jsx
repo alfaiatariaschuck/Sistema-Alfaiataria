@@ -14,17 +14,22 @@ function statusPagamentoDe(p) {
   return "Pendente";
 }
 
+const STATUS_ATIVOS = STATUS.filter((s) => s !== "Entregue");
+
 export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada, ...acoes }) {
   const [busca, setBusca] = useState("");
   const [filtroPagamento, setFiltroPagamento] = useState("Todos");
   const [statusFiltro, setStatusFiltro] = useState(new Set());
 
-  const filtradas = pecas.filter((p) => {
-    const bateBusca = p.cliente.toLowerCase().includes(busca.toLowerCase());
-    const batePagamento = filtroPagamento === "Todos" || statusPagamentoDe(p) === filtroPagamento;
-    const bateStatus = statusFiltro.size === 0 || statusFiltro.has(p.status);
-    return bateBusca && batePagamento && bateStatus;
-  });
+  // Peças entregues saem daqui — ficam no histórico da aba Entregues.
+  const filtradas = pecas
+    .filter((p) => p.status !== "Entregue")
+    .filter((p) => {
+      const bateBusca = p.cliente.toLowerCase().includes(busca.toLowerCase());
+      const batePagamento = filtroPagamento === "Todos" || statusPagamentoDe(p) === filtroPagamento;
+      const bateStatus = statusFiltro.size === 0 || statusFiltro.has(p.status);
+      return bateBusca && batePagamento && bateStatus;
+    });
 
   const atual = pecas.find((p) => p.id === selecionada);
 
@@ -34,7 +39,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
 
   return (
     <div>
-      <PageTitle eyebrow={`${pecas.length} lançamentos`} title="Pedidos Alfaiataria" />
+      <PageTitle eyebrow={`${pecas.filter((p) => p.status !== "Entregue").length} em aberto`} title="Pedidos Alfaiataria" />
       <div className="flex flex-col md:flex-row gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1" style={{ ...inputStyle, padding: "6px 10px" }}>
           <Search size={14} color={TEXT_MUTED} />
@@ -53,7 +58,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
         </select>
       </div>
       <div className="mb-4">
-        <FiltroStatusMulti opcoes={STATUS} estilos={STATUS_STYLE} selecionados={statusFiltro} onChange={setStatusFiltro} />
+        <FiltroStatusMulti opcoes={STATUS_ATIVOS} estilos={STATUS_STYLE} selecionados={statusFiltro} onChange={setStatusFiltro} />
       </div>
 
       <Card>

@@ -1,25 +1,31 @@
-import React from "react";
-import { ClipboardList, LogOut, Ruler } from "lucide-react";
+import React, { useState } from "react";
+import { ChevronRight, ClipboardList, LogOut, Plus, Ruler } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePedidos } from "./hooks/usePedidos";
 import { useNomesClientes } from "./hooks/useNomesClientes";
-import { BRASS, CANVAS, INK, LINE, STATUS_STYLE, TEXT_MUTED } from "./lib/constants";
+import { BRASS, CANVAS, INK, INK_SOFT, LINE, STATUS_STYLE, TEXT_MUTED } from "./lib/constants";
 import { brl, fmtData } from "./lib/helpers";
 import { Card, Empty, Pill } from "./components/ui";
 import VendedorNovoPedido from "./pages/VendedorNovoPedido";
+import DetalhePedidoVendedor from "./pages/DetalhePedidoVendedor";
 
-// App enxuto pro vendedor: só a ficha de pedido de camisa e a lista do
-// que ele mesmo lançou. Nada de painéis, financeiro, alfaiataria,
-// planos ou configurações — tanto pela tela quanto pelo banco (RLS).
+// App enxuto pro vendedor: só a ficha de pedido de camisa (criar e
+// editar o que ele mesmo lançou) — nada de painéis, financeiro,
+// alfaiataria, planos ou configurações, tanto pela tela quanto pelo
+// banco (RLS).
 export default function ShellVendedor() {
   const { sair, perfil } = useAuth();
-  const { pedidos, loading, saving, criarPedido } = usePedidos();
+  const [tab, setTab] = useState("novo");
+  const [selecionado, setSelecionado] = useState(null);
+  const { pedidos, loading, saving, criarPedido, atualizarCampo, atualizarSubcampo, adicionarTecido, atualizarTecido } = usePedidos();
   const { nomesClientes, recarregarNomesClientes } = useNomesClientes();
 
   async function salvar(p) {
     await criarPedido(p);
     await recarregarNomesClientes();
   }
+
+  const atual = pedidos.find((p) => p.id === selecionado);
 
   return (
     <div style={{ background: CANVAS, minHeight: "100vh", fontFamily: "'Inter', sans-serif", color: INK }}>
@@ -39,18 +45,64 @@ export default function ShellVendedor() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-5 py-6">
-        <VendedorNovoPedido onSalvar={salvar} nomesClientes={nomesClientes} nomeVendedor={perfil?.nome} />
+      <div className="px-5 pt-4 flex gap-2" style={{ maxWidth: 768, margin: "0 auto" }}>
+        <button
+          onClick={() => {
+            setTab("novo");
+            setSelecionado(null);
+          }}
+          className="flex items-center gap-2"
+          style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+            background: tab === "novo" ? INK : "#EDEAE0",
+            color: tab === "novo" ? "#FFF" : INK_SOFT,
+          }}
+        >
+          <Plus size={15} /> Novo Pedido
+        </button>
+        <button
+          onClick={() => {
+            setTab("pedidos");
+            setSelecionado(null);
+          }}
+          className="flex items-center gap-2"
+          style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+            background: tab === "pedidos" ? INK : "#EDEAE0",
+            color: tab === "pedidos" ? "#FFF" : INK_SOFT,
+          }}
+        >
+          <ClipboardList size={15} /> Meus Pedidos
+        </button>
+      </div>
 
-        <div className="mt-8">
-          <div className="flex items-center gap-2 mb-3">
-            <ClipboardList size={16} color={BRASS} />
-            <div className="fx-serif" style={{ fontSize: 16, fontWeight: 600 }}>
-              Meus pedidos lançados
-            </div>
-          </div>
+      <div className="max-w-3xl mx-auto px-5 py-6">
+        {tab === "novo" && <VendedorNovoPedido onSalvar={salvar} nomesClientes={nomesClientes} nomeVendedor={perfil?.nome} />}
+
+        {tab === "pedidos" && atual && (
+          <DetalhePedidoVendedor
+            pedido={atual}
+            onVoltar={() => setSelecionado(null)}
+            onCampo={atualizarCampo}
+            onSub={atualizarSubcampo}
+            onAddTecido={adicionarTecido}
+            onTecido={atualizarTecido}
+          />
+        )}
+
+        {tab === "pedidos" && !atual && (
           <Card>
-            {loading && <div className="p-6" style={{ fontSize: 13, color: TEXT_MUTED }}>Carregando…</div>}
+            {loading && (
+              <div className="p-6" style={{ fontSize: 13, color: TEXT_MUTED }}>
+                Carregando…
+              </div>
+            )}
             {!loading && pedidos.length === 0 && (
               <div className="p-6">
                 <Empty texto="Você ainda não lançou nenhum pedido." />
@@ -58,9 +110,10 @@ export default function ShellVendedor() {
             )}
             {!loading &&
               pedidos.map((p, i) => (
-                <div
+                <button
                   key={p.id}
-                  className="flex items-center justify-between px-5 py-3"
+                  onClick={() => setSelecionado(p.id)}
+                  className="w-full flex items-center justify-between px-5 py-3 text-left"
                   style={{ borderBottom: i < pedidos.length - 1 ? `1px solid ${LINE}` : "none" }}
                 >
                   <div>
@@ -74,11 +127,12 @@ export default function ShellVendedor() {
                       {brl(parseFloat(p.aReceber.valor) || 0)}
                     </span>
                     <Pill text={p.status} style={STATUS_STYLE[p.status]} />
+                    <ChevronRight size={16} color={TEXT_MUTED} />
                   </div>
-                </div>
+                </button>
               ))}
           </Card>
-        </div>
+        )}
       </div>
     </div>
   );

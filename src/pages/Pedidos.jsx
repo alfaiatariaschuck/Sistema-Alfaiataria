@@ -8,12 +8,15 @@ import DetalhePedido from "./DetalhePedido";
 
 const VERMELHO = "#9C4A1E";
 const DIAS_LIMITE = 40;
+const STATUS_ATIVOS = STATUS.filter((s) => s !== "Entregue");
 
 export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes }) {
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState(new Set());
 
+  // Pedidos entregues saem daqui — ficam no histórico da aba Entregues.
   const filtrados = pedidos
+    .filter((p) => p.status !== "Entregue")
     .filter((p) => {
       const bateBusca = p.cliente.toLowerCase().includes(busca.toLowerCase());
       const bateStatus = statusFiltro.size === 0 || statusFiltro.has(p.status);
@@ -29,7 +32,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
 
   return (
     <div>
-      <PageTitle eyebrow={`${pedidos.length} lançamentos`} title="Pedidos" />
+      <PageTitle eyebrow={`${pedidos.filter((p) => p.status !== "Entregue").length} em aberto`} title="Pedidos" />
       <div className="flex items-center gap-2 mb-4" style={{ ...inputStyle, maxWidth: 360, padding: "6px 10px" }}>
         <Search size={14} color={TEXT_MUTED} />
         <input
@@ -40,7 +43,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
         />
       </div>
       <div className="mb-4">
-        <FiltroStatusMulti opcoes={STATUS} estilos={STATUS_STYLE} selecionados={statusFiltro} onChange={setStatusFiltro} />
+        <FiltroStatusMulti opcoes={STATUS_ATIVOS} estilos={STATUS_STYLE} selecionados={statusFiltro} onChange={setStatusFiltro} />
       </div>
 
       <Card>

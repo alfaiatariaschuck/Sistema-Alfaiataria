@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
   AlertCircle,
+  Archive,
   ClipboardList,
   FileText,
   Layers,
@@ -35,6 +36,7 @@ import Compras from "./pages/Compras";
 import Relatorio from "./pages/Relatorio";
 import RelatorioAlfaiataria from "./pages/RelatorioAlfaiataria";
 import Consolidado from "./pages/Consolidado";
+import Entregues from "./pages/Entregues";
 import Backup from "./pages/Backup";
 import FluxoDeCaixa from "./pages/FluxoDeCaixa";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
@@ -46,6 +48,7 @@ const NAV = [
   { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true },
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true },
   { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true },
+  { id: "entregues", label: "Entregues", icon: Archive, primary: false },
   { id: "compras", label: "Compras", icon: ShoppingCart, primary: true },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true },
@@ -389,6 +392,7 @@ export default function Shell() {
               {tab === "dashboard" && <Dashboard pedidos={pedidos} irPara={irPara} />}
               {tab === "novo" && <NovoPedido onSalvar={salvarNovoPedido} onSalvarPlano={salvarNovoPlano} nomesClientes={nomesClientes} />}
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
+              {tab === "entregues" && !loadingPecas && <Entregues pedidos={pedidos} pecas={pecas} irPara={irPara} irParaPeca={irParaPeca} />}
               {tab === "clientes" && <Clientes clientes={clientes} irParaPedido={irPara} />}
               {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} irParaPedido={irPara} />}
               {tab === "compras" && (
