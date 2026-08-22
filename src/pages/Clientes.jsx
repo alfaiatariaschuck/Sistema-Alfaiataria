@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
+import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import { BRASS, BRASS_SOFT, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { brl, fmtData, mesesDesde } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
@@ -148,6 +149,10 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca }) {
                       </div>
                     </div>
                   )}
+
+                  <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
+                    <DadosPessoaisCliente clienteId={c.id} />
+                  </div>
                 </div>
               )}
             </Card>

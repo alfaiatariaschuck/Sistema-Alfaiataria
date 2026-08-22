@@ -110,13 +110,13 @@ export default function Shell() {
     pedidos.forEach((p) => {
       const key = p.cliente.trim().toLowerCase();
       if (!key) return;
-      if (!map.has(key)) map.set(key, { nome: p.cliente.trim(), pedidos: [], pecas: [] });
+      if (!map.has(key)) map.set(key, { id: p.clienteId, nome: p.cliente.trim(), pedidos: [], pecas: [] });
       map.get(key).pedidos.push(p);
     });
     pecas.forEach((p) => {
       const key = (p.cliente || "").trim().toLowerCase();
       if (!key) return;
-      if (!map.has(key)) map.set(key, { nome: p.cliente.trim(), pedidos: [], pecas: [] });
+      if (!map.has(key)) map.set(key, { id: p.clienteId, nome: p.cliente.trim(), pedidos: [], pecas: [] });
       map.get(key).pecas.push(p);
     });
     return [...map.values()].sort((a, b) => b.pedidos.length + b.pecas.length - (a.pedidos.length + a.pecas.length));
