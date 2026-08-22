@@ -57,6 +57,20 @@ export function statusDividido(statusEntrada, statusRestante, labelPago) {
   return statusEntrada === labelPago && statusRestante === labelPago ? labelPago : "Pendente";
 }
 
+// Quanto já entrou de verdade — statusDividido() só diz "Recebido" quando
+// as DUAS parcelas estão pagas, então um pedido com entrada recebida e
+// restante pendente aparece como 100% pendente se a gente olhar só pro
+// status combinado. Aqui a gente soma parcela por parcela o que já foi
+// efetivamente marcado como recebido/pago.
+export function valorRecebidoEfetivo({ pagamentoDividido, valorEntrada, statusEntrada, valorRestante, statusRestante, valorTotal, statusTotal, labelPago = "Recebido" }) {
+  if (pagamentoDividido) {
+    const entrada = statusEntrada === labelPago ? parseFloat(valorEntrada) || 0 : 0;
+    const restante = statusRestante === labelPago ? parseFloat(valorRestante) || 0 : 0;
+    return entrada + restante;
+  }
+  return statusTotal === labelPago ? parseFloat(valorTotal) || 0 : 0;
+}
+
 export function debounce(fn, ms) {
   let t;
   return (...args) => {

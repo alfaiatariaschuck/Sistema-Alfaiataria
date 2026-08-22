@@ -2,64 +2,95 @@ import React, { useState } from "react";
 import { ChevronRight, Download, Package, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { FORMAS_PAGAMENTO, LINE, PAG_STYLE, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
-import { brl, fmtData } from "../lib/helpers";
+import { brl, fmtData, valorRecebidoEfetivo } from "../lib/helpers";
 
 const LINE_STYLE = {
   Camisaria: { bg: "#EFE1CC", fg: "#A9793E" },
   Alfaiataria: { bg: "#E9E1F5", fg: "#5B3E96" },
 };
 
+// statusPagamento aqui já reflete pagamento dividido (entrada recebida +
+// restante pendente vira "Parcial", não "Pendente" com o valor inteiro).
+function statusEValorPendente(p, valor, statusTotal) {
+  const recebido = valorRecebidoEfetivo({
+    pagamentoDividido: p.pagamentoDividido,
+    valorEntrada: p.valorEntrada,
+    statusEntrada: p.statusEntrada,
+    valorRestante: p.valorRestante,
+    statusRestante: p.statusRestante,
+    valorTotal: valor,
+    statusTotal,
+  });
+  const pendente = Math.max(0, valor - recebido);
+  return { pendente, status: pendente === 0 ? statusTotal : recebido > 0 ? "Parcial" : statusTotal };
+}
+
 function montarLinhas(pedidos, pecas, planos) {
   const camisas = pedidos
     .filter((p) => p.status !== "Doação" && !p.origemPlanoId)
-    .map((p) => ({
-      id: "pedido-" + p.id,
-      linha: "Camisaria",
-      tipo: "Camisa",
-      cliente: p.cliente,
-      dataPedido: p.dataPedido,
-      quantidade: parseFloat(p.quantidade) || 0,
-      valor: parseFloat(p.aReceber.valor) || 0,
-      custo: parseFloat(p.pagoFabiana.valor) || 0,
-      statusPagamento: p.aReceber.statusPagamento || "Pendente",
-      formaPagamento: p.formaPagamento,
-      status: p.status,
-      origemId: p.id,
-    }));
+    .map((p) => {
+      const valor = parseFloat(p.aReceber.valor) || 0;
+      const { pendente, status } = statusEValorPendente(p, valor, p.aReceber.statusPagamento || "Pendente");
+      return {
+        id: "pedido-" + p.id,
+        linha: "Camisaria",
+        tipo: "Camisa",
+        cliente: p.cliente,
+        dataPedido: p.dataPedido,
+        quantidade: parseFloat(p.quantidade) || 0,
+        valor,
+        custo: parseFloat(p.pagoFabiana.valor) || 0,
+        statusPagamento: status,
+        pendente,
+        formaPagamento: p.formaPagamento,
+        status: p.status,
+        origemId: p.id,
+      };
+    });
 
   const vendasPlano = (planos || [])
     .filter((pl) => pl.dataVenda && (parseFloat(pl.valorReceber) || 0) > 0)
-    .map((pl) => ({
-      id: "plano-" + pl.id,
-      linha: "Camisaria",
-      tipo: "Plano de Assinatura",
-      cliente: pl.cliente,
-      dataPedido: pl.dataVenda,
-      quantidade: parseFloat(pl.quantidade) || 0,
-      valor: parseFloat(pl.valorReceber) || 0,
-      custo: 0,
-      statusPagamento: pl.statusPagamentoVenda || "Pendente",
-      formaPagamento: pl.formaPagamento,
-      status: "Venda do plano",
-      origemId: null,
-    }));
+    .map((pl) => {
+      const valor = parseFloat(pl.valorReceber) || 0;
+      const { pendente, status } = statusEValorPendente(pl, valor, pl.statusPagamentoVenda || "Pendente");
+      return {
+        id: "plano-" + pl.id,
+        linha: "Camisaria",
+        tipo: "Plano de Assinatura",
+        cliente: pl.cliente,
+        dataPedido: pl.dataVenda,
+        quantidade: parseFloat(pl.quantidade) || 0,
+        valor,
+        custo: 0,
+        statusPagamento: status,
+        pendente,
+        formaPagamento: pl.formaPagamento,
+        status: "Venda do plano",
+        origemId: null,
+      };
+    });
 
   const trajes = pecas
     .filter((p) => p.status !== "Doação")
-    .map((p) => ({
-      id: "peca-" + p.id,
-      linha: "Alfaiataria",
-      tipo: p.tipoPeca,
-      cliente: p.cliente,
-      dataPedido: p.dataPedido,
-      quantidade: 1,
-      valor: parseFloat(p.valorVenda) || 0,
-      custo: parseFloat(p.valorTotal) || 0,
-      statusPagamento: p.statusPagamentoVenda || "Pendente",
-      formaPagamento: p.formaPagamento,
-      status: p.status,
-      origemId: p.id,
-    }));
+    .map((p) => {
+      const valor = parseFloat(p.valorVenda) || 0;
+      const { pendente, status } = statusEValorPendente(p, valor, p.statusPagamentoVenda || "Pendente");
+      return {
+        id: "peca-" + p.id,
+        linha: "Alfaiataria",
+        tipo: p.tipoPeca,
+        cliente: p.cliente,
+        dataPedido: p.dataPedido,
+        quantidade: 1,
+        valor,
+        custo: parseFloat(p.valorTotal) || 0,
+        statusPagamento: status,
+        pendente,
+        formaPagamento: p.formaPagamento,
+        status: p.status,
+        origemId: p.id,
+      };
+    });
 
   return [...camisas, ...vendasPlano, ...trajes];
 }
@@ -90,7 +121,7 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
   const totalVendido = filtrados.reduce((s, l) => s + (l.valor || 0), 0);
   const totalCusto = filtrados.reduce((s, l) => s + (l.custo || 0), 0);
   const margem = totalVendido - totalCusto;
-  const totalPendente = filtrados.filter((l) => l.statusPagamento !== "Recebido" && l.statusPagamento !== "Pago").reduce((s, l) => s + (l.valor || 0), 0);
+  const totalPendente = filtrados.reduce((s, l) => s + (l.pendente || 0), 0);
   const ticketMedio = totalPecas ? totalVendido / totalPecas : 0;
   const totalClientes = new Set(filtrados.map((l) => l.cliente.trim().toLowerCase())).size;
 

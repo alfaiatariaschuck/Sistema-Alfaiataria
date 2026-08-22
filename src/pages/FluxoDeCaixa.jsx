@@ -2,7 +2,7 @@ import React from "react";
 import { CalendarClock, CheckCircle2, Clock, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, LINE, PAG_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl } from "../lib/helpers";
+import { brl, valorRecebidoEfetivo } from "../lib/helpers";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
@@ -12,12 +12,34 @@ function rotuloMes(chave) {
 }
 
 export default function FluxoDeCaixa({ pedidos, pecas, irParaPedido, irParaPeca }) {
-  const receberCamisa = pedidos
-    .filter((p) => parseFloat(p.aReceber.valor) > 0)
-    .map((p) => ({ id: p.id, tipo: "camisa", cliente: p.cliente, valor: parseFloat(p.aReceber.valor), status: p.aReceber.statusPagamento, dataRef: p.previsaoEntrega || p.dataPedido }));
+  function linhaReceber(p, tipo, valorTotal, statusTotal) {
+    const valor = parseFloat(valorTotal) || 0;
+    const recebido = valorRecebidoEfetivo({
+      pagamentoDividido: p.pagamentoDividido,
+      valorEntrada: p.valorEntrada,
+      statusEntrada: p.statusEntrada,
+      valorRestante: p.valorRestante,
+      statusRestante: p.statusRestante,
+      valorTotal: valor,
+      statusTotal,
+    });
+    const pendente = Math.max(0, valor - recebido);
+    return {
+      id: p.id,
+      tipo,
+      cliente: p.cliente,
+      valor,
+      recebido,
+      pendente,
+      status: pendente === 0 ? "Recebido" : recebido > 0 ? "Parcial" : "Pendente",
+      dataRef: p.previsaoEntrega || p.dataPedido,
+    };
+  }
+
+  const receberCamisa = pedidos.filter((p) => parseFloat(p.aReceber.valor) > 0).map((p) => linhaReceber(p, "camisa", p.aReceber.valor, p.aReceber.statusPagamento));
   const receberPeca = (pecas || [])
     .filter((p) => parseFloat(p.valorVenda) > 0)
-    .map((p) => ({ id: p.id, tipo: "peca", cliente: p.cliente, valor: parseFloat(p.valorVenda), status: p.statusPagamentoVenda || "Pendente", dataRef: p.previsaoEntrega || p.dataPedido }));
+    .map((p) => linhaReceber(p, "peca", p.valorVenda, p.statusPagamentoVenda || "Pendente"));
   const receber = [...receberCamisa, ...receberPeca];
 
   const pagarFab = pedidos
@@ -36,13 +58,12 @@ export default function FluxoDeCaixa({ pedidos, pecas, irParaPedido, irParaPeca 
     }));
   const pagar = [...pagarFab, ...pagarIcaro];
 
-  const totalReceber = receber.reduce((s, p) => s + p.valor, 0);
-  const recebido = receber.filter((p) => p.status === "Recebido").reduce((s, p) => s + p.valor, 0);
+  const recebido = receber.reduce((s, p) => s + p.recebido, 0);
   const pago = pagar.reduce((s, p) => s + (p.valor - p.pendente), 0);
 
   const saldo = recebido - pago;
 
-  const receberPendente = receber.filter((p) => p.status !== "Recebido");
+  const receberPendente = receber.filter((p) => p.pendente > 0);
   const pagarPendente = pagar.filter((p) => p.pendente > 0);
 
   function agruparPorMes(lista, valorFn) {
@@ -56,7 +77,7 @@ export default function FluxoDeCaixa({ pedidos, pecas, irParaPedido, irParaPeca 
     return [...mapa.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }
 
-  const projecaoReceber = agruparPorMes(receberPendente, (p) => p.valor);
+  const projecaoReceber = agruparPorMes(receberPendente, (p) => p.pendente);
   const projecaoPagar = agruparPorMes(pagarPendente, (p) => p.pendente);
   const maxProjecao = Math.max(1, ...projecaoReceber.map(([, v]) => v), ...projecaoPagar.map(([, v]) => v));
 
@@ -70,7 +91,7 @@ export default function FluxoDeCaixa({ pedidos, pecas, irParaPedido, irParaPeca 
       <PageTitle eyebrow="Financeiro — camisaria + alfaiataria" title="Fluxo de Caixa" />
       <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         <StatCard label="Recebido" value={brl(recebido)} icon={Wallet} />
-        <StatCard label="A receber (pendente)" value={brl(totalReceber - recebido)} icon={Clock} />
+        <StatCard label="A receber (pendente)" value={brl(receberPendente.reduce((s, p) => s + p.pendente, 0))} icon={Clock} />
         <StatCard label="Pago à produção (Fabi + Icaro)" value={brl(pago)} icon={Wallet} />
         <StatCard label="Saldo em caixa" value={brl(saldo)} icon={CheckCircle2} />
       </div>
@@ -133,7 +154,7 @@ export default function FluxoDeCaixa({ pedidos, pecas, irParaPedido, irParaPeca 
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{p.cliente}</div>
                 <div className="fx-mono" style={{ fontSize: 12, color: "#6B7280" }}>
-                  {brl(p.valor)}
+                  {p.status === "Parcial" ? `${brl(p.recebido)} de ${brl(p.valor)}` : brl(p.valor)}
                 </div>
               </div>
               <Pill text={p.status} style={PAG_STYLE[p.status]} />

@@ -21,6 +21,7 @@ export const STATUS_STYLE = {
 
 export const PAG_STYLE = {
   Pendente: { bg: "#F6E3D9", fg: "#9C4A1E" },
+  Parcial: { bg: "#D9EEF5", fg: "#1E6E8C" },
   Recebido: { bg: "#DCEBDD", fg: "#2C6E31" },
   Pago: { bg: "#DCEBDD", fg: "#2C6E31" },
 };
