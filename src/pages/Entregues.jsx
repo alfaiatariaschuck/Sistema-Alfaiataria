@@ -4,22 +4,24 @@ import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { BRASS_SOFT, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { fmtData } from "../lib/helpers";
 
-// Histórico de entregas — pedidos de camisa e peças de alfaiataria que
-// já foram marcados como "Entregue" saem das listas ativas (Pedidos e
-// Pedidos Alfaiataria) e ficam aqui, agrupados por cliente.
-export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
+// Histórico de entregas — separado por linha de produção (tipo="camisaria"
+// só mostra pedidos de camisa, tipo="alfaiataria" só mostra peças). Assim
+// que um pedido/peça vira "Entregue" ele some das listas ativas (Pedidos e
+// Pedidos Alfaiataria) e passa a aparecer aqui, agrupado por cliente.
+export default function Entregues({ pedidos, pecas, tipo, irPara, irParaPeca }) {
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
 
-  const camisasEntregues = pedidos.filter((p) => p.status === "Entregue");
-  const pecasEntregues = pecas.filter((p) => p.status === "Entregue");
+  const isCamisaria = tipo === "camisaria";
+  const camisasEntregues = isCamisaria ? pedidos.filter((p) => p.status === "Entregue") : [];
+  const pecasEntregues = isCamisaria ? [] : pecas.filter((p) => p.status === "Entregue");
 
   const porCliente = new Map();
-  function registrar(nome, tipo, item) {
+  function registrar(nome, tipoItem, item) {
     const key = (nome || "").trim().toLowerCase();
     if (!key) return;
     if (!porCliente.has(key)) porCliente.set(key, { nome: nome.trim(), camisas: [], pecas: [] });
-    porCliente.get(key)[tipo].push(item);
+    porCliente.get(key)[tipoItem].push(item);
   }
   camisasEntregues.forEach((p) => registrar(p.cliente, "camisas", p));
   pecasEntregues.forEach((p) => registrar(p.cliente, "pecas", p));
@@ -30,9 +32,11 @@ export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
 
   const totalCamisas = camisasEntregues.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
 
+  const eyebrow = isCamisaria ? `${clientes.length} clientes · ${totalCamisas} camisas` : `${clientes.length} clientes · ${pecasEntregues.length} peças`;
+
   return (
     <div>
-      <PageTitle eyebrow={`${clientes.length} clientes · ${totalCamisas} camisas · ${pecasEntregues.length} peças`} title="Entregues" />
+      <PageTitle eyebrow={eyebrow} title={isCamisaria ? "Entregue Camisaria" : "Entregue Alfaiataria"} />
 
       <div className="flex items-center gap-2 mb-4" style={{ ...inputStyle, maxWidth: 360, padding: "6px 10px" }}>
         <Search size={14} color={TEXT_MUTED} />
@@ -61,7 +65,6 @@ export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{c.nome}</div>
                   <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                     {c.camisas.length > 0 && `${qtdCamisas} camisa(s)`}
-                    {c.camisas.length > 0 && c.pecas.length > 0 && " · "}
                     {c.pecas.length > 0 && `${c.pecas.length} peça(s) de alfaiataria`}
                   </div>
                 </div>

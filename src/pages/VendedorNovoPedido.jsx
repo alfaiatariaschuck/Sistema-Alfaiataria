@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
+import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
@@ -184,6 +185,7 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
           <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
             Medidas (cm)
           </div>
+          <ControleVozMedidas onMedida={setMedida} />
           <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
             {MEDIDA_LABELS.map((label) => {
               const fin = finalDaMedida(label, p.medidas[label]);
