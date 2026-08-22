@@ -1,21 +1,26 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, Gift, Phone, Scissors, Timer, TrendingUp, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Gift, Phone, Scissors, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
-import { BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, diasEntre, fmtData } from "../lib/helpers";
+import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
+import { brl, diasAte, diasEntre, fmtData, hojeISO } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_ICARO = "telefone_icaro";
+const CHAVE_META = "meta_vendas_alfaiataria";
 const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação");
 const VERMELHO = "#9C4A1E";
 
 export default function DashboardAlfaiataria({ pecas, irPara }) {
   const [telIcaro, setTelIcaro] = useState("");
+  const [meta, setMeta] = useState(null);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_TELEFONE_ICARO).maybeSingle();
-      if (data?.valor) setTelIcaro(data.valor);
+      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_TELEFONE_ICARO, CHAVE_META]);
+      (data || []).forEach((row) => {
+        if (row.chave === CHAVE_TELEFONE_ICARO && row.valor) setTelIcaro(row.valor);
+        if (row.chave === CHAVE_META && row.valor) setMeta(parseFloat(row.valor) || null);
+      });
     })();
   }, []);
 
@@ -32,6 +37,11 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
   const tempoMedio = entreguesComData.length
     ? Math.round(entreguesComData.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / entreguesComData.length)
     : null;
+  const mesAtual = hojeISO().slice(0, 7);
+  const vendidoNoMes = pecas
+    .filter(naoDoacao)
+    .filter((p) => (p.dataPedido || "").slice(0, 7) === mesAtual)
+    .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
   const comPrevisao = [...abertas].filter((p) => p.previsaoEntrega).sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega));
   const atrasadas = comPrevisao.filter((p) => diasAte(p.previsaoEntrega) < 0);
   const proximas = comPrevisao.filter((p) => diasAte(p.previsaoEntrega) >= 0).slice(0, 6);
@@ -68,6 +78,28 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
         <StatCard label="Peças atrasadas" value={atrasadas.length} icon={AlertTriangle} accent={atrasadas.length > 0 ? VERMELHO : undefined} />
         <StatCard label="Doações" value={doacoes.length} icon={Gift} />
       </div>
+
+      {meta > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Target size={16} color={BRASS} />
+              <div className="fx-serif" style={{ fontSize: 16, fontWeight: 600 }}>
+                Meta do mês
+              </div>
+            </div>
+            <span className="fx-mono" style={{ fontSize: 13, fontWeight: 700, color: BRASS }}>
+              {brl(vendidoNoMes)} / {brl(meta)}
+            </span>
+          </div>
+          <div style={{ background: LINE, borderRadius: 4, height: 8 }}>
+            <div style={{ width: `${Math.min(100, (vendidoNoMes / meta) * 100)}%`, background: BRASS, height: 8, borderRadius: 4 }} />
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 6 }}>
+            {vendidoNoMes >= meta ? "Meta batida! 🎉" : `Faltam ${brl(meta - vendidoNoMes)} pra bater a meta.`}
+          </div>
+        </Card>
+      )}
 
       {atrasadas.length > 0 && (
         <Card style={{ padding: 20 }} className="mb-6">

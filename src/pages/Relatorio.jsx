@@ -1,14 +1,16 @@
 import React, { useState } from "react";
-import { AlertCircle, CheckCircle2, Download, FileText, Package, Shirt, TrendingUp, Wallet } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, FileText, Package, Printer, Shirt, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
-import { FORMAS_PAGAMENTO, LINE, PAG_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { FORMAS_PAGAMENTO, PAG_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
+import RelatorioImprimivel from "./RelatorioImprimivel";
 
 export default function Relatorio({ pedidos, planos }) {
   const [dataIni, setDataIni] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [forma, setForma] = useState("Todas");
   const [status, setStatus] = useState(null);
+  const [mostrarPDF, setMostrarPDF] = useState(false);
 
   // Pedidos comuns entram normal, exceto Doação (não é venda) e os que vieram
   // de emissão de plano de assinatura (esses não geram receita nova — o
@@ -111,13 +113,37 @@ export default function Relatorio({ pedidos, planos }) {
         ))}
       </div>
 
-      <button
-        onClick={exportarCSV}
-        className="flex items-center gap-2 mb-5"
-        style={{ background: "#16212E", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
-      >
-        <Download size={15} /> Exportar CSV (Excel)
-      </button>
+      <div className="flex flex-wrap gap-2 mb-5">
+        <button
+          onClick={exportarCSV}
+          className="flex items-center gap-2"
+          style={{ background: "#16212E", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+        >
+          <Download size={15} /> Exportar CSV (Excel)
+        </button>
+        <button
+          onClick={() => setMostrarPDF(true)}
+          className="flex items-center gap-2"
+          style={{ background: "transparent", border: "1px solid #E4DECF", color: "#16212E", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+        >
+          <Printer size={15} /> Exportar PDF
+        </button>
+      </div>
+
+      {mostrarPDF && (
+        <RelatorioImprimivel
+          titulo="Relatório de Vendas — Camisaria"
+          periodo={dataIni || dataFim ? `${dataIni ? fmtData(dataIni) : "início"} a ${dataFim ? fmtData(dataFim) : "hoje"}` : "Todo o período"}
+          resumo={[
+            { label: "Pedidos", value: filtrados.length },
+            { label: "Camisas", value: camisas },
+            { label: "Total (R$)", value: brl(total) },
+            { label: "Ticket médio", value: brl(ticketMedioPedido) },
+          ]}
+          itens={filtrados}
+          onFechar={() => setMostrarPDF(false)}
+        />
+      )}
 
       {status && (
         <div className="mb-5 px-4 py-3 rounded flex items-center gap-2" style={{ background: status.ok ? "#DCEBDD" : "#F6E3D9", color: status.ok ? "#2C6E31" : "#9C4A1E" }}>

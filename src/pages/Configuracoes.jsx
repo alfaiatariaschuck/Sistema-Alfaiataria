@@ -7,21 +7,30 @@ import { supabase } from "../supabaseClient";
 const CHAVE_FABI = "telefone_fabi";
 const CHAVE_ICARO = "telefone_icaro";
 const CHAVE_SUMIDO = "cliente_sumido_meses";
+const CHAVE_META_CAMISARIA = "meta_vendas_camisaria";
+const CHAVE_META_ALFAIATARIA = "meta_vendas_alfaiataria";
 
 export default function Configuracoes() {
   const [telFabi, setTelFabi] = useState("");
   const [telIcaro, setTelIcaro] = useState("");
   const [sumidoMeses, setSumidoMeses] = useState("6");
+  const [metaCamisaria, setMetaCamisaria] = useState("");
+  const [metaAlfaiataria, setMetaAlfaiataria] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [salvo, setSalvo] = useState(null);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_FABI, CHAVE_ICARO, CHAVE_SUMIDO]);
+      const { data } = await supabase
+        .from("config")
+        .select("chave, valor")
+        .in("chave", [CHAVE_FABI, CHAVE_ICARO, CHAVE_SUMIDO, CHAVE_META_CAMISARIA, CHAVE_META_ALFAIATARIA]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_FABI) setTelFabi(row.valor || "");
         if (row.chave === CHAVE_ICARO) setTelIcaro(row.valor || "");
         if (row.chave === CHAVE_SUMIDO) setSumidoMeses(row.valor || "6");
+        if (row.chave === CHAVE_META_CAMISARIA) setMetaCamisaria(row.valor || "");
+        if (row.chave === CHAVE_META_ALFAIATARIA) setMetaAlfaiataria(row.valor || "");
       });
       setCarregando(false);
     })();
@@ -33,6 +42,8 @@ export default function Configuracoes() {
       { chave: CHAVE_FABI, valor: telFabi },
       { chave: CHAVE_ICARO, valor: telIcaro },
       { chave: CHAVE_SUMIDO, valor: sumidoMeses },
+      { chave: CHAVE_META_CAMISARIA, valor: metaCamisaria },
+      { chave: CHAVE_META_ALFAIATARIA, valor: metaAlfaiataria },
     ]);
     setSalvo(!error);
   }
@@ -67,7 +78,8 @@ export default function Configuracoes() {
           Gestão
         </div>
         <p style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 16 }}>
-          Quantos meses sem comprar pra um cliente aparecer marcado como "sumido" na aba Clientes.
+          Quantos meses sem comprar pra um cliente aparecer marcado como "sumido" na aba Clientes, e a meta de vendas
+          do mês de cada linha (aparece como barra de progresso nos painéis). Deixe a meta em branco pra não mostrar.
         </p>
         {carregando ? (
           <div style={{ color: TEXT_MUTED, fontSize: 13 }}>Carregando…</div>
@@ -75,6 +87,12 @@ export default function Configuracoes() {
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
             <Field label="Cliente sumido após (meses sem comprar)">
               <input type="number" step="1" style={inputStyle} value={sumidoMeses} onChange={(e) => setSumidoMeses(e.target.value)} />
+            </Field>
+            <Field label="Meta de vendas do mês — Camisaria (R$)">
+              <input type="number" step="0.01" style={inputStyle} value={metaCamisaria} onChange={(e) => setMetaCamisaria(e.target.value)} />
+            </Field>
+            <Field label="Meta de vendas do mês — Alfaiataria (R$)">
+              <input type="number" step="0.01" style={inputStyle} value={metaAlfaiataria} onChange={(e) => setMetaAlfaiataria(e.target.value)} />
             </Field>
           </div>
         )}

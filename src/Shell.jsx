@@ -43,6 +43,7 @@ import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
+import BuscaGlobal from "./components/BuscaGlobal";
 
 const NAV = [
   { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true },
@@ -375,6 +376,9 @@ export default function Shell() {
         )}
 
         <main className="flex-1 px-5 md:px-10 py-8 pb-24 md:pb-8" style={{ maxWidth: 1100 }}>
+          <div className="mb-5">
+            <BuscaGlobal pedidos={pedidos} pecas={pecas} irPara={irPara} irParaPeca={irParaPeca} />
+          </div>
           {(erro || erroPecas || erroPlanos) && (
             <div className="mb-4 px-4 py-3 rounded" style={{ background: "#F6E3D9", color: "#9C4A1E" }}>
               <div className="flex items-start gap-2">
@@ -404,7 +408,7 @@ export default function Shell() {
                 <Entregues pedidos={pedidos} pecas={pecas} tipo="alfaiataria" irPara={irPara} irParaPeca={irParaPeca} />
               )}
               {tab === "clientes" && <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} />}
-              {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} irParaPedido={irPara} />}
+              {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} pecas={pecas} irParaPedido={irPara} irParaPeca={irParaPeca} />}
               {tab === "compras" && (
                 <Compras
                   pedidos={pedidos}

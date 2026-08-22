@@ -20,6 +20,7 @@ function montarLinhas(pedidos, pecas, planos) {
       dataPedido: p.dataPedido,
       quantidade: parseFloat(p.quantidade) || 0,
       valor: parseFloat(p.aReceber.valor) || 0,
+      custo: parseFloat(p.pagoFabiana.valor) || 0,
       statusPagamento: p.aReceber.statusPagamento || "Pendente",
       formaPagamento: p.formaPagamento,
       status: p.status,
@@ -36,6 +37,7 @@ function montarLinhas(pedidos, pecas, planos) {
       dataPedido: pl.dataVenda,
       quantidade: parseFloat(pl.quantidade) || 0,
       valor: parseFloat(pl.valorReceber) || 0,
+      custo: 0,
       statusPagamento: pl.statusPagamentoVenda || "Pendente",
       formaPagamento: pl.formaPagamento,
       status: "Venda do plano",
@@ -52,6 +54,7 @@ function montarLinhas(pedidos, pecas, planos) {
       dataPedido: p.dataPedido,
       quantidade: 1,
       valor: parseFloat(p.valorVenda) || 0,
+      custo: parseFloat(p.valorTotal) || 0,
       statusPagamento: p.statusPagamentoVenda || "Pendente",
       formaPagamento: p.formaPagamento,
       status: p.status,
@@ -85,6 +88,9 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
 
   const totalPecas = filtrados.reduce((s, l) => s + (l.quantidade || 0), 0);
   const totalVendido = filtrados.reduce((s, l) => s + (l.valor || 0), 0);
+  const totalCusto = filtrados.reduce((s, l) => s + (l.custo || 0), 0);
+  const margem = totalVendido - totalCusto;
+  const totalPendente = filtrados.filter((l) => l.statusPagamento !== "Recebido" && l.statusPagamento !== "Pago").reduce((s, l) => s + (l.valor || 0), 0);
   const ticketMedio = totalPecas ? totalVendido / totalPecas : 0;
   const totalClientes = new Set(filtrados.map((l) => l.cliente.trim().toLowerCase())).size;
 
@@ -168,6 +174,8 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
       <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
         <StatCard label="Peças no período" value={totalPecas} icon={Package} />
         <StatCard label="Total vendido (R$)" value={brl(totalVendido)} icon={Wallet} />
+        <StatCard label="Margem estimada" value={brl(margem)} icon={TrendingUp} />
+        <StatCard label="A receber (pendente)" value={brl(totalPendente)} icon={Wallet} />
         <StatCard label="Ticket médio (peça)" value={brl(ticketMedio)} icon={TrendingUp} />
         <StatCard label="Clientes no período" value={totalClientes} icon={Users} />
       </div>
