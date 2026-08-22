@@ -1,25 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, Download, FileText, Package, Percent, Shirt, TrendingUp, Wallet } from "lucide-react";
+import React, { useState } from "react";
+import { AlertCircle, CheckCircle2, Download, FileText, Package, Shirt, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
-import { BRASS, FORMAS_PAGAMENTO, LINE, PAG_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { FORMAS_PAGAMENTO, LINE, PAG_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
-import { supabase } from "../supabaseClient";
-
-const CHAVE_COMISSAO = "comissao_vendedor_pct";
 
 export default function Relatorio({ pedidos, planos }) {
   const [dataIni, setDataIni] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [forma, setForma] = useState("Todas");
   const [status, setStatus] = useState(null);
-  const [comissaoPct, setComissaoPct] = useState(10);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_COMISSAO).maybeSingle();
-      if (data?.valor) setComissaoPct(parseFloat(data.valor) || 0);
-    })();
-  }, []);
 
   // Pedidos comuns entram normal, exceto Doação (não é venda) e os que vieram
   // de emissão de plano de assinatura (esses não geram receita nova — o
@@ -57,17 +46,6 @@ export default function Relatorio({ pedidos, planos }) {
     total: filtrados.filter((p) => p.formaPagamento === f).reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0),
     qtd: filtrados.filter((p) => p.formaPagamento === f).length,
   })).filter((x) => x.qtd > 0);
-
-  // Comissão por vendedor — só considera pedidos com vendedor lançado
-  // (vendas de plano de assinatura não têm vendedor, então ficam de fora).
-  const vendedores = [...new Set(filtrados.map((p) => (p.vendedor || "").trim()).filter(Boolean))];
-  const porVendedor = vendedores
-    .map((v) => {
-      const doVendedor = filtrados.filter((p) => (p.vendedor || "").trim() === v);
-      const totalVendido = doVendedor.reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
-      return { vendedor: v, qtd: doVendedor.length, totalVendido, comissao: totalVendido * (comissaoPct / 100) };
-    })
-    .sort((a, b) => b.totalVendido - a.totalVendido);
 
   function exportarCSV() {
     const linhas = [
@@ -145,35 +123,6 @@ export default function Relatorio({ pedidos, planos }) {
         <div className="mb-5 px-4 py-3 rounded flex items-center gap-2" style={{ background: status.ok ? "#DCEBDD" : "#F6E3D9", color: status.ok ? "#2C6E31" : "#9C4A1E" }}>
           {status.ok ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />} {status.msg}
         </div>
-      )}
-
-      {porVendedor.length > 0 && (
-        <Card style={{ padding: 20 }} className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Percent size={16} color={BRASS} />
-            <div className="fx-serif" style={{ fontSize: 16, fontWeight: 600 }}>
-              Comissão por vendedor
-            </div>
-            <span style={{ fontSize: 12, color: TEXT_MUTED }}>({comissaoPct}% sobre o vendido no período — ajuste em Configurações)</span>
-          </div>
-          {porVendedor.map((v, i) => (
-            <div
-              key={v.vendedor}
-              className="flex items-center justify-between py-2.5"
-              style={{ borderBottom: i < porVendedor.length - 1 ? `1px solid ${LINE}` : "none" }}
-            >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{v.vendedor}</div>
-                <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-                  {v.qtd} pedido(s) · {brl(v.totalVendido)} vendido
-                </div>
-              </div>
-              <span className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: BRASS }}>
-                {brl(v.comissao)}
-              </span>
-            </div>
-          ))}
-        </Card>
       )}
 
       <Card>
