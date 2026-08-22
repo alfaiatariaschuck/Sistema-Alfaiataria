@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
-import { Card, Empty, PageTitle, Pill } from "../components/ui";
+import { ChevronDown, ChevronUp, Plus, Search, UserPlus } from "lucide-react";
+import { Card, Empty, Field, PageTitle, Pill } from "../components/ui";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
-import { BRASS, BRASS_SOFT, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
+import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
+import { BRASS, BRASS_SOFT, INK, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { brl, fmtData, mesesDesde } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
@@ -27,10 +28,15 @@ function medidasPecaTexto(tipoPeca, medidas) {
   return linhas;
 }
 
-export default function Clientes({ clientes, irParaPedido, irParaPeca }) {
+export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastrar }) {
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [limiteMeses, setLimiteMeses] = useState(6);
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+  const [novosDados, setNovosDados] = useState(dadosPessoaisVazio());
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -41,18 +47,72 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca }) {
 
   const filtrados = clientes.filter((c) => c.nome.toLowerCase().includes(busca.toLowerCase()));
 
+  async function cadastrar(e) {
+    e.preventDefault();
+    if (!novoNome.trim()) return;
+    setSalvando(true);
+    setErro(null);
+    try {
+      await onCadastrar(novoNome, novosDados);
+      setNovoNome("");
+      setNovosDados(dadosPessoaisVazio());
+      setMostrarForm(false);
+    } catch (e) {
+      setErro("Não consegui cadastrar (" + e.message + "). Tente novamente.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
   return (
     <div>
       <PageTitle eyebrow={`${clientes.length} clientes`} title="Clientes" />
-      <div className="flex items-center gap-2 mb-4" style={{ ...inputStyle, maxWidth: 320, padding: "6px 10px" }}>
-        <Search size={14} color={TEXT_MUTED} />
-        <input
-          placeholder="Buscar cliente…"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
-        />
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 320, padding: "6px 10px" }}>
+          <Search size={14} color={TEXT_MUTED} />
+          <input
+            placeholder="Buscar cliente…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
+          />
+        </div>
+        <button
+          onClick={() => setMostrarForm((v) => !v)}
+          className="flex items-center gap-2"
+          style={{ background: mostrarForm ? "#EDEAE0" : INK, color: mostrarForm ? INK : "#FFF", padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+        >
+          {mostrarForm ? <Plus size={15} style={{ transform: "rotate(45deg)" }} /> : <UserPlus size={15} />}
+          {mostrarForm ? "Cancelar" : "Cadastrar cliente"}
+        </button>
       </div>
+
+      {mostrarForm && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <form onSubmit={cadastrar}>
+            <Field label="Nome do cliente">
+              <input style={inputStyle} value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Nome completo" required />
+            </Field>
+            <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${LINE}` }}>
+              <CampoDadosPessoais value={novosDados} onChange={setNovosDados} />
+            </div>
+            {erro && (
+              <div className="mt-3 px-4 py-2 rounded" style={{ background: "#F6E3D9", color: "#9C4A1E", fontSize: 13 }}>
+                {erro}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={salvando}
+              className="mt-4"
+              style={{ background: INK, color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13, opacity: salvando ? 0.7 : 1 }}
+            >
+              {salvando ? "Cadastrando…" : "Cadastrar cliente"}
+            </button>
+          </form>
+        </Card>
+      )}
+
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
         {filtrados.map((c) => {
           const pecas = c.pecas || [];

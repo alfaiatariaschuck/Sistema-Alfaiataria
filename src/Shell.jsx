@@ -25,7 +25,7 @@ import { usePedidos } from "./hooks/usePedidos";
 import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
 import { usePlanosAssinatura } from "./hooks/usePlanosAssinatura";
 import { useNomesClientes } from "./hooks/useNomesClientes";
-import { salvarDadosPessoaisCliente } from "./lib/clientes";
+import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
 import { hojeISO } from "./lib/helpers";
 import Dashboard from "./pages/Dashboard";
@@ -104,10 +104,17 @@ export default function Shell() {
     removerPlano,
   } = usePlanosAssinatura();
 
-  const { nomesClientes, recarregarNomesClientes } = useNomesClientes();
+  const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
 
   const clientes = useMemo(() => {
     const map = new Map();
+    // Parte de TODOS os clientes cadastrados (mesmo os sem pedido ainda —
+    // cadastrados manualmente em Clientes), não só de quem já comprou.
+    clientesBase.forEach((c) => {
+      const key = c.nome.trim().toLowerCase();
+      if (!key) return;
+      map.set(key, { id: c.id, nome: c.nome.trim(), pedidos: [], pecas: [] });
+    });
     pedidos.forEach((p) => {
       const key = p.cliente.trim().toLowerCase();
       if (!key) return;
@@ -121,7 +128,7 @@ export default function Shell() {
       map.get(key).pecas.push(p);
     });
     return [...map.values()].sort((a, b) => b.pedidos.length + b.pecas.length - (a.pedidos.length + a.pecas.length));
-  }, [pedidos, pecas]);
+  }, [pedidos, pecas, clientesBase]);
 
   function irPara(id) {
     setTab("pedidos");
@@ -131,6 +138,12 @@ export default function Shell() {
   function irParaPeca(id) {
     setTab("pedidos-alfaiataria");
     setSelecionadaPeca(id);
+  }
+
+  async function cadastrarClienteManual(nome, dadosPessoais) {
+    const clienteId = await encontrarOuCriarCliente(nome);
+    await salvarDadosPessoaisCliente(clienteId, dadosPessoais);
+    await recarregarNomesClientes();
   }
 
   async function salvarNovoPedido(p) {
@@ -410,7 +423,9 @@ export default function Shell() {
               {tab === "entregues-alfaiataria" && !loadingPecas && (
                 <Entregues pedidos={pedidos} pecas={pecas} tipo="alfaiataria" irPara={irPara} irParaPeca={irParaPeca} />
               )}
-              {tab === "clientes" && <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} />}
+              {tab === "clientes" && (
+                <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} onCadastrar={cadastrarClienteManual} />
+              )}
               {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} pecas={pecas} irParaPedido={irPara} irParaPeca={irParaPeca} />}
               {tab === "compras" && (
                 <Compras

@@ -6,15 +6,17 @@ import { supabase } from "../supabaseClient";
 // recompra, tanto em Pedido Camisas quanto em Pedido Alfaiataria.
 export function useNomesClientes() {
   const [nomesClientes, setNomesClientes] = useState([]);
+  const [clientesBase, setClientesBase] = useState([]);
 
   const recarregarNomesClientes = useCallback(async () => {
-    const { data } = await supabase.from("clientes").select("nome").order("nome");
+    const { data } = await supabase.from("clientes").select("id, nome").order("nome");
     setNomesClientes((data || []).map((r) => r.nome));
+    setClientesBase(data || []);
   }, []);
 
   useEffect(() => {
     recarregarNomesClientes();
   }, [recarregarNomesClientes]);
 
-  return { nomesClientes, recarregarNomesClientes };
+  return { nomesClientes, clientesBase, recarregarNomesClientes };
 }
