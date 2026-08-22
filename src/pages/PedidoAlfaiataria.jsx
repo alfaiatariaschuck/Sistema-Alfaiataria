@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
+import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import {
   BRASS,
   BRASS_SOFT,
@@ -22,6 +23,7 @@ import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
 export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
+  const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
 
@@ -82,8 +84,9 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
     setSalvando(true);
     setErro(null);
     try {
-      await onCriar(novaPeca);
+      await onCriar({ ...novaPeca, dadosPessoais });
       setNovaPeca(pecaVazia());
+      setDadosPessoais(dadosPessoaisVazio());
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + "). Tente novamente.");
     } finally {
@@ -287,6 +290,10 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
               onChange={(e) => setNovaPeca({ ...novaPeca, observacoes: e.target.value })}
             />
           </Field>
+        </Card>
+
+        <Card style={{ padding: 20 }} className="mb-5">
+          <CampoDadosPessoais value={dadosPessoais} onChange={setDadosPessoais} />
         </Card>
 
         {erro && (

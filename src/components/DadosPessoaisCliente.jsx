@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { ShieldCheck, Trash2 } from "lucide-react";
 import { Field } from "./ui";
-import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS, INK, INK_SOFT, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { fmtData, hojeISO } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 function vazio(clienteId) {
   return {
     cliente_id: clienteId,
+    tipo_pessoa: "PF",
     endereco: "",
     data_nascimento: "",
     telefone: "",
     email: "",
+    cpf: "",
+    cnpj: "",
+    razao_social: "",
     observacoes: "",
     consentimento: false,
     consentimento_em: null,
@@ -47,10 +51,14 @@ export default function DadosPessoaisCliente({ clienteId }) {
     setSalvo(null);
     const payload = {
       cliente_id: clienteId,
+      tipo_pessoa: dados.tipo_pessoa || "PF",
       endereco: dados.endereco || null,
       data_nascimento: dados.data_nascimento || null,
       telefone: dados.telefone || null,
       email: dados.email || null,
+      cpf: dados.cpf || null,
+      cnpj: dados.cnpj || null,
+      razao_social: dados.razao_social || null,
       observacoes: dados.observacoes || null,
       consentimento: !!dados.consentimento,
       consentimento_em: dados.consentimento ? dados.consentimento_em || hojeISO() : null,
@@ -75,12 +83,50 @@ export default function DadosPessoaisCliente({ clienteId }) {
     return <div style={{ fontSize: 12, color: TEXT_MUTED }}>Carregando dados pessoais…</div>;
   }
 
+  const pj = dados.tipo_pessoa === "PJ";
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <ShieldCheck size={14} color={BRASS} />
         <div style={{ fontSize: 12, fontWeight: 600, color: TEXT_MUTED }}>Dados pessoais — só o dono vê (LGPD)</div>
       </div>
+
+      <div className="flex gap-2 mb-3" style={{ maxWidth: 280 }}>
+        <button
+          type="button"
+          onClick={() => set("tipo_pessoa", "PF")}
+          className="flex-1"
+          style={{
+            padding: "6px 10px",
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 600,
+            background: !pj ? INK : "#EDEAE0",
+            color: !pj ? "#FFF" : INK_SOFT,
+            border: `1px solid ${!pj ? INK : LINE}`,
+          }}
+        >
+          Pessoa Física
+        </button>
+        <button
+          type="button"
+          onClick={() => set("tipo_pessoa", "PJ")}
+          className="flex-1"
+          style={{
+            padding: "6px 10px",
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 600,
+            background: pj ? BRASS : "#EDEAE0",
+            color: pj ? "#FFF" : INK_SOFT,
+            border: `1px solid ${pj ? BRASS : LINE}`,
+          }}
+        >
+          Pessoa Jurídica
+        </button>
+      </div>
+
       <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
         <Field label="Telefone">
           <input style={inputStyle} value={dados.telefone || ""} onChange={(e) => set("telefone", e.target.value)} placeholder="Ex: 51999998888" />
@@ -88,9 +134,25 @@ export default function DadosPessoaisCliente({ clienteId }) {
         <Field label="E-mail">
           <input style={inputStyle} value={dados.email || ""} onChange={(e) => set("email", e.target.value)} placeholder="cliente@email.com" />
         </Field>
-        <Field label="Data de nascimento">
-          <input type="date" style={inputStyle} value={dados.data_nascimento || ""} onChange={(e) => set("data_nascimento", e.target.value)} />
-        </Field>
+        {pj ? (
+          <>
+            <Field label="Razão social">
+              <input style={inputStyle} value={dados.razao_social || ""} onChange={(e) => set("razao_social", e.target.value)} placeholder="Nome da empresa" />
+            </Field>
+            <Field label="CNPJ">
+              <input style={inputStyle} value={dados.cnpj || ""} onChange={(e) => set("cnpj", e.target.value)} placeholder="00.000.000/0000-00" />
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label="CPF">
+              <input style={inputStyle} value={dados.cpf || ""} onChange={(e) => set("cpf", e.target.value)} placeholder="000.000.000-00" />
+            </Field>
+            <Field label="Data de nascimento">
+              <input type="date" style={inputStyle} value={dados.data_nascimento || ""} onChange={(e) => set("data_nascimento", e.target.value)} />
+            </Field>
+          </>
+        )}
         <Field label="Endereço">
           <input style={inputStyle} value={dados.endereco || ""} onChange={(e) => set("endereco", e.target.value)} placeholder="Rua, número, bairro, cidade" />
         </Field>

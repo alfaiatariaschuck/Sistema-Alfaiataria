@@ -185,7 +185,7 @@ export function usePedidos() {
         if (errTec) throw errTec;
       }
       await recarregar();
-      return pedidoRow.id;
+      return { id: pedidoRow.id, clienteId };
     });
   }
 

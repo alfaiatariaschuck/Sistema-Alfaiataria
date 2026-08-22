@@ -25,6 +25,7 @@ import { usePedidos } from "./hooks/usePedidos";
 import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
 import { usePlanosAssinatura } from "./hooks/usePlanosAssinatura";
 import { useNomesClientes } from "./hooks/useNomesClientes";
+import { salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
 import { hojeISO } from "./lib/helpers";
 import Dashboard from "./pages/Dashboard";
@@ -133,14 +134,16 @@ export default function Shell() {
   }
 
   async function salvarNovoPedido(p) {
-    const id = await criarPedido(p);
+    const { id, clienteId } = await criarPedido(p);
+    await salvarDadosPessoaisCliente(clienteId, p.dadosPessoais);
     await recarregarNomesClientes();
     setTab("pedidos");
     setSelecionado(id);
   }
 
   async function salvarNovaPeca(p) {
-    const id = await criarPeca(p);
+    const { id, clienteId } = await criarPeca(p);
+    await salvarDadosPessoaisCliente(clienteId, p.dadosPessoais);
     await recarregarNomesClientes();
     irParaPeca(id);
   }
@@ -197,7 +200,7 @@ export default function Shell() {
   }
 
   async function emitirPedidoDoPlano(plano) {
-    const id = await criarPedido({
+    const { id } = await criarPedido({
       cliente: plano.cliente,
       vendedor: plano.vendedor,
       dataPedido: hojeISO(),

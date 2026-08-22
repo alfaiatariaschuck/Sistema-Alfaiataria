@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
+import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
@@ -9,6 +10,7 @@ import { pedidoVazio } from "../hooks/usePedidos";
 
 export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos }) {
   const [p, setP] = useState(pedidoVazio());
+  const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
 
@@ -75,7 +77,7 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
       if (p.assinatura) {
         await onSalvarPlano(p);
       } else {
-        await onSalvar(p);
+        await onSalvar({ ...p, dadosPessoais });
       }
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + "). Tente novamente.");
@@ -300,6 +302,10 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
           <Field label="Observações">
             <textarea style={{ ...inputStyle, minHeight: 70 }} value={p.observacoes} onChange={(e) => set("observacoes", e.target.value)} />
           </Field>
+        </Card>
+
+        <Card style={{ padding: 20 }} className="mb-5">
+          <CampoDadosPessoais value={dadosPessoais} onChange={setDadosPessoais} />
         </Card>
 
         {erro && (
