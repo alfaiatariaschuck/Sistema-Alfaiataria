@@ -31,6 +31,20 @@ export function diasAte(iso) {
   return Math.round((alvo - hoje) / 86400000);
 }
 
+export function diasEntre(isoInicio, isoFim) {
+  if (!isoInicio || !isoFim) return null;
+  const a = new Date(isoInicio + "T00:00:00");
+  const b = new Date(isoFim + "T00:00:00");
+  return Math.round((b - a) / 86400000);
+}
+
+export function mesesDesde(iso) {
+  if (!iso) return null;
+  const alvo = new Date(iso + "T00:00:00");
+  const hoje = new Date(hojeISO() + "T00:00:00");
+  return (hoje.getFullYear() - alvo.getFullYear()) * 12 + (hoje.getMonth() - alvo.getMonth());
+}
+
 export function brl(v) {
   return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }

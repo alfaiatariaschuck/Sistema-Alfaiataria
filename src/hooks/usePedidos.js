@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { DESC_LABELS, MEDIDA_LABELS } from "../lib/constants";
 import { encontrarOuCriarCliente } from "../lib/clientes";
+import { hojeISO } from "../lib/helpers";
 
 function medidasVazias() {
   return Object.fromEntries(MEDIDA_LABELS.map((l) => [l, ""]));
@@ -16,6 +17,7 @@ export function pedidoVazio() {
     vendedor: "",
     dataPedido: new Date().toISOString().slice(0, 10),
     previsaoEntrega: "",
+    dataEntrega: "",
     quantidade: 1,
     status: "Aguardando Produção",
     qtEntregue: 0,
@@ -45,6 +47,7 @@ function rowParaPedido(row) {
     vendedor: row.vendedor || "",
     dataPedido: row.data_pedido,
     previsaoEntrega: row.previsao_entrega || "",
+    dataEntrega: row.data_entrega || "",
     quantidade: row.quantidade,
     status: row.status,
     qtEntregue: row.qt_entregue,
@@ -82,6 +85,7 @@ const CAMPO_PARA_COLUNA = {
   vendedor: "vendedor",
   dataPedido: "data_pedido",
   previsaoEntrega: "previsao_entrega",
+  dataEntrega: "data_entrega",
   quantidade: "quantidade",
   status: "status",
   qtEntregue: "qt_entregue",
@@ -186,14 +190,19 @@ export function usePedidos() {
   }
 
   async function atualizarCampo(pedidoId, campo, valor) {
-    setPedidos((prev) => prev.map((p) => (p.id === pedidoId ? { ...p, [campo]: valor } : p)));
+    // Ao marcar como Entregue, grava a data automaticamente (se ainda não
+    // tiver uma) — é o que alimenta o cálculo de tempo médio de produção.
+    const pedidoAtual = pedidos.find((p) => p.id === pedidoId);
+    const marcarEntrega = campo === "status" && valor === "Entregue" && pedidoAtual && !pedidoAtual.dataEntrega;
+    const patch = marcarEntrega ? { [campo]: valor, dataEntrega: hojeISO() } : { [campo]: valor };
+
+    setPedidos((prev) => prev.map((p) => (p.id === pedidoId ? { ...p, ...patch } : p)));
     const coluna = CAMPO_PARA_COLUNA[campo];
     if (!coluna) return;
     await comIndicador(async () => {
-      const { error } = await supabase
-        .from("pedidos")
-        .update({ [coluna]: valor === "" ? null : valor })
-        .eq("id", pedidoId);
+      const update = { [coluna]: valor === "" ? null : valor };
+      if (marcarEntrega) update.data_entrega = patch.dataEntrega;
+      const { error } = await supabase.from("pedidos").update(update).eq("id", pedidoId);
       if (error) setErro(error.message);
     });
   }

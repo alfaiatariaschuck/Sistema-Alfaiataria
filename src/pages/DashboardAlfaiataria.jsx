@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, Gift, Phone, Scissors, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Gift, Phone, Scissors, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, fmtData } from "../lib/helpers";
+import { brl, diasAte, diasEntre, fmtData } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_ICARO = "telefone_icaro";
@@ -27,6 +27,11 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
   const totalGeral = pecas.reduce((s, p) => s + (parseFloat(p.valorTotal) || 0), 0);
   const pagoGeral = pecas.reduce((s, p) => s + (parseFloat(p.pago) || 0), 0);
   const totalVenda = pecas.filter(naoDoacao).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+  const margem = totalVenda - pecas.filter(naoDoacao).reduce((s, p) => s + (parseFloat(p.valorTotal) || 0), 0);
+  const entreguesComData = pecas.filter((p) => p.status === "Entregue" && p.dataEntrega);
+  const tempoMedio = entreguesComData.length
+    ? Math.round(entreguesComData.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / entreguesComData.length)
+    : null;
   const comPrevisao = [...abertas].filter((p) => p.previsaoEntrega).sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega));
   const atrasadas = comPrevisao.filter((p) => diasAte(p.previsaoEntrega) < 0);
   const proximas = comPrevisao.filter((p) => diasAte(p.previsaoEntrega) >= 0).slice(0, 6);
@@ -58,6 +63,8 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
         <StatCard label="Total devido (Icaro)" value={brl(totalGeral)} icon={Wallet} />
         <StatCard label="Pago ao Icaro" value={brl(pagoGeral)} icon={CheckCircle2} />
         <StatCard label="Saldo devedor (Icaro)" value={brl(totalGeral - pagoGeral)} icon={Clock} />
+        <StatCard label="Margem estimada" value={brl(margem)} icon={TrendingUp} />
+        <StatCard label="Tempo médio de produção" value={tempoMedio !== null ? `${tempoMedio}d` : "—"} icon={Timer} />
         <StatCard label="Peças atrasadas" value={atrasadas.length} icon={AlertTriangle} accent={atrasadas.length > 0 ? VERMELHO : undefined} />
         <StatCard label="Doações" value={doacoes.length} icon={Gift} />
       </div>

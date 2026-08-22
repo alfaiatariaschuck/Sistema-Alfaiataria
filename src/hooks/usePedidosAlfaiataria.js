@@ -9,6 +9,7 @@ export function pecaVazia() {
     tipoPeca: "Traje",
     dataPedido: hojeISO(),
     previsaoEntrega: "",
+    dataEntrega: "",
     status: "Aguardando Produção",
     valorTotal: "",
     pago: "",
@@ -37,6 +38,7 @@ function rowParaPeca(row) {
     tipoPeca: row.tipo_peca,
     dataPedido: row.data_pedido,
     previsaoEntrega: row.previsao_entrega || "",
+    dataEntrega: row.data_entrega || "",
     status: row.status,
     valorTotal: row.valor_total ?? "",
     pago: row.valor_pago ?? 0,
@@ -72,6 +74,7 @@ const CAMPO_PARA_COLUNA = {
   tipoPeca: "tipo_peca",
   dataPedido: "data_pedido",
   previsaoEntrega: "previsao_entrega",
+  dataEntrega: "data_entrega",
   status: "status",
   valorTotal: "valor_total",
   pago: "valor_pago",
@@ -171,12 +174,18 @@ export function usePedidosAlfaiataria() {
   }
 
   async function atualizarCampo(pecaId, campo, valor) {
-    setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, [campo]: valor } : p)));
+    const pecaAtual = pecas.find((p) => p.id === pecaId);
+    const marcarEntrega = campo === "status" && valor === "Entregue" && pecaAtual && !pecaAtual.dataEntrega;
+    const patch = marcarEntrega ? { [campo]: valor, dataEntrega: hojeISO() } : { [campo]: valor };
+
+    setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
     const coluna = CAMPO_PARA_COLUNA[campo];
     if (!coluna) return;
     const valorFinal = ["valorTotal", "pago", "valorVenda", "valorEntrada", "valorRestante"].includes(campo) ? (valor === "" ? null : Number(valor)) : valor;
     await comIndicador(async () => {
-      const { error } = await supabase.from("pedidos_alfaiataria").update({ [coluna]: valorFinal }).eq("id", pecaId);
+      const update = { [coluna]: valorFinal };
+      if (marcarEntrega) update.data_entrega = patch.dataEntrega;
+      const { error } = await supabase.from("pedidos_alfaiataria").update(update).eq("id", pecaId);
       if (error) setErro(error.message);
     });
   }

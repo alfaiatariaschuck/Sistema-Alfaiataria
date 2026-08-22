@@ -109,11 +109,17 @@ export default function Shell() {
     pedidos.forEach((p) => {
       const key = p.cliente.trim().toLowerCase();
       if (!key) return;
-      if (!map.has(key)) map.set(key, { nome: p.cliente.trim(), pedidos: [] });
+      if (!map.has(key)) map.set(key, { nome: p.cliente.trim(), pedidos: [], pecas: [] });
       map.get(key).pedidos.push(p);
     });
-    return [...map.values()].sort((a, b) => b.pedidos.length - a.pedidos.length);
-  }, [pedidos]);
+    pecas.forEach((p) => {
+      const key = (p.cliente || "").trim().toLowerCase();
+      if (!key) return;
+      if (!map.has(key)) map.set(key, { nome: p.cliente.trim(), pedidos: [], pecas: [] });
+      map.get(key).pecas.push(p);
+    });
+    return [...map.values()].sort((a, b) => b.pedidos.length + b.pecas.length - (a.pedidos.length + a.pecas.length));
+  }, [pedidos, pecas]);
 
   function irPara(id) {
     setTab("pedidos");
@@ -391,13 +397,13 @@ export default function Shell() {
           ) : (
             <>
               {tab === "dashboard" && <Dashboard pedidos={pedidos} irPara={irPara} />}
-              {tab === "novo" && <NovoPedido onSalvar={salvarNovoPedido} onSalvarPlano={salvarNovoPlano} nomesClientes={nomesClientes} />}
+              {tab === "novo" && <NovoPedido onSalvar={salvarNovoPedido} onSalvarPlano={salvarNovoPlano} nomesClientes={nomesClientes} pedidos={pedidos} />}
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
               {tab === "entregues-camisaria" && <Entregues pedidos={pedidos} pecas={pecas} tipo="camisaria" irPara={irPara} irParaPeca={irParaPeca} />}
               {tab === "entregues-alfaiataria" && !loadingPecas && (
                 <Entregues pedidos={pedidos} pecas={pecas} tipo="alfaiataria" irPara={irPara} irParaPeca={irParaPeca} />
               )}
-              {tab === "clientes" && <Clientes clientes={clientes} irParaPedido={irPara} />}
+              {tab === "clientes" && <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} />}
               {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} irParaPedido={irPara} />}
               {tab === "compras" && (
                 <Compras
@@ -410,7 +416,7 @@ export default function Shell() {
                 />
               )}
               {tab === "painel-alfaiataria" && !loadingPecas && <DashboardAlfaiataria pecas={pecas} irPara={irParaPeca} />}
-              {tab === "alfaiataria" && !loadingPecas && <PedidoAlfaiataria onCriar={salvarNovaPeca} nomesClientes={nomesClientes} />}
+              {tab === "alfaiataria" && !loadingPecas && <PedidoAlfaiataria onCriar={salvarNovaPeca} nomesClientes={nomesClientes} pecas={pecas} />}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
                 <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={setSelecionadaPeca} {...acoesPeca} />
               )}

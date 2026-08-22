@@ -7,7 +7,7 @@ import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, 
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
-export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes }) {
+export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos }) {
   const [p, setP] = useState(pedidoVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
@@ -45,8 +45,24 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes }) {
   }
 
   useEffect(() => {
-    const detectado = nomesClientes.some((n) => n.toLowerCase() === p.cliente.trim().toLowerCase());
+    const key = p.cliente.trim().toLowerCase();
+    const detectado = nomesClientes.some((n) => n.toLowerCase() === key);
     setP((prev) => ({ ...prev, recompra: detectado }));
+    if (!detectado || !pedidos) return;
+
+    const doCliente = pedidos.filter((ped) => ped.cliente.trim().toLowerCase() === key).sort((a, b) => (b.dataPedido || "").localeCompare(a.dataPedido || ""));
+    const ultimo = doCliente[0];
+    if (!ultimo) return;
+    setP((prev) => {
+      const medidasVazias = Object.values(prev.medidas).every((v) => v === "");
+      const descricaoVazia = Object.values(prev.descricao).every((v) => v === "");
+      if (!medidasVazias && !descricaoVazia) return prev;
+      return {
+        ...prev,
+        medidas: medidasVazias ? { ...prev.medidas, ...ultimo.medidas } : prev.medidas,
+        descricao: descricaoVazia ? { ...prev.descricao, ...ultimo.descricao } : prev.descricao,
+      };
+    });
     // eslint-disable-next-line
   }, [p.cliente]);
 
@@ -125,7 +141,8 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes }) {
                 </button>
               </div>
               <span style={{ fontSize: 10, color: TEXT_MUTED }}>
-                Detectado automaticamente pelo nome — toque pra corrigir se precisar. Vai marcado na ficha da Fabi.
+                Detectado automaticamente pelo nome — toque pra corrigir se precisar. Vai marcado na ficha da Fabi. Na
+                recompra as medidas e características do último pedido já vêm pré-preenchidas.
               </span>
             </Field>
             <Field label="Vendedor">

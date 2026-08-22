@@ -6,19 +6,25 @@ import { supabase } from "../supabaseClient";
 
 const CHAVE_FABI = "telefone_fabi";
 const CHAVE_ICARO = "telefone_icaro";
+const CHAVE_COMISSAO = "comissao_vendedor_pct";
+const CHAVE_SUMIDO = "cliente_sumido_meses";
 
 export default function Configuracoes() {
   const [telFabi, setTelFabi] = useState("");
   const [telIcaro, setTelIcaro] = useState("");
+  const [comissaoPct, setComissaoPct] = useState("10");
+  const [sumidoMeses, setSumidoMeses] = useState("6");
   const [carregando, setCarregando] = useState(true);
   const [salvo, setSalvo] = useState(null);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_FABI, CHAVE_ICARO]);
+      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_FABI, CHAVE_ICARO, CHAVE_COMISSAO, CHAVE_SUMIDO]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_FABI) setTelFabi(row.valor || "");
         if (row.chave === CHAVE_ICARO) setTelIcaro(row.valor || "");
+        if (row.chave === CHAVE_COMISSAO) setComissaoPct(row.valor || "10");
+        if (row.chave === CHAVE_SUMIDO) setSumidoMeses(row.valor || "6");
       });
       setCarregando(false);
     })();
@@ -29,6 +35,8 @@ export default function Configuracoes() {
     const { error } = await supabase.from("config").upsert([
       { chave: CHAVE_FABI, valor: telFabi },
       { chave: CHAVE_ICARO, valor: telIcaro },
+      { chave: CHAVE_COMISSAO, valor: comissaoPct },
+      { chave: CHAVE_SUMIDO, valor: sumidoMeses },
     ]);
     setSalvo(!error);
   }
@@ -53,6 +61,28 @@ export default function Configuracoes() {
             </Field>
             <Field label="WhatsApp do Icaro (alfaiataria)">
               <input style={inputStyle} placeholder="Ex: 51999997777" value={telIcaro} onChange={(e) => setTelIcaro(e.target.value)} />
+            </Field>
+          </div>
+        )}
+      </Card>
+
+      <Card style={{ padding: 20 }} className="mb-6">
+        <div className="fx-serif mb-1" style={{ fontSize: 16, fontWeight: 600 }}>
+          Gestão
+        </div>
+        <p style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 16 }}>
+          Percentual de comissão usado no Relatório (seção "Comissão por vendedor") e quantos meses sem comprar pra um
+          cliente aparecer marcado como "sumido" na aba Clientes.
+        </p>
+        {carregando ? (
+          <div style={{ color: TEXT_MUTED, fontSize: 13 }}>Carregando…</div>
+        ) : (
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+            <Field label="Comissão do vendedor (%)">
+              <input type="number" step="0.5" style={inputStyle} value={comissaoPct} onChange={(e) => setComissaoPct(e.target.value)} />
+            </Field>
+            <Field label="Cliente sumido após (meses sem comprar)">
+              <input type="number" step="1" style={inputStyle} value={sumidoMeses} onChange={(e) => setSumidoMeses(e.target.value)} />
             </Field>
           </div>
         )}

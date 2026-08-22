@@ -1,8 +1,8 @@
 import React from "react";
-import { AlertTriangle, CheckCircle2, Gift, PackageCheck, Shirt, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Gift, PackageCheck, Shirt, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, fmtData } from "../lib/helpers";
+import { brl, diasAte, diasEntre, fmtData } from "../lib/helpers";
 
 const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação");
 const VERMELHO = "#9C4A1E";
@@ -32,6 +32,21 @@ export default function Dashboard({ pedidos, irPara }) {
   const camisasEntregues = abertos.reduce((s, p) => s + (parseFloat(p.qtEntregue) || 0), 0);
   const saldoAEntregar = Math.max(0, camisasEmProducao - camisasEntregues);
 
+  // Margem = valor vendido - valor pago à Fabiana, somado em todos os pedidos
+  // (doação já fica de fora, ela não entra na venda nem no custo dela).
+  const naoDoacaoLista = pedidos.filter(naoDoacao);
+  const totalVendido = naoDoacaoLista.reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
+  const totalCustoFabi = naoDoacaoLista.reduce((s, p) => s + (parseFloat(p.pagoFabiana.valor) || 0), 0);
+  const margem = totalVendido - totalCustoFabi;
+
+  // Tempo médio de produção — só considera pedidos entregues que já têm
+  // data_entrega registrada (entregas antigas, antes desse campo existir,
+  // ficam de fora da conta).
+  const entreguesComData = pedidos.filter((p) => p.status === "Entregue" && p.dataEntrega);
+  const tempoMedio = entreguesComData.length
+    ? Math.round(entreguesComData.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / entreguesComData.length)
+    : null;
+
   return (
     <div>
       <PageTitle eyebrow="Visão geral — camisaria" title="Painel Camisaria" />
@@ -43,6 +58,8 @@ export default function Dashboard({ pedidos, irPara }) {
         <StatCard label="Pedidos atrasados" value={atrasados.length} icon={AlertTriangle} accent={atrasados.length > 0 ? VERMELHO : undefined} />
         <StatCard label="Pago à Fabiana" value={brl(somaFabPaga)} icon={CheckCircle2} />
         <StatCard label="Devido à Fabiana" value={brl(somaFab)} icon={Wallet} />
+        <StatCard label="Margem estimada" value={brl(margem)} icon={TrendingUp} />
+        <StatCard label="Tempo médio de produção" value={tempoMedio !== null ? `${tempoMedio}d` : "—"} icon={Timer} />
         <StatCard label="Doações" value={doacoes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0)} icon={Gift} />
       </div>
 

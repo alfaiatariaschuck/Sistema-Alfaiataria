@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
@@ -20,10 +20,31 @@ import {
 import { statusDividido, totalDividido } from "../lib/helpers";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
-export default function PedidoAlfaiataria({ onCriar, nomesClientes }) {
+export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
+
+  useEffect(() => {
+    const key = novaPeca.cliente.trim().toLowerCase();
+    const detectado = key && nomesClientes.some((n) => n.toLowerCase() === key);
+    if (!detectado || !pecas) return;
+
+    const daCliente = pecas.filter((p) => p.cliente.trim().toLowerCase() === key).sort((a, b) => (b.dataPedido || "").localeCompare(a.dataPedido || ""));
+    const ultima = daCliente[0];
+    if (!ultima) return;
+    setNovaPeca((prev) => {
+      const medidasVazias = Object.values(prev.medidas).every((sec) => Object.values(sec || {}).every((v) => v === ""));
+      const caracteristicasVazias = Object.values(prev.caracteristicas).every((v) => !v);
+      if (!medidasVazias && !caracteristicasVazias) return prev;
+      return {
+        ...prev,
+        medidas: medidasVazias ? { ...prev.medidas, ...ultima.medidas } : prev.medidas,
+        caracteristicas: caracteristicasVazias ? { ...prev.caracteristicas, ...ultima.caracteristicas } : prev.caracteristicas,
+      };
+    });
+    // eslint-disable-next-line
+  }, [novaPeca.cliente]);
 
   function setMedida(secKey, label, valor) {
     setNovaPeca((prev) => ({
