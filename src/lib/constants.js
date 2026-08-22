@@ -111,6 +111,17 @@ export const MEDIDA_REGRAS = {
 
 export const MEDIDA_LABELS = Object.keys(MEDIDA_REGRAS);
 
+// Nome exibido na tela/ficha/PDF — a chave interna (usada pra guardar a
+// medida e calcular a fórmula) continua "Ombro I"/"Ombro P" pra não
+// perder as medidas já salvas nos pedidos existentes.
+export const MEDIDA_ROTULO_EXIBICAO = {
+  "Ombro I": "Ombro a Ombro",
+  "Ombro P": "Ombro Parcial",
+};
+export function rotuloMedida(label) {
+  return MEDIDA_ROTULO_EXIBICAO[label] || label;
+}
+
 // Cada campo pode ter "opcoes" (vira seleção com opção de digitar "Outro") ou não (texto livre)
 export const DESC_CAMPOS = [
   { label: "Pesponto", opcoes: ["Fino", "Largo", "Sem"] },

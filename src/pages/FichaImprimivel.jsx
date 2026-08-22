@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { X, Printer } from "lucide-react";
-import { DESC_LABELS, MEDIDA_LABELS, inputStyle } from "../lib/constants";
+import { DESC_LABELS, MEDIDA_LABELS, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, fmtData, hojeISO } from "../lib/helpers";
 import { imprimirComNome } from "../lib/imprimirFicha";
 import { supabase } from "../supabaseClient";
@@ -35,7 +35,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
     MEDIDA_LABELS.forEach((label) => {
       const bruto = p.medidas[label];
       const fin = finalDaMedida(label, bruto);
-      if (fin !== null) linhas.push(`${label}: ${bruto} cm → ${fin} cm`);
+      if (fin !== null) linhas.push(`${rotuloMedida(label)}: ${bruto} cm → ${fin} cm`);
     });
     linhas.push(``);
     linhas.push(`*Características*`);
@@ -192,7 +192,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
               const fin = finalDaMedida(label, bruto);
               return (
                 <tr key={label} style={{ background: i % 2 === 0 ? "#F7F5EF" : "#FFF" }}>
-                  <td style={{ padding: "5px 8px", fontWeight: 600 }}>{label}</td>
+                  <td style={{ padding: "5px 8px", fontWeight: 600 }}>{rotuloMedida(label)}</td>
                   <td style={{ padding: "5px 8px" }}>{bruto !== "" && bruto != null ? `${bruto} cm` : "—"}</td>
                   <td style={{ padding: "5px 8px", fontWeight: 600 }}>{fin !== null ? `${fin} cm` : "—"}</td>
                 </tr>

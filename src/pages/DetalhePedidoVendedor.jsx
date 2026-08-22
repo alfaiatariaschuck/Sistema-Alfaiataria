@@ -3,7 +3,7 @@ import { Save } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
-import { BRASS, DESC_CAMPOS, FORMAS_PAGAMENTO, LINE, MEDIDA_LABELS, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS, DESC_CAMPOS, FORMAS_PAGAMENTO, LINE, MEDIDA_LABELS, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 
 // Edição restrita do próprio pedido do vendedor — mesmos campos da
@@ -97,7 +97,7 @@ export default function DetalhePedidoVendedor({ pedido: p, onVoltar, onCampo, on
           {MEDIDA_LABELS.map((label) => {
             const fin = finalDaMedida(label, p.medidas[label]);
             return (
-              <Field key={label} label={label}>
+              <Field key={label} label={rotuloMedida(label)}>
                 <input type="number" step="0.5" style={inputStyle} value={p.medidas[label]} onChange={(e) => setSub("medidas", label, e.target.value)} />
                 {fin !== null && (
                   <span className="fx-mono" style={{ fontSize: 11, color: BRASS }}>

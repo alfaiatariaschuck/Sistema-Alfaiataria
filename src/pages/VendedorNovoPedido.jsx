@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
-import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
@@ -188,7 +188,7 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
             {MEDIDA_LABELS.map((label) => {
               const fin = finalDaMedida(label, p.medidas[label]);
               return (
-                <Field key={label} label={label}>
+                <Field key={label} label={rotuloMedida(label)}>
                   <input
                     type="number"
                     step="0.5"

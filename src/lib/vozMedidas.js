@@ -5,8 +5,8 @@
 
 const ALIASES = [
   { label: "Colarinho", ditos: ["colarinho"] },
-  { label: "Ombro I", ditos: ["ombro i", "ombro grande"] },
-  { label: "Ombro P", ditos: ["ombro p", "ombro pequeno"] },
+  { label: "Ombro I", ditos: ["ombro i", "ombro grande", "ombro a ombro"] },
+  { label: "Ombro P", ditos: ["ombro p", "ombro pequeno", "ombro parcial"] },
   { label: "Manga", ditos: ["manga"] },
   { label: "Bíceps", ditos: ["biceps", "bíceps"] },
   { label: "Punho D", ditos: ["punho direito", "punho d"] },

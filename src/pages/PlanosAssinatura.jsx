@@ -3,7 +3,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, Clock, PackageCheck, Search, Send
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
-import { BRASS, BRASS_SOFT, DESC_CAMPOS, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS, BRASS_SOFT, DESC_CAMPOS, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { brl, finalDaMedida, fmtData, statusDividido, totalDividido } from "../lib/helpers";
 
 export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescricao, onAddTecido, onTecido, onRemover, onEmitir }) {
@@ -188,7 +188,7 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
                     {MEDIDA_LABELS.map((label) => {
                       const fin = finalDaMedida(label, pl.medidas[label]);
                       return (
-                        <Field key={label} label={label}>
+                        <Field key={label} label={rotuloMedida(label)}>
                           <input type="number" step="0.5" style={inputStyle} value={pl.medidas[label]} onChange={(e) => onMedida(pl.id, label, e.target.value)} />
                           {fin !== null && (
                             <span className="fx-mono" style={{ fontSize: 11, color: BRASS }}>
