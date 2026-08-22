@@ -4,7 +4,7 @@ import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
-import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
+import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import FichaImprimivel from "./FichaImprimivel";
 
@@ -279,11 +279,17 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
         <div style={{ fontSize: 11, color: TEXT_MUTED }} className="mb-3">
           "Fornecedor" é uso interno seu — nunca aparece na ficha impressa pra Fabi. Marque "comprado" quando fechar a compra.
         </div>
+        <datalist id="lista-fornecedores">
+          {FORNECEDORES_TECIDO.map((f) => (
+            <option key={f} value={f} />
+          ))}
+        </datalist>
         {p.tecidos.map((t) => (
           <div key={t.id} className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 pb-2 items-center" style={{ borderBottom: `1px solid ${LINE}` }}>
             <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(p.id, t.id, "codigo", e.target.value)} />
             <input
               style={{ ...inputStyle, background: BRASS_SOFT }}
+              list="lista-fornecedores"
               placeholder="Fornecedor (interno)"
               value={t.fornecedor || ""}
               onChange={(e) => onTecido(p.id, t.id, "fornecedor", e.target.value)}

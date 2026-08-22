@@ -3,7 +3,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, Clock, PackageCheck, Search, Send
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
-import { BRASS, BRASS_SOFT, DESC_CAMPOS, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
+import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { brl, finalDaMedida, fmtData, statusDividido, totalDividido } from "../lib/helpers";
 
 export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescricao, onAddTecido, onTecido, onRemover, onEmitir }) {
@@ -222,11 +222,17 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
                       Nenhum tecido lançado ainda.
                     </div>
                   )}
+                  <datalist id="lista-fornecedores">
+                    {FORNECEDORES_TECIDO.map((f) => (
+                      <option key={f} value={f} />
+                    ))}
+                  </datalist>
                   {(pl.tecidos || []).map((t, i) => (
                     <div key={i} className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 pb-2 items-center" style={{ borderBottom: `1px solid ${LINE}` }}>
                       <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(pl.id, i, "codigo", e.target.value)} />
                       <input
                         style={{ ...inputStyle, background: BRASS_SOFT }}
+                        list="lista-fornecedores"
                         placeholder="Fornecedor (interno)"
                         value={t.fornecedor || ""}
                         onChange={(e) => onTecido(pl.id, i, "fornecedor", e.target.value)}

@@ -27,6 +27,8 @@ export const PAG_STYLE = {
 
 export const FORMAS_PAGAMENTO = ["Cartão de Crédito", "PIX", "Dinheiro", "Transferência", "Boleto"];
 
+export const FORNECEDORES_TECIDO = ["Imperiale", "Wtext", "LS Tecidos", "Markbel", "Erlu", "Dab Dab", "Cataguases"];
+
 export const TIPOS_PECA = ["Traje", "Costume", "Casaco", "Bomber", "Calça", "Colete", "Blazer", "Outro"];
 
 // Medidas de alfaiataria, agrupadas por seção (evita colisão de campos
@@ -117,6 +119,11 @@ export const MEDIDA_LABELS = Object.keys(MEDIDA_REGRAS);
 export const MEDIDA_ROTULO_EXIBICAO = {
   "Ombro I": "Ombro a Ombro",
   "Ombro P": "Ombro Parcial",
+  "Punho D": "Punho Direito",
+  "Punho E": "Punho Esquerdo",
+  "Compr.": "Comprimento",
+  "C. alta": "Cintura Alta",
+  "C. baixa": "Cintura Baixa",
 };
 export function rotuloMedida(label) {
   return MEDIDA_ROTULO_EXIBICAO[label] || label;

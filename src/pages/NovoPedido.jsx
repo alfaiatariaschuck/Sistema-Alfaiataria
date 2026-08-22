@@ -3,7 +3,7 @@ import { Card, Field, PageTitle } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
-import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
+import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
@@ -253,11 +253,17 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes }) {
           <div style={{ fontSize: 11, color: TEXT_MUTED }} className="mb-3">
             O campo "Fornecedor" é só de uso interno — nunca aparece na ficha impressa pra Fabi.
           </div>
+          <datalist id="lista-fornecedores">
+            {FORNECEDORES_TECIDO.map((f) => (
+              <option key={f} value={f} />
+            ))}
+          </datalist>
           {p.tecidos.map((t, i) => (
             <div key={i} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
               <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => setTecido(i, "codigo", e.target.value)} />
               <input
                 style={{ ...inputStyle, background: BRASS_SOFT }}
+                list="lista-fornecedores"
                 placeholder="Fornecedor (interno)"
                 value={t.fornecedor}
                 onChange={(e) => setTecido(i, "fornecedor", e.target.value)}

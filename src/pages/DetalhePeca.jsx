@@ -8,6 +8,7 @@ import {
   BRASS_SOFT,
   CARACTERISTICAS_TRAJE,
   FORMAS_PAGAMENTO,
+  FORNECEDORES_TECIDO,
   LINE,
   MEDIDAS_ALFAIATARIA,
   PECA_SECOES,
@@ -245,12 +246,18 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
         <div style={{ fontSize: 11, color: TEXT_MUTED }} className="mb-3">
           "Fornecedor" é uso interno seu — nunca aparece na mensagem enviada pro Icaro. Marque "comprado" quando fechar a compra.
         </div>
+        <datalist id="lista-fornecedores">
+          {FORNECEDORES_TECIDO.map((f) => (
+            <option key={f} value={f} />
+          ))}
+        </datalist>
         {p.tecidos.length === 0 && <div style={{ fontSize: 12, color: TEXT_MUTED }}>Nenhum tecido lançado ainda.</div>}
         {p.tecidos.map((t) => (
           <div key={t.id} className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 pb-2 items-center" style={{ borderBottom: `1px solid ${LINE}` }}>
             <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(p.id, t.id, "codigo", e.target.value)} />
             <input
               style={{ ...inputStyle, background: BRASS_SOFT }}
+              list="lista-fornecedores"
               placeholder="Fornecedor (interno)"
               value={t.fornecedor || ""}
               onChange={(e) => onTecido(p.id, t.id, "fornecedor", e.target.value)}

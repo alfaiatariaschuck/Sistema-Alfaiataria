@@ -7,6 +7,7 @@ import {
   BRASS_SOFT,
   CARACTERISTICAS_TRAJE,
   FORMAS_PAGAMENTO,
+  FORNECEDORES_TECIDO,
   INK,
   LINE,
   MEDIDAS_ALFAIATARIA,
@@ -235,11 +236,17 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes }) {
           <div style={{ fontSize: 11, color: TEXT_MUTED }} className="mb-3">
             O campo "Fornecedor" é só de uso interno — nunca aparece na mensagem enviada pro Icaro.
           </div>
+          <datalist id="lista-fornecedores">
+            {FORNECEDORES_TECIDO.map((f) => (
+              <option key={f} value={f} />
+            ))}
+          </datalist>
           {novaPeca.tecidos.map((t, i) => (
             <div key={i} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
               <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => setTecido(i, "codigo", e.target.value)} />
               <input
                 style={{ ...inputStyle, background: BRASS_SOFT }}
+                list="lista-fornecedores"
                 placeholder="Fornecedor (interno)"
                 value={t.fornecedor}
                 onChange={(e) => setTecido(i, "fornecedor", e.target.value)}
