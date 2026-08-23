@@ -72,6 +72,7 @@ function rowParaPedido(row) {
         qtd: t.qtd ?? 1,
         numero: t.numero || "",
         fornecedor: t.fornecedor || "",
+        metragem: t.metragem || "",
         comprado: !!t.comprado,
       })),
     observacoes: row.observacoes || "",
