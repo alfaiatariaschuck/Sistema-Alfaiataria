@@ -34,23 +34,6 @@ const STATUS_PAGAMENTO_STYLE = {
   Pendente: { bg: "#F6E3D9", fg: "#9C4A1E" },
 };
 
-// Mensagem pronta pra avisar o cliente do próximo passo, conforme o
-// status da peça — mesmo esquema de sempre (abre o WhatsApp com o texto
-// escrito, você clica em enviar; sem custo, sem envio automático).
-const MENSAGENS_STATUS = {
-  "Aguardando Produção": (p) =>
-    `Oi ${p.cliente}! Recebemos seu pedido${p.tipoPeca ? ` de ${p.tipoPeca.toLowerCase()}` : ""} 🧵 Já entrou na fila de produção${
-      p.previsaoEntrega ? `, previsão de entrega ${fmtData(p.previsaoEntrega)}` : ""
-    }.`,
-  "Em Produção": (p) =>
-    `Oi ${p.cliente}! Sua${p.tipoPeca ? ` ${p.tipoPeca.toLowerCase()}` : " peça"} já está em produção 🧵${
-      p.previsaoEntrega ? ` Previsão de entrega: ${fmtData(p.previsaoEntrega)}.` : ""
-    }`,
-  Prova: (p) => `Oi ${p.cliente}! Chegou a hora da prova — vamos combinar um horário pra você passar aqui?`,
-  Pronto: (p) => `Oi ${p.cliente}! Sua${p.tipoPeca ? ` ${p.tipoPeca.toLowerCase()}` : " peça"} já está pronta — pode vir buscar quando quiser. 😊`,
-  "Entregue Parcial": (p) => `Oi ${p.cliente}! Parte do seu pedido já foi entregue — o restante está a caminho, te aviso assim que ficar pronto.`,
-};
-
 export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCaracteristica, onRemover, onAddTecido, onTecido }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -146,9 +129,13 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
               ))}
             </select>
           </Field>
-          {MENSAGENS_STATUS[p.status] && (
+          {p.status === "Pronto" && (
             <div className="mb-4">
-              <AvisarClienteWhatsapp clienteId={p.clienteId} nomeCliente={p.cliente} mensagem={MENSAGENS_STATUS[p.status](p)} />
+              <AvisarClienteWhatsapp
+                clienteId={p.clienteId}
+                nomeCliente={p.cliente}
+                mensagem={`Oi ${p.cliente}! Sua ${p.tipoPeca?.toLowerCase() || "peça"} já está pronta — pode vir buscar quando quiser. 😊`}
+              />
             </div>
           )}
           <Field label="Data do pedido">
