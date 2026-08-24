@@ -4,6 +4,7 @@ import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
+import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import FichaImprimivel from "./FichaImprimivel";
@@ -117,6 +118,15 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               ))}
             </select>
           </Field>
+          {p.status === "Pronto" && (
+            <div className="mb-4">
+              <AvisarClienteWhatsapp
+                clienteId={p.clienteId}
+                nomeCliente={p.cliente}
+                mensagem={`Oi ${p.cliente}! Seu pedido de camisa já está pronto — pode vir buscar quando quiser. 😊`}
+              />
+            </div>
+          )}
           <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <Field label="Data do pedido">
               <input type="date" style={inputStyle} value={p.dataPedido} onChange={(e) => set("dataPedido", e.target.value)} />

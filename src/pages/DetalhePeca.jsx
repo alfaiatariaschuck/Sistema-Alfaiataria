@@ -3,6 +3,7 @@ import { CheckCircle2, Clock, Printer, Save, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
+import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import {
   BRASS,
   BRASS_SOFT,
@@ -128,6 +129,15 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
               ))}
             </select>
           </Field>
+          {p.status === "Pronto" && (
+            <div className="mb-4">
+              <AvisarClienteWhatsapp
+                clienteId={p.clienteId}
+                nomeCliente={p.cliente}
+                mensagem={`Oi ${p.cliente}! Sua ${p.tipoPeca?.toLowerCase() || "peça"} já está pronta — pode vir buscar quando quiser. 😊`}
+              />
+            </div>
+          )}
           <Field label="Data do pedido">
             <input type="date" style={inputStyle} value={p.dataPedido} onChange={(e) => set("dataPedido", e.target.value)} />
           </Field>
