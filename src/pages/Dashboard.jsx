@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Gift, PackageCheck, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
+import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, diasEntre, fmtData, hojeISO } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
@@ -78,6 +79,8 @@ export default function Dashboard({ pedidos, irPara }) {
         <StatCard label="Tempo médio de produção" value={tempoMedio !== null ? `${tempoMedio}d` : "—"} icon={Timer} />
         <StatCard label="Doações" value={doacoes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0)} icon={Gift} />
       </div>
+
+      <AniversariantesDoMes />
 
       {meta > 0 && (
         <Card style={{ padding: 20 }} className="mb-6">
