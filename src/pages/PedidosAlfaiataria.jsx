@@ -3,7 +3,7 @@ import { ChevronRight, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
 import { BRASS_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { fmtData } from "../lib/helpers";
+import { diasAte, fmtData } from "../lib/helpers";
 import DetalhePeca from "./DetalhePeca";
 
 function statusPagamentoDe(p) {
@@ -15,6 +15,8 @@ function statusPagamentoDe(p) {
 }
 
 const STATUS_ATIVOS = STATUS.filter((s) => s !== "Entregue");
+const VERMELHO = "#9C4A1E";
+const DIAS_LIMITE = 45;
 
 export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada, ...acoes }) {
   const [busca, setBusca] = useState("");
@@ -69,6 +71,8 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
         )}
         {filtradas.map((p, i) => {
           const naoEnviado = !p.enviadoIcaro;
+          const diasAberto = p.dataPedido ? -diasAte(p.dataPedido) : 0;
+          const atrasada = diasAberto > DIAS_LIMITE;
           return (
             <button
               key={p.id}
@@ -91,6 +95,10 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <Pill
+                  text={`${diasAberto}d em produção`}
+                  style={{ bg: atrasada ? "#F6E3D9" : "#EDEAE0", fg: atrasada ? VERMELHO : TEXT_MUTED }}
+                />
                 <Pill text={p.status} style={STATUS_STYLE[p.status]} />
                 <ChevronRight size={16} color={TEXT_MUTED} />
               </div>

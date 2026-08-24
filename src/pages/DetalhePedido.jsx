@@ -6,8 +6,25 @@ import { CampoPagamento } from "../components/CampoPagamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
+import { finalDaMedida, fmtData, statusDividido, totalDividido } from "../lib/helpers";
 import FichaImprimivel from "./FichaImprimivel";
+
+// Mensagem pronta pra avisar o cliente do próximo passo, conforme o
+// status do pedido — o mesmo esquema de sempre (abre o WhatsApp com o
+// texto escrito, você clica em enviar; sem custo, sem envio automático).
+const MENSAGENS_STATUS = {
+  "Aguardando Produção": (p) =>
+    `Oi ${p.cliente}! Recebemos seu pedido de camisa 🧵 Já entrou na fila de produção${
+      p.previsaoEntrega ? `, previsão de entrega ${fmtData(p.previsaoEntrega)}` : ""
+    }.`,
+  "Em Produção": (p) =>
+    `Oi ${p.cliente}! Seu pedido de camisa já está em produção 🧵${
+      p.previsaoEntrega ? ` Previsão de entrega: ${fmtData(p.previsaoEntrega)}.` : ""
+    }`,
+  Prova: (p) => `Oi ${p.cliente}! Chegou a hora da prova da sua camisa — vamos combinar um horário pra você passar aqui?`,
+  Pronto: (p) => `Oi ${p.cliente}! Seu pedido de camisa já está pronto — pode vir buscar quando quiser. 😊`,
+  "Entregue Parcial": (p) => `Oi ${p.cliente}! Parte do seu pedido já foi entregue — o restante está a caminho, te aviso assim que ficar pronto.`,
+};
 
 export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
@@ -118,13 +135,9 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               ))}
             </select>
           </Field>
-          {p.status === "Pronto" && (
+          {MENSAGENS_STATUS[p.status] && (
             <div className="mb-4">
-              <AvisarClienteWhatsapp
-                clienteId={p.clienteId}
-                nomeCliente={p.cliente}
-                mensagem={`Oi ${p.cliente}! Seu pedido de camisa já está pronto — pode vir buscar quando quiser. 😊`}
-              />
+              <AvisarClienteWhatsapp clienteId={p.clienteId} nomeCliente={p.cliente} mensagem={MENSAGENS_STATUS[p.status](p)} />
             </div>
           )}
           <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
