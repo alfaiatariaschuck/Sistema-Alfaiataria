@@ -75,13 +75,24 @@ export default function ContasAPagar({
     });
   }
 
+  // Só entra na conta (e no filtro de 14 dias) quem tem previsão de entrega
+  // real — sem isso não dá pra saber quando o dinheiro entra, então fica só
+  // listado à parte, visível, mas fora do total (pra não distorcer o "falta
+  // faturar" com algo sem data pra acontecer).
   const receberPendente = [
     ...pedidos
       .filter((p) => parseFloat(p.aReceber.valor) > 0)
       .map((p) => {
         const valor = parseFloat(p.aReceber.valor) || 0;
         const recebido = recebidoEfetivo(p, valor, p.aReceber.statusPagamento);
-        return { id: p.id, tipo: "camisa", nome: p.cliente, pendente: Math.max(0, valor - recebido), dataRef: p.previsaoEntrega || p.dataPedido };
+        return {
+          id: p.id,
+          tipo: "camisa",
+          nome: p.cliente,
+          pendente: Math.max(0, valor - recebido),
+          temPrevisao: !!p.previsaoEntrega,
+          dataRef: p.previsaoEntrega || p.dataPedido,
+        };
       })
       .filter((x) => x.pendente > 0),
     ...(pecas || [])
@@ -89,14 +100,23 @@ export default function ContasAPagar({
       .map((p) => {
         const valor = parseFloat(p.valorVenda) || 0;
         const recebido = recebidoEfetivo(p, valor, p.statusPagamentoVenda || "Pendente");
-        return { id: p.id, tipo: "peca", nome: p.cliente, pendente: Math.max(0, valor - recebido), dataRef: p.previsaoEntrega || p.dataPedido };
+        return {
+          id: p.id,
+          tipo: "peca",
+          nome: p.cliente,
+          pendente: Math.max(0, valor - recebido),
+          temPrevisao: !!p.previsaoEntrega,
+          dataRef: p.previsaoEntrega || p.dataPedido,
+        };
       })
       .filter((x) => x.pendente > 0),
   ];
+  const receberComPrevisao = receberPendente.filter((p) => p.temPrevisao);
+  const receberSemPrevisao = receberPendente.filter((p) => !p.temPrevisao);
 
   const despesasPendentes = despesas.filter((d) => d.status !== "Pago");
   const despesasJanela = despesasPendentes.filter((d) => dentroDaJanela(d.vencimento)).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
-  const receberJanela = receberPendente.filter((p) => dentroDaJanela(p.dataRef));
+  const receberJanela = receberComPrevisao.filter((p) => dentroDaJanela(p.dataRef));
   const previsoesJanela = previsoes.filter((p) => dentroDaJanela(p.dataEsperada));
 
   const totalDespesas = despesasJanela.reduce((s, d) => s + Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0)), 0);
@@ -419,6 +439,27 @@ export default function ContasAPagar({
                     </button>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+
+          {receberSemPrevisao.length > 0 && (
+            <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, marginBottom: 6 }}>
+                SEM PREVISÃO DE ENTREGA (não contabilizado acima)
+              </div>
+              {receberSemPrevisao.map((p) => (
+                <button
+                  key={p.tipo + "-" + p.id}
+                  onClick={() => abrir(p)}
+                  className="w-full flex items-center justify-between py-1.5"
+                  style={{ textAlign: "left" }}
+                >
+                  <span style={{ fontSize: 12 }}>{p.nome}</span>
+                  <span className="fx-mono" style={{ fontSize: 12, fontWeight: 600, color: TEXT_MUTED }}>
+                    {brl(p.pendente)}
+                  </span>
+                </button>
               ))}
             </div>
           )}
