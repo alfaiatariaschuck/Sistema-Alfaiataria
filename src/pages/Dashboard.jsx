@@ -68,8 +68,9 @@ export default function Dashboard({ pedidos, irPara }) {
   // Tempo médio de produção — só considera pedidos entregues que já têm
   // data_entrega registrada (entregas antigas, antes desse campo existir,
   // ficam de fora da conta). Separado por tipo de cliente (novo vs recompra)
-  // porque o prazo real costuma variar bastante entre os dois.
-  const entreguesComData = pedidos.filter((p) => p.status === "Entregue" && p.dataEntrega);
+  // porque o prazo real costuma variar bastante entre os dois. Emissões de
+  // Plano de Assinatura ficam de fora — o ritmo delas é outro e distorceria a média.
+  const entreguesComData = pedidos.filter((p) => p.status === "Entregue" && p.dataEntrega && !p.assinatura);
   function mediaDias(lista) {
     return lista.length ? Math.round(lista.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / lista.length) : null;
   }
