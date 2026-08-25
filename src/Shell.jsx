@@ -12,6 +12,7 @@ import {
   PackageCheck,
   PieChart,
   Plus,
+  Receipt,
   Ruler,
   Scissors,
   Settings,
@@ -26,6 +27,8 @@ import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
 import { usePlanosAssinatura } from "./hooks/usePlanosAssinatura";
 import { useNomesClientes } from "./hooks/useNomesClientes";
 import { useEstoqueTecidos } from "./hooks/useEstoqueTecidos";
+import { useDespesas } from "./hooks/useDespesas";
+import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
 import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
 import { hojeISO } from "./lib/helpers";
@@ -46,6 +49,7 @@ import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
+import ContasAPagar from "./pages/ContasAPagar";
 import BuscaGlobal from "./components/BuscaGlobal";
 
 const NAV = [
@@ -63,6 +67,7 @@ const NAV = [
   { id: "consolidado", label: "Consolidado", icon: Layers, primary: false },
   { id: "clientes", label: "Clientes", icon: Users, primary: false },
   { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false },
+  { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false },
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false },
   { id: "relatorio-alfaiataria", label: "Relatório Alfaiataria", icon: FileText, primary: false },
   { id: "backup", label: "Backup", icon: ShieldCheck, primary: false },
@@ -109,6 +114,8 @@ export default function Shell() {
 
   const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
   const { estoque: estoqueTecidos, movimentos: movimentosEstoque, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
+  const { despesas, criarDespesa, marcarPaga, removerDespesa } = useDespesas();
+  const { previsoes, criarPrevisao, removerPrevisao } = usePrevisoesVenda();
 
   const clientes = useMemo(() => {
     const map = new Map();
@@ -456,6 +463,21 @@ export default function Shell() {
                 <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} onCadastrar={cadastrarClienteManual} />
               )}
               {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} pecas={pecas} irParaPedido={irPara} irParaPeca={irParaPeca} />}
+              {tab === "contas-a-pagar" && (
+                <ContasAPagar
+                  pedidos={pedidos}
+                  pecas={pecas}
+                  despesas={despesas}
+                  previsoes={previsoes}
+                  onCriarDespesa={criarDespesa}
+                  onMarcarPaga={marcarPaga}
+                  onRemoverDespesa={removerDespesa}
+                  onCriarPrevisao={criarPrevisao}
+                  onRemoverPrevisao={removerPrevisao}
+                  irParaPedido={irPara}
+                  irParaPeca={irParaPeca}
+                />
+              )}
               {tab === "compras" && (
                 <Compras
                   pedidos={pedidos}
