@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Gift, PackageCheck, Shirt, Target, Timer, 
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, diasEntre, fmtData, hojeISO } from "../lib/helpers";
+import { brl, diasAte, diasEntre, fmtData, hojeISO, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação");
@@ -24,8 +24,23 @@ export default function Dashboard({ pedidos, irPara }) {
   const naoDoacao = (p) => p.status !== "Doação";
   const doacoes = pedidos.filter((p) => p.status === "Doação");
   const abertos = pedidos.filter((p) => p.status !== "Entregue" && naoDoacao(p));
-  const fabPendente = pedidos.filter((p) => p.pagoFabiana.statusPagamento === "Pendente" && parseFloat(p.pagoFabiana.valor) > 0);
-  const fabPaga = pedidos.filter((p) => p.pagoFabiana.statusPagamento === "Pago" && parseFloat(p.pagoFabiana.valor) > 0);
+
+  // pagoFabiana.statusPagamento só vira "Pago" quando as DUAS partes de um
+  // pagamento dividido estão pagas — por isso usamos valorRecebidoEfetivo
+  // pra somar o que já foi efetivamente pago mesmo num pedido parcial.
+  function pagoFabianaEfetivo(p) {
+    return valorRecebidoEfetivo({
+      pagamentoDividido: p.pagamentoFabianaDividido,
+      valorEntrada: p.valorEntradaFabiana,
+      statusEntrada: p.statusEntradaFabiana,
+      valorRestante: p.valorRestanteFabiana,
+      statusRestante: p.statusRestanteFabiana,
+      valorTotal: p.pagoFabiana.valor,
+      statusTotal: p.pagoFabiana.statusPagamento,
+      labelPago: "Pago",
+    });
+  }
+  const comCustoFabi = pedidos.filter((p) => parseFloat(p.pagoFabiana.valor) > 0);
 
   // Atrasado = pedido aberto há 45+ dias desde a data do pedido — não depende
   // da previsão de entrega estar preenchida (nem sempre está).
@@ -37,8 +52,8 @@ export default function Dashboard({ pedidos, irPara }) {
     .sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega))
     .slice(0, 6);
 
-  const somaFab = fabPendente.reduce((s, p) => s + (parseFloat(p.pagoFabiana.valor) || 0), 0);
-  const somaFabPaga = fabPaga.reduce((s, p) => s + (parseFloat(p.pagoFabiana.valor) || 0), 0);
+  const somaFabPaga = comCustoFabi.reduce((s, p) => s + pagoFabianaEfetivo(p), 0);
+  const somaFab = comCustoFabi.reduce((s, p) => s + ((parseFloat(p.pagoFabiana.valor) || 0) - pagoFabianaEfetivo(p)), 0);
   const camisasEmProducao = abertos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
   const camisasEntregues = abertos.reduce((s, p) => s + (parseFloat(p.qtEntregue) || 0), 0);
   const saldoAEntregar = Math.max(0, camisasEmProducao - camisasEntregues);

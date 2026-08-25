@@ -46,6 +46,18 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
       return next;
     });
   }
+  function setPagamentoFabiana(patch) {
+    setP((prev) => {
+      const next = { ...prev, ...patch };
+      if (next.pagamentoFabianaDividido) {
+        next.pagoFabiana = {
+          valor: totalDividido(next.valorEntradaFabiana, next.valorRestanteFabiana),
+          statusPagamento: statusDividido(next.statusEntradaFabiana, next.statusRestanteFabiana, "Pago"),
+        };
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     const key = p.cliente.trim().toLowerCase();
@@ -168,15 +180,36 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
                 ))}
               </select>
             </Field>
-            <Field label="Valor Fabiana (R$)">
-              <input
-                type="number"
-                step="0.01"
-                style={inputStyle}
-                value={p.pagoFabiana.valor}
-                onChange={(e) => set("pagoFabiana", { ...p.pagoFabiana, valor: e.target.value })}
-              />
-            </Field>
+          </div>
+
+          <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${LINE}` }}>
+            <div className="fx-serif mb-2" style={{ fontSize: 14, fontWeight: 600 }}>
+              Valor a pagar à Fabiana
+            </div>
+            <CampoPagamento
+              labelValor="Valor Fabiana (R$)"
+              labelPago="Pago"
+              valor={p.pagoFabiana.valor}
+              statusPagamento={p.pagoFabiana.statusPagamento}
+              onValor={(v) => set("pagoFabiana", { ...p.pagoFabiana, valor: v })}
+              onStatus={(v) => set("pagoFabiana", { ...p.pagoFabiana, statusPagamento: v })}
+              dividido={p.pagamentoFabianaDividido}
+              onToggleDividido={(v) => setPagamentoFabiana({ pagamentoFabianaDividido: v })}
+              labelDividido="Pagamento dividido (ex: uma camisa de cada vez)"
+              valorEntrada={p.valorEntradaFabiana}
+              statusEntrada={p.statusEntradaFabiana}
+              onValorEntrada={(v) => setPagamentoFabiana({ valorEntradaFabiana: v })}
+              onStatusEntrada={(v) => setPagamentoFabiana({ statusEntradaFabiana: v })}
+              labelEntrada="1ª parte (R$)"
+              labelStatusEntrada="Status da 1ª parte"
+              valorRestante={p.valorRestanteFabiana}
+              statusRestante={p.statusRestanteFabiana}
+              onValorRestante={(v) => setPagamentoFabiana({ valorRestanteFabiana: v })}
+              onStatusRestante={(v) => setPagamentoFabiana({ statusRestanteFabiana: v })}
+              labelRestante="2ª parte (R$)"
+              labelStatusRestante="Status da 2ª parte"
+              labelFalta="Falta pagar"
+            />
           </div>
 
           <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${LINE}` }}>

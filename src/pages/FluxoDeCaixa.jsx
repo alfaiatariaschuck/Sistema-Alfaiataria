@@ -42,9 +42,31 @@ export default function FluxoDeCaixa({ pedidos, pecas, irParaPedido, irParaPeca 
     .map((p) => linhaReceber(p, "peca", p.valorVenda, p.statusPagamentoVenda || "Pendente"));
   const receber = [...receberCamisa, ...receberPeca];
 
-  const pagarFab = pedidos
-    .filter((p) => parseFloat(p.pagoFabiana.valor) > 0)
-    .map((p) => ({ id: p.id, tipo: "camisa", cliente: p.cliente, valor: parseFloat(p.pagoFabiana.valor), pendente: p.pagoFabiana.statusPagamento !== "Pago" ? parseFloat(p.pagoFabiana.valor) : 0, status: p.pagoFabiana.statusPagamento, dataRef: p.previsaoEntrega || p.dataPedido }));
+  function linhaPagarFab(p) {
+    const valor = parseFloat(p.pagoFabiana.valor) || 0;
+    const pago = valorRecebidoEfetivo({
+      pagamentoDividido: p.pagamentoFabianaDividido,
+      valorEntrada: p.valorEntradaFabiana,
+      statusEntrada: p.statusEntradaFabiana,
+      valorRestante: p.valorRestanteFabiana,
+      statusRestante: p.statusRestanteFabiana,
+      valorTotal: valor,
+      statusTotal: p.pagoFabiana.statusPagamento,
+      labelPago: "Pago",
+    });
+    const pendente = Math.max(0, valor - pago);
+    return {
+      id: p.id,
+      tipo: "camisa",
+      cliente: p.cliente,
+      valor,
+      pago,
+      pendente,
+      status: pendente === 0 ? "Pago" : pago > 0 ? "Parcial" : "Pendente",
+      dataRef: p.previsaoEntrega || p.dataPedido,
+    };
+  }
+  const pagarFab = pedidos.filter((p) => parseFloat(p.pagoFabiana.valor) > 0).map(linhaPagarFab);
   const pagarIcaro = (pecas || [])
     .filter((p) => (parseFloat(p.valorTotal) || 0) > 0)
     .map((p) => ({
@@ -172,7 +194,7 @@ export default function FluxoDeCaixa({ pedidos, pecas, irParaPedido, irParaPeca 
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{p.cliente}</div>
                 <div className="fx-mono" style={{ fontSize: 12, color: "#6B7280" }}>
-                  {brl(p.valor)}
+                  {p.status === "Parcial" ? `${brl(p.valor - p.pendente)} de ${brl(p.valor)}` : brl(p.valor)}
                 </div>
               </div>
               <Pill text={p.status} style={PAG_STYLE[p.status]} />

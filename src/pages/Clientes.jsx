@@ -4,7 +4,7 @@ import { Card, Empty, Field, PageTitle, Pill } from "../components/ui";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { BRASS, BRASS_SOFT, INK, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { brl, fmtData, mesesDesde } from "../lib/helpers";
+import { brl, fmtData, mesesDesde, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_SUMIDO = "cliente_sumido_meses";
@@ -126,8 +126,20 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
           const sumido = mesesSemComprar !== null && mesesSemComprar >= limiteMeses;
 
           const devidoFabiana = c.pedidos
-            .filter((p) => p.pagoFabiana.statusPagamento === "Pendente" && parseFloat(p.pagoFabiana.valor) > 0)
-            .reduce((s, p) => s + parseFloat(p.pagoFabiana.valor), 0);
+            .filter((p) => parseFloat(p.pagoFabiana.valor) > 0)
+            .reduce((s, p) => {
+              const pago = valorRecebidoEfetivo({
+                pagamentoDividido: p.pagamentoFabianaDividido,
+                valorEntrada: p.valorEntradaFabiana,
+                statusEntrada: p.statusEntradaFabiana,
+                valorRestante: p.valorRestanteFabiana,
+                statusRestante: p.statusRestanteFabiana,
+                valorTotal: p.pagoFabiana.valor,
+                statusTotal: p.pagoFabiana.statusPagamento,
+                labelPago: "Pago",
+              });
+              return s + (parseFloat(p.pagoFabiana.valor) - pago);
+            }, 0);
           const devidoIcaro = pecas
             .filter((p) => (parseFloat(p.valorTotal) || 0) - (parseFloat(p.pago) || 0) > 0)
             .reduce((s, p) => s + ((parseFloat(p.valorTotal) || 0) - (parseFloat(p.pago) || 0)), 0);

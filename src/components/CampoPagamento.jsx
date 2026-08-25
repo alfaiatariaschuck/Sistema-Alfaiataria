@@ -22,6 +22,12 @@ export function CampoPagamento({
   onStatusRestante,
   labelValor = "Valor (R$)",
   labelPago = "Recebido",
+  labelDividido = "Pagamento dividido (entrada + entrega)",
+  labelEntrada = "Entrada (R$)",
+  labelStatusEntrada = "Status da entrada",
+  labelRestante = "Restante na entrega (R$)",
+  labelStatusRestante = "Status do restante",
+  labelFalta = "Falta receber",
 }) {
   const falta =
     (statusEntrada !== labelPago ? parseFloat(valorEntrada) || 0 : 0) + (statusRestante !== labelPago ? parseFloat(valorRestante) || 0 : 0);
@@ -30,7 +36,7 @@ export function CampoPagamento({
     <div>
       <label className="flex items-center gap-2 mb-2" style={{ cursor: "pointer" }}>
         <input type="checkbox" checked={!!dividido} onChange={(e) => onToggleDividido(e.target.checked)} style={{ width: 15, height: 15, accentColor: BRASS }} />
-        <span style={{ fontSize: 12, fontWeight: 600 }}>Pagamento dividido (entrada + entrega)</span>
+        <span style={{ fontSize: 12, fontWeight: 600 }}>{labelDividido}</span>
       </label>
 
       {!dividido && (
@@ -50,19 +56,19 @@ export function CampoPagamento({
       {dividido && (
         <>
           <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <Field label="Entrada (R$)">
+            <Field label={labelEntrada}>
               <input type="number" step="0.01" style={inputStyle} value={valorEntrada} onChange={(e) => onValorEntrada(e.target.value)} />
             </Field>
-            <Field label="Status da entrada">
+            <Field label={labelStatusEntrada}>
               <select style={inputStyle} value={statusEntrada || "Pendente"} onChange={(e) => onStatusEntrada(e.target.value)}>
                 <option>Pendente</option>
                 <option>{labelPago}</option>
               </select>
             </Field>
-            <Field label="Restante na entrega (R$)">
+            <Field label={labelRestante}>
               <input type="number" step="0.01" style={inputStyle} value={valorRestante} onChange={(e) => onValorRestante(e.target.value)} />
             </Field>
-            <Field label="Status do restante">
+            <Field label={labelStatusRestante}>
               <select style={inputStyle} value={statusRestante || "Pendente"} onChange={(e) => onStatusRestante(e.target.value)}>
                 <option>Pendente</option>
                 <option>{labelPago}</option>
@@ -75,7 +81,7 @@ export function CampoPagamento({
             </span>
             {falta > 0 && (
               <span style={{ color: TEXT_MUTED }}>
-                Falta receber: <strong>{brl(falta)}</strong>
+                {labelFalta}: <strong>{brl(falta)}</strong>
               </span>
             )}
           </div>

@@ -47,6 +47,14 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
       setSub("aReceber", "statusPagamento", statusDividido(next.statusEntrada, next.statusRestante, "Recebido"));
     }
   }
+  function setPagamentoFabiana(patch) {
+    Object.entries(patch).forEach(([k, v]) => set(k, v));
+    const next = { ...p, ...patch };
+    if (next.pagamentoFabianaDividido) {
+      setSub("pagoFabiana", "valor", totalDividido(next.valorEntradaFabiana, next.valorRestanteFabiana));
+      setSub("pagoFabiana", "statusPagamento", statusDividido(next.statusEntradaFabiana, next.statusRestanteFabiana, "Pago"));
+    }
+  }
 
   return (
     <div>
@@ -211,7 +219,7 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             onValorRestante={(v) => setPagamento({ valorRestante: v })}
             onStatusRestante={(v) => setPagamento({ statusRestante: v })}
           />
-          <div className="grid gap-3 mt-3 pt-3" style={{ gridTemplateColumns: "1fr 1fr", borderTop: `1px solid ${LINE}` }}>
+          <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
             <Field label="Forma de pagamento">
               <select style={inputStyle} value={p.formaPagamento || ""} onChange={(e) => set("formaPagamento", e.target.value)}>
                 <option value="">Selecione</option>
@@ -220,21 +228,35 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
                 ))}
               </select>
             </Field>
-            <Field label="Valor Fabiana (R$)">
-              <input
-                type="number"
-                step="0.01"
-                style={inputStyle}
-                value={p.pagoFabiana.valor}
-                onChange={(e) => setSub("pagoFabiana", "valor", e.target.value)}
+            <div className="mt-3">
+              <div className="fx-serif mb-2" style={{ fontSize: 13, fontWeight: 600 }}>
+                Valor a pagar à Fabiana
+              </div>
+              <CampoPagamento
+                labelValor="Valor Fabiana (R$)"
+                labelPago="Pago"
+                valor={p.pagoFabiana.valor}
+                statusPagamento={p.pagoFabiana.statusPagamento}
+                onValor={(v) => setSub("pagoFabiana", "valor", v)}
+                onStatus={(v) => setSub("pagoFabiana", "statusPagamento", v)}
+                dividido={p.pagamentoFabianaDividido}
+                onToggleDividido={(v) => setPagamentoFabiana({ pagamentoFabianaDividido: v })}
+                labelDividido="Pagamento dividido (ex: uma camisa de cada vez)"
+                valorEntrada={p.valorEntradaFabiana}
+                statusEntrada={p.statusEntradaFabiana}
+                onValorEntrada={(v) => setPagamentoFabiana({ valorEntradaFabiana: v })}
+                onStatusEntrada={(v) => setPagamentoFabiana({ statusEntradaFabiana: v })}
+                labelEntrada="1ª parte (R$)"
+                labelStatusEntrada="Status da 1ª parte"
+                valorRestante={p.valorRestanteFabiana}
+                statusRestante={p.statusRestanteFabiana}
+                onValorRestante={(v) => setPagamentoFabiana({ valorRestanteFabiana: v })}
+                onStatusRestante={(v) => setPagamentoFabiana({ statusRestanteFabiana: v })}
+                labelRestante="2ª parte (R$)"
+                labelStatusRestante="Status da 2ª parte"
+                labelFalta="Falta pagar"
               />
-            </Field>
-            <Field label="Status pagamento Fabiana">
-              <select style={inputStyle} value={p.pagoFabiana.statusPagamento} onChange={(e) => setSub("pagoFabiana", "statusPagamento", e.target.value)}>
-                <option>Pendente</option>
-                <option>Pago</option>
-              </select>
-            </Field>
+            </div>
           </div>
         </Card>
       </div>
