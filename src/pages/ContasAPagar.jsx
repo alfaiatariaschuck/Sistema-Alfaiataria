@@ -1,11 +1,13 @@
-import React, { useState } from "react";
-import { CheckCircle2, Plus, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { CheckCircle2, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, StatCard } from "../components/ui";
 import { BRASS, CATEGORIAS_DESPESA, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData, hojeISO, valorRecebidoEfetivo } from "../lib/helpers";
+import { supabase } from "../supabaseClient";
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
+const CHAVE_CAIXA = "caixa_atual";
 
 function somarDias(iso, dias) {
   const d = new Date(iso + "T00:00:00");
@@ -32,6 +34,22 @@ export default function ContasAPagar({
   const [formPrevisao, setFormPrevisao] = useState(false);
   const [novaPrevisao, setNovaPrevisao] = useState({ descricao: "", valor: "", dataEsperada: hojeISO() });
   const [erro, setErro] = useState(null);
+  const [caixaAtual, setCaixaAtual] = useState("");
+  const [caixaSalvo, setCaixaSalvo] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_CAIXA).maybeSingle();
+      if (data?.valor) setCaixaAtual(data.valor);
+    })();
+  }, []);
+
+  async function salvarCaixa() {
+    setCaixaSalvo(null);
+    const { error } = await supabase.from("config").upsert({ chave: CHAVE_CAIXA, valor: caixaAtual });
+    setCaixaSalvo(!error);
+    setTimeout(() => setCaixaSalvo(null), 2500);
+  }
 
   const hoje = hojeISO();
   const limite14 = somarDias(hoje, 14);
@@ -75,7 +93,12 @@ export default function ContasAPagar({
 
   const totalDespesas = despesasJanela.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
   const totalReceita = receberJanela.reduce((s, p) => s + p.pendente, 0) + previsoesJanela.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
-  const saldo = totalReceita - totalDespesas;
+  const caixaNum = parseFloat(caixaAtual) || 0;
+  // Saldo projetado = o que já tenho em caixa + o que ainda vou receber - o
+  // que ainda vou pagar. Falta faturar = quanto de venda nova (fora do que
+  // já está previsto) eu preciso pra cobrir a despesa com o caixa que tenho.
+  const saldo = caixaNum + totalReceita - totalDespesas;
+  const faltaFaturar = Math.max(0, totalDespesas - caixaNum - totalReceita);
 
   async function salvarDespesa(e) {
     e.preventDefault();
@@ -127,10 +150,35 @@ export default function ContasAPagar({
         </button>
       </div>
 
+      <Card style={{ padding: 16 }} className="mb-6">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <PiggyBank size={16} color={BRASS} />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Caixa atual (R$)</span>
+          </div>
+          <input
+            type="number"
+            step="0.01"
+            style={{ ...inputStyle, width: 140 }}
+            value={caixaAtual}
+            onChange={(e) => setCaixaAtual(e.target.value)}
+            placeholder="0,00"
+          />
+          <button onClick={salvarCaixa} style={{ background: INK, color: "#FFF", padding: "7px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+            Atualizar
+          </button>
+          {caixaSalvo === true && <span style={{ fontSize: 12, color: VERDE }}>✓ salvo</span>}
+          {caixaSalvo === false && <span style={{ fontSize: 12, color: VERMELHO }}>não consegui salvar, tenta de novo</span>}
+          <span style={{ fontSize: 11, color: TEXT_MUTED }}>Atualize aqui sempre que quiser — entra na conta do saldo projetado e do quanto falta faturar.</span>
+        </div>
+      </Card>
+
       <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+        <StatCard label="Caixa atual" value={brl(caixaNum)} icon={PiggyBank} />
         <StatCard label="A pagar no período" value={brl(totalDespesas)} icon={TrendingDown} accent={VERMELHO} />
         <StatCard label="A receber no período" value={brl(totalReceita)} icon={TrendingUp} accent={VERDE} />
-        <StatCard label="Saldo previsto" value={brl(saldo)} icon={Wallet} accent={saldo < 0 ? VERMELHO : VERDE} />
+        <StatCard label="Saldo projetado" value={brl(saldo)} icon={Wallet} accent={saldo < 0 ? VERMELHO : VERDE} />
+        <StatCard label="Falta faturar" value={brl(faltaFaturar)} icon={TrendingUp} accent={faltaFaturar > 0 ? VERMELHO : VERDE} />
       </div>
 
       {erro && (
