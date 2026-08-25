@@ -7,6 +7,7 @@ function rowParaDespesa(row) {
     descricao: row.descricao,
     categoria: row.categoria || "",
     valor: row.valor,
+    valorPago: row.valor_pago ?? 0,
     vencimento: row.vencimento,
     status: row.status,
     recorrente: !!row.recorrente,
@@ -50,6 +51,7 @@ export function useDespesas() {
         descricao,
         categoria: categoria || null,
         valor: Number(valor) || 0,
+        valor_pago: 0,
         vencimento,
         recorrente: !!recorrente,
         status: "Pendente",
@@ -59,20 +61,25 @@ export function useDespesas() {
     });
   }
 
-  // Ao marcar uma despesa recorrente como paga, já lança a próxima ocorrência
-  // (mesmo dia, um mês depois) como pendente — assim ela não some da lista.
-  async function marcarPaga(id) {
+  // Ao registrar um pagamento (total ou parcial), atualiza o status conforme
+  // o quanto já foi pago — e, se a despesa é recorrente e ficou totalmente
+  // paga, já lança a próxima ocorrência (mesmo dia, um mês depois) pendente.
+  async function atualizarValorPago(id, novoValorPago) {
     const despesa = despesas.find((d) => d.id === id);
     return comIndicador(async () => {
-      const { error } = await supabase.from("despesas").update({ status: "Pago" }).eq("id", id);
+      const pago = Math.max(0, Number(novoValorPago) || 0);
+      const total = parseFloat(despesa?.valor) || 0;
+      const status = pago <= 0 ? "Pendente" : pago >= total ? "Pago" : "Parcial";
+      const { error } = await supabase.from("despesas").update({ valor_pago: pago, status }).eq("id", id);
       if (error) throw error;
-      if (despesa && despesa.recorrente) {
+      if (despesa && despesa.recorrente && status === "Pago") {
         const proxima = new Date(despesa.vencimento + "T00:00:00");
         proxima.setMonth(proxima.getMonth() + 1);
         const { error: errProx } = await supabase.from("despesas").insert({
           descricao: despesa.descricao,
           categoria: despesa.categoria || null,
           valor: despesa.valor,
+          valor_pago: 0,
           vencimento: proxima.toISOString().slice(0, 10),
           recorrente: true,
           status: "Pendente",
@@ -81,6 +88,12 @@ export function useDespesas() {
       }
       await recarregar();
     });
+  }
+
+  // Atalho pro botão de "marcar como paga" — quita o valor inteiro de uma vez.
+  async function marcarPaga(id) {
+    const despesa = despesas.find((d) => d.id === id);
+    return atualizarValorPago(id, despesa?.valor || 0);
   }
 
   async function removerDespesa(id) {
@@ -100,6 +113,7 @@ export function useDespesas() {
     recarregar,
     criarDespesa,
     marcarPaga,
+    atualizarValorPago,
     removerDespesa,
   };
 }

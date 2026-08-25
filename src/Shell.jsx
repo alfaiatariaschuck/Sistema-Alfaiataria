@@ -29,6 +29,7 @@ import { useNomesClientes } from "./hooks/useNomesClientes";
 import { useEstoqueTecidos } from "./hooks/useEstoqueTecidos";
 import { useDespesas } from "./hooks/useDespesas";
 import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
+import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
 import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
 import { hojeISO } from "./lib/helpers";
@@ -114,8 +115,9 @@ export default function Shell() {
 
   const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
   const { estoque: estoqueTecidos, movimentos: movimentosEstoque, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
-  const { despesas, criarDespesa, marcarPaga, removerDespesa } = useDespesas();
+  const { despesas, criarDespesa, marcarPaga, atualizarValorPago, removerDespesa } = useDespesas();
   const { previsoes, criarPrevisao, removerPrevisao } = usePrevisoesVenda();
+  const { notas: notasVendaFutura, criarNota, removerNota } = useNotasVendaFutura();
 
   const clientes = useMemo(() => {
     const map = new Map();
@@ -469,11 +471,15 @@ export default function Shell() {
                   pecas={pecas}
                   despesas={despesas}
                   previsoes={previsoes}
+                  notas={notasVendaFutura}
                   onCriarDespesa={criarDespesa}
                   onMarcarPaga={marcarPaga}
+                  onAtualizarValorPago={atualizarValorPago}
                   onRemoverDespesa={removerDespesa}
                   onCriarPrevisao={criarPrevisao}
                   onRemoverPrevisao={removerPrevisao}
+                  onCriarNota={criarNota}
+                  onRemoverNota={removerNota}
                   irParaPedido={irPara}
                   irParaPeca={irParaPeca}
                 />

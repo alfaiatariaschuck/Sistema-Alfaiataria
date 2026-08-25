@@ -20,11 +20,15 @@ export default function ContasAPagar({
   pecas,
   despesas,
   previsoes,
+  notas,
   onCriarDespesa,
   onMarcarPaga,
+  onAtualizarValorPago,
   onRemoverDespesa,
   onCriarPrevisao,
   onRemoverPrevisao,
+  onCriarNota,
+  onRemoverNota,
   irParaPedido,
   irParaPeca,
 }) {
@@ -33,6 +37,10 @@ export default function ContasAPagar({
   const [nova, setNova] = useState({ descricao: "", categoria: "", valor: "", vencimento: hojeISO(), recorrente: false });
   const [formPrevisao, setFormPrevisao] = useState(false);
   const [novaPrevisao, setNovaPrevisao] = useState({ descricao: "", valor: "", dataEsperada: hojeISO() });
+  const [formNota, setFormNota] = useState(false);
+  const [novaNota, setNovaNota] = useState({ descricao: "", valor: "", dataEsperada: "" });
+  const [editandoDespesa, setEditandoDespesa] = useState(null);
+  const [valorPagoEdit, setValorPagoEdit] = useState("");
   const [erro, setErro] = useState(null);
   const [caixaAtual, setCaixaAtual] = useState("");
   const [caixaSalvo, setCaixaSalvo] = useState(null);
@@ -86,12 +94,12 @@ export default function ContasAPagar({
       .filter((x) => x.pendente > 0),
   ];
 
-  const despesasPendentes = despesas.filter((d) => d.status === "Pendente");
+  const despesasPendentes = despesas.filter((d) => d.status !== "Pago");
   const despesasJanela = despesasPendentes.filter((d) => dentroDaJanela(d.vencimento)).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
   const receberJanela = receberPendente.filter((p) => dentroDaJanela(p.dataRef));
   const previsoesJanela = previsoes.filter((p) => dentroDaJanela(p.dataEsperada));
 
-  const totalDespesas = despesasJanela.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
+  const totalDespesas = despesasJanela.reduce((s, d) => s + Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0)), 0);
   const totalReceita = receberJanela.reduce((s, p) => s + p.pendente, 0) + previsoesJanela.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
   const caixaNum = parseFloat(caixaAtual) || 0;
   // Saldo projetado = o que já tenho em caixa + o que ainda vou receber - o
@@ -108,6 +116,38 @@ export default function ContasAPagar({
       await onCriarDespesa(nova);
       setNova({ descricao: "", categoria: "", valor: "", vencimento: hojeISO(), recorrente: false });
       setFormDespesa(false);
+    } catch (e) {
+      setErro("Não consegui salvar (" + e.message + ").");
+    }
+  }
+
+  async function salvarValorPago(id) {
+    setErro(null);
+    try {
+      await onAtualizarValorPago(id, valorPagoEdit);
+      setEditandoDespesa(null);
+    } catch (e) {
+      setErro("Não consegui salvar (" + e.message + ").");
+    }
+  }
+
+  function abrirEdicaoValorPago(d) {
+    if (editandoDespesa === d.id) {
+      setEditandoDespesa(null);
+      return;
+    }
+    setEditandoDespesa(d.id);
+    setValorPagoEdit(String(d.valorPago || ""));
+  }
+
+  async function salvarNota(e) {
+    e.preventDefault();
+    if (!novaNota.descricao.trim()) return;
+    setErro(null);
+    try {
+      await onCriarNota(novaNota);
+      setNovaNota({ descricao: "", valor: "", dataEsperada: "" });
+      setFormNota(false);
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + ").");
     }
@@ -237,28 +277,57 @@ export default function ContasAPagar({
           {despesasJanela.length === 0 && <Empty texto={verTudo ? "Nenhuma despesa pendente." : "Nada vencendo nos próximos 14 dias."} />}
           {despesasJanela.map((d) => {
             const atrasada = d.vencimento < hoje;
+            const pendente = Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0));
+            const editando = editandoDespesa === d.id;
             return (
-              <div key={d.id} className="flex items-center justify-between py-2" style={{ borderBottom: `1px solid ${LINE}` }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>
-                    {d.descricao} {d.recorrente && "↻"}
-                  </div>
-                  <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
-                    {d.categoria ? `${d.categoria} · ` : ""}vence {fmtData(d.vencimento)}
-                    {atrasada ? " — atrasada" : ""}
+              <div key={d.id} className="py-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+                <div className="flex items-center justify-between">
+                  <button onClick={() => abrirEdicaoValorPago(d)} style={{ textAlign: "left" }} title="Ver/editar valor pago">
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>
+                      {d.descricao} {d.recorrente && "↻"}
+                    </div>
+                    <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
+                      {d.categoria ? `${d.categoria} · ` : ""}vence {fmtData(d.vencimento)}
+                      {atrasada ? " — atrasada" : ""}
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <div style={{ textAlign: "right" }}>
+                      <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
+                        {brl(pendente)}
+                      </span>
+                      {d.status === "Parcial" && (
+                        <div style={{ fontSize: 10, color: TEXT_MUTED }}>
+                          {brl(d.valorPago)} de {brl(d.valor)} pago
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => onMarcarPaga(d.id)} title="Marcar como totalmente paga">
+                      <CheckCircle2 size={16} color={VERDE} />
+                    </button>
+                    <button onClick={() => onRemoverDespesa(d.id)} title="Remover">
+                      <Trash2 size={14} color={VERMELHO} />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
-                    {brl(d.valor)}
-                  </span>
-                  <button onClick={() => onMarcarPaga(d.id)} title="Marcar como paga">
-                    <CheckCircle2 size={16} color={VERDE} />
-                  </button>
-                  <button onClick={() => onRemoverDespesa(d.id)} title="Remover">
-                    <Trash2 size={14} color={VERMELHO} />
-                  </button>
-                </div>
+                {editando && (
+                  <div className="flex items-center gap-2 mt-2 p-2 flex-wrap" style={{ background: "#F3EEDF", borderRadius: 6 }}>
+                    <span style={{ fontSize: 11, color: TEXT_MUTED }}>Valor pago até agora (de {brl(d.valor)}):</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      style={{ ...inputStyle, width: 100 }}
+                      value={valorPagoEdit}
+                      onChange={(e) => setValorPagoEdit(e.target.value)}
+                    />
+                    <button
+                      onClick={() => salvarValorPago(d.id)}
+                      style={{ background: INK, color: "#FFF", padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                    >
+                      Salvar
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -355,6 +424,76 @@ export default function ContasAPagar({
           )}
         </Card>
       </div>
+
+      <Card style={{ padding: 20 }} className="mt-6">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+              Anotações de vendas futuras
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Só pra não esquecer — não entra em nenhum cálculo acima.</div>
+          </div>
+          <button onClick={() => setFormNota((v) => !v)} className="flex items-center gap-1" style={{ color: BRASS, fontSize: 12, fontWeight: 600 }}>
+            <Plus size={13} style={formNota ? { transform: "rotate(45deg)" } : {}} /> {formNota ? "cancelar" : "nova anotação"}
+          </button>
+        </div>
+
+        {formNota && (
+          <form onSubmit={salvarNota} className="mb-4 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
+            <Field label="Descrição">
+              <input
+                style={inputStyle}
+                value={novaNota.descricao}
+                onChange={(e) => setNovaNota({ ...novaNota, descricao: e.target.value })}
+                placeholder="Ex: Cliente Fulano comentou que quer 2 camisas em novembro"
+                required
+              />
+            </Field>
+            <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <Field label="Valor estimado (opcional)">
+                <input
+                  type="number"
+                  step="0.01"
+                  style={inputStyle}
+                  value={novaNota.valor}
+                  onChange={(e) => setNovaNota({ ...novaNota, valor: e.target.value })}
+                />
+              </Field>
+              <Field label="Data esperada (opcional)">
+                <input
+                  type="date"
+                  style={inputStyle}
+                  value={novaNota.dataEsperada}
+                  onChange={(e) => setNovaNota({ ...novaNota, dataEsperada: e.target.value })}
+                />
+              </Field>
+            </div>
+            <button type="submit" style={{ background: INK, color: "#FFF", padding: "7px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+              Salvar
+            </button>
+          </form>
+        )}
+
+        {notas.length === 0 && <Empty texto="Nenhuma anotação ainda." />}
+        {notas.map((n) => (
+          <div key={n.id} className="flex items-center justify-between py-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+            <div>
+              <div style={{ fontSize: 13 }}>{n.descricao}</div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>{n.dataEsperada ? `esperado ${fmtData(n.dataEsperada)}` : "sem data"}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              {n.valor != null && (
+                <span className="fx-mono" style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  {brl(n.valor)}
+                </span>
+              )}
+              <button onClick={() => onRemoverNota(n.id)} title="Remover">
+                <Trash2 size={13} color={VERMELHO} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </Card>
     </div>
   );
 }
