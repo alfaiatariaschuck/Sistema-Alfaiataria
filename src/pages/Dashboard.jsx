@@ -67,11 +67,14 @@ export default function Dashboard({ pedidos, irPara }) {
 
   // Tempo médio de produção — só considera pedidos entregues que já têm
   // data_entrega registrada (entregas antigas, antes desse campo existir,
-  // ficam de fora da conta).
+  // ficam de fora da conta). Separado por tipo de cliente (novo vs recompra)
+  // porque o prazo real costuma variar bastante entre os dois.
   const entreguesComData = pedidos.filter((p) => p.status === "Entregue" && p.dataEntrega);
-  const tempoMedio = entreguesComData.length
-    ? Math.round(entreguesComData.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / entreguesComData.length)
-    : null;
+  function mediaDias(lista) {
+    return lista.length ? Math.round(lista.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / lista.length) : null;
+  }
+  const tempoMedioNovos = mediaDias(entreguesComData.filter((p) => !p.recompra));
+  const tempoMedioRecompra = mediaDias(entreguesComData.filter((p) => p.recompra));
 
   // Vendido no mês corrente, pra comparar com a meta configurada.
   const mesAtual = hojeISO().slice(0, 7);
@@ -91,7 +94,8 @@ export default function Dashboard({ pedidos, irPara }) {
         <StatCard label="Pago à Fabiana" value={brl(somaFabPaga)} icon={CheckCircle2} />
         <StatCard label="Devido à Fabiana" value={brl(somaFab)} icon={Wallet} />
         <StatCard label="Margem estimada" value={brl(margem)} icon={TrendingUp} />
-        <StatCard label="Tempo médio de produção" value={tempoMedio !== null ? `${tempoMedio}d` : "—"} icon={Timer} />
+        <StatCard label="Tempo médio — cliente novo" value={tempoMedioNovos !== null ? `${tempoMedioNovos}d` : "—"} icon={Timer} />
+        <StatCard label="Tempo médio — recompra" value={tempoMedioRecompra !== null ? `${tempoMedioRecompra}d` : "—"} icon={Timer} />
         <StatCard label="Doações" value={doacoes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0)} icon={Gift} />
       </div>
 
