@@ -37,41 +37,6 @@ export default function ContasAPagar({
   const limite14 = somarDias(hoje, 14);
   const dentroDaJanela = (dataISO) => verTudo || (dataISO || hoje) <= limite14;
 
-  function pagoFabianaEfetivo(p) {
-    return valorRecebidoEfetivo({
-      pagamentoDividido: p.pagamentoFabianaDividido,
-      valorEntrada: p.valorEntradaFabiana,
-      statusEntrada: p.statusEntradaFabiana,
-      valorRestante: p.valorRestanteFabiana,
-      statusRestante: p.statusRestanteFabiana,
-      valorTotal: p.pagoFabiana.valor,
-      statusTotal: p.pagoFabiana.statusPagamento,
-      labelPago: "Pago",
-    });
-  }
-
-  // Produção pendente (Fabi + Icaro) — dinheiro que ainda vai sair, mas não
-  // é uma "despesa" cadastrada aqui, é o custo de produção de cada pedido.
-  const producaoPendente = [
-    ...pedidos
-      .filter((p) => parseFloat(p.pagoFabiana.valor) > 0)
-      .map((p) => {
-        const valor = parseFloat(p.pagoFabiana.valor) || 0;
-        const pendente = Math.max(0, valor - pagoFabianaEfetivo(p));
-        return { id: p.id, tipo: "camisa", nome: `${p.cliente} (Fabi)`, pendente, dataRef: p.previsaoEntrega || p.dataPedido };
-      })
-      .filter((x) => x.pendente > 0),
-    ...(pecas || [])
-      .filter((p) => (parseFloat(p.valorTotal) || 0) - (parseFloat(p.pago) || 0) > 0)
-      .map((p) => ({
-        id: p.id,
-        tipo: "peca",
-        nome: `${p.cliente} (Icaro)`,
-        pendente: (parseFloat(p.valorTotal) || 0) - (parseFloat(p.pago) || 0),
-        dataRef: p.previsaoEntrega || p.dataPedido,
-      })),
-  ];
-
   function recebidoEfetivo(p, valorTotal, statusTotal) {
     return valorRecebidoEfetivo({
       pagamentoDividido: p.pagamentoDividido,
@@ -105,11 +70,10 @@ export default function ContasAPagar({
 
   const despesasPendentes = despesas.filter((d) => d.status === "Pendente");
   const despesasJanela = despesasPendentes.filter((d) => dentroDaJanela(d.vencimento)).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
-  const producaoJanela = producaoPendente.filter((p) => dentroDaJanela(p.dataRef));
   const receberJanela = receberPendente.filter((p) => dentroDaJanela(p.dataRef));
   const previsoesJanela = previsoes.filter((p) => dentroDaJanela(p.dataEsperada));
 
-  const totalDespesas = despesasJanela.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0) + producaoJanela.reduce((s, p) => s + p.pendente, 0);
+  const totalDespesas = despesasJanela.reduce((s, d) => s + (parseFloat(d.valor) || 0), 0);
   const totalReceita = receberJanela.reduce((s, p) => s + p.pendente, 0) + previsoesJanela.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
   const saldo = totalReceita - totalDespesas;
 
@@ -250,27 +214,6 @@ export default function ContasAPagar({
               </div>
             );
           })}
-
-          {producaoJanela.length > 0 && (
-            <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, marginBottom: 6 }}>
-                PRODUÇÃO PENDENTE (FABI + ICARO)
-              </div>
-              {producaoJanela.map((p) => (
-                <button
-                  key={p.tipo + "-" + p.id}
-                  onClick={() => abrir(p)}
-                  className="w-full flex items-center justify-between py-1.5"
-                  style={{ textAlign: "left" }}
-                >
-                  <span style={{ fontSize: 12 }}>{p.nome}</span>
-                  <span className="fx-mono" style={{ fontSize: 12, fontWeight: 600, color: VERMELHO }}>
-                    {brl(p.pendente)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
         </Card>
 
         <Card style={{ padding: 20 }}>
