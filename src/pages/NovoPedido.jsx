@@ -4,11 +4,12 @@ import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
+import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
-export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos }) {
+export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos, onDarBaixaEstoque }) {
   const [p, setP] = useState(pedidoVazio());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -278,22 +279,32 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
             ))}
           </datalist>
           {p.tecidos.map((t, i) => (
-            <div key={i} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
-              <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => setTecido(i, "codigo", e.target.value)} />
-              <input
-                style={{ ...inputStyle, background: BRASS_SOFT }}
-                list="lista-fornecedores"
-                placeholder="Fornecedor (interno)"
-                value={t.fornecedor}
-                onChange={(e) => setTecido(i, "fornecedor", e.target.value)}
-              />
-              <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => setTecido(i, "qtd", e.target.value)} />
-              <input
-                style={inputStyle}
-                placeholder="Observação (ex: colarinho windsor)"
-                value={t.numero}
-                onChange={(e) => setTecido(i, "numero", e.target.value)}
-              />
+            <div key={i} className="mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => setTecido(i, "codigo", e.target.value)} />
+                <input
+                  style={{ ...inputStyle, background: BRASS_SOFT }}
+                  list="lista-fornecedores"
+                  placeholder="Fornecedor (interno)"
+                  value={t.fornecedor}
+                  onChange={(e) => setTecido(i, "fornecedor", e.target.value)}
+                />
+                <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => setTecido(i, "qtd", e.target.value)} />
+                <input
+                  style={inputStyle}
+                  placeholder="Observação (ex: colarinho windsor)"
+                  value={t.numero}
+                  onChange={(e) => setTecido(i, "numero", e.target.value)}
+                />
+              </div>
+              {estoqueTecidos && (
+                <BaixaEstoqueTecido
+                  codigo={t.codigo}
+                  estoque={estoqueTecidos}
+                  onDarBaixa={onDarBaixaEstoque}
+                  motivo={`Pedido de ${p.cliente || "cliente"} (camisaria)`}
+                />
+              )}
             </div>
           ))}
         </Card>

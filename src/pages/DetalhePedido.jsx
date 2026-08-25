@@ -5,11 +5,12 @@ import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
+import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano }) {
+export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [convertendo, setConvertendo] = useState(false);
@@ -295,40 +296,45 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
           ))}
         </datalist>
         {p.tecidos.map((t) => (
-          <div key={t.id} className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 pb-2 items-center" style={{ borderBottom: `1px solid ${LINE}` }}>
-            <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(p.id, t.id, "codigo", e.target.value)} />
-            <input
-              style={{ ...inputStyle, background: BRASS_SOFT }}
-              list="lista-fornecedores"
-              placeholder="Fornecedor (interno)"
-              value={t.fornecedor || ""}
-              onChange={(e) => onTecido(p.id, t.id, "fornecedor", e.target.value)}
-            />
-            <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => onTecido(p.id, t.id, "qtd", e.target.value)} />
-            <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => onTecido(p.id, t.id, "numero", e.target.value)} />
-            <button
-              type="button"
-              onClick={() => onTecido(p.id, t.id, "comprado", !t.comprado)}
-              className="flex items-center justify-center gap-1"
-              style={{
-                background: t.comprado ? "#DCEBDD" : "#F6E3D9",
-                color: t.comprado ? "#2C6E31" : "#9C4A1E",
-                padding: "8px 10px",
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {t.comprado ? (
-                <>
-                  <CheckCircle2 size={13} /> Comprado
-                </>
-              ) : (
-                <>
-                  <Clock size={13} /> Comprar
-                </>
-              )}
-            </button>
+          <div key={t.id} className="mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-center">
+              <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(p.id, t.id, "codigo", e.target.value)} />
+              <input
+                style={{ ...inputStyle, background: BRASS_SOFT }}
+                list="lista-fornecedores"
+                placeholder="Fornecedor (interno)"
+                value={t.fornecedor || ""}
+                onChange={(e) => onTecido(p.id, t.id, "fornecedor", e.target.value)}
+              />
+              <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => onTecido(p.id, t.id, "qtd", e.target.value)} />
+              <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => onTecido(p.id, t.id, "numero", e.target.value)} />
+              <button
+                type="button"
+                onClick={() => onTecido(p.id, t.id, "comprado", !t.comprado)}
+                className="flex items-center justify-center gap-1"
+                style={{
+                  background: t.comprado ? "#DCEBDD" : "#F6E3D9",
+                  color: t.comprado ? "#2C6E31" : "#9C4A1E",
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {t.comprado ? (
+                  <>
+                    <CheckCircle2 size={13} /> Comprado
+                  </>
+                ) : (
+                  <>
+                    <Clock size={13} /> Comprar
+                  </>
+                )}
+              </button>
+            </div>
+            {estoqueTecidos && (
+              <BaixaEstoqueTecido codigo={t.codigo} estoque={estoqueTecidos} onDarBaixa={onDarBaixaEstoque} motivo={`Pedido de ${p.cliente} (camisaria)`} />
+            )}
           </div>
         ))}
       </Card>

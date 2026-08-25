@@ -25,6 +25,7 @@ import { usePedidos } from "./hooks/usePedidos";
 import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
 import { usePlanosAssinatura } from "./hooks/usePlanosAssinatura";
 import { useNomesClientes } from "./hooks/useNomesClientes";
+import { useEstoqueTecidos } from "./hooks/useEstoqueTecidos";
 import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
 import { hojeISO } from "./lib/helpers";
@@ -44,6 +45,7 @@ import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
+import EstoqueCamisaria from "./pages/EstoqueCamisaria";
 import BuscaGlobal from "./components/BuscaGlobal";
 
 const NAV = [
@@ -53,6 +55,7 @@ const NAV = [
   { id: "entregues-camisaria", label: "Entregue Camisaria", icon: Archive, primary: false },
   { id: "entregues-alfaiataria", label: "Entregue Alfaiataria", icon: Archive, primary: false },
   { id: "compras", label: "Compras", icon: ShoppingCart, primary: true },
+  { id: "estoque-camisaria", label: "Estoque Camisaria", icon: PackageCheck, primary: false },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false },
@@ -105,6 +108,7 @@ export default function Shell() {
   } = usePlanosAssinatura();
 
   const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
+  const { estoque: estoqueTecidos, movimentos: movimentosEstoque, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
 
   const clientes = useMemo(() => {
     const map = new Map();
@@ -254,6 +258,8 @@ export default function Shell() {
     onAddTecido: adicionarTecido,
     onTecido: atualizarTecido,
     onConverterPlano: converterPedidoEmPlano,
+    estoqueTecidos,
+    onDarBaixaEstoque: darBaixaEstoque,
   };
 
   function atualizarMedidaPeca(pecaId, secKey, label, valor) {
@@ -417,7 +423,25 @@ export default function Shell() {
           ) : (
             <>
               {tab === "dashboard" && <Dashboard pedidos={pedidos} irPara={irPara} />}
-              {tab === "novo" && <NovoPedido onSalvar={salvarNovoPedido} onSalvarPlano={salvarNovoPlano} nomesClientes={nomesClientes} pedidos={pedidos} />}
+              {tab === "novo" && (
+                <NovoPedido
+                  onSalvar={salvarNovoPedido}
+                  onSalvarPlano={salvarNovoPlano}
+                  nomesClientes={nomesClientes}
+                  pedidos={pedidos}
+                  estoqueTecidos={estoqueTecidos}
+                  onDarBaixaEstoque={darBaixaEstoque}
+                />
+              )}
+              {tab === "estoque-camisaria" && (
+                <EstoqueCamisaria
+                  estoque={estoqueTecidos}
+                  movimentos={movimentosEstoque}
+                  onCadastrar={cadastrarTecido}
+                  onRegistrarCompra={registrarCompra}
+                  onRemover={removerEstoque}
+                />
+              )}
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
               {tab === "entregues-camisaria" && <Entregues pedidos={pedidos} pecas={pecas} tipo="camisaria" irPara={irPara} irParaPeca={irParaPeca} />}
               {tab === "entregues-alfaiataria" && !loadingPecas && (
