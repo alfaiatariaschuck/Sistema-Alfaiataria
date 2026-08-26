@@ -14,6 +14,7 @@ import {
   Plus,
   Receipt,
   Ruler,
+  Target,
   Scissors,
   Settings,
   ShieldCheck,
@@ -51,6 +52,7 @@ import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
 import ContasAPagar from "./pages/ContasAPagar";
+import Metas from "./pages/Metas";
 import BuscaGlobal from "./components/BuscaGlobal";
 
 const NAV = [
@@ -65,6 +67,7 @@ const NAV = [
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false },
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false },
+  { id: "metas", label: "Metas", icon: Target, primary: false },
   { id: "consolidado", label: "Consolidado", icon: Layers, primary: false },
   { id: "clientes", label: "Clientes", icon: Users, primary: false },
   { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false },
@@ -525,6 +528,7 @@ export default function Shell() {
               {tab === "consolidado" && !loadingPecas && !loadingPlanos && (
                 <Consolidado pedidos={pedidos} pecas={pecas} planos={planos} irPara={irPara} irParaPeca={irParaPeca} />
               )}
+              {tab === "metas" && !loadingPecas && <Metas pedidos={pedidos} pecas={pecas} />}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
               {tab === "config" && <Configuracoes />}
             </>
