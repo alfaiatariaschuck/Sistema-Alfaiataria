@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
+import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
@@ -13,6 +14,7 @@ import { pedidoVazio } from "../hooks/usePedidos";
 // do dono). O nome do vendedor vem travado do login, não é editável.
 export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVendedor }) {
   const [p, setP] = useState({ ...pedidoVazio(), vendedor: nomeVendedor || "" });
+  const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
   const [confirmado, setConfirmado] = useState(false);
@@ -61,8 +63,9 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
     setSalvando(true);
     setErro(null);
     try {
-      await onSalvar(p);
+      await onSalvar({ ...p, dadosPessoais });
       setP({ ...pedidoVazio(), vendedor: nomeVendedor || "" });
+      setDadosPessoais(dadosPessoaisVazio());
       setConfirmado(true);
       setTimeout(() => setConfirmado(false), 4000);
     } catch (e) {
@@ -248,6 +251,14 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
           <Field label="Observações">
             <textarea style={{ ...inputStyle, minHeight: 70 }} value={p.observacoes} onChange={(e) => set("observacoes", e.target.value)} />
           </Field>
+        </Card>
+
+        <Card style={{ padding: 20 }} className="mb-5">
+          <CampoDadosPessoais
+            value={dadosPessoais}
+            onChange={setDadosPessoais}
+            notaAcesso="Você pode cadastrar esses dados agora, ao lançar o pedido — mas só uma vez. Depois de salvo, só o dono do ateliê consegue ver ou alterar (nem você consegue editar de novo)."
+          />
         </Card>
 
         {erro && (

@@ -23,7 +23,11 @@ export function dadosPessoaisVazio() {
 // não fere a regra de que só ele acessa esse tipo de dado. É salva junto
 // com o pedido, numa tabela separada de "clientes". Cliente pode comprar
 // como Pessoa Física ou como Pessoa Jurídica (nota fiscal em nome da empresa).
-export default function CampoDadosPessoais({ value, onChange }) {
+export default function CampoDadosPessoais({
+  value,
+  onChange,
+  notaAcesso = "Só você acessa esses dados — fica de fora do que o vendedor vê. Preenche já aqui pra não precisar cadastrar de novo depois em Clientes.",
+}) {
   function set(campo, valor) {
     onChange({ ...value, [campo]: valor });
   }
@@ -38,10 +42,7 @@ export default function CampoDadosPessoais({ value, onChange }) {
           Dados pessoais do cliente (opcional)
         </div>
       </div>
-      <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
-        Só você acessa esses dados — fica de fora do que o vendedor vê. Preenche já aqui pra não precisar cadastrar de
-        novo depois em Clientes.
-      </div>
+      <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>{notaAcesso}</div>
 
       <div className="flex gap-2 mb-3" style={{ maxWidth: 320 }}>
         <button

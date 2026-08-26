@@ -3,6 +3,7 @@ import { ChevronRight, ClipboardList, LogOut, Plus, Ruler } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePedidos } from "./hooks/usePedidos";
 import { useNomesClientes } from "./hooks/useNomesClientes";
+import { salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT, LINE, STATUS_STYLE, TEXT_MUTED } from "./lib/constants";
 import { brl, fmtData } from "./lib/helpers";
 import { Card, Empty, Pill } from "./components/ui";
@@ -21,7 +22,11 @@ export default function ShellVendedor() {
   const { nomesClientes, recarregarNomesClientes } = useNomesClientes();
 
   async function salvar(p) {
-    await criarPedido(p);
+    const { clienteId } = await criarPedido(p);
+    // Se o cliente já tiver dados pessoais cadastrados, a gravação é
+    // barrada pelo RLS (o vendedor só pode criar, não sobrescrever) e
+    // falha em silêncio — não impede o pedido de ter sido lançado.
+    await salvarDadosPessoaisCliente(clienteId, p.dadosPessoais);
     await recarregarNomesClientes();
   }
 
