@@ -3,14 +3,15 @@ import { AlertTriangle, CheckCircle2, Gift, PackageCheck, Shirt, Target, Timer, 
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, diasEntre, fmtData, hojeISO, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, diasAte, fmtData, hojeISO, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
+import CentralAlertas from "../components/CentralAlertas";
 import { supabase } from "../supabaseClient";
 
 const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação");
 const VERMELHO = "#9C4A1E";
 const CHAVE_META = "meta_vendas_camisaria";
 
-export default function Dashboard({ pedidos, irPara }) {
+export default function Dashboard({ pedidos, pecas, despesas, estoqueTecidos, irPara, irParaTab }) {
   const [meta, setMeta] = useState(null);
 
   useEffect(() => {
@@ -65,17 +66,14 @@ export default function Dashboard({ pedidos, irPara }) {
   const totalCustoFabi = naoDoacaoLista.reduce((s, p) => s + (parseFloat(p.pagoFabiana.valor) || 0), 0);
   const margem = totalVendido - totalCustoFabi;
 
-  // Tempo médio de produção — só considera pedidos entregues que já têm
-  // data_entrega registrada (entregas antigas, antes desse campo existir,
-  // ficam de fora da conta). Separado por tipo de cliente (novo vs recompra)
-  // porque o prazo real costuma variar bastante entre os dois. Emissões de
-  // Plano de Assinatura ficam de fora — o ritmo delas é outro e distorceria a média.
-  const entreguesComData = pedidos.filter((p) => p.status === "Entregue" && p.dataEntrega && !p.assinatura);
-  function mediaDias(lista) {
-    return lista.length ? Math.round(lista.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / lista.length) : null;
-  }
-  const tempoMedioNovos = mediaDias(entreguesComData.filter((p) => !p.recompra));
-  const tempoMedioRecompra = mediaDias(entreguesComData.filter((p) => p.recompra));
+  // Tempo médio de produção, separado por tipo de cliente (novo vs recompra).
+  const { novos: tempoMedioNovos, recompra: tempoMedioRecompra } = temposMediosProducao(pedidos);
+
+  // Alertas de outras abas, reunidos aqui pra dar uma visão única do que
+  // precisa de atenção sem precisar entrar em cada uma.
+  const pecasAtrasadas = (pecas || []).filter((p) => p.status !== "Entregue" && p.previsaoEntrega && diasAte(p.previsaoEntrega) < 0).length;
+  const despesasAtrasadas = (despesas || []).filter((d) => d.status !== "Pago" && d.vencimento < hojeISO()).length;
+  const estoqueBaixo = (estoqueTecidos || []).filter((e) => e.saldoMetros < e.metrosPorRolo).length;
 
   // Vendido no mês corrente, pra comparar com a meta configurada.
   const mesAtual = hojeISO().slice(0, 7);
@@ -86,6 +84,15 @@ export default function Dashboard({ pedidos, irPara }) {
   return (
     <div>
       <PageTitle eyebrow="Visão geral — camisaria" title="Painel Camisaria" />
+
+      <CentralAlertas
+        pedidosAtrasados={atrasados.length}
+        pecasAtrasadas={pecasAtrasadas}
+        despesasAtrasadas={despesasAtrasadas}
+        estoqueBaixo={estoqueBaixo}
+        irParaTab={irParaTab}
+      />
+
       <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         <StatCard label="Total de clientes" value={new Set(pedidos.map((p) => p.cliente.trim().toLowerCase())).size} icon={Users} />
         <StatCard label="Camisas em produção" value={camisasEmProducao} icon={Shirt} />

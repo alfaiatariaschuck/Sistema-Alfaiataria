@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
@@ -6,7 +6,7 @@ import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDados
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
+import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
 export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos, onDarBaixaEstoque }) {
@@ -14,6 +14,8 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [previsaoAuto, setPrevisaoAuto] = useState(null);
+  const temposMedios = useMemo(() => temposMediosProducao(pedidos || []), [pedidos]);
 
   function set(campo, valor) {
     setP((prev) => ({ ...prev, [campo]: valor }));
@@ -62,7 +64,23 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
   useEffect(() => {
     const key = p.cliente.trim().toLowerCase();
     const detectado = nomesClientes.some((n) => n.toLowerCase() === key);
-    setP((prev) => ({ ...prev, recompra: detectado }));
+
+    // Sugere a previsão de entrega com base no tempo médio de produção
+    // (novo x recompra) — só mexe se o campo ainda estiver vazio ou com o
+    // valor que a própria sugestão colocou (ou seja, se você já digitou uma
+    // data na mão, a sugestão não sobrescreve mais).
+    const media = detectado ? temposMedios.recompra : temposMedios.novos;
+    const sugestao = media != null && p.dataPedido ? somarDias(p.dataPedido, media) : null;
+    setP((prev) => {
+      const aindaEhSugestao = prev.previsaoEntrega === "" || prev.previsaoEntrega === previsaoAuto;
+      return {
+        ...prev,
+        recompra: detectado,
+        previsaoEntrega: aindaEhSugestao && sugestao ? sugestao : prev.previsaoEntrega,
+      };
+    });
+    setPrevisaoAuto(sugestao);
+
     if (!detectado || !pedidos) return;
 
     const doCliente = pedidos.filter((ped) => ped.cliente.trim().toLowerCase() === key).sort((a, b) => (b.dataPedido || "").localeCompare(a.dataPedido || ""));
@@ -168,6 +186,9 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
             </Field>
             <Field label="Previsão de entrega">
               <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
+              {p.previsaoEntrega && p.previsaoEntrega === previsaoAuto && (
+                <span style={{ fontSize: 10, color: TEXT_MUTED }}>sugerido com base no tempo médio de produção</span>
+              )}
             </Field>
             <Field label="Quantidade">
               <input type="number" min="1" style={inputStyle} value={p.quantidade} onChange={(e) => set("quantidade", e.target.value)} />

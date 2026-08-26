@@ -71,6 +71,26 @@ export function valorRecebidoEfetivo({ pagamentoDividido, valorEntrada, statusEn
   return statusTotal === labelPago ? parseFloat(valorTotal) || 0 : 0;
 }
 
+export function somarDias(iso, dias) {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+// Tempo médio de produção separado por tipo de cliente (novo x recompra) —
+// só considera pedidos já entregues com data_entrega registrada, fora
+// Plano de Assinatura (ritmo diferente, distorceria a média).
+export function temposMediosProducao(pedidos) {
+  const entreguesComData = pedidos.filter((p) => p.status === "Entregue" && p.dataEntrega && !p.assinatura);
+  function media(lista) {
+    return lista.length ? Math.round(lista.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / lista.length) : null;
+  }
+  return {
+    novos: media(entreguesComData.filter((p) => !p.recompra)),
+    recompra: media(entreguesComData.filter((p) => p.recompra)),
+  };
+}
+
 export function debounce(fn, ms) {
   let t;
   return (...args) => {

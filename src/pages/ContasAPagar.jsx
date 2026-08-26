@@ -1,19 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { CheckCircle2, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, StatCard } from "../components/ui";
-import { BRASS, CATEGORIAS_DESPESA, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, fmtData, hojeISO, valorRecebidoEfetivo } from "../lib/helpers";
+import { BRASS, CATEGORIAS_DESPESA, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { brl, fmtData, hojeISO, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
 const CHAVE_CAIXA = "caixa_atual";
-
-function somarDias(iso, dias) {
-  const d = new Date(iso + "T00:00:00");
-  d.setDate(d.getDate() + dias);
-  return d.toISOString().slice(0, 10);
-}
 
 export default function ContasAPagar({
   pedidos,
@@ -34,7 +28,7 @@ export default function ContasAPagar({
 }) {
   const [verTudo, setVerTudo] = useState(false);
   const [formDespesa, setFormDespesa] = useState(false);
-  const [nova, setNova] = useState({ descricao: "", categoria: "", valor: "", vencimento: hojeISO(), recorrente: false });
+  const [nova, setNova] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", vencimento: hojeISO(), recorrente: false });
   const [formPrevisao, setFormPrevisao] = useState(false);
   const [novaPrevisao, setNovaPrevisao] = useState({ descricao: "", valor: "", dataEsperada: hojeISO() });
   const [formNota, setFormNota] = useState(false);
@@ -128,13 +122,26 @@ export default function ContasAPagar({
   const saldo = caixaNum + totalReceita - totalDespesas;
   const faltaFaturar = Math.max(0, totalDespesas - caixaNum - totalReceita);
 
+  // Quanto devo por fornecedor — olha todas as despesas em aberto (não só a
+  // janela de 14 dias), pra dar a visão real de quanto falta pra cada um.
+  const porFornecedor = (() => {
+    const mapa = new Map();
+    despesasPendentes
+      .filter((d) => d.fornecedor)
+      .forEach((d) => {
+        const pendente = Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0));
+        mapa.set(d.fornecedor, (mapa.get(d.fornecedor) || 0) + pendente);
+      });
+    return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
+  })();
+
   async function salvarDespesa(e) {
     e.preventDefault();
     if (!nova.descricao.trim() || !nova.valor) return;
     setErro(null);
     try {
       await onCriarDespesa(nova);
-      setNova({ descricao: "", categoria: "", valor: "", vencimento: hojeISO(), recorrente: false });
+      setNova({ descricao: "", categoria: "", fornecedor: "", valor: "", vencimento: hojeISO(), recorrente: false });
       setFormDespesa(false);
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + ").");
@@ -272,6 +279,14 @@ export default function ContasAPagar({
                     ))}
                   </datalist>
                 </Field>
+                <Field label="Fornecedor (opcional)">
+                  <input style={inputStyle} list="lista-fornecedores-despesa" value={nova.fornecedor} onChange={(e) => setNova({ ...nova, fornecedor: e.target.value })} />
+                  <datalist id="lista-fornecedores-despesa">
+                    {FORNECEDORES_TECIDO.map((f) => (
+                      <option key={f} value={f} />
+                    ))}
+                  </datalist>
+                </Field>
                 <Field label="Valor (R$)">
                   <input type="number" step="0.01" style={inputStyle} value={nova.valor} onChange={(e) => setNova({ ...nova, valor: e.target.value })} required />
                 </Field>
@@ -307,7 +322,7 @@ export default function ContasAPagar({
                       {d.descricao} {d.recorrente && "↻"}
                     </div>
                     <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
-                      {d.categoria ? `${d.categoria} · ` : ""}vence {fmtData(d.vencimento)}
+                      {d.fornecedor ? `${d.fornecedor} · ` : d.categoria ? `${d.categoria} · ` : ""}vence {fmtData(d.vencimento)}
                       {atrasada ? " — atrasada" : ""}
                     </div>
                   </button>
@@ -351,6 +366,20 @@ export default function ContasAPagar({
               </div>
             );
           })}
+
+          {porFornecedor.length > 0 && (
+            <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, marginBottom: 6 }}>QUANTO DEVO POR FORNECEDOR</div>
+              {porFornecedor.map(([fornecedor, valor]) => (
+                <div key={fornecedor} className="flex items-center justify-between py-1">
+                  <span style={{ fontSize: 12 }}>{fornecedor}</span>
+                  <span className="fx-mono" style={{ fontSize: 12, fontWeight: 600 }}>
+                    {brl(valor)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card style={{ padding: 20 }}>

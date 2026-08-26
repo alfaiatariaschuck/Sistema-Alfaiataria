@@ -6,6 +6,7 @@ function rowParaDespesa(row) {
     id: row.id,
     descricao: row.descricao,
     categoria: row.categoria || "",
+    fornecedor: row.fornecedor || "",
     valor: row.valor,
     valorPago: row.valor_pago ?? 0,
     vencimento: row.vencimento,
@@ -45,11 +46,12 @@ export function useDespesas() {
     recarregar();
   }, [recarregar]);
 
-  async function criarDespesa({ descricao, categoria, valor, vencimento, recorrente }) {
+  async function criarDespesa({ descricao, categoria, fornecedor, valor, vencimento, recorrente }) {
     return comIndicador(async () => {
       const { error } = await supabase.from("despesas").insert({
         descricao,
         categoria: categoria || null,
+        fornecedor: fornecedor || null,
         valor: Number(valor) || 0,
         valor_pago: 0,
         vencimento,
@@ -78,6 +80,7 @@ export function useDespesas() {
         const { error: errProx } = await supabase.from("despesas").insert({
           descricao: despesa.descricao,
           categoria: despesa.categoria || null,
+          fornecedor: despesa.fornecedor || null,
           valor: despesa.valor,
           valor_pago: 0,
           vencimento: proxima.toISOString().slice(0, 10),

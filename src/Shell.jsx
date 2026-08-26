@@ -436,7 +436,16 @@ export default function Shell() {
             <div style={{ color: "#6B7280" }}>Carregando…</div>
           ) : (
             <>
-              {tab === "dashboard" && <Dashboard pedidos={pedidos} irPara={irPara} />}
+              {tab === "dashboard" && (
+                <Dashboard
+                  pedidos={pedidos}
+                  pecas={pecas}
+                  despesas={despesas}
+                  estoqueTecidos={estoqueTecidos}
+                  irPara={irPara}
+                  irParaTab={setTab}
+                />
+              )}
               {tab === "novo" && (
                 <NovoPedido
                   onSalvar={salvarNovoPedido}
