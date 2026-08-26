@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Layers, Scissors, Shirt, Target, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Layers, Scissors, Shirt, Target, TrendingUp } from "lucide-react";
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
-import { BRASS, LINE, TEXT_MUTED } from "../lib/constants";
+import { BRASS, INK, LINE, TEXT_MUTED } from "../lib/constants";
 import { brl, hojeISO } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
@@ -17,9 +17,15 @@ function mesAnteriorDe(mesStr) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function mesSeguinteDe(mesStr) {
+  const [ano, mes] = mesStr.split("-").map(Number);
+  const d = new Date(ano, mes, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function nomeDoMes(mesStr) {
-  const [, mes] = mesStr.split("-").map(Number);
-  return MESES[mes - 1];
+  const [ano, mes] = mesStr.split("-").map(Number);
+  return `${MESES[mes - 1]} de ${ano}`;
 }
 
 // Doação fica de fora — é peça dada, não venda, então não conta pra meta
@@ -61,6 +67,8 @@ function gradePorTipo(pedidos, pecas, mes) {
 export default function Metas({ pedidos, pecas }) {
   const [metaCamisaria, setMetaCamisaria] = useState(null);
   const [metaAlfaiataria, setMetaAlfaiataria] = useState(null);
+  const mesRealAtual = hojeISO().slice(0, 7);
+  const [mesSelecionado, setMesSelecionado] = useState(mesRealAtual);
 
   useEffect(() => {
     (async () => {
@@ -72,14 +80,15 @@ export default function Metas({ pedidos, pecas }) {
     })();
   }, []);
 
-  const mesAtual = hojeISO().slice(0, 7);
-  const mesAnterior = mesAnteriorDe(mesAtual);
-  const vendidoAtual = vendidoNoMes(pedidos, pecas, mesAtual);
+  const ehMesAtual = mesSelecionado === mesRealAtual;
+  const mesAnterior = mesAnteriorDe(mesSelecionado);
+  const vendidoAtual = vendidoNoMes(pedidos, pecas, mesSelecionado);
   const vendidoAnterior = vendidoNoMes(pedidos, pecas, mesAnterior);
-  const grade = gradePorTipo(pedidos, pecas, mesAtual);
+  const grade = gradePorTipo(pedidos, pecas, mesSelecionado);
   const metaTotal = (metaCamisaria || 0) + (metaAlfaiataria || 0) || null;
 
-  // Projeção simples: pega o ritmo diário até agora e estica pro mês inteiro.
+  // Projeção simples: pega o ritmo diário até agora e estica pro mês inteiro
+  // — só faz sentido pro mês corrente (mês passado já fechou).
   const hoje = new Date();
   const diaAtual = hoje.getDate();
   const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
@@ -92,8 +101,40 @@ export default function Metas({ pedidos, pecas }) {
     <div>
       <PageTitle eyebrow="Camisaria + Alfaiataria" title="Metas" />
 
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          onClick={() => setMesSelecionado(mesAnteriorDe(mesSelecionado))}
+          className="flex items-center gap-1"
+          style={{ background: "#EDEAE0", color: INK, padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
+        >
+          <ChevronLeft size={14} /> mês anterior
+        </button>
+        <div style={{ fontSize: 14, fontWeight: 700, minWidth: 160, textAlign: "center" }}>{nomeDoMes(mesSelecionado)}</div>
+        <button
+          onClick={() => setMesSelecionado(mesSeguinteDe(mesSelecionado))}
+          disabled={ehMesAtual}
+          className="flex items-center gap-1"
+          style={{
+            background: "#EDEAE0",
+            color: ehMesAtual ? TEXT_MUTED : INK,
+            padding: "7px 12px",
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            opacity: ehMesAtual ? 0.6 : 1,
+          }}
+        >
+          mês seguinte <ChevronRight size={14} />
+        </button>
+        {!ehMesAtual && (
+          <button onClick={() => setMesSelecionado(mesRealAtual)} style={{ color: BRASS, fontSize: 12, fontWeight: 600 }}>
+            voltar pro mês atual
+          </button>
+        )}
+      </div>
+
       <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
-        <StatCard label={`Vendido em ${nomeDoMes(mesAtual)}`} value={brl(vendidoAtual.total)} icon={Target} />
+        <StatCard label={`Vendido em ${nomeDoMes(mesSelecionado)}`} value={brl(vendidoAtual.total)} icon={Target} />
         <StatCard label={`Vendido em ${nomeDoMes(mesAnterior)}`} value={brl(vendidoAnterior.total)} icon={Layers} />
         <StatCard
           label="Variação vs mês anterior"
@@ -101,10 +142,10 @@ export default function Metas({ pedidos, pecas }) {
           icon={TrendingUp}
           accent={variacao !== null ? (variacao < 0 ? VERMELHO : VERDE) : undefined}
         />
-        <StatCard label="Projeção pro fim do mês" value={brl(projecaoFimDoMes)} icon={TrendingUp} />
+        {ehMesAtual && <StatCard label="Projeção pro fim do mês" value={brl(projecaoFimDoMes)} icon={TrendingUp} />}
       </div>
 
-      {(metaCamisaria > 0 || metaAlfaiataria > 0) && (
+      {ehMesAtual && (metaCamisaria > 0 || metaAlfaiataria > 0) && (
         <Card style={{ padding: 20 }} className="mb-6">
           <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
             Meta do mês
@@ -154,7 +195,7 @@ export default function Metas({ pedidos, pecas }) {
 
       <Card style={{ padding: 20 }}>
         <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
-          Vendido por tipo de peça — {nomeDoMes(mesAtual)}
+          Vendido por tipo de peça — {nomeDoMes(mesSelecionado)}
         </div>
         {grade.length === 0 && <Empty texto="Nada vendido neste mês ainda." />}
         {grade.map(([tipo, dados]) => (
