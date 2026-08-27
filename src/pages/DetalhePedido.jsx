@@ -6,6 +6,7 @@ import { CampoPagamento } from "../components/CampoPagamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
+import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import FichaImprimivel from "./FichaImprimivel";
@@ -109,6 +110,13 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
         >
           {p.enviadoFabi ? "↺ Marcar como não enviado" : "✓ Marcar como enviado pra Fabi"}
         </button>
+        <CopiarDadosContabilidade
+          clienteId={p.clienteId}
+          nomeCliente={p.cliente}
+          produto={`${p.quantidade || 1}x Camisa`}
+          valorVenda={p.aReceber.valor}
+          dataVenda={p.dataPedido}
+        />
       </div>
 
       {mostrarFicha && (

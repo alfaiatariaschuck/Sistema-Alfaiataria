@@ -157,7 +157,7 @@ export default function Metas({ pedidos, pecas }) {
                   <Shirt size={14} color={BRASS} /> Camisaria
                 </span>
                 <span className="fx-mono" style={{ fontWeight: 700, color: BRASS }}>
-                  {brl(vendidoAtual.camisaria)} / {brl(metaCamisaria)}
+                  {brl(vendidoAtual.camisaria)} / {brl(metaCamisaria)} ({Math.round((vendidoAtual.camisaria / metaCamisaria) * 100)}%)
                 </span>
               </div>
               <div style={{ background: LINE, borderRadius: 4, height: 8 }}>
@@ -174,7 +174,7 @@ export default function Metas({ pedidos, pecas }) {
                   <Scissors size={14} color={BRASS} /> Alfaiataria
                 </span>
                 <span className="fx-mono" style={{ fontWeight: 700, color: BRASS }}>
-                  {brl(vendidoAtual.alfaiataria)} / {brl(metaAlfaiataria)}
+                  {brl(vendidoAtual.alfaiataria)} / {brl(metaAlfaiataria)} ({Math.round((vendidoAtual.alfaiataria / metaAlfaiataria) * 100)}%)
                 </span>
               </div>
               <div style={{ background: LINE, borderRadius: 4, height: 8 }}>
@@ -186,7 +186,7 @@ export default function Metas({ pedidos, pecas }) {
           )}
           {metaTotal > 0 && (
             <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}`, fontSize: 11, color: TEXT_MUTED }}>
-              Total: {brl(vendidoAtual.total)} de {brl(metaTotal)} —{" "}
+              Total: {brl(vendidoAtual.total)} de {brl(metaTotal)} ({Math.round((vendidoAtual.total / metaTotal) * 100)}%) —{" "}
               {vendidoAtual.total >= metaTotal ? "meta batida! 🎉" : `faltam ${brl(metaTotal - vendidoAtual.total)}`}
             </div>
           )}

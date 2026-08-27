@@ -4,6 +4,7 @@ import { Card, Field, Pill } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
+import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import {
   BRASS,
   BRASS_SOFT,
@@ -111,6 +112,13 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
         >
           {p.enviadoIcaro ? "↺ Marcar como não enviado" : "✓ Marcar como enviado pro Icaro"}
         </button>
+        <CopiarDadosContabilidade
+          clienteId={p.clienteId}
+          nomeCliente={p.cliente}
+          produto={p.tipoPeca}
+          valorVenda={p.valorVenda}
+          dataVenda={p.dataPedido}
+        />
       </div>
 
       {mostrarFicha && (
