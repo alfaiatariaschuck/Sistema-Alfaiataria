@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, LayoutGrid, Megaphone, Plus, Search, Table2, UserPlus } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, LayoutGrid, Megaphone, Plus, Search, Table2, TrendingUp, UserPlus } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill } from "../components/ui";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
+import RecompraPorAno from "../components/RecompraPorAno";
 import { BRASS, BRASS_SOFT, INK, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { brl, fmtData, mesesDesde, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
@@ -44,6 +45,7 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
   const [qtdMinima, setQtdMinima] = useState("");
   const [anoFiltro, setAnoFiltro] = useState("");
   const [mostrarCampanha, setMostrarCampanha] = useState(false);
+  const [mostrarGrafico, setMostrarGrafico] = useState(true);
   const [mensagemCampanha, setMensagemCampanha] = useState(MENSAGEM_CAMPANHA_PADRAO);
   const [visualizacao, setVisualizacao] = useState("tabela");
   const [ordenarPor, setOrdenarPor] = useState("nome");
@@ -165,6 +167,16 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
         <EstatCard label={`Sumidos (${limiteMeses}m+)`} valor={qtdSumidos} destaque={qtdSumidos > 0} />
         <EstatCard label="Média por cliente" valor={ticketMedio.toFixed(1)} />
       </div>
+
+      <button
+        onClick={() => setMostrarGrafico((v) => !v)}
+        className="flex items-center gap-2 mb-3"
+        style={{ color: BRASS, fontWeight: 600, fontSize: 12 }}
+      >
+        <TrendingUp size={14} />
+        {mostrarGrafico ? "Ocultar taxa de recompra por ano" : "Ver taxa de recompra por ano"}
+      </button>
+      {mostrarGrafico && <RecompraPorAno clientes={enriquecidos} />}
 
       <div className="flex items-center gap-3 mb-3 flex-wrap">
         <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 260, padding: "6px 10px" }}>
