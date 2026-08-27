@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock, Gift, Phone, Scissors, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, diasEntre, fmtData, hojeISO } from "../lib/helpers";
+import { brl, diasAte, fmtData, hojeISO, tempoMedioProducaoGenerico } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_ICARO = "telefone_icaro";
@@ -33,10 +33,7 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
   const pagoGeral = pecas.reduce((s, p) => s + (parseFloat(p.pago) || 0), 0);
   const totalVenda = pecas.filter(naoDoacao).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
   const margem = totalVenda - pecas.filter(naoDoacao).reduce((s, p) => s + (parseFloat(p.valorTotal) || 0), 0);
-  const entreguesComData = pecas.filter((p) => p.status === "Entregue" && p.dataEntrega);
-  const tempoMedio = entreguesComData.length
-    ? Math.round(entreguesComData.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / entreguesComData.length)
-    : null;
+  const tempoMedio = tempoMedioProducaoGenerico(pecas);
   const mesAtual = hojeISO().slice(0, 7);
   const vendidoNoMes = pecas
     .filter(naoDoacao)

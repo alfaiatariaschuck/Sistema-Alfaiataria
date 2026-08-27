@@ -4,12 +4,11 @@ import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
-import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
-export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos, onDarBaixaEstoque }) {
+export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos }) {
   const [p, setP] = useState(pedidoVazio());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -351,13 +350,10 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
                   onChange={(e) => setTecido(i, "numero", e.target.value)}
                 />
               </div>
-              {estoqueTecidos && (
-                <BaixaEstoqueTecido
-                  codigo={t.codigo}
-                  estoque={estoqueTecidos}
-                  onDarBaixa={onDarBaixaEstoque}
-                  motivo={`Pedido de ${p.cliente || "cliente"} (camisaria)`}
-                />
+              {estoqueTecidos && estoqueTecidos.some((e) => e.codigo.trim().toLowerCase() === (t.codigo || "").trim().toLowerCase()) && (
+                <div className="mt-2 p-2" style={{ background: "#F3EEDF", borderRadius: 6, fontSize: 11, color: TEXT_MUTED }}>
+                  Esse código tem estoque cadastrado — depois de salvar o pedido, abra o detalhe dele pra dar baixa nos metros usados.
+                </div>
               )}
             </div>
           ))}

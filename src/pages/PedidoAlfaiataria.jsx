@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
@@ -18,7 +18,7 @@ import {
   TIPOS_PECA,
   inputStyle,
 } from "../lib/constants";
-import { statusDividido, totalDividido } from "../lib/helpers";
+import { somarDias, statusDividido, tempoMedioProducaoGenerico, totalDividido } from "../lib/helpers";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
 export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
@@ -26,6 +26,21 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [previsaoAuto, setPrevisaoAuto] = useState(null);
+  const tempoMedio = useMemo(() => tempoMedioProducaoGenerico(pecas || []), [pecas]);
+
+  // Sugere a previsão de entrega com base no tempo médio de produção — só
+  // mexe se o campo ainda estiver vazio ou com o valor que a própria
+  // sugestão colocou (se você já digitou uma data na mão, não sobrescreve).
+  useEffect(() => {
+    const sugestao = tempoMedio != null && novaPeca.dataPedido ? somarDias(novaPeca.dataPedido, tempoMedio) : null;
+    setNovaPeca((prev) => {
+      const aindaEhSugestao = prev.previsaoEntrega === "" || prev.previsaoEntrega === previsaoAuto;
+      return aindaEhSugestao && sugestao ? { ...prev, previsaoEntrega: sugestao } : prev;
+    });
+    setPrevisaoAuto(sugestao);
+    // eslint-disable-next-line
+  }, [novaPeca.dataPedido, tempoMedio]);
 
   useEffect(() => {
     const key = novaPeca.cliente.trim().toLowerCase();
@@ -140,6 +155,9 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
                 value={novaPeca.previsaoEntrega}
                 onChange={(e) => setNovaPeca({ ...novaPeca, previsaoEntrega: e.target.value })}
               />
+              {novaPeca.previsaoEntrega && novaPeca.previsaoEntrega === previsaoAuto && (
+                <span style={{ fontSize: 10, color: TEXT_MUTED }}>sugerido com base no tempo médio de produção</span>
+              )}
             </Field>
             <Field label="Status">
               <select style={inputStyle} value={novaPeca.status} onChange={(e) => setNovaPeca({ ...novaPeca, status: e.target.value })}>

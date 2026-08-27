@@ -355,7 +355,14 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               </button>
             </div>
             {estoqueTecidos && (
-              <BaixaEstoqueTecido codigo={t.codigo} estoque={estoqueTecidos} onDarBaixa={onDarBaixaEstoque} motivo={`Pedido de ${p.cliente} (camisaria)`} />
+              <BaixaEstoqueTecido
+                codigo={t.codigo}
+                estoque={estoqueTecidos}
+                onDarBaixa={onDarBaixaEstoque}
+                motivo={`Pedido de ${p.cliente} (camisaria)`}
+                metrosBaixados={t.metrosBaixados}
+                onRegistrarMetrosBaixados={(valor) => onTecido(p.id, t.id, "metros_baixados", valor)}
+              />
             )}
           </div>
         ))}

@@ -84,6 +84,7 @@ function rowParaPedido(row) {
         fornecedor: t.fornecedor || "",
         metragem: t.metragem || "",
         comprado: !!t.comprado,
+        metrosBaixados: t.metros_baixados ?? null,
       })),
     observacoes: row.observacoes || "",
     enviadoFabi: row.enviado_fabi === undefined ? true : !!row.enviado_fabi,
@@ -269,7 +270,7 @@ export function usePedidos() {
       setPedidos((prev) =>
         prev.map((p) =>
           p.id === pedidoId
-            ? { ...p, tecidos: [...p.tecidos, { id: data.id, codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }
+            ? { ...p, tecidos: [...p.tecidos, { id: data.id, codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false, metrosBaixados: null }] }
             : p
         )
       );

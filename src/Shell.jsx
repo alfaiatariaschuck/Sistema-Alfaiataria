@@ -456,7 +456,6 @@ export default function Shell() {
                   nomesClientes={nomesClientes}
                   pedidos={pedidos}
                   estoqueTecidos={estoqueTecidos}
-                  onDarBaixaEstoque={darBaixaEstoque}
                 />
               )}
               {tab === "estoque-camisaria" && (

@@ -88,7 +88,7 @@ export default function ShellVendedor() {
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6">
-        {tab === "novo" && <VendedorNovoPedido onSalvar={salvar} nomesClientes={nomesClientes} nomeVendedor={perfil?.nome} />}
+        {tab === "novo" && <VendedorNovoPedido onSalvar={salvar} nomesClientes={nomesClientes} nomeVendedor={perfil?.nome} pedidos={pedidos} />}
 
         {tab === "pedidos" && atual && (
           <DetalhePedidoVendedor

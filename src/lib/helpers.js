@@ -77,18 +77,25 @@ export function somarDias(iso, dias) {
   return d.toISOString().slice(0, 10);
 }
 
+function mediaDiasEntrega(lista) {
+  return lista.length ? Math.round(lista.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / lista.length) : null;
+}
+
 // Tempo médio de produção separado por tipo de cliente (novo x recompra) —
 // só considera pedidos já entregues com data_entrega registrada, fora
 // Plano de Assinatura (ritmo diferente, distorceria a média).
 export function temposMediosProducao(pedidos) {
   const entreguesComData = pedidos.filter((p) => p.status === "Entregue" && p.dataEntrega && !p.assinatura);
-  function media(lista) {
-    return lista.length ? Math.round(lista.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / lista.length) : null;
-  }
   return {
-    novos: media(entreguesComData.filter((p) => !p.recompra)),
-    recompra: media(entreguesComData.filter((p) => p.recompra)),
+    novos: mediaDiasEntrega(entreguesComData.filter((p) => !p.recompra)),
+    recompra: mediaDiasEntrega(entreguesComData.filter((p) => p.recompra)),
   };
+}
+
+// Igual acima, mas sem separar por novo/recompra — usado na Alfaiataria,
+// que ainda não tem esse controle no cadastro do cliente.
+export function tempoMedioProducaoGenerico(lista) {
+  return mediaDiasEntrega(lista.filter((p) => p.status === "Entregue" && p.dataEntrega));
 }
 
 export function debounce(fn, ms) {
