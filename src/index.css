@@ -21,6 +21,9 @@
 .fx-mono {
   font-family: "IBM Plex Mono", monospace;
 }
+.fx-row-hover:hover {
+  background: var(--brass-soft);
+}
 body {
   margin: 0;
   font-family: "Inter", sans-serif;

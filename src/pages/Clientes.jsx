@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Megaphone, Plus, Search, UserPlus } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, LayoutGrid, Megaphone, Plus, Search, Table2, UserPlus } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill } from "../components/ui";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
@@ -45,6 +45,10 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
   const [anoFiltro, setAnoFiltro] = useState("");
   const [mostrarCampanha, setMostrarCampanha] = useState(false);
   const [mensagemCampanha, setMensagemCampanha] = useState(MENSAGEM_CAMPANHA_PADRAO);
+  const [visualizacao, setVisualizacao] = useState("tabela");
+  const [ordenarPor, setOrdenarPor] = useState("nome");
+  const [ordemDesc, setOrdemDesc] = useState(false);
+  const [topN, setTopN] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -73,7 +77,13 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
     const anoHistorico = historico.length ? String(Math.max(...historico.map((h) => h.ano))) : null;
     const anoUltimaCompra = [anoPedidos, anoHistorico].filter(Boolean).sort().reverse()[0] || null;
     const recompra = c.pedidos.length + pecas.length + historico.length > 1 || historico.some((h) => h.recompra);
-    return { ...c, historico, totalHistorico, totalComprado, anoUltimaCompra, recompra, todosItens, maisRecente };
+    // Pra saber se um cliente "sumiu" mesmo quando a última compra dele só
+    // existe na planilha antiga (sem data exata) — usa 31/dez do ano como
+    // referência aproximada.
+    const dataReferencia = maisRecente?.data || (anoHistorico ? `${anoHistorico}-12-31` : null);
+    const mesesSemComprar = dataReferencia ? mesesDesde(dataReferencia) : null;
+    const sumido = mesesSemComprar !== null && mesesSemComprar >= limiteMeses;
+    return { ...c, historico, totalHistorico, totalComprado, anoUltimaCompra, recompra, todosItens, maisRecente, mesesSemComprar, sumido };
   });
 
   const anosDisponiveis = [...new Set(enriquecidos.map((c) => c.anoUltimaCompra).filter(Boolean))].sort().reverse();
@@ -84,6 +94,48 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
     const bateAno = !anoFiltro || c.anoUltimaCompra === anoFiltro;
     return bateBusca && bateQtd && bateAno;
   });
+
+  const ordenados = [...filtrados].sort((a, b) => {
+    let av, bv;
+    if (ordenarPor === "totalComprado") {
+      av = a.totalComprado;
+      bv = b.totalComprado;
+    } else if (ordenarPor === "anoUltimaCompra") {
+      av = a.anoUltimaCompra || "";
+      bv = b.anoUltimaCompra || "";
+    } else {
+      av = a.nome.toLowerCase();
+      bv = b.nome.toLowerCase();
+    }
+    if (av < bv) return ordemDesc ? 1 : -1;
+    if (av > bv) return ordemDesc ? -1 : 1;
+    return 0;
+  });
+  const listados = topN ? ordenados.slice(0, parseInt(topN, 10)) : ordenados;
+
+  function ordenarPorColuna(coluna) {
+    if (ordenarPor === coluna) {
+      setOrdemDesc((v) => !v);
+    } else {
+      setOrdenarPor(coluna);
+      setOrdemDesc(coluna === "totalComprado");
+    }
+  }
+
+  function aplicarTopN(n) {
+    setTopN(n);
+    if (n) {
+      setOrdenarPor("totalComprado");
+      setOrdemDesc(true);
+    }
+  }
+
+  // Métricas rápidas sobre a lista filtrada — dá pra medir "quantos
+  // clientes compram, quanto e há quanto tempo" de relance.
+  const totalPecasFiltradas = filtrados.reduce((s, c) => s + c.totalComprado, 0);
+  const qtdRecompra = filtrados.filter((c) => c.recompra).length;
+  const qtdSumidos = filtrados.filter((c) => c.sumido).length;
+  const ticketMedio = filtrados.length ? totalPecasFiltradas / filtrados.length : 0;
 
   async function cadastrar(e) {
     e.preventDefault();
@@ -104,7 +156,16 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
 
   return (
     <div>
-      <PageTitle eyebrow={`${filtrados.length} de ${clientes.length} clientes`} title="Clientes" />
+      <PageTitle eyebrow={`${listados.length} de ${clientes.length} clientes`} title="Clientes" />
+
+      <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+        <EstatCard label="Clientes na lista" valor={filtrados.length} />
+        <EstatCard label="Peças compradas (total)" valor={totalPecasFiltradas} />
+        <EstatCard label="Já recompraram" valor={`${qtdRecompra} (${filtrados.length ? Math.round((qtdRecompra / filtrados.length) * 100) : 0}%)`} />
+        <EstatCard label={`Sumidos (${limiteMeses}m+)`} valor={qtdSumidos} destaque={qtdSumidos > 0} />
+        <EstatCard label="Média por cliente" valor={ticketMedio.toFixed(1)} />
+      </div>
+
       <div className="flex items-center gap-3 mb-3 flex-wrap">
         <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 260, padding: "6px 10px" }}>
           <Search size={14} color={TEXT_MUTED} />
@@ -132,6 +193,42 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
             </option>
           ))}
         </select>
+        <select value={topN} onChange={(e) => aplicarTopN(e.target.value)} style={{ ...inputStyle, maxWidth: 150 }} title="Ranking de quem mais comprou">
+          <option value="">Todos os clientes</option>
+          <option value="10">Top 10 compradores</option>
+          <option value="20">Top 20 compradores</option>
+          <option value="50">Top 50 compradores</option>
+        </select>
+        <div className="flex items-center gap-1" style={{ background: "#EDEAE0", borderRadius: 8, padding: 3 }}>
+          <button
+            onClick={() => setVisualizacao("tabela")}
+            className="flex items-center gap-1.5"
+            style={{
+              background: visualizacao === "tabela" ? INK : "transparent",
+              color: visualizacao === "tabela" ? "#FFF" : INK,
+              padding: "6px 10px",
+              borderRadius: 6,
+              fontWeight: 600,
+              fontSize: 12,
+            }}
+          >
+            <Table2 size={14} /> Tabela
+          </button>
+          <button
+            onClick={() => setVisualizacao("cards")}
+            className="flex items-center gap-1.5"
+            style={{
+              background: visualizacao === "cards" ? INK : "transparent",
+              color: visualizacao === "cards" ? "#FFF" : INK,
+              padding: "6px 10px",
+              borderRadius: 6,
+              fontWeight: 600,
+              fontSize: 12,
+            }}
+          >
+            <LayoutGrid size={14} /> Cards
+          </button>
+        </div>
         <button
           onClick={() => setMostrarCampanha((v) => !v)}
           className="flex items-center gap-2"
@@ -203,14 +300,28 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
         </Card>
       )}
 
+      {visualizacao === "tabela" && (
+        <TabelaClientes
+          clientes={listados}
+          ordenarPor={ordenarPor}
+          ordemDesc={ordemDesc}
+          onOrdenar={ordenarPorColuna}
+          onAbrir={(nome) => {
+            setBusca(nome);
+            setVisualizacao("cards");
+          }}
+        />
+      )}
+
+      {visualizacao === "cards" && (
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
-        {filtrados.map((c) => {
+        {listados.map((c) => {
           const pecas = c.pecas || [];
           const totalCamisas = c.pedidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
           const todosItens = c.todosItens;
           const maisRecente = c.maisRecente;
-          const mesesSemComprar = maisRecente ? mesesDesde(maisRecente.data) : null;
-          const sumido = mesesSemComprar !== null && mesesSemComprar >= limiteMeses;
+          const mesesSemComprar = c.mesesSemComprar;
+          const sumido = c.sumido;
 
           const devidoFabiana = c.pedidos
             .filter((p) => parseFloat(p.pagoFabiana.valor) > 0)
@@ -355,8 +466,118 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
             </Card>
           );
         })}
-        {filtrados.length === 0 && <Empty texto="Nenhum cliente ainda — cadastre um pedido novo." />}
+        {listados.length === 0 && <Empty texto="Nenhum cliente ainda — cadastre um pedido novo." />}
       </div>
+      )}
     </div>
+  );
+}
+
+function EstatCard({ label, valor, destaque }) {
+  return (
+    <Card style={{ padding: "12px 14px" }}>
+      <div style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 3 }}>{label}</div>
+      <div className="fx-mono" style={{ fontSize: 20, fontWeight: 700, color: destaque ? VERMELHO : INK }}>
+        {valor}
+      </div>
+    </Card>
+  );
+}
+
+const COLUNAS_TABELA = [
+  { chave: "nome", label: "Cliente" },
+  { chave: "totalComprado", label: "Total" },
+  { chave: "anoUltimaCompra", label: "Última compra" },
+];
+
+function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAbrir }) {
+  return (
+    <Card className="mb-6" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${LINE}`, background: "#F7F4EC" }}>
+              {COLUNAS_TABELA.map((col) => (
+                <th
+                  key={col.chave}
+                  onClick={() => onOrdenar(col.chave)}
+                  style={{
+                    textAlign: col.chave === "nome" ? "left" : "right",
+                    padding: "10px 16px",
+                    fontWeight: 600,
+                    fontSize: 11,
+                    color: TEXT_MUTED,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.3,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <span className="inline-flex items-center gap-1" style={{ justifyContent: col.chave === "nome" ? "flex-start" : "flex-end" }}>
+                    {col.label}
+                    {ordenarPor === col.chave && (ordemDesc ? <ArrowDown size={11} /> : <ArrowUp size={11} />)}
+                  </span>
+                </th>
+              ))}
+              <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase" }}>
+                Camisas
+              </th>
+              <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase" }}>
+                Alfaiataria
+              </th>
+              <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase" }}>
+                Planilha antiga
+              </th>
+              <th style={{ textAlign: "center", padding: "10px 16px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase" }}>
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {clientes.map((c, i) => {
+              const totalCamisas = c.pedidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
+              return (
+                <tr
+                  key={c.nome}
+                  onClick={() => onAbrir(c.nome)}
+                  style={{ borderBottom: i < clientes.length - 1 ? `1px solid ${LINE}` : "none", cursor: "pointer" }}
+                  className="fx-row-hover"
+                >
+                  <td style={{ padding: "9px 16px", fontWeight: 600 }}>{c.nome}</td>
+                  <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", fontWeight: 700 }}>
+                    {c.totalComprado}
+                  </td>
+                  <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", color: TEXT_MUTED }}>
+                    {c.anoUltimaCompra || "—"}
+                  </td>
+                  <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", color: TEXT_MUTED }}>
+                    {totalCamisas || "—"}
+                  </td>
+                  <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", color: TEXT_MUTED }}>
+                    {(c.pecas || []).length || "—"}
+                  </td>
+                  <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", color: TEXT_MUTED }}>
+                    {c.totalHistorico || "—"}
+                  </td>
+                  <td style={{ padding: "9px 16px" }}>
+                    <div className="flex items-center justify-center gap-1">
+                      {c.sumido && <Pill text={`sumido ${c.mesesSemComprar}m`} style={{ bg: "#F6E3D9", fg: VERMELHO }} />}
+                      {c.recompra && <Pill text="↻" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {clientes.length === 0 && (
+              <tr>
+                <td colSpan={7} style={{ padding: 24 }}>
+                  <Empty texto="Nenhum cliente encontrado." />
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 }
