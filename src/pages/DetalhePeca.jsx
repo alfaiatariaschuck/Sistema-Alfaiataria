@@ -5,6 +5,7 @@ import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
+import LinkAcompanhamento from "../components/LinkAcompanhamento";
 import {
   BRASS,
   BRASS_SOFT,
@@ -14,7 +15,7 @@ import {
   LINE,
   MEDIDAS_ALFAIATARIA,
   PECA_SECOES,
-  STATUS,
+  STATUS_ALFAIATARIA,
   STATUS_STYLE,
   TEXT_MUTED,
   inputStyle,
@@ -119,6 +120,7 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
           valorVenda={p.valorVenda}
           dataVenda={p.dataPedido}
         />
+        <LinkAcompanhamento tipo="alfaiataria" pedidoId={p.id} />
       </div>
 
       {mostrarFicha && (
@@ -132,7 +134,7 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
           </div>
           <Field label="Status">
             <select style={inputStyle} value={p.status} onChange={(e) => set("status", e.target.value)}>
-              {STATUS.map((s) => (
+              {STATUS_ALFAIATARIA.map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </select>

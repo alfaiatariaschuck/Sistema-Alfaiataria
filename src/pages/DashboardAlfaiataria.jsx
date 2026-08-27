@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock, Gift, Phone, Scissors, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
-import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
+import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData, hojeISO, tempoMedioProducaoGenerico } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_ICARO = "telefone_icaro";
 const CHAVE_META = "meta_vendas_alfaiataria";
-const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação");
+const STATUS_PAINEL = STATUS_ALFAIATARIA.filter((s) => s !== "Pronto" && s !== "Doação");
 const VERMELHO = "#9C4A1E";
 
 export default function DashboardAlfaiataria({ pecas, irPara }) {

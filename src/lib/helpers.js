@@ -1,4 +1,4 @@
-import { MEDIDA_REGRAS } from "./constants";
+import { ETAPAS_ACOMPANHAMENTO_ALFAIATARIA, ETAPAS_ACOMPANHAMENTO_CAMISARIA, MEDIDA_REGRAS } from "./constants";
 
 export function finalDaMedida(label, mp) {
   const r = MEDIDA_REGRAS[label];
@@ -96,6 +96,25 @@ export function temposMediosProducao(pedidos) {
 // que ainda não tem esse controle no cadastro do cliente.
 export function tempoMedioProducaoGenerico(lista) {
   return mediaDiasEntrega(lista.filter((p) => p.status === "Entregue" && p.dataEntrega));
+}
+
+// Traduz o status bruto do pedido/peça pra uma etapa do acompanhamento
+// público — cobre status antigos da Alfaiataria (de antes de ter etapas
+// próprias) mapeando pro equivalente mais próximo, pra nenhum pedido
+// antigo ficar sem aparecer certo no link do cliente.
+export function statusParaEtapa(tipo, status) {
+  if (status === "Entregue" || status === "Entregue Parcial") {
+    return { label: "Entregue", percentual: 100, finalizado: true };
+  }
+  const lista = tipo === "alfaiataria" ? ETAPAS_ACOMPANHAMENTO_ALFAIATARIA : ETAPAS_ACOMPANHAMENTO_CAMISARIA;
+  const direta = lista.find((e) => e.status === status);
+  if (direta) return { label: direta.label, percentual: direta.percentual, finalizado: false };
+
+  const sinonimos = { "Em Produção": "Corte", Prova: "1ª Prova" };
+  const equivalente = sinonimos[status] && lista.find((e) => e.status === sinonimos[status]);
+  if (equivalente) return { label: equivalente.label, percentual: equivalente.percentual, finalizado: false };
+
+  return { label: status || "Em andamento", percentual: 100, finalizado: false };
 }
 
 export function debounce(fn, ms) {

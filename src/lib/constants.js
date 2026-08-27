@@ -9,15 +9,57 @@ export const TEXT_MUTED = "#6B7280";
 
 export const STATUS = ["Aguardando Produção", "Em Produção", "Prova", "Pronto", "Entregue Parcial", "Entregue", "Doação"];
 
+// Alfaiataria tem etapas próprias, mais granulares (corte, provas,
+// ajustes, acabamento) — usadas no formulário/detalhe da peça e no
+// acompanhamento público do cliente.
+export const STATUS_ALFAIATARIA = [
+  "Aguardando Produção",
+  "Corte",
+  "1ª Prova",
+  "Ajustes",
+  "2ª Prova",
+  "Acabamento",
+  "Pronto",
+  "Entregue Parcial",
+  "Entregue",
+  "Doação",
+];
+
 export const STATUS_STYLE = {
   "Aguardando Produção": { bg: "#F6E3D9", fg: "#9C4A1E" },
   "Em Produção": { bg: "#FCEFC7", fg: "#8A6A0C" },
   Prova: { bg: "#E9E1F5", fg: "#5B3E96" },
+  Corte: { bg: "#FCEFC7", fg: "#8A6A0C" },
+  "1ª Prova": { bg: "#E9E1F5", fg: "#5B3E96" },
+  Ajustes: { bg: "#FCEFC7", fg: "#8A6A0C" },
+  "2ª Prova": { bg: "#E9E1F5", fg: "#5B3E96" },
+  Acabamento: { bg: "#D9EEF5", fg: "#1E6E8C" },
   Pronto: { bg: "#DCEBDD", fg: "#2C6E31" },
   "Entregue Parcial": { bg: "#D9EEF5", fg: "#1E6E8C" },
   Entregue: { bg: "#DCE4EE", fg: "#2E4A6B" },
   Doação: { bg: "#F5DCE8", fg: "#9C2E63" },
 };
+
+// Etapas mostradas no link de acompanhamento público (o "rastreio" que o
+// cliente recebe) — cada uma com o % de conclusão que aparece na barra
+// de progresso. "Entregue Parcial"/"Entregue"/"Doação" não entram aqui
+// porque são tratadas à parte (pedido já finalizado).
+export const ETAPAS_ACOMPANHAMENTO_CAMISARIA = [
+  { status: "Aguardando Produção", label: "Aguardando produção", percentual: 15 },
+  { status: "Em Produção", label: "Em produção", percentual: 55 },
+  { status: "Prova", label: "Prova", percentual: 80 },
+  { status: "Pronto", label: "Pronto para retirada", percentual: 100 },
+];
+
+export const ETAPAS_ACOMPANHAMENTO_ALFAIATARIA = [
+  { status: "Aguardando Produção", label: "Aguardando produção", percentual: 10 },
+  { status: "Corte", label: "Corte do tecido", percentual: 25 },
+  { status: "1ª Prova", label: "1ª prova", percentual: 45 },
+  { status: "Ajustes", label: "Ajustes", percentual: 65 },
+  { status: "2ª Prova", label: "2ª prova", percentual: 85 },
+  { status: "Acabamento", label: "Acabamento final", percentual: 95 },
+  { status: "Pronto", label: "Pronto para retirada", percentual: 100 },
+];
 
 export const PAG_STYLE = {
   Pendente: { bg: "#F6E3D9", fg: "#9C4A1E" },

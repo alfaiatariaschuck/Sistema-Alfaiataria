@@ -13,7 +13,7 @@ import {
   LINE,
   MEDIDAS_ALFAIATARIA,
   PECA_SECOES,
-  STATUS,
+  STATUS_ALFAIATARIA,
   TEXT_MUTED,
   TIPOS_PECA,
   inputStyle,
@@ -161,7 +161,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
             </Field>
             <Field label="Status">
               <select style={inputStyle} value={novaPeca.status} onChange={(e) => setNovaPeca({ ...novaPeca, status: e.target.value })}>
-                {STATUS.map((s) => (
+                {STATUS_ALFAIATARIA.map((s) => (
                   <option key={s}>{s}</option>
                 ))}
               </select>

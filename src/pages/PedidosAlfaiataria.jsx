@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
-import { BRASS_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { diasAte, fmtData } from "../lib/helpers";
 import DetalhePeca from "./DetalhePeca";
 
@@ -14,7 +14,7 @@ function statusPagamentoDe(p) {
   return "Pendente";
 }
 
-const STATUS_ATIVOS = STATUS.filter((s) => s !== "Entregue");
+const STATUS_ATIVOS = STATUS_ALFAIATARIA.filter((s) => s !== "Entregue");
 const VERMELHO = "#9C4A1E";
 const DIAS_LIMITE = 45;
 
