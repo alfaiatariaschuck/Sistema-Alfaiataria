@@ -13,10 +13,12 @@ alter table pedidos drop constraint if exists pedidos_status_check;
 alter table pedidos add constraint pedidos_status_check
   check (status in ('Aguardando Produção', 'Em Produção', 'Prova', 'Pronto', 'Entregue Parcial', 'Entregue', 'Doação'));
 
+-- Mantém "Em Produção" e "Prova" na lista (status antigos, já usados em
+-- pedidos existentes) além das etapas novas — ninguém perde o status atual.
 alter table pedidos_alfaiataria drop constraint if exists pedidos_alfaiataria_status_check;
 alter table pedidos_alfaiataria add constraint pedidos_alfaiataria_status_check
   check (status in (
-    'Aguardando Produção', 'Corte', '1ª Prova', 'Ajustes', '2ª Prova', 'Acabamento',
+    'Aguardando Produção', 'Em Produção', 'Prova', 'Corte', '1ª Prova', 'Ajustes', '2ª Prova', 'Acabamento',
     'Pronto', 'Entregue Parcial', 'Entregue', 'Doação'
   ));
 
