@@ -57,16 +57,23 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
   // total comprado (unidades), se já recomprou, e o ano da última compra.
   const enriquecidos = clientes.map((c) => {
     const pecas = c.pecas || [];
+    // "historico" vem da planilha antiga do dono (vendas de antes do app,
+    // ou nunca lançadas aqui) — só nome/quantidade/ano, sem pedido real
+    // pra abrir, então entra na conta do total comprado mas não em todosItens.
+    const historico = c.historico || [];
     const totalCamisas = c.pedidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
-    const totalComprado = totalCamisas + pecas.length;
+    const totalHistorico = historico.reduce((s, h) => s + (parseFloat(h.quantidade) || 0), 0);
+    const totalComprado = totalCamisas + pecas.length + totalHistorico;
     const todosItens = [
       ...c.pedidos.map((p) => ({ tipo: "camisa", item: p, data: p.dataPedido })),
       ...pecas.map((p) => ({ tipo: "peca", item: p, data: p.dataPedido })),
     ].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
     const maisRecente = todosItens[0];
-    const anoUltimaCompra = maisRecente?.data ? maisRecente.data.slice(0, 4) : null;
-    const recompra = c.pedidos.length + pecas.length > 1;
-    return { ...c, totalComprado, anoUltimaCompra, recompra, todosItens, maisRecente };
+    const anoPedidos = maisRecente?.data ? maisRecente.data.slice(0, 4) : null;
+    const anoHistorico = historico.length ? String(Math.max(...historico.map((h) => h.ano))) : null;
+    const anoUltimaCompra = [anoPedidos, anoHistorico].filter(Boolean).sort().reverse()[0] || null;
+    const recompra = c.pedidos.length + pecas.length + historico.length > 1 || historico.some((h) => h.recompra);
+    return { ...c, historico, totalHistorico, totalComprado, anoUltimaCompra, recompra, todosItens, maisRecente };
   });
 
   const anosDisponiveis = [...new Set(enriquecidos.map((c) => c.anoUltimaCompra).filter(Boolean))].sort().reverse();
@@ -244,6 +251,11 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
               <div className="flex items-center gap-3 mb-2 flex-wrap" style={{ fontSize: 12, color: TEXT_MUTED }}>
                 {c.pedidos.length > 0 && <span className="fx-mono">{totalCamisas} camisa(s)</span>}
                 {pecas.length > 0 && <span className="fx-mono">{pecas.length} peça(s) de alfaiataria</span>}
+                {c.totalHistorico > 0 && (
+                  <span className="fx-mono" title="Vendas da planilha antiga, antes do app">
+                    +{c.totalHistorico} da planilha antiga
+                  </span>
+                )}
               </div>
               {maisRecente && (
                 <div className="flex items-center gap-2 mb-2">
@@ -296,6 +308,29 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
                       <Pill text={item.status} style={STATUS_STYLE[item.status]} />
                     </button>
                   ))}
+
+                  {c.historico.length > 0 && (
+                    <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${LINE}` }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, marginBottom: 4 }}>
+                        Planilha antiga (antes do app):
+                      </div>
+                      {c.historico
+                        .slice()
+                        .sort((a, b) => b.ano - a.ano)
+                        .map((h, i) => (
+                          <div key={i} className="flex items-center justify-between py-1" style={{ fontSize: 12 }}>
+                            <span>
+                              {h.ano} · {h.quantidade} peça(s)
+                            </span>
+                            {h.recompra && (
+                              <span style={{ color: "#A9793E", fontSize: 11 }} title="Recompra">
+                                ↻ recompra
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
 
                   {ultimasMedidas.length > 0 && (
                     <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>

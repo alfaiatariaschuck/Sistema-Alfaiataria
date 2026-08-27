@@ -27,6 +27,7 @@ import { usePedidos } from "./hooks/usePedidos";
 import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
 import { usePlanosAssinatura } from "./hooks/usePlanosAssinatura";
 import { useNomesClientes } from "./hooks/useNomesClientes";
+import { useHistoricoVendas } from "./hooks/useHistoricoVendas";
 import { useEstoqueTecidos } from "./hooks/useEstoqueTecidos";
 import { useDespesas } from "./hooks/useDespesas";
 import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
@@ -117,6 +118,7 @@ export default function Shell() {
   } = usePlanosAssinatura();
 
   const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
+  const { historicoVendas } = useHistoricoVendas();
   const { estoque: estoqueTecidos, movimentos: movimentosEstoque, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
   const { despesas, criarDespesa, marcarPaga, atualizarValorPago, removerDespesa } = useDespesas();
   const { previsoes, criarPrevisao, removerPrevisao } = usePrevisoesVenda();
@@ -143,8 +145,17 @@ export default function Shell() {
       if (!map.has(key)) map.set(key, { id: p.clienteId, nome: p.cliente.trim(), pedidos: [], pecas: [] });
       map.get(key).pecas.push(p);
     });
+    // Vendas da planilha antiga (antes do app) — vinculadas por cliente_id,
+    // não entram em pedidos/pecas (não têm medidas nem status de produção).
+    const porClienteId = new Map([...map.values()].map((c) => [c.id, c]));
+    historicoVendas.forEach((h) => {
+      const c = porClienteId.get(h.cliente_id);
+      if (!c) return;
+      if (!c.historico) c.historico = [];
+      c.historico.push(h);
+    });
     return [...map.values()].sort((a, b) => b.pedidos.length + b.pecas.length - (a.pedidos.length + a.pecas.length));
-  }, [pedidos, pecas, clientesBase]);
+  }, [pedidos, pecas, clientesBase, historicoVendas]);
 
   function irPara(id) {
     setTab("pedidos");
