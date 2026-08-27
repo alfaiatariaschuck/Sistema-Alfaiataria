@@ -9,6 +9,23 @@
 -- provas, ajustes, acabamento) + corrige a falta de 'Doação' nas duas
 -- tabelas (o app já usa esse status, mas a constraint nunca tinha sido
 -- atualizada pra aceitar).
+
+-- Antes de travar a lista, normaliza qualquer status "estranho" que não
+-- bate com nenhuma opção conhecida (de import antigo, correção manual
+-- etc.) pro padrão "Aguardando Produção" — sem isso a constraint nova
+-- falha reclamando de uma linha que já está fora do esperado. Depois é
+-- só reabrir esse pedido específico na tela e ajustar o status certo.
+update pedidos
+set status = 'Aguardando Produção'
+where status not in ('Aguardando Produção', 'Em Produção', 'Prova', 'Pronto', 'Entregue Parcial', 'Entregue', 'Doação');
+
+update pedidos_alfaiataria
+set status = 'Aguardando Produção'
+where status not in (
+  'Aguardando Produção', 'Em Produção', 'Prova', 'Corte', '1ª Prova', 'Ajustes', '2ª Prova', 'Acabamento',
+  'Pronto', 'Entregue Parcial', 'Entregue', 'Doação'
+);
+
 alter table pedidos drop constraint if exists pedidos_status_check;
 alter table pedidos add constraint pedidos_status_check
   check (status in ('Aguardando Produção', 'Em Produção', 'Prova', 'Pronto', 'Entregue Parcial', 'Entregue', 'Doação'));
