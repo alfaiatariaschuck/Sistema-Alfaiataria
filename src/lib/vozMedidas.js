@@ -3,7 +3,11 @@
 // o navegador às vezes já manda o número em dígito (mais comum), às
 // vezes por extenso — cobrimos os dois casos.
 
-const ALIASES = [
+function construirAliases(lista) {
+  return lista.flatMap((a) => a.ditos.map((d) => ({ label: a.label, dito: d }))).sort((a, b) => b.dito.length - a.dito.length);
+}
+
+const ALIASES = construirAliases([
   { label: "Colarinho", ditos: ["colarinho"] },
   { label: "Ombro I", ditos: ["ombro i", "ombro grande", "ombro a ombro"] },
   { label: "Ombro P", ditos: ["ombro p", "ombro pequeno", "ombro parcial"] },
@@ -17,9 +21,32 @@ const ALIASES = [
   { label: "C. alta", ditos: ["cintura alta", "c alta"] },
   { label: "C. baixa", ditos: ["cintura baixa", "c baixa"] },
   { label: "Quadril", ditos: ["quadril"] },
-]
-  .flatMap((a) => a.ditos.map((d) => ({ label: a.label, dito: d })))
-  .sort((a, b) => b.dito.length - a.dito.length);
+]);
+
+// Sinônimos pra cada campo de medida da Alfaiataria — usado pra montar os
+// aliases de cada seção (corpo/calça/colete) na hora, já que os rótulos
+// vêm de MEDIDAS_ALFAIATARIA em vez de uma lista fixa como na camisaria.
+const SINONIMOS_ALFAIATARIA = {
+  Tórax: ["torax", "busto", "peito"],
+  Bíceps: ["biceps"],
+  Cós: ["cos"],
+  Comprimento: ["comprimento", "compr"],
+  "Gancho Total": ["gancho total"],
+  Entreperna: ["entreperna", "entre perna"],
+};
+
+// Monta os aliases de reconhecimento a partir dos campos de uma seção de
+// medida da Alfaiataria (cada `campo` tem { label }) — evita colisão entre
+// seções (ex: "Comprimento" existe em corpo e calça) porque cada seção
+// usa sua própria lista, isolada das outras.
+export function aliasesDeCampos(campos) {
+  return construirAliases(
+    (campos || []).map((c) => ({
+      label: c.label,
+      ditos: SINONIMOS_ALFAIATARIA[c.label] || [normalizar(c.label)],
+    }))
+  );
+}
 
 function normalizar(txt) {
   return txt
@@ -101,9 +128,9 @@ function extrairNumero(texto) {
   return inteiro + decimal;
 }
 
-export function parseComandoMedida(textoFalado) {
+export function parseComandoGenerico(textoFalado, aliases) {
   const norm = normalizar(textoFalado);
-  const encontrado = ALIASES.find((a) => norm.includes(a.dito));
+  const encontrado = aliases.find((a) => norm.includes(a.dito));
   if (!encontrado) return null;
 
   const resto = norm.replace(encontrado.dito, "").trim();
@@ -111,4 +138,8 @@ export function parseComandoMedida(textoFalado) {
   if (valor === null || isNaN(valor) || valor <= 0 || valor > 300) return null;
 
   return { label: encontrado.label, valor };
+}
+
+export function parseComandoMedida(textoFalado) {
+  return parseComandoGenerico(textoFalado, ALIASES);
 }

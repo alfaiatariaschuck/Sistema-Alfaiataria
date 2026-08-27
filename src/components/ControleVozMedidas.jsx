@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import { AlertCircle, Mic, MicOff } from "lucide-react";
 import { BRASS, TEXT_MUTED } from "../lib/constants";
-import { parseComandoMedida } from "../lib/vozMedidas";
+import { parseComandoGenerico, parseComandoMedida } from "../lib/vozMedidas";
 
 // Botão "ativa e fala": liga o microfone, você diz "nome da medida" +
 // número (ex: "tórax cento e dois"), e ele preenche o campo certo.
 // Experimental — funciona bem no Chrome/Android, é instável ou não
 // funciona no Safari/iPhone. Sempre dá pra corrigir na mão depois.
-export function ControleVozMedidas({ onMedida }) {
+// `aliases` é opcional — se não vier, usa o vocabulário fixo da camisaria;
+// pra alfaiataria, cada seção de medida passa os aliases dela mesma
+// (evita ambiguidade tipo "Comprimento" existir em corpo e calça).
+export function ControleVozMedidas({ onMedida, aliases }) {
   const [escutando, setEscutando] = useState(false);
   const [ultimo, setUltimo] = useState(null);
   const [erro, setErro] = useState(null);
@@ -35,7 +38,7 @@ export function ControleVozMedidas({ onMedida }) {
 
     rec.onresult = (e) => {
       const texto = e.results[e.results.length - 1][0].transcript;
-      const resultado = parseComandoMedida(texto);
+      const resultado = aliases ? parseComandoGenerico(texto, aliases) : parseComandoMedida(texto);
       if (resultado) {
         onMedida(resultado.label, resultado.valor);
         setUltimo({ ok: true, texto, label: resultado.label, valor: resultado.valor });

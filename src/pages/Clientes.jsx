@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Plus, Search, UserPlus } from "lucide-react";
+import { ChevronDown, ChevronUp, Megaphone, Plus, Search, UserPlus } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill } from "../components/ui";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
+import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import { BRASS, BRASS_SOFT, INK, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { brl, fmtData, mesesDesde, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
@@ -28,6 +29,9 @@ function medidasPecaTexto(tipoPeca, medidas) {
   return linhas;
 }
 
+const MENSAGEM_CAMPANHA_PADRAO =
+  "Oi {nome}! Faz um tempo que você não aparece por aqui e sentimos sua falta — temos novidades pra te mostrar. Vem dar uma olhada? 😊";
+
 export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastrar }) {
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
@@ -37,6 +41,10 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
   const [novosDados, setNovosDados] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [qtdMinima, setQtdMinima] = useState("");
+  const [anoFiltro, setAnoFiltro] = useState("");
+  const [mostrarCampanha, setMostrarCampanha] = useState(false);
+  const [mensagemCampanha, setMensagemCampanha] = useState(MENSAGEM_CAMPANHA_PADRAO);
 
   useEffect(() => {
     (async () => {
@@ -45,7 +53,30 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
     })();
   }, []);
 
-  const filtrados = clientes.filter((c) => c.nome.toLowerCase().includes(busca.toLowerCase()));
+  // Junta camisas + peças de alfaiataria pra ter a base pra filtro/campanha:
+  // total comprado (unidades), se já recomprou, e o ano da última compra.
+  const enriquecidos = clientes.map((c) => {
+    const pecas = c.pecas || [];
+    const totalCamisas = c.pedidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
+    const totalComprado = totalCamisas + pecas.length;
+    const todosItens = [
+      ...c.pedidos.map((p) => ({ tipo: "camisa", item: p, data: p.dataPedido })),
+      ...pecas.map((p) => ({ tipo: "peca", item: p, data: p.dataPedido })),
+    ].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+    const maisRecente = todosItens[0];
+    const anoUltimaCompra = maisRecente?.data ? maisRecente.data.slice(0, 4) : null;
+    const recompra = c.pedidos.length + pecas.length > 1;
+    return { ...c, totalComprado, anoUltimaCompra, recompra, todosItens, maisRecente };
+  });
+
+  const anosDisponiveis = [...new Set(enriquecidos.map((c) => c.anoUltimaCompra).filter(Boolean))].sort().reverse();
+
+  const filtrados = enriquecidos.filter((c) => {
+    const bateBusca = c.nome.toLowerCase().includes(busca.toLowerCase());
+    const bateQtd = !qtdMinima || c.totalComprado >= parseFloat(qtdMinima);
+    const bateAno = !anoFiltro || c.anoUltimaCompra === anoFiltro;
+    return bateBusca && bateQtd && bateAno;
+  });
 
   async function cadastrar(e) {
     e.preventDefault();
@@ -66,9 +97,9 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
 
   return (
     <div>
-      <PageTitle eyebrow={`${clientes.length} clientes`} title="Clientes" />
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 320, padding: "6px 10px" }}>
+      <PageTitle eyebrow={`${filtrados.length} de ${clientes.length} clientes`} title="Clientes" />
+      <div className="flex items-center gap-3 mb-3 flex-wrap">
+        <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 260, padding: "6px 10px" }}>
           <Search size={14} color={TEXT_MUTED} />
           <input
             placeholder="Buscar cliente…"
@@ -77,6 +108,37 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
             style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
           />
         </div>
+        <input
+          type="number"
+          min="1"
+          placeholder="Compras mín."
+          value={qtdMinima}
+          onChange={(e) => setQtdMinima(e.target.value)}
+          style={{ ...inputStyle, maxWidth: 130 }}
+          title="Quantidade mínima comprada (camisas + peças)"
+        />
+        <select value={anoFiltro} onChange={(e) => setAnoFiltro(e.target.value)} style={{ ...inputStyle, maxWidth: 160 }}>
+          <option value="">Ano da última compra</option>
+          {anosDisponiveis.map((ano) => (
+            <option key={ano} value={ano}>
+              {ano}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={() => setMostrarCampanha((v) => !v)}
+          className="flex items-center gap-2"
+          style={{
+            background: mostrarCampanha ? BRASS : "#EDEAE0",
+            color: mostrarCampanha ? "#FFF" : INK,
+            padding: "8px 14px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          <Megaphone size={15} /> Campanha
+        </button>
         <button
           onClick={() => setMostrarForm((v) => !v)}
           className="flex items-center gap-2"
@@ -86,6 +148,27 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
           {mostrarForm ? "Cancelar" : "Cadastrar cliente"}
         </button>
       </div>
+
+      {mostrarCampanha && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Megaphone size={15} color={BRASS} />
+            <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+              Mensagem da campanha
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
+            Filtre a lista abaixo (por compras mínimas, ano da última compra ou busca) pra achar quem quer reativar,
+            escreva a mensagem aqui (use <strong>{"{nome}"}</strong> onde quiser o nome do cliente) e um botão de WhatsApp
+            aparece em cada card filtrado — você manda um por um, sem custo nenhum.
+          </div>
+          <textarea
+            style={{ ...inputStyle, minHeight: 70 }}
+            value={mensagemCampanha}
+            onChange={(e) => setMensagemCampanha(e.target.value)}
+          />
+        </Card>
+      )}
 
       {mostrarForm && (
         <Card style={{ padding: 20 }} className="mb-6">
@@ -117,11 +200,8 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
         {filtrados.map((c) => {
           const pecas = c.pecas || [];
           const totalCamisas = c.pedidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
-          const todosItens = [
-            ...c.pedidos.map((p) => ({ tipo: "camisa", item: p, data: p.dataPedido })),
-            ...pecas.map((p) => ({ tipo: "peca", item: p, data: p.dataPedido })),
-          ].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-          const maisRecente = todosItens[0];
+          const todosItens = c.todosItens;
+          const maisRecente = c.maisRecente;
           const mesesSemComprar = maisRecente ? mesesDesde(maisRecente.data) : null;
           const sumido = mesesSemComprar !== null && mesesSemComprar >= limiteMeses;
 
@@ -158,7 +238,7 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{c.nome}</div>
                 <div className="flex items-center gap-1.5">
                   {sumido && <Pill text={`sumido há ${mesesSemComprar}m`} style={{ bg: "#F6E3D9", fg: VERMELHO }} />}
-                  {c.pedidos.length + pecas.length > 1 && <Pill text="↻ recompra" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
+                  {c.recompra && <Pill text="↻ recompra" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
                 </div>
               </div>
               <div className="flex items-center gap-3 mb-2 flex-wrap" style={{ fontSize: 12, color: TEXT_MUTED }}>
@@ -179,6 +259,16 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
               {devidoIcaro > 0 && (
                 <div className="mb-2" style={{ fontSize: 12, color: "#9C4A1E" }}>
                   Devendo ao Icaro: <strong>{brl(devidoIcaro)}</strong>
+                </div>
+              )}
+
+              {mostrarCampanha && (
+                <div className="mb-2">
+                  <AvisarClienteWhatsapp
+                    clienteId={c.id}
+                    nomeCliente={c.nome}
+                    mensagem={mensagemCampanha.replace(/\{nome\}/g, c.nome.trim().split(" ")[0])}
+                  />
                 </div>
               )}
 

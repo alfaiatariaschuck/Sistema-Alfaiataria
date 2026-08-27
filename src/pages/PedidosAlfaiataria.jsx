@@ -41,7 +41,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
 
   return (
     <div>
-      <PageTitle eyebrow={`${pecas.filter((p) => p.status !== "Entregue").length} em aberto`} title="Pedidos Alfaiataria" />
+      <PageTitle eyebrow={`${filtradas.length} peça(s)`} title="Pedidos Alfaiataria" />
       <div className="flex flex-col md:flex-row gap-3 mb-3">
         <div className="flex items-center gap-2 flex-1" style={{ ...inputStyle, padding: "6px 10px" }}>
           <Search size={14} color={TEXT_MUTED} />

@@ -6,6 +6,7 @@ import { CampoPagamento } from "../components/CampoPagamento";
 import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import LinkAcompanhamento from "../components/LinkAcompanhamento";
+import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import {
   BRASS,
   BRASS_SOFT,
@@ -21,6 +22,7 @@ import {
   inputStyle,
 } from "../lib/constants";
 import { brl, fmtData, statusDividido, totalDividido } from "../lib/helpers";
+import { aliasesDeCampos } from "../lib/vozMedidas";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
 function statusPagamentoDe(p) {
@@ -216,6 +218,7 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
             <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
               {sec.titulo}
             </div>
+            <ControleVozMedidas aliases={aliasesDeCampos(sec.campos)} onMedida={(label, valor) => onMedida(p.id, secKey, label, valor)} />
             <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
               {sec.campos.map((campo) => (
                 <Field key={campo.label} label={campo.label}>

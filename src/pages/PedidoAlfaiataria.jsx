@@ -3,6 +3,7 @@ import { Card, Field, PageTitle } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
+import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import {
   BRASS,
   BRASS_SOFT,
@@ -19,6 +20,7 @@ import {
   inputStyle,
 } from "../lib/constants";
 import { somarDias, statusDividido, tempoMedioProducaoGenerico, totalDividido } from "../lib/helpers";
+import { aliasesDeCampos } from "../lib/vozMedidas";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
 export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
@@ -227,6 +229,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
                 <div className="fx-serif mb-2" style={{ fontSize: 14, fontWeight: 600, color: BRASS }}>
                   {sec.titulo}
                 </div>
+                <ControleVozMedidas aliases={aliasesDeCampos(sec.campos)} onMedida={(label, valor) => setMedida(secKey, label, valor)} />
                 <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
                   {sec.campos.map((campo) => (
                     <Field key={campo.label} label={campo.label}>

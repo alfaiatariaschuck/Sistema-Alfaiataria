@@ -30,9 +30,13 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
     return <DetalhePedido pedido={atual} onVoltar={() => setSelecionado(null)} {...acoes} />;
   }
 
+  // Reflete o filtro atual — útil pra estatística rápida, ex: filtrar só
+  // "Doação" e já ver quantos pedidos e quantas camisas foram doadas.
+  const totalCamisasFiltradas = filtrados.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
+
   return (
     <div>
-      <PageTitle eyebrow={`${pedidos.filter((p) => p.status !== "Entregue").length} em aberto`} title="Pedidos" />
+      <PageTitle eyebrow={`${filtrados.length} pedido(s) · ${totalCamisasFiltradas} camisa(s)`} title="Pedidos" />
       <div className="flex items-center gap-2 mb-4" style={{ ...inputStyle, maxWidth: 360, padding: "6px 10px" }}>
         <Search size={14} color={TEXT_MUTED} />
         <input
