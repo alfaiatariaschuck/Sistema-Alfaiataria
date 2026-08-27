@@ -85,15 +85,19 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
     const dataReferencia = maisRecente?.data || (anoHistorico ? `${anoHistorico}-12-31` : null);
     const mesesSemComprar = dataReferencia ? mesesDesde(dataReferencia) : null;
     const sumido = mesesSemComprar !== null && mesesSemComprar >= limiteMeses;
-    return { ...c, historico, totalHistorico, totalComprado, anoUltimaCompra, recompra, todosItens, maisRecente, mesesSemComprar, sumido };
+    // TODOS os anos em que o cliente comprou (não só o mais recente) — pra
+    // filtrar "quem comprou em 2025", por exemplo, mesmo quem comprou de
+    // novo depois (senão esse cliente só aparece no ano mais recente dele).
+    const anosComCompra = new Set([...todosItens.map((i) => (i.data ? i.data.slice(0, 4) : null)).filter(Boolean), ...historico.map((h) => String(h.ano))]);
+    return { ...c, historico, totalHistorico, totalComprado, anoUltimaCompra, anosComCompra, recompra, todosItens, maisRecente, mesesSemComprar, sumido };
   });
 
-  const anosDisponiveis = [...new Set(enriquecidos.map((c) => c.anoUltimaCompra).filter(Boolean))].sort().reverse();
+  const anosDisponiveis = [...new Set(enriquecidos.flatMap((c) => [...c.anosComCompra]))].sort().reverse();
 
   const filtrados = enriquecidos.filter((c) => {
     const bateBusca = c.nome.toLowerCase().includes(busca.toLowerCase());
     const bateQtd = !qtdMinima || c.totalComprado >= parseFloat(qtdMinima);
-    const bateAno = !anoFiltro || c.anoUltimaCompra === anoFiltro;
+    const bateAno = !anoFiltro || c.anosComCompra.has(anoFiltro);
     return bateBusca && bateQtd && bateAno;
   });
 
@@ -197,8 +201,8 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
           style={{ ...inputStyle, maxWidth: 130 }}
           title="Quantidade mínima comprada (camisas + peças)"
         />
-        <select value={anoFiltro} onChange={(e) => setAnoFiltro(e.target.value)} style={{ ...inputStyle, maxWidth: 160 }}>
-          <option value="">Ano da última compra</option>
+        <select value={anoFiltro} onChange={(e) => setAnoFiltro(e.target.value)} style={{ ...inputStyle, maxWidth: 160 }} title="Mostra quem comprou nesse ano, mesmo quem comprou de novo depois">
+          <option value="">Comprou em (ano)</option>
           {anosDisponiveis.map((ano) => (
             <option key={ano} value={ano}>
               {ano}
