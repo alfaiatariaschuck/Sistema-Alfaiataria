@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { buscarTodasLinhas } from "../lib/supabasePagination";
 
 // Nomes de TODOS os clientes cadastrados (tabela clientes), independente
 // de já terem pedido ou não — usado para autocomplete e detecção de
@@ -9,9 +10,11 @@ export function useNomesClientes() {
   const [clientesBase, setClientesBase] = useState([]);
 
   const recarregarNomesClientes = useCallback(async () => {
-    const { data } = await supabase.from("clientes").select("id, nome").order("nome");
-    setNomesClientes((data || []).map((r) => r.nome));
-    setClientesBase(data || []);
+    // Passou de 1000 clientes depois da importação da planilha antiga —
+    // sem paginar, o Supabase corta silenciosamente na linha 1000.
+    const data = await buscarTodasLinhas(() => supabase.from("clientes").select("id, nome").order("nome"));
+    setNomesClientes(data.map((r) => r.nome));
+    setClientesBase(data);
   }, []);
 
   useEffect(() => {
