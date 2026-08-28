@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { AlertTriangle, ChevronRight, Search } from "lucide-react";
+import { AlertTriangle, CalendarClock, ChevronRight, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
 import { LINE, STATUS, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { diasAte, fmtData } from "../lib/helpers";
 import DetalhePedido from "./DetalhePedido";
+import CronogramaImprimivel from "./CronogramaImprimivel";
 
 const VERMELHO = "#9C4A1E";
 const DIAS_LIMITE = 40;
@@ -13,6 +14,7 @@ const STATUS_ATIVOS = STATUS.filter((s) => s !== "Entregue");
 export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes }) {
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState(new Set());
+  const [mostrarCronograma, setMostrarCronograma] = useState(false);
 
   // Pedidos entregues saem daqui — ficam no histórico da aba Entregues.
   const filtrados = pedidos
@@ -34,21 +36,39 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
   // "Doação" e já ver quantos pedidos e quantas camisas foram doadas.
   const totalCamisasFiltradas = filtrados.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
 
+  // Cronograma pra Fabi: TODOS os pedidos em aberto (não só o que está
+  // filtrado na tela), do mais antigo (mais urgente) pro mais novo —
+  // Doação sai da lista porque não é produção pendente de verdade.
+  const pedidosAbertos = pedidos
+    .filter((p) => p.status !== "Entregue" && p.status !== "Doação")
+    .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
+
   return (
     <div>
       <PageTitle eyebrow={`${filtrados.length} pedido(s) · ${totalCamisasFiltradas} camisa(s)`} title="Pedidos" />
-      <div className="flex items-center gap-2 mb-4" style={{ ...inputStyle, maxWidth: 360, padding: "6px 10px" }}>
-        <Search size={14} color={TEXT_MUTED} />
-        <input
-          placeholder="Buscar cliente…"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
-        />
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 360, padding: "6px 10px" }}>
+          <Search size={14} color={TEXT_MUTED} />
+          <input
+            placeholder="Buscar cliente…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
+          />
+        </div>
+        <button
+          onClick={() => setMostrarCronograma(true)}
+          className="flex items-center gap-2"
+          style={{ background: "transparent", border: "1px solid #E4DECF", color: "#16212E", padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+        >
+          <CalendarClock size={15} /> Cronograma pra Fabi
+        </button>
       </div>
       <div className="mb-4">
         <FiltroStatusMulti opcoes={STATUS_ATIVOS} estilos={STATUS_STYLE} selecionados={statusFiltro} onChange={setStatusFiltro} />
       </div>
+
+      {mostrarCronograma && <CronogramaImprimivel itens={pedidosAbertos} onFechar={() => setMostrarCronograma(false)} />}
 
       <Card>
         {filtrados.length === 0 && (
