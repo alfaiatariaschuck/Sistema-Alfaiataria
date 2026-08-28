@@ -131,7 +131,7 @@ export default function Shell() {
     clientesBase.forEach((c) => {
       const key = c.nome.trim().toLowerCase();
       if (!key) return;
-      map.set(key, { id: c.id, nome: c.nome.trim(), pedidos: [], pecas: [] });
+      map.set(key, { id: c.id, nome: c.nome.trim(), pedidos: [], pecas: [], contatadoEm: c.campanha_contatado_em || null });
     });
     pedidos.forEach((p) => {
       const key = p.cliente.trim().toLowerCase();

@@ -12,7 +12,7 @@ export function useNomesClientes() {
   const recarregarNomesClientes = useCallback(async () => {
     // Passou de 1000 clientes depois da importação da planilha antiga —
     // sem paginar, o Supabase corta silenciosamente na linha 1000.
-    const data = await buscarTodasLinhas(() => supabase.from("clientes").select("id, nome").order("nome"));
+    const data = await buscarTodasLinhas(() => supabase.from("clientes").select("id, nome, campanha_contatado_em").order("nome"));
     setNomesClientes(data.map((r) => r.nome));
     setClientesBase(data);
   }, []);

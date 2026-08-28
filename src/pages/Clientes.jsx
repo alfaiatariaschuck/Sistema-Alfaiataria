@@ -51,6 +51,11 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
   const [ordenarPor, setOrdenarPor] = useState("nome");
   const [ordemDesc, setOrdemDesc] = useState(false);
   const [topN, setTopN] = useState("");
+  const [soSumidos, setSoSumidos] = useState(false);
+  const [filtroContato, setFiltroContato] = useState("");
+  // Otimista: some no toque antes de esperar o servidor confirmar. Guarda
+  // só as mudanças feitas nesta sessão (undefined = usa o valor do servidor).
+  const [contatadosLocais, setContatadosLocais] = useState({});
 
   useEffect(() => {
     (async () => {
@@ -89,7 +94,11 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
     // filtrar "quem comprou em 2025", por exemplo, mesmo quem comprou de
     // novo depois (senão esse cliente só aparece no ano mais recente dele).
     const anosComCompra = new Set([...todosItens.map((i) => (i.data ? i.data.slice(0, 4) : null)).filter(Boolean), ...historico.map((h) => String(h.ano))]);
-    return { ...c, historico, totalHistorico, totalComprado, anoUltimaCompra, anosComCompra, recompra, todosItens, maisRecente, mesesSemComprar, sumido };
+    // Marca "já mandei mensagem" da campanha — pra não mandar duas vezes
+    // (e o dono avisar o Deivid quem já foi contatado, sem repetir).
+    const contatadoEm = contatadosLocais[c.id] !== undefined ? contatadosLocais[c.id] : c.contatadoEm || null;
+    const contatado = !!contatadoEm;
+    return { ...c, historico, totalHistorico, totalComprado, anoUltimaCompra, anosComCompra, recompra, todosItens, maisRecente, mesesSemComprar, sumido, contatadoEm, contatado };
   });
 
   const anosDisponiveis = [...new Set(enriquecidos.flatMap((c) => [...c.anosComCompra]))].sort().reverse();
@@ -98,7 +107,9 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
     const bateBusca = c.nome.toLowerCase().includes(busca.toLowerCase());
     const bateQtd = !qtdMinima || c.totalComprado >= parseFloat(qtdMinima);
     const bateAno = !anoFiltro || c.anosComCompra.has(anoFiltro);
-    return bateBusca && bateQtd && bateAno;
+    const bateSumido = !soSumidos || c.sumido;
+    const bateContato = !filtroContato || (filtroContato === "sim" ? c.contatado : !c.contatado);
+    return bateBusca && bateQtd && bateAno && bateSumido && bateContato;
   });
 
   const ordenados = [...filtrados].sort((a, b) => {
@@ -109,6 +120,9 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
     } else if (ordenarPor === "anoUltimaCompra") {
       av = a.anoUltimaCompra || "";
       bv = b.anoUltimaCompra || "";
+    } else if (ordenarPor === "mesesSemComprar") {
+      av = a.mesesSemComprar === null ? -1 : a.mesesSemComprar;
+      bv = b.mesesSemComprar === null ? -1 : b.mesesSemComprar;
     } else {
       av = a.nome.toLowerCase();
       bv = b.nome.toLowerCase();
@@ -124,8 +138,15 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
       setOrdemDesc((v) => !v);
     } else {
       setOrdenarPor(coluna);
-      setOrdemDesc(coluna === "totalComprado");
+      setOrdemDesc(coluna === "totalComprado" || coluna === "mesesSemComprar");
     }
+  }
+
+  async function alternarContatado(c) {
+    const novoValor = c.contatado ? null : new Date().toISOString();
+    setContatadosLocais((prev) => ({ ...prev, [c.id]: novoValor }));
+    const { error } = await supabase.from("clientes").update({ campanha_contatado_em: novoValor }).eq("id", c.id);
+    if (error) console.error("Não consegui salvar o contato:", error);
   }
 
   function aplicarTopN(n) {
@@ -208,6 +229,26 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
               {ano}
             </option>
           ))}
+        </select>
+        <button
+          onClick={() => setSoSumidos((v) => !v)}
+          className="flex items-center gap-1.5"
+          style={{
+            background: soSumidos ? VERMELHO : "#EDEAE0",
+            color: soSumidos ? "#FFF" : INK,
+            padding: "8px 14px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+          title={`Só quem está sem comprar há ${limiteMeses} meses ou mais`}
+        >
+          Só sumidos
+        </button>
+        <select value={filtroContato} onChange={(e) => setFiltroContato(e.target.value)} style={{ ...inputStyle, maxWidth: 170 }} title="Quem já foi avisado da campanha">
+          <option value="">Contato: todos</option>
+          <option value="nao">Ainda não contatei</option>
+          <option value="sim">Já contatei</option>
         </select>
         <select value={topN} onChange={(e) => aplicarTopN(e.target.value)} style={{ ...inputStyle, maxWidth: 150 }} title="Ranking de quem mais comprou">
           <option value="">Todos os clientes</option>
@@ -322,6 +363,7 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
           ordenarPor={ordenarPor}
           ordemDesc={ordemDesc}
           onOrdenar={ordenarPorColuna}
+          onAlternarContatado={alternarContatado}
           onAbrir={(nome) => {
             setBusca(nome);
             setVisualizacao("cards");
@@ -402,12 +444,21 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
               )}
 
               {mostrarCampanha && (
-                <div className="mb-2">
+                <div className="mb-2 flex items-center gap-3 flex-wrap">
                   <AvisarClienteWhatsapp
                     clienteId={c.id}
                     nomeCliente={c.nome}
                     mensagem={mensagemCampanha.replace(/\{nome\}/g, c.nome.trim().split(" ")[0])}
                   />
+                  <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: c.contatado ? "#2C6E31" : TEXT_MUTED, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={c.contatado}
+                      onChange={() => alternarContatado(c)}
+                      style={{ width: 14, height: 14, accentColor: "#2C6E31" }}
+                    />
+                    {c.contatado ? `Já contatei (${fmtData(c.contatadoEm.slice(0, 10))})` : "Já mandei mensagem"}
+                  </label>
                 </div>
               )}
 
@@ -504,9 +555,10 @@ const COLUNAS_TABELA = [
   { chave: "nome", label: "Cliente" },
   { chave: "totalComprado", label: "Total" },
   { chave: "anoUltimaCompra", label: "Última compra" },
+  { chave: "mesesSemComprar", label: "Inativo há" },
 ];
 
-function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAbrir }) {
+function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAlternarContatado, onAbrir }) {
   return (
     <Card className="mb-6" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ overflowX: "auto" }}>
@@ -547,6 +599,9 @@ function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAbrir })
               <th style={{ textAlign: "center", padding: "10px 16px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase" }}>
                 Status
               </th>
+              <th style={{ textAlign: "center", padding: "10px 16px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase" }}>
+                Contatei
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -566,6 +621,9 @@ function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAbrir })
                   <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", color: TEXT_MUTED }}>
                     {c.anoUltimaCompra || "—"}
                   </td>
+                  <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", color: c.sumido ? VERMELHO : TEXT_MUTED, fontWeight: c.sumido ? 700 : 400 }}>
+                    {c.mesesSemComprar === null ? "—" : `${c.mesesSemComprar}m`}
+                  </td>
                   <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", color: TEXT_MUTED }}>
                     {totalCamisas || "—"}
                   </td>
@@ -581,12 +639,21 @@ function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAbrir })
                       {c.recompra && <Pill text="↻" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
                     </div>
                   </td>
+                  <td style={{ padding: "9px 16px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={c.contatado}
+                      onChange={() => onAlternarContatado(c)}
+                      title={c.contatado ? `Contatado em ${fmtData(c.contatadoEm.slice(0, 10))}` : "Marcar como já contatado"}
+                      style={{ width: 15, height: 15, accentColor: "#2C6E31", cursor: "pointer" }}
+                    />
+                  </td>
                 </tr>
               );
             })}
             {clientes.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ padding: 24 }}>
+                <td colSpan={9} style={{ padding: 24 }}>
                   <Empty texto="Nenhum cliente encontrado." />
                 </td>
               </tr>
