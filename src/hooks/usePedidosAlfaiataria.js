@@ -27,6 +27,7 @@ export function pecaVazia() {
     medidas: {},
     caracteristicas: {},
     tecidos: [{ codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
+    medidasNovas: false,
   };
 }
 
@@ -66,6 +67,7 @@ function rowParaPeca(row) {
         metragem: t.metragem || "",
         comprado: !!t.comprado,
       })),
+    medidasNovas: !!row.medidas_novas,
   };
 }
 
@@ -91,6 +93,7 @@ const CAMPO_PARA_COLUNA = {
   enviadoIcaro: "enviado_icaro",
   medidas: "medidas",
   caracteristicas: "caracteristicas",
+  medidasNovas: "medidas_novas",
 };
 
 export function usePedidosAlfaiataria() {
@@ -149,6 +152,7 @@ export function usePedidosAlfaiataria() {
           caracteristicas: p.caracteristicas,
           observacoes: p.observacoes || null,
           enviado_icaro: false,
+          medidas_novas: !!p.medidasNovas,
         })
         .select("id")
         .single();

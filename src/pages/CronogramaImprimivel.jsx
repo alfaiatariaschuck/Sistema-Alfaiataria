@@ -81,7 +81,14 @@ export default function CronogramaImprimivel({ itens, onFechar }) {
               return (
                 <tr key={p.id} style={{ background: i % 2 === 0 ? "#F7F5EF" : "#FFF" }}>
                   <td style={{ padding: "5px 8px" }}>{fmtData(p.dataPedido)}</td>
-                  <td style={{ padding: "5px 8px", fontWeight: 600 }}>{p.cliente || "—"}</td>
+                  <td style={{ padding: "5px 8px", fontWeight: 600 }}>
+                    {p.cliente || "—"}
+                    {p.medidasNovas && (
+                      <span style={{ marginLeft: 6, color: "#9C4A1E", fontWeight: 700 }} title="Medidas novas — não usar medida anterior">
+                        ⚠ medidas novas
+                      </span>
+                    )}
+                  </td>
                   <td style={{ padding: "5px 8px", textAlign: "right" }}>{parseFloat(p.quantidade) || 0}</td>
                   <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: atrasado ? 700 : 400, color: atrasado ? "#9C4A1E" : "#111" }}>
                     {diasAberto}d{atrasado ? " ⚠" : ""}

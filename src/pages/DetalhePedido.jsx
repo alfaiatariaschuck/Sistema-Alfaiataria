@@ -73,6 +73,7 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               {p.cliente}
             </h1>
             {p.recompra && <Pill text="↻ Recompra" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
+            {p.medidasNovas && <Pill text="⚠ Medidas Novas" style={{ bg: "#F6E3D9", fg: "#9C4A1E" }} />}
             {p.assinatura && <Pill text="📦 Assinatura" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
             {!p.enviadoFabi && <Pill text="📨 Não enviado pra Fabi" style={{ bg: "#DCE4EE", fg: "#2E4A6B" }} />}
           </div>
@@ -272,8 +273,14 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
       </div>
 
       <Card style={{ padding: 20 }} className="mt-6">
-        <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
-          Medidas (cm)
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+            Medidas (cm)
+          </div>
+          <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: p.medidasNovas ? "#9C4A1E" : TEXT_MUTED, cursor: "pointer" }}>
+            <input type="checkbox" checked={!!p.medidasNovas} onChange={(e) => set("medidasNovas", e.target.checked)} style={{ width: 14, height: 14, accentColor: "#9C4A1E" }} />
+            Medidas Novas (destaca na ficha da Fabi)
+          </label>
         </div>
         <ControleVozMedidas onMedida={(label, valor) => setSub("medidas", label, valor)} />
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>

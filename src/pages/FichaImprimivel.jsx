@@ -30,6 +30,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
     linhas.push(`Previsão de entrega: ${fmtData(p.previsaoEntrega)}`);
     linhas.push(`Quantidade: ${p.quantidade}`);
     if (p.recompra) linhas.push(`Cliente: RECOMPRA (já tem pedido anterior)`);
+    if (p.medidasNovas) linhas.push(`⚠️ MEDIDAS NOVAS — NÃO usar medida de pedido anterior`);
     linhas.push(``);
     linhas.push(`*Medidas (cm) — tirei → final*`);
     MEDIDA_LABELS.forEach((label) => {
@@ -170,8 +171,14 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
         </div>
 
         {p.recompra && (
-          <div style={{ background: "#F3E9DA", border: "1px solid #A9793E", borderRadius: 6, padding: "8px 12px", marginBottom: 20, fontSize: 12, fontWeight: 600, color: "#7A5A2E" }}>
+          <div style={{ background: "#F3E9DA", border: "1px solid #A9793E", borderRadius: 6, padding: "8px 12px", marginBottom: 12, fontSize: 12, fontWeight: 600, color: "#7A5A2E" }}>
             ↻ Cliente de recompra — já fez pedido antes
+          </div>
+        )}
+
+        {p.medidasNovas && (
+          <div style={{ background: "#FBE1D6", border: "2px solid #9C4A1E", borderRadius: 6, padding: "10px 14px", marginBottom: 20, fontSize: 14, fontWeight: 700, color: "#9C4A1E" }}>
+            ⚠ MEDIDAS NOVAS — cliente atualizou as medidas, NÃO usar a medida do pedido anterior
           </div>
         )}
 

@@ -29,6 +29,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
   const [previsaoAuto, setPrevisaoAuto] = useState(null);
+  const [temPecaAnterior, setTemPecaAnterior] = useState(false);
   const tempoMedio = useMemo(() => tempoMedioProducaoGenerico(pecas || []), [pecas]);
 
   // Sugere a previsão de entrega com base no tempo médio de produção — só
@@ -47,10 +48,14 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
   useEffect(() => {
     const key = novaPeca.cliente.trim().toLowerCase();
     const detectado = key && nomesClientes.some((n) => n.toLowerCase() === key);
-    if (!detectado || !pecas) return;
+    if (!detectado || !pecas) {
+      setTemPecaAnterior(false);
+      return;
+    }
 
     const daCliente = pecas.filter((p) => p.cliente.trim().toLowerCase() === key).sort((a, b) => (b.dataPedido || "").localeCompare(a.dataPedido || ""));
     const ultima = daCliente[0];
+    setTemPecaAnterior(!!ultima);
     if (!ultima) return;
     setNovaPeca((prev) => {
       const medidasVazias = Object.values(prev.medidas).every((sec) => Object.values(sec || {}).every((v) => v === ""));
@@ -70,6 +75,18 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
       ...prev,
       medidas: { ...prev.medidas, [secKey]: { ...prev.medidas[secKey], [label]: valor } },
     }));
+  }
+  // Recompra, mas o cliente mudou de corpo — limpa as medidas
+  // pré-preenchidas do pedido anterior e marca, pra ficha destacar isso
+  // pro Icaro (senão ele pode usar a medida antiga sem saber que mudou).
+  function marcarMedidasNovas() {
+    setNovaPeca((prev) => {
+      if (prev.medidasNovas) return { ...prev, medidasNovas: false };
+      const medidasLimpas = Object.fromEntries(
+        Object.entries(prev.medidas).map(([secKey, campos]) => [secKey, Object.fromEntries(Object.keys(campos || {}).map((l) => [l, ""]))])
+      );
+      return { ...prev, medidasNovas: true, medidas: medidasLimpas };
+    });
   }
   function setCaracteristica(label, valor) {
     setNovaPeca((prev) => ({ ...prev, caracteristicas: { ...prev.caracteristicas, [label]: valor } }));
@@ -221,6 +238,32 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
               onStatusRestante={(v) => setPagamento({ statusRestante: v })}
             />
           </div>
+
+          {temPecaAnterior && (
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+              <div style={{ fontSize: 12, color: TEXT_MUTED }}>Cliente já tem peça anterior — medidas pré-preenchidas abaixo.</div>
+              <button
+                type="button"
+                onClick={marcarMedidasNovas}
+                style={{
+                  background: novaPeca.medidasNovas ? "#9C4A1E" : "#EDEAE0",
+                  color: novaPeca.medidasNovas ? "#FFF" : INK,
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  fontWeight: 600,
+                  fontSize: 12,
+                }}
+              >
+                {novaPeca.medidasNovas ? "⚠ Medidas novas — tirando de novo" : "Medidas Novas"}
+              </button>
+            </div>
+          )}
+          {novaPeca.medidasNovas && (
+            <div className="mb-3 px-3 py-2" style={{ background: "#F6E3D9", color: "#9C4A1E", borderRadius: 6, fontSize: 12 }}>
+              Limpei as medidas da peça anterior — digite as novas medidas do cliente abaixo. Isso vai aparecer em
+              destaque na ficha do Icaro.
+            </div>
+          )}
 
           {(PECA_SECOES[novaPeca.tipoPeca] || []).map((secKey) => {
             const sec = MEDIDAS_ALFAIATARIA[secKey];

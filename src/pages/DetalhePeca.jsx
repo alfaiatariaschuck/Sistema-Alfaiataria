@@ -78,6 +78,7 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
               {p.cliente}
             </h1>
             <Pill text={p.status} style={STATUS_STYLE[p.status]} />
+            {p.medidasNovas && <Pill text="⚠ Medidas Novas" style={{ bg: "#F6E3D9", fg: "#9C4A1E" }} />}
             {!p.enviadoIcaro && <Pill text="📨 Não enviado pro Icaro" style={{ bg: "#DCE4EE", fg: "#2E4A6B" }} />}
           </div>
         </div>
@@ -210,6 +211,15 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
           onStatusRestante={(v) => setPagamento({ statusRestante: v })}
         />
       </Card>
+
+      {(PECA_SECOES[p.tipoPeca] || []).length > 0 && (
+        <div className="flex justify-end mt-6">
+          <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: p.medidasNovas ? "#9C4A1E" : TEXT_MUTED, cursor: "pointer" }}>
+            <input type="checkbox" checked={!!p.medidasNovas} onChange={(e) => set("medidasNovas", e.target.checked)} style={{ width: 14, height: 14, accentColor: "#9C4A1E" }} />
+            Medidas Novas (destaca na ficha do Icaro)
+          </label>
+        </div>
+      )}
 
       {(PECA_SECOES[p.tipoPeca] || []).map((secKey) => {
         const sec = MEDIDAS_ALFAIATARIA[secKey];

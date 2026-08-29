@@ -31,6 +31,7 @@ export default function FichaImprimivelAlfaiataria({ peca: p, onFechar, onMarcar
     linhas.push(`Cliente: ${p.cliente || "—"}`);
     linhas.push(`Status: ${p.status}`);
     if (p.previsaoEntrega) linhas.push(`Previsão de entrega: ${fmtData(p.previsaoEntrega)}`);
+    if (p.medidasNovas) linhas.push(`⚠️ MEDIDAS NOVAS — NÃO usar medida de pedido anterior`);
     secoes.forEach((secKey) => {
       const valores = Object.entries(p.medidas?.[secKey] || {}).filter(([, v]) => v);
       if (valores.length) {
@@ -167,6 +168,12 @@ export default function FichaImprimivelAlfaiataria({ peca: p, onFechar, onMarcar
             <strong>Previsão de entrega:</strong> {fmtData(p.previsaoEntrega)}
           </div>
         </div>
+
+        {p.medidasNovas && (
+          <div style={{ background: "#FBE1D6", border: "2px solid #9C4A1E", borderRadius: 6, padding: "10px 14px", marginBottom: 20, fontSize: 14, fontWeight: 700, color: "#9C4A1E" }}>
+            ⚠ MEDIDAS NOVAS — cliente atualizou as medidas, NÃO usar a medida do pedido anterior
+          </div>
+        )}
 
         {secoes.map((secKey) => {
           const sec = MEDIDAS_ALFAIATARIA[secKey];
