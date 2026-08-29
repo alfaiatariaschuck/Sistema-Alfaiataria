@@ -202,7 +202,15 @@ export function usePedidosAlfaiataria() {
   async function atualizarCampo(pecaId, campo, valor) {
     const pecaAtual = pecas.find((p) => p.id === pecaId);
     const marcarEntrega = campo === "status" && valor === "Entregue" && pecaAtual && !pecaAtual.dataEntrega;
-    const patch = marcarEntrega ? { [campo]: valor, dataEntrega: hojeISO() } : { [campo]: valor };
+    // Marcar (ou corrigir) a data de início já deixa a situação como "Em
+    // Produção" — senão a peça fica com início lançado mas ainda
+    // aparecendo como "Aguardando", o que não faz sentido.
+    const marcarEmProducao = campo === "dataInicioProducao" && valor && pecaAtual && pecaAtual.situacao === "Aguardando";
+    const patch = {
+      [campo]: valor,
+      ...(marcarEntrega ? { dataEntrega: hojeISO() } : {}),
+      ...(marcarEmProducao ? { situacao: "Em Produção" } : {}),
+    };
 
     setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
     const coluna = CAMPO_PARA_COLUNA[campo];
@@ -211,6 +219,7 @@ export function usePedidosAlfaiataria() {
     await comIndicador(async () => {
       const update = { [coluna]: valorFinal };
       if (marcarEntrega) update.data_entrega = patch.dataEntrega;
+      if (marcarEmProducao) update.situacao = "Em Produção";
       const { error } = await supabase.from("pedidos_alfaiataria").update(update).eq("id", pecaId);
       if (error) setErro(error.message);
     });

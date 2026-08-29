@@ -49,8 +49,8 @@ export function usePecasProducao() {
   }, [recarregar]);
 
   async function marcarInicio(id) {
-    setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, dataInicioProducao: hojeISO() } : p)));
-    await supabase.from("pedidos_alfaiataria").update({ data_inicio_producao: hojeISO() }).eq("id", id);
+    setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, dataInicioProducao: hojeISO(), situacao: "Em Produção" } : p)));
+    await supabase.from("pedidos_alfaiataria").update({ data_inicio_producao: hojeISO(), situacao: "Em Produção" }).eq("id", id);
   }
 
   async function atualizarStatus(id, status) {
