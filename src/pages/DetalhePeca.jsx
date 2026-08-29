@@ -21,7 +21,7 @@ import {
   TEXT_MUTED,
   inputStyle,
 } from "../lib/constants";
-import { brl, fmtData, statusDividido, totalDividido } from "../lib/helpers";
+import { brl, fmtData, hojeISO, statusDividido, statusParaEtapa, totalDividido } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
@@ -142,6 +142,31 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
               ))}
             </select>
           </Field>
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1" style={{ fontSize: 11, color: TEXT_MUTED }}>
+              <span>{statusParaEtapa("alfaiataria", p.status).label}</span>
+              <span className="fx-mono" style={{ fontWeight: 700, color: BRASS }}>
+                {statusParaEtapa("alfaiataria", p.status).percentual}%
+              </span>
+            </div>
+            <div style={{ background: LINE, borderRadius: 4, height: 8 }}>
+              <div style={{ width: `${statusParaEtapa("alfaiataria", p.status).percentual}%`, background: BRASS, height: 8, borderRadius: 4 }} />
+            </div>
+          </div>
+          <div className="mb-4 flex items-center gap-2 flex-wrap">
+            {p.dataInicioProducao ? (
+              <span style={{ fontSize: 12, color: TEXT_MUTED }}>
+                Início da produção: <strong style={{ color: "#16212E" }}>{fmtData(p.dataInicioProducao)}</strong>
+              </span>
+            ) : (
+              <button
+                onClick={() => set("dataInicioProducao", hojeISO())}
+                style={{ background: "#EDEAE0", color: BRASS, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+              >
+                Marcar início da produção
+              </button>
+            )}
+          </div>
           {p.status === "Pronto" && (
             <div className="mb-4">
               <AvisarClienteWhatsapp
@@ -325,7 +350,7 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
       </Card>
 
       <Card style={{ padding: 20 }} className="mt-6">
-        <Field label="Observações">
+        <Field label="Observações (suas, pro Icaro)">
           <textarea
             style={{ ...inputStyle, minHeight: 90 }}
             placeholder="Detalhes da peça pro Icaro (ex: acabamento, ajustes específicos, preferências do cliente...)"
@@ -333,6 +358,12 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
             onChange={(e) => set("observacoes", e.target.value)}
           />
         </Field>
+        {p.observacoesProducao && (
+          <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, marginBottom: 4 }}>Observações do Icaro:</div>
+            <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{p.observacoesProducao}</div>
+          </div>
+        )}
       </Card>
 
       <div className="flex items-center gap-3 mt-6">

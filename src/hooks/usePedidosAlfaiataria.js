@@ -22,6 +22,8 @@ export function pecaVazia() {
     valorRestante: "",
     statusRestante: "Pendente",
     observacoes: "",
+    observacoesProducao: "",
+    dataInicioProducao: "",
     enviadoIcaro: false,
     // medidas fica agrupada por seção — { corpo: { label: valor }, calca: {...}, colete: {...} }
     medidas: {},
@@ -52,6 +54,8 @@ function rowParaPeca(row) {
     valorRestante: row.valor_restante ?? "",
     statusRestante: row.status_restante || "Pendente",
     observacoes: row.observacoes || "",
+    observacoesProducao: row.observacoes_producao || "",
+    dataInicioProducao: row.data_inicio_producao || "",
     enviadoIcaro: row.enviado_icaro === undefined ? true : !!row.enviado_icaro,
     medidas: row.medidas || {},
     caracteristicas: row.caracteristicas || {},
@@ -94,6 +98,8 @@ const CAMPO_PARA_COLUNA = {
   medidas: "medidas",
   caracteristicas: "caracteristicas",
   medidasNovas: "medidas_novas",
+  observacoesProducao: "observacoes_producao",
+  dataInicioProducao: "data_inicio_producao",
 };
 
 export function usePedidosAlfaiataria() {

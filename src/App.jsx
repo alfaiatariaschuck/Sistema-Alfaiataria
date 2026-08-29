@@ -4,6 +4,7 @@ import { CANVAS, INK } from "./lib/constants";
 import Login from "./pages/Login";
 import Shell from "./Shell";
 import ShellVendedor from "./ShellVendedor";
+import ShellProducao from "./ShellProducao";
 import AcompanharPedido from "./pages/AcompanharPedido";
 
 function Gate() {
@@ -20,6 +21,7 @@ function Gate() {
   if (!session) return <Login />;
 
   if (perfil?.papel === "vendedor") return <ShellVendedor />;
+  if (perfil?.papel === "producao") return <ShellProducao />;
 
   return <Shell />;
 }

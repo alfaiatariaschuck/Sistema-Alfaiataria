@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
-import { BRASS_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { diasAte, fmtData } from "../lib/helpers";
+import { BRASS, BRASS_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { diasAte, fmtData, statusParaEtapa } from "../lib/helpers";
 import DetalhePeca from "./DetalhePeca";
 
 function statusPagamentoDe(p) {
@@ -73,6 +73,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
           const naoEnviado = !p.enviadoIcaro;
           const diasAberto = p.dataPedido ? -diasAte(p.dataPedido) : 0;
           const atrasada = diasAberto > DIAS_LIMITE;
+          const etapa = statusParaEtapa("alfaiataria", p.status);
           return (
             <button
               key={p.id}
@@ -92,6 +93,14 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
                 <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                   Pedido {fmtData(p.dataPedido)}
                   {p.previsaoEntrega ? ` · Entrega prevista ${fmtData(p.previsaoEntrega)}` : ""}
+                </div>
+                <div className="flex items-center gap-2 mt-1" style={{ maxWidth: 180 }}>
+                  <div style={{ background: LINE, borderRadius: 4, height: 5, flex: 1 }}>
+                    <div style={{ width: `${etapa.percentual}%`, background: BRASS, height: 5, borderRadius: 4 }} />
+                  </div>
+                  <span className="fx-mono" style={{ fontSize: 10, color: TEXT_MUTED }}>
+                    {etapa.percentual}%
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
