@@ -8,7 +8,7 @@ import { hojeISO } from "../lib/helpers";
 // restrinja o resto do banco pra esse papel, essa tela nem pede esses
 // campos, então eles nunca chegam a trafegar até o navegador dele.
 const SELECT_PRODUCAO =
-  "id, data_pedido, previsao_entrega, data_entrega, data_inicio_producao, tipo_peca, status, observacoes, observacoes_producao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor)";
+  "id, data_pedido, previsao_entrega, data_entrega, data_inicio_producao, tipo_peca, status, observacoes, observacoes_producao, responsavel, prioridade, situacao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor)";
 
 function rowParaPecaProducao(row) {
   return {
@@ -22,6 +22,9 @@ function rowParaPecaProducao(row) {
     status: row.status,
     observacoes: row.observacoes || "",
     observacoesProducao: row.observacoes_producao || "",
+    responsavel: row.responsavel || "",
+    prioridade: row.prioridade || "Normal",
+    situacao: row.situacao || "Aguardando",
     medidas: row.medidas || {},
     caracteristicas: row.caracteristicas || {},
     tecidos: row.tecidos || [],
@@ -53,10 +56,15 @@ export function usePecasProducao() {
     await supabase.from("pedidos_alfaiataria").update({ status }).eq("id", id);
   }
 
+  async function atualizarSituacao(id, situacao) {
+    setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, situacao } : p)));
+    await supabase.from("pedidos_alfaiataria").update({ situacao }).eq("id", id);
+  }
+
   async function atualizarObservacaoProducao(id, texto) {
     setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, observacoesProducao: texto } : p)));
     await supabase.from("pedidos_alfaiataria").update({ observacoes_producao: texto }).eq("id", id);
   }
 
-  return { pecas, loading, recarregar, marcarInicio, atualizarStatus, atualizarObservacaoProducao };
+  return { pecas, loading, recarregar, marcarInicio, atualizarStatus, atualizarSituacao, atualizarObservacaoProducao };
 }

@@ -4,6 +4,7 @@ import {
   Archive,
   ClipboardList,
   FileText,
+  Gauge,
   Layers,
   LayoutDashboard,
   ListChecks,
@@ -50,6 +51,7 @@ import Backup from "./pages/Backup";
 import FluxoDeCaixa from "./pages/FluxoDeCaixa";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
+import ControleProducao from "./pages/ControleProducao";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
@@ -67,6 +69,7 @@ const NAV = [
   { id: "estoque-camisaria", label: "Estoque Camisaria", icon: PackageCheck, primary: false },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true },
+  { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false },
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false },
   { id: "metas", label: "Metas", icon: Target, primary: false },
@@ -525,6 +528,9 @@ export default function Shell() {
               {tab === "alfaiataria" && !loadingPecas && <PedidoAlfaiataria onCriar={salvarNovaPeca} nomesClientes={nomesClientes} pecas={pecas} />}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
                 <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={setSelecionadaPeca} {...acoesPeca} />
+              )}
+              {tab === "controle-producao" && !loadingPecas && (
+                <ControleProducao pecas={pecas} onCampo={atualizarCampoPeca} irParaPeca={irParaPeca} />
               )}
               {tab === "planos-assinatura" && !loadingPlanos && (
                 <PlanosAssinatura

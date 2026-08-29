@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, LogOut, Ruler, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, LayoutGrid, LogOut, Ruler, Search, Table2 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePecasProducao } from "./hooks/usePecasProducao";
 import { BRASS, CANVAS, INK, INK_SOFT, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_ALFAIATARIA, TEXT_MUTED, inputStyle } from "./lib/constants";
 import { fmtData, statusParaEtapa } from "./lib/helpers";
 import { Card, Empty } from "./components/ui";
+import TabelaControleProducao from "./components/TabelaControleProducao";
 
 // App enxuto pro Ícaro: só as peças de alfaiataria em produção — sem
 // valores, sem dados pessoais de cliente, sem nenhuma outra aba. Ele só
@@ -13,13 +14,19 @@ import { Card, Empty } from "./components/ui";
 // trafega nem chega perto dessa tela.
 export default function ShellProducao() {
   const { sair, perfil } = useAuth();
-  const { pecas, loading, marcarInicio, atualizarStatus, atualizarObservacaoProducao } = usePecasProducao();
+  const { pecas, loading, marcarInicio, atualizarStatus, atualizarSituacao, atualizarObservacaoProducao } = usePecasProducao();
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
+  const [visualizacao, setVisualizacao] = useState("tabela");
 
   const abertas = pecas
     .filter((p) => p.status !== "Entregue")
     .filter((p) => p.cliente.toLowerCase().includes(busca.toLowerCase()));
+
+  function onCampo(id, campo, valor) {
+    if (campo === "situacao") atualizarSituacao(id, valor);
+    else if (campo === "status") atualizarStatus(id, valor);
+  }
 
   return (
     <div style={{ background: CANVAS, minHeight: "100vh", fontFamily: "'Inter', sans-serif", color: INK }}>
@@ -37,14 +44,46 @@ export default function ShellProducao() {
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6">
-        <div className="flex items-center gap-2 mb-4" style={{ ...inputStyle, maxWidth: 320, padding: "6px 10px" }}>
-          <Search size={14} color={TEXT_MUTED} />
-          <input
-            placeholder="Buscar cliente…"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
-          />
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 320, padding: "6px 10px" }}>
+            <Search size={14} color={TEXT_MUTED} />
+            <input
+              placeholder="Buscar cliente…"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
+            />
+          </div>
+          <div className="flex items-center gap-1" style={{ background: "#EDEAE0", borderRadius: 8, padding: 3 }}>
+            <button
+              onClick={() => setVisualizacao("tabela")}
+              className="flex items-center gap-1.5"
+              style={{
+                background: visualizacao === "tabela" ? INK : "transparent",
+                color: visualizacao === "tabela" ? "#FFF" : INK,
+                padding: "6px 10px",
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 12,
+              }}
+            >
+              <Table2 size={14} /> Tabela
+            </button>
+            <button
+              onClick={() => setVisualizacao("cards")}
+              className="flex items-center gap-1.5"
+              style={{
+                background: visualizacao === "cards" ? INK : "transparent",
+                color: visualizacao === "cards" ? "#FFF" : INK,
+                padding: "6px 10px",
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 12,
+              }}
+            >
+              <LayoutGrid size={14} /> Cards (medidas)
+            </button>
+          </div>
         </div>
 
         {loading && <div style={{ fontSize: 13, color: TEXT_MUTED }}>Carregando…</div>}
@@ -54,6 +93,13 @@ export default function ShellProducao() {
           </Card>
         )}
 
+        {!loading && abertas.length > 0 && visualizacao === "tabela" && (
+          <Card style={{ padding: 0, overflow: "hidden" }}>
+            <TabelaControleProducao pecas={abertas} podeEditarAtribuicao={false} onCampo={onCampo} />
+          </Card>
+        )}
+
+        {visualizacao === "cards" && (
         <div className="flex flex-col gap-4">
           {abertas.map((p) => {
             const etapa = statusParaEtapa("alfaiataria", p.status);
@@ -167,6 +213,7 @@ export default function ShellProducao() {
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );
