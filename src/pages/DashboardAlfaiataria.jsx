@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock, Gift, Phone, Scissors, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
+import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
+import DoacoesPorAno from "../components/DoacoesPorAno";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData, hojeISO, tempoMedioProducaoGenerico } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
@@ -75,6 +77,9 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
         <StatCard label="Peças atrasadas" value={atrasadas.length} icon={AlertTriangle} accent={atrasadas.length > 0 ? VERMELHO : undefined} />
         <StatCard label="Doações" value={doacoes.length} icon={Gift} />
       </div>
+
+      <TempoProducaoPorMes lista={pecas} titulo="Tempo médio de produção por mês — Alfaiataria" />
+      <DoacoesPorAno doacoes={doacoes} titulo="Doações por ano — Alfaiataria" />
 
       {meta > 0 && (
         <Card style={{ padding: 20 }} className="mb-6">

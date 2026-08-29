@@ -1,6 +1,7 @@
 import React from "react";
 import { CalendarClock, CheckCircle2, Clock, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
+import FaturamentoPorMes from "../components/FaturamentoPorMes";
 import { BRASS, LINE, PAG_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, valorRecebidoEfetivo } from "../lib/helpers";
 
@@ -117,6 +118,8 @@ export default function FluxoDeCaixa({ pedidos, pecas, irParaPedido, irParaPeca 
         <StatCard label="Pago à produção (Fabi + Icaro)" value={brl(pago)} icon={Wallet} />
         <StatCard label="Saldo em caixa" value={brl(saldo)} icon={CheckCircle2} />
       </div>
+
+      <FaturamentoPorMes pedidos={pedidos} pecas={pecas} />
 
       {(projecaoReceber.length > 0 || projecaoPagar.length > 0) && (
         <Card style={{ padding: 20 }} className="mb-6">

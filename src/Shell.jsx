@@ -121,7 +121,7 @@ export default function Shell() {
   const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
   const { historicoVendas } = useHistoricoVendas();
   const { clientesComTelefone } = useTelefonesClientes();
-  const { estoque: estoqueTecidos, movimentos: movimentosEstoque, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
+  const { estoque: estoqueTecidos, movimentos: movimentosEstoque, consumoPorTecido, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
   const { despesas, criarDespesa, marcarPaga, atualizarValorPago, removerDespesa } = useDespesas();
   const { previsoes, criarPrevisao, removerPrevisao } = usePrevisoesVenda();
   const { notas: notasVendaFutura, criarNota, removerNota } = useNotasVendaFutura();
@@ -477,6 +477,7 @@ export default function Shell() {
                 <EstoqueCamisaria
                   estoque={estoqueTecidos}
                   movimentos={movimentosEstoque}
+                  consumoPorTecido={consumoPorTecido}
                   onCadastrar={cadastrarTecido}
                   onRegistrarCompra={registrarCompra}
                   onRemover={removerEstoque}

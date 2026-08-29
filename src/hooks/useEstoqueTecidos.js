@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { buscarTodasLinhas } from "../lib/supabasePagination";
 
 function rowParaTecido(row) {
   return {
@@ -14,6 +15,7 @@ function rowParaTecido(row) {
 export function useEstoqueTecidos() {
   const [estoque, setEstoque] = useState([]);
   const [movimentos, setMovimentos] = useState([]);
+  const [consumoPorTecido, setConsumoPorTecido] = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
   const [emAndamento, setEmAndamento] = useState(0);
@@ -40,6 +42,17 @@ export function useEstoqueTecidos() {
       setEstoque((tecidos || []).map(rowParaTecido));
       setMovimentos(movs || []);
     }
+
+    // Consumo total (saídas) por tecido, pra ranking — separado do feed
+    // de "últimas movimentações" acima (esse é limitado a 40 registros no
+    // total, insuficiente pra somar o histórico completo de cada código).
+    const saidas = await buscarTodasLinhas(() => supabase.from("estoque_movimentos").select("estoque_id, metros").eq("tipo", "saida"));
+    const porTecido = new Map();
+    saidas.forEach((m) => {
+      porTecido.set(m.estoque_id, (porTecido.get(m.estoque_id) || 0) + (parseFloat(m.metros) || 0));
+    });
+    setConsumoPorTecido([...porTecido.entries()].map(([estoqueId, totalMetros]) => ({ estoqueId, totalMetros })));
+
     setLoading(false);
   }, []);
 
@@ -111,6 +124,7 @@ export function useEstoqueTecidos() {
   return {
     estoque,
     movimentos,
+    consumoPorTecido,
     loading,
     erro,
     limparErro: () => setErro(null),

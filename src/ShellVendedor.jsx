@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronRight, ClipboardList, LogOut, Plus, Ruler } from "lucide-react";
+import { ChevronRight, ClipboardList, LogOut, Megaphone, Plus, Ruler } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePedidos } from "./hooks/usePedidos";
 import { useNomesClientes } from "./hooks/useNomesClientes";
@@ -9,6 +9,7 @@ import { brl, fmtData } from "./lib/helpers";
 import { Card, Empty, Pill } from "./components/ui";
 import VendedorNovoPedido from "./pages/VendedorNovoPedido";
 import DetalhePedidoVendedor from "./pages/DetalhePedidoVendedor";
+import CampanhaVendedor from "./pages/CampanhaVendedor";
 
 // App enxuto pro vendedor: só a ficha de pedido de camisa (criar e
 // editar o que ele mesmo lançou) — nada de painéis, financeiro,
@@ -19,7 +20,7 @@ export default function ShellVendedor() {
   const [tab, setTab] = useState("novo");
   const [selecionado, setSelecionado] = useState(null);
   const { pedidos, loading, saving, criarPedido, atualizarCampo, atualizarSubcampo, adicionarTecido, atualizarTecido } = usePedidos();
-  const { nomesClientes, recarregarNomesClientes } = useNomesClientes();
+  const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
 
   async function salvar(p) {
     const { clienteId } = await criarPedido(p);
@@ -85,10 +86,29 @@ export default function ShellVendedor() {
         >
           <ClipboardList size={15} /> Meus Pedidos
         </button>
+        <button
+          onClick={() => {
+            setTab("campanha");
+            setSelecionado(null);
+          }}
+          className="flex items-center gap-2"
+          style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+            background: tab === "campanha" ? INK : "#EDEAE0",
+            color: tab === "campanha" ? "#FFF" : INK_SOFT,
+          }}
+        >
+          <Megaphone size={15} /> Campanha
+        </button>
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6">
         {tab === "novo" && <VendedorNovoPedido onSalvar={salvar} nomesClientes={nomesClientes} nomeVendedor={perfil?.nome} pedidos={pedidos} />}
+
+        {tab === "campanha" && <CampanhaVendedor clientesBase={clientesBase} />}
 
         {tab === "pedidos" && atual && (
           <DetalhePedidoVendedor

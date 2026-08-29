@@ -6,7 +6,7 @@ import { fmtData } from "../lib/helpers";
 
 const VERMELHO = "#9C4A1E";
 
-export default function EstoqueCamisaria({ estoque, movimentos, onCadastrar, onRegistrarCompra, onRemover }) {
+export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido, onCadastrar, onRegistrarCompra, onRemover }) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [novoCodigo, setNovoCodigo] = useState("");
   const [novoFornecedor, setNovoFornecedor] = useState("");
@@ -17,6 +17,12 @@ export default function EstoqueCamisaria({ estoque, movimentos, onCadastrar, onR
 
   const totalMetros = estoque.reduce((s, e) => s + e.saldoMetros, 0);
   const baixoEstoque = estoque.filter((e) => e.saldoMetros < e.metrosPorRolo);
+
+  const ranking = (consumoPorTecido || [])
+    .map((c) => ({ ...c, codigo: estoque.find((e) => e.id === c.estoqueId)?.codigo || "Tecido removido" }))
+    .sort((a, b) => b.totalMetros - a.totalMetros)
+    .slice(0, 10);
+  const maxConsumo = Math.max(1, ...ranking.map((r) => r.totalMetros));
 
   async function cadastrar(e) {
     e.preventDefault();
@@ -149,6 +155,28 @@ export default function EstoqueCamisaria({ estoque, movimentos, onCadastrar, onR
           );
         })}
       </div>
+
+      {ranking.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Tecidos que mais saem (consumo total)
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+            Soma de todas as baixas já registradas por código — ajuda a decidir o que reabastecer primeiro.
+          </div>
+          {ranking.map((r) => (
+            <div key={r.estoqueId} className="mb-2">
+              <div className="flex justify-between mb-1" style={{ fontSize: 12 }}>
+                <span style={{ fontWeight: 600 }}>{r.codigo}</span>
+                <span className="fx-mono" style={{ fontWeight: 700 }}>{r.totalMetros.toFixed(1)}m</span>
+              </div>
+              <div style={{ background: LINE, borderRadius: 4, height: 10 }}>
+                <div style={{ width: `${(r.totalMetros / maxConsumo) * 100}%`, background: BRASS, height: 10, borderRadius: 4 }} />
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
 
       {movimentos.length > 0 && (
         <Card style={{ padding: 20 }}>

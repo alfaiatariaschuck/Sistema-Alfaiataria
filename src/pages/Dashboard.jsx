@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Gift, PackageCheck, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import AniversariantesDoMes from "../components/AniversariantesDoMes";
+import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
+import DoacoesPorAno from "../components/DoacoesPorAno";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData, hojeISO, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
 import CentralAlertas from "../components/CentralAlertas";
@@ -106,6 +108,9 @@ export default function Dashboard({ pedidos, pecas, despesas, estoqueTecidos, ir
         <StatCard label="Tempo médio — recompra" value={tempoMedioRecompra !== null ? `${tempoMedioRecompra}d` : "—"} icon={Timer} />
         <StatCard label="Doações" value={doacoes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0)} icon={Gift} />
       </div>
+
+      <TempoProducaoPorMes lista={pedidos} titulo="Tempo médio de produção por mês — Camisaria" />
+      <DoacoesPorAno doacoes={doacoes} quantidadeFn={(p) => parseFloat(p.quantidade) || 0} titulo="Doações por ano — Camisaria" />
 
       <AniversariantesDoMes />
 
