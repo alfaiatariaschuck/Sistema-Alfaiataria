@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { hojeISO } from "../lib/helpers";
+import { diasEntre, hojeISO } from "../lib/helpers";
 
 // Consulta separada da do dono — só as colunas que o Ícaro pode ver.
 // Sem valor_total, valor_pago, forma_pagamento, valor_venda,
@@ -8,7 +8,7 @@ import { hojeISO } from "../lib/helpers";
 // restrinja o resto do banco pra esse papel, essa tela nem pede esses
 // campos, então eles nunca chegam a trafegar até o navegador dele.
 const SELECT_PRODUCAO =
-  "id, data_pedido, previsao_entrega, data_entrega, data_inicio_producao, tipo_peca, status, observacoes, observacoes_producao, responsavel, prioridade, situacao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor)";
+  "id, data_pedido, previsao_entrega, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, prioridade, situacao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor)";
 
 function rowParaPecaProducao(row) {
   return {
@@ -19,6 +19,8 @@ function rowParaPecaProducao(row) {
     previsaoEntrega: row.previsao_entrega || "",
     dataEntrega: row.data_entrega || "",
     dataInicioProducao: row.data_inicio_producao || "",
+    dataPausaInicio: row.data_pausa_inicio || "",
+    diasPausados: row.dias_pausados || 0,
     status: row.status,
     observacoes: row.observacoes || "",
     observacoesProducao: row.observacoes_producao || "",
@@ -61,10 +63,26 @@ export function usePecasProducao() {
     await supabase.from("pedidos_alfaiataria").update({ situacao }).eq("id", id);
   }
 
+  // Cliente viajou, sumiu, não dá pra provar — pausa o relógio da
+  // produção real até ele voltar (sem contar esses dias contra o Ícaro).
+  async function pausar(id) {
+    setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, situacao: "Pausado", dataPausaInicio: hojeISO() } : p)));
+    await supabase.from("pedidos_alfaiataria").update({ situacao: "Pausado", data_pausa_inicio: hojeISO() }).eq("id", id);
+  }
+
+  async function retomar(id) {
+    const pecaAtual = pecas.find((p) => p.id === id);
+    if (!pecaAtual) return;
+    const dias = pecaAtual.dataPausaInicio ? diasEntre(pecaAtual.dataPausaInicio, hojeISO()) || 0 : 0;
+    const diasPausados = (pecaAtual.diasPausados || 0) + dias;
+    setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, situacao: "Em Produção", dataPausaInicio: "", diasPausados } : p)));
+    await supabase.from("pedidos_alfaiataria").update({ situacao: "Em Produção", data_pausa_inicio: null, dias_pausados: diasPausados }).eq("id", id);
+  }
+
   async function atualizarObservacaoProducao(id, texto) {
     setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, observacoesProducao: texto } : p)));
     await supabase.from("pedidos_alfaiataria").update({ observacoes_producao: texto }).eq("id", id);
   }
 
-  return { pecas, loading, recarregar, marcarInicio, atualizarStatus, atualizarSituacao, atualizarObservacaoProducao };
+  return { pecas, loading, recarregar, marcarInicio, atualizarStatus, atualizarSituacao, pausar, retomar, atualizarObservacaoProducao };
 }

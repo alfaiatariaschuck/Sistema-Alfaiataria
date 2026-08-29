@@ -21,7 +21,7 @@ import {
   TEXT_MUTED,
   inputStyle,
 } from "../lib/constants";
-import { brl, fmtData, hojeISO, statusDividido, statusParaEtapa, totalDividido } from "../lib/helpers";
+import { brl, diasProducaoReal, fmtData, hojeISO, statusDividido, statusParaEtapa, totalDividido } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
@@ -38,7 +38,7 @@ const STATUS_PAGAMENTO_STYLE = {
   Pendente: { bg: "#F6E3D9", fg: "#9C4A1E" },
 };
 
-export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCaracteristica, onRemover, onAddTecido, onTecido }) {
+export default function DetalhePeca({ peca: p, onVoltar, onCampo, onPausar, onRetomar, onMedida, onCaracteristica, onRemover, onAddTecido, onTecido }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
 
@@ -154,17 +154,40 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onMedida, onCa
             </div>
           </div>
           <div className="mb-4 flex items-center gap-2 flex-wrap">
-            {p.dataInicioProducao ? (
-              <span style={{ fontSize: 12, color: TEXT_MUTED }}>
-                Início da produção: <strong style={{ color: "#16212E" }}>{fmtData(p.dataInicioProducao)}</strong>
-              </span>
-            ) : (
+            {!p.dataInicioProducao ? (
               <button
                 onClick={() => set("dataInicioProducao", hojeISO())}
                 style={{ background: "#EDEAE0", color: BRASS, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
               >
                 Marcar início da produção
               </button>
+            ) : (
+              <>
+                <span style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  Início: <strong style={{ color: "#16212E" }}>{fmtData(p.dataInicioProducao)}</strong>
+                </span>
+                <span style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  · {p.status === "Entregue" ? "Tempo de produção:" : "Em produção há:"}{" "}
+                  <strong style={{ color: "#16212E" }}>{diasProducaoReal(p)}d</strong>
+                  {p.diasPausados > 0 && ` (${p.diasPausados}d pausados não contam)`}
+                </span>
+                {p.status !== "Entregue" &&
+                  (p.situacao === "Pausado" ? (
+                    <button
+                      onClick={() => onRetomar(p.id)}
+                      style={{ background: "#DCEBDD", color: "#2C6E31", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                    >
+                      Retomar produção
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => onPausar(p.id)}
+                      style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                    >
+                      Pausar (cliente viajou, etc.)
+                    </button>
+                  ))}
+              </>
             )}
           </div>
           {p.status === "Pronto" && (

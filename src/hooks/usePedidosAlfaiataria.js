@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { encontrarOuCriarCliente } from "../lib/clientes";
-import { hojeISO } from "../lib/helpers";
+import { diasEntre, hojeISO } from "../lib/helpers";
 
 export function pecaVazia() {
   return {
@@ -24,6 +24,8 @@ export function pecaVazia() {
     observacoes: "",
     observacoesProducao: "",
     dataInicioProducao: "",
+    dataPausaInicio: "",
+    diasPausados: 0,
     responsavel: "",
     prioridade: "Normal",
     situacao: "Aguardando",
@@ -59,6 +61,8 @@ function rowParaPeca(row) {
     observacoes: row.observacoes || "",
     observacoesProducao: row.observacoes_producao || "",
     dataInicioProducao: row.data_inicio_producao || "",
+    dataPausaInicio: row.data_pausa_inicio || "",
+    diasPausados: row.dias_pausados || 0,
     responsavel: row.responsavel || "",
     prioridade: row.prioridade || "Normal",
     situacao: row.situacao || "Aguardando",
@@ -106,6 +110,8 @@ const CAMPO_PARA_COLUNA = {
   medidasNovas: "medidas_novas",
   observacoesProducao: "observacoes_producao",
   dataInicioProducao: "data_inicio_producao",
+  dataPausaInicio: "data_pausa_inicio",
+  diasPausados: "dias_pausados",
   responsavel: "responsavel",
   prioridade: "prioridade",
   situacao: "situacao",
@@ -210,6 +216,34 @@ export function usePedidosAlfaiataria() {
     });
   }
 
+  // Pausa/retoma a produção — pra quando o cliente viaja ou some por um
+  // tempo e a peça fica parada sem culpa do Ícaro. Os dias pausados não
+  // contam no tempo de produção real (diasProducaoReal, em helpers.js).
+  async function pausarPeca(pecaId) {
+    const patch = { situacao: "Pausado", dataPausaInicio: hojeISO() };
+    setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
+    await comIndicador(async () => {
+      const { error } = await supabase.from("pedidos_alfaiataria").update({ situacao: "Pausado", data_pausa_inicio: patch.dataPausaInicio }).eq("id", pecaId);
+      if (error) setErro(error.message);
+    });
+  }
+
+  async function retomarPeca(pecaId) {
+    const pecaAtual = pecas.find((p) => p.id === pecaId);
+    if (!pecaAtual) return;
+    const dias = pecaAtual.dataPausaInicio ? diasEntre(pecaAtual.dataPausaInicio, hojeISO()) || 0 : 0;
+    const diasPausados = (pecaAtual.diasPausados || 0) + dias;
+    const patch = { situacao: "Em Produção", dataPausaInicio: "", diasPausados };
+    setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
+    await comIndicador(async () => {
+      const { error } = await supabase
+        .from("pedidos_alfaiataria")
+        .update({ situacao: "Em Produção", data_pausa_inicio: null, dias_pausados: diasPausados })
+        .eq("id", pecaId);
+      if (error) setErro(error.message);
+    });
+  }
+
   async function removerPeca(pecaId) {
     setPecas((prev) => prev.filter((p) => p.id !== pecaId));
     await comIndicador(async () => {
@@ -263,6 +297,8 @@ export function usePedidosAlfaiataria() {
     recarregar,
     criarPeca,
     atualizarCampo,
+    pausarPeca,
+    retomarPeca,
     removerPeca,
     adicionarTecido,
     atualizarTecido,

@@ -98,6 +98,20 @@ export function tempoMedioProducaoGenerico(lista) {
   return mediaDiasEntrega(lista.filter((p) => p.status === "Entregue" && p.dataEntrega));
 }
 
+// Tempo de produção "de verdade" de uma peça: do início real (não da
+// venda) até a entrega, descontando os dias em que ficou pausada (ex:
+// cliente viajou e não deu pra fazer prova) — senão essas pausas
+// distorcem a média de quanto tempo o Ícaro realmente leva pra produzir.
+// Enquanto não tem data de entrega, calcula "até hoje" (em andamento).
+export function diasProducaoReal(peca) {
+  if (!peca.dataInicioProducao) return null;
+  const fim = peca.dataEntrega || hojeISO();
+  const bruto = diasEntre(peca.dataInicioProducao, fim);
+  if (bruto === null) return null;
+  const pausadoAgora = peca.situacao === "Pausado" && peca.dataPausaInicio ? diasEntre(peca.dataPausaInicio, hojeISO()) || 0 : 0;
+  return Math.max(0, bruto - (peca.diasPausados || 0) - pausadoAgora);
+}
+
 // Traduz o status bruto do pedido/peça pra uma etapa do acompanhamento
 // público — cobre status antigos da Alfaiataria (de antes de ter etapas
 // próprias) mapeando pro equivalente mais próximo, pra nenhum pedido

@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, LayoutGrid, LogOut, Ruler, Search, Table2 } fro
 import { useAuth } from "./contexts/AuthContext";
 import { usePecasProducao } from "./hooks/usePecasProducao";
 import { BRASS, CANVAS, INK, INK_SOFT, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_ALFAIATARIA, TEXT_MUTED, inputStyle } from "./lib/constants";
-import { fmtData, statusParaEtapa } from "./lib/helpers";
+import { diasProducaoReal, fmtData, statusParaEtapa } from "./lib/helpers";
 import { Card, Empty } from "./components/ui";
 import TabelaControleProducao from "./components/TabelaControleProducao";
 
@@ -14,7 +14,7 @@ import TabelaControleProducao from "./components/TabelaControleProducao";
 // trafega nem chega perto dessa tela.
 export default function ShellProducao() {
   const { sair, perfil } = useAuth();
-  const { pecas, loading, marcarInicio, atualizarStatus, atualizarSituacao, atualizarObservacaoProducao } = usePecasProducao();
+  const { pecas, loading, marcarInicio, atualizarStatus, atualizarSituacao, pausar, retomar, atualizarObservacaoProducao } = usePecasProducao();
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [visualizacao, setVisualizacao] = useState("tabela");
@@ -95,7 +95,14 @@ export default function ShellProducao() {
 
         {!loading && abertas.length > 0 && visualizacao === "tabela" && (
           <Card style={{ padding: 0, overflow: "hidden" }}>
-            <TabelaControleProducao pecas={abertas} podeEditarAtribuicao={false} onCampo={onCampo} />
+            <TabelaControleProducao
+              pecas={abertas}
+              podeEditarAtribuicao={false}
+              onCampo={onCampo}
+              onMarcarInicio={marcarInicio}
+              onPausar={pausar}
+              onRetomar={retomar}
+            />
           </Card>
         )}
 
@@ -139,18 +146,39 @@ export default function ShellProducao() {
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Início da produção</div>
-                    {p.dataInicioProducao ? (
-                      <div style={{ fontSize: 13, fontWeight: 600, padding: "9px 0" }}>{fmtData(p.dataInicioProducao)}</div>
-                    ) : (
+                    {!p.dataInicioProducao ? (
                       <button
                         onClick={() => marcarInicio(p.id)}
                         style={{ background: "#EDEAE0", color: BRASS, padding: "8px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, width: "100%" }}
                       >
                         Marcar início
                       </button>
+                    ) : (
+                      <div style={{ fontSize: 13, fontWeight: 600, padding: "9px 0" }}>
+                        {fmtData(p.dataInicioProducao)} · {diasProducaoReal(p)}d
+                      </div>
                     )}
                   </div>
                 </div>
+                {p.dataInicioProducao && (
+                  <div className="mb-3">
+                    {p.situacao === "Pausado" ? (
+                      <button
+                        onClick={() => retomar(p.id)}
+                        style={{ background: "#DCEBDD", color: "#2C6E31", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                      >
+                        Retomar produção
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => pausar(p.id)}
+                        style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                      >
+                        Pausar (cliente viajou, etc.)
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {p.observacoes && (
                   <div className="mb-3 p-3" style={{ background: "#F3EEDF", borderRadius: 6, fontSize: 12 }}>
