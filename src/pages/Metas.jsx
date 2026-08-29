@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Layers, Scissors, Shirt, Target, TrendingUp } from "lucide-react";
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
 import MetaPorMes from "../components/MetaPorMes";
+import QuantidadePorMes from "../components/QuantidadePorMes";
 import { BRASS, INK, LINE, TEXT_MUTED } from "../lib/constants";
 import { brl, hojeISO } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
@@ -195,6 +196,7 @@ export default function Metas({ pedidos, pecas }) {
       )}
 
       <MetaPorMes pedidos={pedidos} pecas={pecas} metaTotal={metaTotal} />
+      <QuantidadePorMes pedidos={pedidos} pecas={pecas} />
 
       <Card style={{ padding: 20 }}>
         <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
