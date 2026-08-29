@@ -104,6 +104,7 @@ export default function Shell() {
     atualizarCampo: atualizarCampoPeca,
     pausarPeca,
     retomarPeca,
+    desfazerInicioPeca,
     removerPeca,
     adicionarTecido: adicionarTecidoPeca,
     atualizarTecido: atualizarTecidoPeca,
@@ -314,6 +315,7 @@ export default function Shell() {
     onCampo: atualizarCampoPeca,
     onPausar: pausarPeca,
     onRetomar: retomarPeca,
+    onDesfazerInicio: desfazerInicioPeca,
     onMedida: atualizarMedidaPeca,
     onCaracteristica: atualizarCaracteristicaPeca,
     onRemover: (id) => {
@@ -534,7 +536,14 @@ export default function Shell() {
                 <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={setSelecionadaPeca} {...acoesPeca} />
               )}
               {tab === "controle-producao" && !loadingPecas && (
-                <ControleProducao pecas={pecas} onCampo={atualizarCampoPeca} onPausar={pausarPeca} onRetomar={retomarPeca} irParaPeca={irParaPeca} />
+                <ControleProducao
+                  pecas={pecas}
+                  onCampo={atualizarCampoPeca}
+                  onPausar={pausarPeca}
+                  onRetomar={retomarPeca}
+                  onDesfazerInicio={desfazerInicioPeca}
+                  irParaPeca={irParaPeca}
+                />
               )}
               {tab === "planos-assinatura" && !loadingPlanos && (
                 <PlanosAssinatura

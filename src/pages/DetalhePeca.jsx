@@ -38,7 +38,7 @@ const STATUS_PAGAMENTO_STYLE = {
   Pendente: { bg: "#F6E3D9", fg: "#9C4A1E" },
 };
 
-export default function DetalhePeca({ peca: p, onVoltar, onCampo, onPausar, onRetomar, onMedida, onCaracteristica, onRemover, onAddTecido, onTecido }) {
+export default function DetalhePeca({ peca: p, onVoltar, onCampo, onPausar, onRetomar, onDesfazerInicio, onMedida, onCaracteristica, onRemover, onAddTecido, onTecido }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
 
@@ -155,17 +155,31 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onPausar, onRe
           </div>
           <div className="mb-4 flex items-center gap-2 flex-wrap">
             {!p.dataInicioProducao ? (
-              <button
-                onClick={() => set("dataInicioProducao", hojeISO())}
-                style={{ background: "#EDEAE0", color: BRASS, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
-              >
-                Marcar início da produção
-              </button>
+              <>
+                <button
+                  onClick={() => set("dataInicioProducao", hojeISO())}
+                  style={{ background: "#EDEAE0", color: BRASS, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                >
+                  Marcar início da produção (hoje)
+                </button>
+                <span style={{ fontSize: 12, color: TEXT_MUTED }}>ou já em andamento:</span>
+                <input
+                  type="date"
+                  onChange={(e) => e.target.value && set("dataInicioProducao", e.target.value)}
+                  style={{ ...inputStyle, fontSize: 12, padding: "5px 8px", width: 140 }}
+                  title="Peça já estava em produção? Coloque a data real de início"
+                />
+              </>
             ) : (
               <>
-                <span style={{ fontSize: 12, color: TEXT_MUTED }}>
-                  Início: <strong style={{ color: "#16212E" }}>{fmtData(p.dataInicioProducao)}</strong>
-                </span>
+                <span style={{ fontSize: 12, color: TEXT_MUTED }}>Início:</span>
+                <input
+                  type="date"
+                  value={p.dataInicioProducao}
+                  onChange={(e) => e.target.value && set("dataInicioProducao", e.target.value)}
+                  style={{ ...inputStyle, fontSize: 12, padding: "5px 8px", width: 140 }}
+                  title="Corrigir data de início"
+                />
                 <span style={{ fontSize: 12, color: TEXT_MUTED }}>
                   · {p.status === "Entregue" ? "Tempo de produção:" : "Em produção há:"}{" "}
                   <strong style={{ color: "#16212E" }}>{diasProducaoReal(p)}d</strong>
@@ -187,6 +201,13 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onPausar, onRe
                       Pausar (cliente viajou, etc.)
                     </button>
                   ))}
+                <button
+                  onClick={() => onDesfazerInicio(p.id)}
+                  title="Clicou em início por engano? Desfaz aqui."
+                  style={{ color: TEXT_MUTED, fontSize: 11, textDecoration: "underline" }}
+                >
+                  desfazer início
+                </button>
               </>
             )}
           </div>

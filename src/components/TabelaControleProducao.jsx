@@ -20,7 +20,7 @@ const COLUNAS = [
 // Tabela compartilhada entre a tela do dono (Controle de Produção,
 // edição completa) e a tela do Ícaro (edição restrita) — mesma "cara"
 // nos dois lados, só muda o que cada um pode mexer.
-export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, responsaveisConhecidos, onCampo, onAbrir, onMarcarInicio, onPausar, onRetomar }) {
+export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, responsaveisConhecidos, onCampo, onAbrir, onMarcarInicio, onPausar, onRetomar, onDesfazerInicio }) {
   const [ordenarPor, setOrdenarPor] = useState(null);
   const [ordemDesc, setOrdemDesc] = useState(false);
 
@@ -167,33 +167,84 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                   {p.status === "Entregue" ? (
                     <span style={{ fontSize: 11, color: TEXT_MUTED }}>{p.diasProducao !== null ? `${p.diasProducao}d de produção` : "—"}</span>
                   ) : !p.dataInicioProducao ? (
-                    <button
-                      onClick={() => onMarcarInicio(p.id)}
-                      className="flex items-center gap-1"
-                      style={{ background: "#EDEAE0", color: BRASS, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
-                    >
-                      <Play size={11} /> Início
-                    </button>
-                  ) : pausado ? (
-                    <button
-                      onClick={() => onRetomar(p.id)}
-                      className="flex items-center gap-1"
-                      style={{ background: "#DCEBDD", color: VERDE, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
-                    >
-                      <Play size={11} /> Retomar
-                    </button>
+                    podeEditarAtribuicao ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="date"
+                          onChange={(e) => e.target.value && onCampo(p.id, "dataInicioProducao", e.target.value)}
+                          style={{ ...inputStyle, fontSize: 11, padding: "3px 4px", width: 116 }}
+                          title="Já estava em produção? Coloque a data real de início aqui"
+                        />
+                        <button
+                          onClick={() => onMarcarInicio(p.id)}
+                          className="flex items-center gap-1"
+                          style={{ background: "#EDEAE0", color: BRASS, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                        >
+                          <Play size={11} /> Hoje
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => onMarcarInicio(p.id)}
+                        className="flex items-center gap-1"
+                        style={{ background: "#EDEAE0", color: BRASS, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                      >
+                        <Play size={11} /> Início
+                      </button>
+                    )
                   ) : (
-                    <button
-                      onClick={() => onPausar(p.id)}
-                      className="flex items-center gap-1"
-                      style={{ background: "#F6E3D9", color: VERMELHO, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
-                    >
-                      <Pause size={11} /> Pausar
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {podeEditarAtribuicao && (
+                        <input
+                          type="date"
+                          value={p.dataInicioProducao}
+                          onChange={(e) => e.target.value && onCampo(p.id, "dataInicioProducao", e.target.value)}
+                          style={{ ...inputStyle, fontSize: 11, padding: "3px 4px", width: 116 }}
+                          title="Corrigir data de início"
+                        />
+                      )}
+                      {pausado ? (
+                        <button
+                          onClick={() => onRetomar(p.id)}
+                          className="flex items-center gap-1"
+                          style={{ background: "#DCEBDD", color: VERDE, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                        >
+                          <Play size={11} /> Retomar
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onPausar(p.id)}
+                          className="flex items-center gap-1"
+                          style={{ background: "#F6E3D9", color: VERMELHO, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                        >
+                          <Pause size={11} /> Pausar
+                        </button>
+                      )}
+                      {onDesfazerInicio && (
+                        <button
+                          onClick={() => onDesfazerInicio(p.id)}
+                          title="Desfazer início (clicou por engano)"
+                          style={{ color: TEXT_MUTED, fontSize: 10, textDecoration: "underline" }}
+                        >
+                          desfazer
+                        </button>
+                      )}
+                    </div>
                   )}
                 </td>
-                <td style={{ padding: "8px 10px", maxWidth: 160, fontSize: 11, color: TEXT_MUTED, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.observacoes}>
-                  {p.observacoes || "—"}
+                <td style={{ padding: "8px 10px", maxWidth: 160 }}>
+                  {podeEditarAtribuicao ? (
+                    <input
+                      style={{ ...inputStyle, fontSize: 11, padding: "4px 6px", width: 150 }}
+                      defaultValue={p.observacoes}
+                      onBlur={(e) => onCampo(p.id, "observacoes", e.target.value)}
+                      placeholder="Nota pro Ícaro…"
+                    />
+                  ) : (
+                    <span style={{ fontSize: 11, color: TEXT_MUTED, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.observacoes}>
+                      {p.observacoes || "—"}
+                    </span>
+                  )}
                 </td>
               </tr>
             );

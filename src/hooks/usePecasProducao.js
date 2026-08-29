@@ -84,5 +84,27 @@ export function usePecasProducao() {
     await supabase.from("pedidos_alfaiataria").update({ observacoes_producao: texto }).eq("id", id);
   }
 
-  return { pecas, loading, recarregar, marcarInicio, atualizarStatus, atualizarSituacao, pausar, retomar, atualizarObservacaoProducao };
+  // Desfaz um início marcado por engano — zera início, pausa e dias pausados.
+  async function desfazerInicio(id) {
+    setPecas((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, dataInicioProducao: "", dataPausaInicio: "", diasPausados: 0, situacao: "Aguardando" } : p))
+    );
+    await supabase
+      .from("pedidos_alfaiataria")
+      .update({ data_inicio_producao: null, data_pausa_inicio: null, dias_pausados: 0, situacao: "Aguardando" })
+      .eq("id", id);
+  }
+
+  return {
+    pecas,
+    loading,
+    recarregar,
+    marcarInicio,
+    atualizarStatus,
+    atualizarSituacao,
+    pausar,
+    retomar,
+    desfazerInicio,
+    atualizarObservacaoProducao,
+  };
 }

@@ -10,7 +10,7 @@ const VERMELHO = "#9C4A1E";
 // Réplica (fase 1) da planilha "Controle de Produção": fila de peças em
 // aberto + um painel de indicadores parecido com a aba DASHBOARD dela.
 // A simulação de fila por capacidade/freelancers fica pra uma fase 2.
-export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, irParaPeca }) {
+export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, onDesfazerInicio, irParaPeca }) {
   const abertas = useMemo(() => pecas.filter((p) => p.status !== "Entregue"), [pecas]);
   const hoje = hojeISO();
 
@@ -64,6 +64,7 @@ export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, 
           onMarcarInicio={(id) => onCampo(id, "dataInicioProducao", hojeISO())}
           onPausar={onPausar}
           onRetomar={onRetomar}
+          onDesfazerInicio={onDesfazerInicio}
         />
       </Card>
     </div>

@@ -14,7 +14,7 @@ import TabelaControleProducao from "./components/TabelaControleProducao";
 // trafega nem chega perto dessa tela.
 export default function ShellProducao() {
   const { sair, perfil } = useAuth();
-  const { pecas, loading, marcarInicio, atualizarStatus, atualizarSituacao, pausar, retomar, atualizarObservacaoProducao } = usePecasProducao();
+  const { pecas, loading, marcarInicio, atualizarStatus, atualizarSituacao, pausar, retomar, desfazerInicio, atualizarObservacaoProducao } = usePecasProducao();
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [visualizacao, setVisualizacao] = useState("tabela");
@@ -102,6 +102,7 @@ export default function ShellProducao() {
               onMarcarInicio={marcarInicio}
               onPausar={pausar}
               onRetomar={retomar}
+              onDesfazerInicio={desfazerInicio}
             />
           </Card>
         )}
@@ -161,7 +162,7 @@ export default function ShellProducao() {
                   </div>
                 </div>
                 {p.dataInicioProducao && (
-                  <div className="mb-3">
+                  <div className="mb-3 flex items-center gap-3 flex-wrap">
                     {p.situacao === "Pausado" ? (
                       <button
                         onClick={() => retomar(p.id)}
@@ -177,6 +178,13 @@ export default function ShellProducao() {
                         Pausar (cliente viajou, etc.)
                       </button>
                     )}
+                    <button
+                      onClick={() => desfazerInicio(p.id)}
+                      title="Clicou em início por engano? Desfaz aqui."
+                      style={{ color: TEXT_MUTED, fontSize: 11, textDecoration: "underline" }}
+                    >
+                      desfazer início
+                    </button>
                   </div>
                 )}
 

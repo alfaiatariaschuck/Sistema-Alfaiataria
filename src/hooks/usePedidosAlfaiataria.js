@@ -244,6 +244,20 @@ export function usePedidosAlfaiataria() {
     });
   }
 
+  // Desfaz o início de produção — pra quando foi clicado por engano.
+  // Zera início, pausa e dias pausados e volta a peça pra "Aguardando".
+  async function desfazerInicioPeca(pecaId) {
+    const patch = { dataInicioProducao: "", dataPausaInicio: "", diasPausados: 0, situacao: "Aguardando" };
+    setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
+    await comIndicador(async () => {
+      const { error } = await supabase
+        .from("pedidos_alfaiataria")
+        .update({ data_inicio_producao: null, data_pausa_inicio: null, dias_pausados: 0, situacao: "Aguardando" })
+        .eq("id", pecaId);
+      if (error) setErro(error.message);
+    });
+  }
+
   async function removerPeca(pecaId) {
     setPecas((prev) => prev.filter((p) => p.id !== pecaId));
     await comIndicador(async () => {
@@ -299,6 +313,7 @@ export function usePedidosAlfaiataria() {
     atualizarCampo,
     pausarPeca,
     retomarPeca,
+    desfazerInicioPeca,
     removerPeca,
     adicionarTecido,
     atualizarTecido,
