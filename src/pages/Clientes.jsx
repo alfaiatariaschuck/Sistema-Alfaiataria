@@ -5,6 +5,7 @@ import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import RecompraPorAno from "../components/RecompraPorAno";
+import VendasPorAno from "../components/VendasPorAno";
 import { BRASS, BRASS_SOFT, INK, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { brl, fmtData, mesesDesde, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
@@ -46,13 +47,17 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
   const [anoFiltro, setAnoFiltro] = useState("");
   const [mostrarCampanha, setMostrarCampanha] = useState(false);
   const [mostrarGrafico, setMostrarGrafico] = useState(true);
+  const [mostrarGraficoVendas, setMostrarGraficoVendas] = useState(false);
   const [mensagemCampanha, setMensagemCampanha] = useState(MENSAGEM_CAMPANHA_PADRAO);
   const [visualizacao, setVisualizacao] = useState("tabela");
   const [ordenarPor, setOrdenarPor] = useState("nome");
   const [ordemDesc, setOrdemDesc] = useState(false);
   const [topN, setTopN] = useState("");
-  const [soSumidos, setSoSumidos] = useState(false);
+  const [mesesMinimo, setMesesMinimo] = useState("");
   const [filtroContato, setFiltroContato] = useState("");
+  const [filtroRecompra, setFiltroRecompra] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("");
+  const [filtroTelefone, setFiltroTelefone] = useState("");
   // Otimista: some no toque antes de esperar o servidor confirmar. Guarda
   // só as mudanças feitas nesta sessão (undefined = usa o valor do servidor).
   const [contatadosLocais, setContatadosLocais] = useState({});
@@ -107,9 +112,12 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
     const bateBusca = c.nome.toLowerCase().includes(busca.toLowerCase());
     const bateQtd = !qtdMinima || c.totalComprado >= parseFloat(qtdMinima);
     const bateAno = !anoFiltro || c.anosComCompra.has(anoFiltro);
-    const bateSumido = !soSumidos || c.sumido;
+    const bateMeses = !mesesMinimo || (c.mesesSemComprar !== null && c.mesesSemComprar >= parseFloat(mesesMinimo));
     const bateContato = !filtroContato || (filtroContato === "sim" ? c.contatado : !c.contatado);
-    return bateBusca && bateQtd && bateAno && bateSumido && bateContato;
+    const bateRecompra = !filtroRecompra || (filtroRecompra === "sim" ? c.recompra : !c.recompra);
+    const bateTipo = !filtroTipo || (filtroTipo === "camisaria" ? c.pedidos.length > 0 : c.pecas.length > 0);
+    const bateTelefone = !filtroTelefone || (filtroTelefone === "sim" ? c.temTelefone : !c.temTelefone);
+    return bateBusca && bateQtd && bateAno && bateMeses && bateContato && bateRecompra && bateTipo && bateTelefone;
   });
 
   const ordenados = [...filtrados].sort((a, b) => {
@@ -193,15 +201,18 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
         <EstatCard label="Média por cliente" valor={ticketMedio.toFixed(1)} />
       </div>
 
-      <button
-        onClick={() => setMostrarGrafico((v) => !v)}
-        className="flex items-center gap-2 mb-3"
-        style={{ color: BRASS, fontWeight: 600, fontSize: 12 }}
-      >
-        <TrendingUp size={14} />
-        {mostrarGrafico ? "Ocultar taxa de recompra por ano" : "Ver taxa de recompra por ano"}
-      </button>
+      <div className="flex items-center gap-4 mb-3 flex-wrap">
+        <button onClick={() => setMostrarGrafico((v) => !v)} className="flex items-center gap-2" style={{ color: BRASS, fontWeight: 600, fontSize: 12 }}>
+          <TrendingUp size={14} />
+          {mostrarGrafico ? "Ocultar taxa de recompra por ano" : "Ver taxa de recompra por ano"}
+        </button>
+        <button onClick={() => setMostrarGraficoVendas((v) => !v)} className="flex items-center gap-2" style={{ color: BRASS, fontWeight: 600, fontSize: 12 }}>
+          <TrendingUp size={14} />
+          {mostrarGraficoVendas ? "Ocultar peças vendidas por ano" : "Ver peças vendidas por ano"}
+        </button>
+      </div>
       {mostrarGrafico && <RecompraPorAno clientes={enriquecidos} />}
+      {mostrarGraficoVendas && <VendasPorAno clientes={enriquecidos} />}
 
       <div className="flex items-center gap-3 mb-3 flex-wrap">
         <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 260, padding: "6px 10px" }}>
@@ -230,21 +241,30 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
             </option>
           ))}
         </select>
-        <button
-          onClick={() => setSoSumidos((v) => !v)}
-          className="flex items-center gap-1.5"
-          style={{
-            background: soSumidos ? VERMELHO : "#EDEAE0",
-            color: soSumidos ? "#FFF" : INK,
-            padding: "8px 14px",
-            borderRadius: 8,
-            fontWeight: 600,
-            fontSize: 13,
-          }}
-          title={`Só quem está sem comprar há ${limiteMeses} meses ou mais`}
-        >
-          Só sumidos
-        </button>
+        <input
+          type="number"
+          min="0"
+          placeholder="Sem comprar há (mín. meses)"
+          value={mesesMinimo}
+          onChange={(e) => setMesesMinimo(e.target.value)}
+          style={{ ...inputStyle, maxWidth: 180 }}
+          title={`Deixe em branco pra não filtrar. O limite configurado de "sumido" é ${limiteMeses} meses.`}
+        />
+        <select value={filtroRecompra} onChange={(e) => setFiltroRecompra(e.target.value)} style={{ ...inputStyle, maxWidth: 150 }} title="Já comprou mais de uma vez?">
+          <option value="">Recompra: todos</option>
+          <option value="sim">Já recomprou</option>
+          <option value="nao">Nunca recomprou</option>
+        </select>
+        <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} style={{ ...inputStyle, maxWidth: 160 }} title="O que esse cliente já comprou">
+          <option value="">Tipo: todos</option>
+          <option value="camisaria">Comprou camisa</option>
+          <option value="alfaiataria">Comprou alfaiataria</option>
+        </select>
+        <select value={filtroTelefone} onChange={(e) => setFiltroTelefone(e.target.value)} style={{ ...inputStyle, maxWidth: 170 }} title="Tem telefone cadastrado (dá pra mandar WhatsApp)?">
+          <option value="">Telefone: todos</option>
+          <option value="sim">Tem telefone</option>
+          <option value="nao">Sem telefone</option>
+        </select>
         <select value={filtroContato} onChange={(e) => setFiltroContato(e.target.value)} style={{ ...inputStyle, maxWidth: 170 }} title="Quem já foi avisado da campanha">
           <option value="">Contato: todos</option>
           <option value="nao">Ainda não contatei</option>

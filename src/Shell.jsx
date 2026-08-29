@@ -28,6 +28,7 @@ import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
 import { usePlanosAssinatura } from "./hooks/usePlanosAssinatura";
 import { useNomesClientes } from "./hooks/useNomesClientes";
 import { useHistoricoVendas } from "./hooks/useHistoricoVendas";
+import { useTelefonesClientes } from "./hooks/useTelefonesClientes";
 import { useEstoqueTecidos } from "./hooks/useEstoqueTecidos";
 import { useDespesas } from "./hooks/useDespesas";
 import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
@@ -119,6 +120,7 @@ export default function Shell() {
 
   const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
   const { historicoVendas } = useHistoricoVendas();
+  const { clientesComTelefone } = useTelefonesClientes();
   const { estoque: estoqueTecidos, movimentos: movimentosEstoque, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
   const { despesas, criarDespesa, marcarPaga, atualizarValorPago, removerDespesa } = useDespesas();
   const { previsoes, criarPrevisao, removerPrevisao } = usePrevisoesVenda();
@@ -154,8 +156,10 @@ export default function Shell() {
       if (!c.historico) c.historico = [];
       c.historico.push(h);
     });
-    return [...map.values()].sort((a, b) => b.pedidos.length + b.pecas.length - (a.pedidos.length + a.pecas.length));
-  }, [pedidos, pecas, clientesBase, historicoVendas]);
+    return [...map.values()]
+      .map((c) => ({ ...c, temTelefone: clientesComTelefone.has(c.id) }))
+      .sort((a, b) => b.pedidos.length + b.pecas.length - (a.pedidos.length + a.pecas.length));
+  }, [pedidos, pecas, clientesBase, historicoVendas, clientesComTelefone]);
 
   function irPara(id) {
     setTab("pedidos");
