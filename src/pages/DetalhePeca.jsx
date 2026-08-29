@@ -211,7 +211,7 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onPausar, onRe
               </>
             )}
           </div>
-          {p.status === "Pronto" && (
+          {p.status === "Finalização" && (
             <div className="mb-4">
               <AvisarClienteWhatsapp
                 clienteId={p.clienteId}

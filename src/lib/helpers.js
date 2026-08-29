@@ -124,7 +124,15 @@ export function statusParaEtapa(tipo, status) {
   const direta = lista.find((e) => e.status === status);
   if (direta) return { label: direta.label, percentual: direta.percentual, finalizado: false };
 
-  const sinonimos = { "Em Produção": "Corte", Prova: "1ª Prova" };
+  const sinonimos = {
+    "Em Produção": "Corte",
+    Prova: "Prova na Tela",
+    "1ª Prova": "Prova na Tela",
+    Ajustes: "Ajuste 1",
+    "2ª Prova": "Prova na Caixa",
+    Acabamento: "Finalização",
+    Pronto: "Finalização",
+  };
   const equivalente = sinonimos[status] && lista.find((e) => e.status === sinonimos[status]);
   if (equivalente) return { label: equivalente.label, percentual: equivalente.percentual, finalizado: false };
 

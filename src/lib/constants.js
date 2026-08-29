@@ -14,12 +14,14 @@ export const STATUS = ["Aguardando Produção", "Em Produção", "Prova", "Pront
 // acompanhamento público do cliente.
 export const STATUS_ALFAIATARIA = [
   "Aguardando Produção",
+  "Molde",
   "Corte",
-  "1ª Prova",
-  "Ajustes",
-  "2ª Prova",
-  "Acabamento",
-  "Pronto",
+  "Prova na Tela",
+  "Ajuste 1",
+  "Prova na Caixa",
+  "Ajuste 2",
+  "Prova Final",
+  "Finalização",
   "Entregue Parcial",
   "Entregue",
   "Doação",
@@ -35,6 +37,13 @@ export const STATUS_STYLE = {
   "2ª Prova": { bg: "#E9E1F5", fg: "#5B3E96" },
   Acabamento: { bg: "#D9EEF5", fg: "#1E6E8C" },
   Pronto: { bg: "#DCEBDD", fg: "#2C6E31" },
+  Molde: { bg: "#EFE1CC", fg: "#8A6A0C" },
+  "Prova na Tela": { bg: "#E9E1F5", fg: "#5B3E96" },
+  "Ajuste 1": { bg: "#FCEFC7", fg: "#8A6A0C" },
+  "Prova na Caixa": { bg: "#E9E1F5", fg: "#5B3E96" },
+  "Ajuste 2": { bg: "#FCEFC7", fg: "#8A6A0C" },
+  "Prova Final": { bg: "#D8CBEA", fg: "#4A2E80" },
+  Finalização: { bg: "#DCEBDD", fg: "#2C6E31" },
   "Entregue Parcial": { bg: "#D9EEF5", fg: "#1E6E8C" },
   Entregue: { bg: "#DCE4EE", fg: "#2E4A6B" },
   Doação: { bg: "#F5DCE8", fg: "#9C2E63" },
@@ -52,13 +61,15 @@ export const ETAPAS_ACOMPANHAMENTO_CAMISARIA = [
 ];
 
 export const ETAPAS_ACOMPANHAMENTO_ALFAIATARIA = [
-  { status: "Aguardando Produção", label: "Aguardando produção", percentual: 10 },
-  { status: "Corte", label: "Corte do tecido", percentual: 25 },
-  { status: "1ª Prova", label: "1ª prova", percentual: 45 },
-  { status: "Ajustes", label: "Ajustes", percentual: 65 },
-  { status: "2ª Prova", label: "2ª prova", percentual: 85 },
-  { status: "Acabamento", label: "Acabamento final", percentual: 95 },
-  { status: "Pronto", label: "Pronto para retirada", percentual: 100 },
+  { status: "Aguardando Produção", label: "Aguardando produção", percentual: 5 },
+  { status: "Molde", label: "Molde", percentual: 15 },
+  { status: "Corte", label: "Corte do tecido", percentual: 28 },
+  { status: "Prova na Tela", label: "Prova na tela", percentual: 40 },
+  { status: "Ajuste 1", label: "Ajuste", percentual: 52 },
+  { status: "Prova na Caixa", label: "Prova na caixa", percentual: 65 },
+  { status: "Ajuste 2", label: "Ajuste final", percentual: 78 },
+  { status: "Prova Final", label: "Prova final", percentual: 90 },
+  { status: "Finalização", label: "Finalização", percentual: 100 },
 ];
 
 export const PAG_STYLE = {
