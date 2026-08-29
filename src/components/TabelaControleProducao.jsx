@@ -64,15 +64,15 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
 
   return (
     <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <table style={{ minWidth: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
           <tr style={{ borderBottom: `1px solid ${LINE}`, background: "#F7F4EC" }}>
-            <th style={{ padding: "8px 10px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED }}>Nº</th>
+            <th style={{ padding: "10px 12px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED }}>Nº</th>
             {COLUNAS.map((col) => (
               <th
                 key={col.chave}
                 onClick={() => ordenarPorColuna(col.chave)}
-                style={{ textAlign: "left", padding: "8px 10px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}
+                style={{ textAlign: "left", padding: "10px 12px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}
               >
                 <span className="inline-flex items-center gap-1">
                   {col.label}
@@ -81,7 +81,7 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
               </th>
             ))}
             {["Prioridade", "Responsável", "Situação", "Etapa", "Início/Pausa", "Obs."].map((h) => (
-              <th key={h} style={{ textAlign: "left", padding: "8px 10px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase", whiteSpace: "nowrap" }}>
+              <th key={h} style={{ textAlign: "left", padding: "10px 12px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase", whiteSpace: "nowrap" }}>
                 {h}
               </th>
             ))}
@@ -93,23 +93,27 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
             const pausado = p.situacao === "Pausado";
             return (
               <tr key={p.id} style={{ borderBottom: `1px solid ${LINE}` }} className="fx-row-hover">
-                <td style={{ padding: "8px 10px", color: TEXT_MUTED }}>{i + 1}</td>
-                <td onClick={() => onAbrir && onAbrir(p.id)} style={{ padding: "8px 10px", fontWeight: 600, cursor: onAbrir ? "pointer" : "default" }}>
+                <td style={{ padding: "12px", color: TEXT_MUTED }}>{i + 1}</td>
+                <td onClick={() => onAbrir && onAbrir(p.id)} style={{ padding: "12px", fontWeight: 600, cursor: onAbrir ? "pointer" : "default", whiteSpace: "nowrap" }}>
                   {p.cliente || "Sem nome"}
                 </td>
-                <td style={{ padding: "8px 10px" }}>{p.tipoPeca}</td>
-                <td className="fx-mono" style={{ padding: "8px 10px", color: BRASS, fontWeight: 700 }}>
+                <td style={{ padding: "12px", whiteSpace: "nowrap" }}>{p.tipoPeca}</td>
+                <td className="fx-mono" style={{ padding: "12px", color: BRASS, fontWeight: 700 }}>
                   {p.percentual}%
                 </td>
-                <td className="fx-mono" style={{ padding: "8px 10px", color: TEXT_MUTED, whiteSpace: "nowrap" }} title="Desde o dia que fechou o cliente — inclui espera na fila">
+                <td className="fx-mono" style={{ padding: "12px", color: TEXT_MUTED, whiteSpace: "nowrap" }} title="Desde o dia que fechou o cliente — inclui espera na fila">
                   {p.diasFila}d
                 </td>
-                <td className="fx-mono" style={{ padding: "8px 10px", color: pausado ? BRASS : TEXT_MUTED, whiteSpace: "nowrap" }} title="Desde o início real da produção, descontando pausas">
+                <td className="fx-mono" style={{ padding: "12px", color: pausado ? BRASS : TEXT_MUTED, whiteSpace: "nowrap" }} title="Desde o início real da produção, descontando pausas">
                   {p.diasProducao === null ? "—" : `${p.diasProducao}d`}
                 </td>
-                <td style={{ padding: "8px 10px" }}>
+                <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
                   {podeEditarAtribuicao ? (
-                    <select style={{ ...inputStyle, fontSize: 12, padding: "4px 6px" }} value={p.prioridade} onChange={(e) => onCampo(p.id, "prioridade", e.target.value)}>
+                    <select
+                      style={{ ...inputStyle, fontSize: 12, padding: "6px 8px", width: 96 }}
+                      value={p.prioridade}
+                      onChange={(e) => onCampo(p.id, "prioridade", e.target.value)}
+                    >
                       <option>Normal</option>
                       <option>Alta</option>
                     </select>
@@ -117,11 +121,11 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                     <Pill text={p.prioridade} style={p.prioridade === "Alta" ? { bg: "#F6E3D9", fg: VERMELHO } : { bg: "#EDEAE0", fg: TEXT_MUTED }} />
                   )}
                 </td>
-                <td style={{ padding: "8px 10px" }}>
+                <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
                   {podeEditarAtribuicao ? (
                     <>
                       <input
-                        style={{ ...inputStyle, fontSize: 12, padding: "4px 6px", width: 110 }}
+                        style={{ ...inputStyle, fontSize: 12, padding: "6px 8px", width: 130 }}
                         list="lista-responsaveis-producao"
                         value={p.responsavel}
                         onChange={(e) => onCampo(p.id, "responsavel", e.target.value)}
@@ -137,7 +141,7 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                     <span style={{ color: TEXT_MUTED }}>{p.responsavel || "—"}</span>
                   )}
                 </td>
-                <td style={{ padding: "8px 10px" }}>
+                <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
                   {p.status === "Entregue" ? (
                     <Pill text="Entregue" style={{ bg: "#DCEBDD", fg: VERDE }} />
                   ) : atrasado ? (
@@ -145,16 +149,20 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                       <AlertTriangle size={12} /> Atrasado
                     </span>
                   ) : (
-                    <select style={{ ...inputStyle, fontSize: 12, padding: "4px 6px" }} value={p.situacao} onChange={(e) => onCampo(p.id, "situacao", e.target.value)}>
+                    <select
+                      style={{ ...inputStyle, fontSize: 12, padding: "6px 8px", width: 132 }}
+                      value={p.situacao}
+                      onChange={(e) => onCampo(p.id, "situacao", e.target.value)}
+                    >
                       {SITUACOES.map((s) => (
                         <option key={s}>{s}</option>
                       ))}
                     </select>
                   )}
                 </td>
-                <td style={{ padding: "8px 10px" }}>
+                <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
                   <select
-                    style={{ ...inputStyle, fontSize: 12, padding: "4px 6px" }}
+                    style={{ ...inputStyle, fontSize: 12, padding: "6px 8px", width: 158 }}
                     value={p.status}
                     onChange={(e) => onCampo(p.id, "status", e.target.value)}
                   >
@@ -163,7 +171,7 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                     ))}
                   </select>
                 </td>
-                <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
+                <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
                   {p.status === "Entregue" ? (
                     <span style={{ fontSize: 11, color: TEXT_MUTED }}>{p.diasProducao !== null ? `${p.diasProducao}d de produção` : "—"}</span>
                   ) : !p.dataInicioProducao ? (
@@ -172,13 +180,13 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                         <input
                           type="date"
                           onChange={(e) => e.target.value && onCampo(p.id, "dataInicioProducao", e.target.value)}
-                          style={{ ...inputStyle, fontSize: 11, padding: "3px 4px", width: 116 }}
+                          style={{ ...inputStyle, fontSize: 11, padding: "6px 8px", width: 124 }}
                           title="Já estava em produção? Coloque a data real de início aqui"
                         />
                         <button
                           onClick={() => onMarcarInicio(p.id)}
                           className="flex items-center gap-1"
-                          style={{ background: "#EDEAE0", color: BRASS, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                          style={{ background: "#EDEAE0", color: BRASS, padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
                         >
                           <Play size={11} /> Hoje
                         </button>
@@ -187,7 +195,7 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                       <button
                         onClick={() => onMarcarInicio(p.id)}
                         className="flex items-center gap-1"
-                        style={{ background: "#EDEAE0", color: BRASS, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                        style={{ background: "#EDEAE0", color: BRASS, padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
                       >
                         <Play size={11} /> Início
                       </button>
@@ -199,7 +207,7 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                           type="date"
                           value={p.dataInicioProducao}
                           onChange={(e) => e.target.value && onCampo(p.id, "dataInicioProducao", e.target.value)}
-                          style={{ ...inputStyle, fontSize: 11, padding: "3px 4px", width: 116 }}
+                          style={{ ...inputStyle, fontSize: 11, padding: "6px 8px", width: 124 }}
                           title="Corrigir data de início"
                         />
                       )}
@@ -207,7 +215,7 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                         <button
                           onClick={() => onRetomar(p.id)}
                           className="flex items-center gap-1"
-                          style={{ background: "#DCEBDD", color: VERDE, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                          style={{ background: "#DCEBDD", color: VERDE, padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
                         >
                           <Play size={11} /> Retomar
                         </button>
@@ -215,7 +223,7 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                         <button
                           onClick={() => onPausar(p.id)}
                           className="flex items-center gap-1"
-                          style={{ background: "#F6E3D9", color: VERMELHO, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                          style={{ background: "#F6E3D9", color: VERMELHO, padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
                         >
                           <Pause size={11} /> Pausar
                         </button>
@@ -232,10 +240,10 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
                     </div>
                   )}
                 </td>
-                <td style={{ padding: "8px 10px", maxWidth: 160 }}>
+                <td style={{ padding: "12px", maxWidth: 170 }}>
                   {podeEditarAtribuicao ? (
                     <input
-                      style={{ ...inputStyle, fontSize: 11, padding: "4px 6px", width: 150 }}
+                      style={{ ...inputStyle, fontSize: 11, padding: "6px 8px", width: 160 }}
                       defaultValue={p.observacoes}
                       onBlur={(e) => onCampo(p.id, "observacoes", e.target.value)}
                       placeholder="Nota pro Ícaro…"
