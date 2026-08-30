@@ -271,6 +271,25 @@ export default function TabelaControleProducao({
                         >
                           <Play size={11} /> Retomar
                         </button>
+                      ) : podeEditarAtribuicao ? (
+                        <>
+                          <button
+                            onClick={() => onPausar(p.id, "cliente_prova")}
+                            className="flex items-center gap-1"
+                            title="Peça pronta, esperando o cliente vir fazer a prova"
+                            style={{ background: "#F6E3D9", color: VERMELHO, padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                          >
+                            <Pause size={11} /> Prova
+                          </button>
+                          <button
+                            onClick={() => onPausar(p.id, "outro")}
+                            className="flex items-center gap-1"
+                            title="Falta de tecido, doença, viagem etc."
+                            style={{ background: "#F6E3D9", color: VERMELHO, padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                          >
+                            <Pause size={11} /> Outro
+                          </button>
+                        </>
                       ) : (
                         <button
                           onClick={() => onPausar(p.id)}
