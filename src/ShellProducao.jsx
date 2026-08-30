@@ -8,6 +8,8 @@ import { diasProducaoReal, fmtData, hojeISO, mediaDiasProducaoPorTipo, previsaoE
 import { Card, Empty } from "./components/ui";
 import TabelaControleProducao from "./components/TabelaControleProducao";
 
+const NOME_SECAO = { corpo: "Paletó", calca: "Calça", colete: "Colete" };
+
 // Resumo de medidas por seção — usado tanto pra peça atual quanto pro
 // histórico de pedidos anteriores do mesmo cliente (mesma "cara").
 function ResumoMedidas({ medidas, tipoPeca }) {
@@ -49,6 +51,7 @@ export default function ShellProducao() {
     atualizarStatus,
     atualizarSituacao,
     atualizarResponsavel,
+    atualizarResponsavelSecao,
     pausar,
     retomar,
     desfazerInicio,
@@ -228,16 +231,40 @@ export default function ShellProducao() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Etapa</div>
-                    <select style={inputStyle} value={p.status} onChange={(e) => atualizarStatus(p.id, e.target.value)}>
-                      {STATUS_ALFAIATARIA.filter((s) => s !== "Entregue").map((s) => (
-                        <option key={s}>{s}</option>
+                <div className="mb-3">
+                  <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Etapa</div>
+                  <select style={inputStyle} value={p.status} onChange={(e) => atualizarStatus(p.id, e.target.value)}>
+                    {STATUS_ALFAIATARIA.filter((s) => s !== "Entregue").map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <datalist id="lista-responsaveis-producao-cards">
+                  {responsaveisConhecidos.map((r) => (
+                    <option key={r} value={r} />
+                  ))}
+                </datalist>
+                {(PECA_SECOES[p.tipoPeca] || []).length > 1 ? (
+                  <div className="mb-3">
+                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Responsável por parte</div>
+                    <div className="flex flex-col gap-2">
+                      {PECA_SECOES[p.tipoPeca].map((secKey) => (
+                        <div key={secKey} className="flex items-center gap-2">
+                          <span style={{ fontSize: 12, color: TEXT_MUTED, minWidth: 60 }}>{NOME_SECAO[secKey] || secKey}</span>
+                          <input
+                            style={inputStyle}
+                            list="lista-responsaveis-producao-cards"
+                            defaultValue={p.responsaveisSecoes?.[secKey] || ""}
+                            onBlur={(e) => atualizarResponsavelSecao(p.id, secKey, e.target.value)}
+                            placeholder="—"
+                          />
+                        </div>
                       ))}
-                    </select>
+                    </div>
                   </div>
-                  <div>
+                ) : (
+                  <div className="mb-3">
                     <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Responsável</div>
                     <input
                       style={inputStyle}
@@ -246,13 +273,8 @@ export default function ShellProducao() {
                       onBlur={(e) => atualizarResponsavel(p.id, e.target.value)}
                       placeholder="Quem vai fazer?"
                     />
-                    <datalist id="lista-responsaveis-producao-cards">
-                      {responsaveisConhecidos.map((r) => (
-                        <option key={r} value={r} />
-                      ))}
-                    </datalist>
                   </div>
-                </div>
+                )}
 
                 <div className="mb-3">
                   <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Início da produção</div>

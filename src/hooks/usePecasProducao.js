@@ -8,7 +8,7 @@ import { diasEntre, hojeISO } from "../lib/helpers";
 // restrinja o resto do banco pra esse papel, essa tela nem pede esses
 // campos, então eles nunca chegam a trafegar até o navegador dele.
 const SELECT_PRODUCAO =
-  "id, cliente_id, data_pedido, previsao_entrega, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, prioridade, situacao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor)";
+  "id, cliente_id, data_pedido, previsao_entrega, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, responsaveis_secoes, prioridade, situacao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor)";
 
 function rowParaPecaProducao(row) {
   return {
@@ -26,6 +26,7 @@ function rowParaPecaProducao(row) {
     observacoes: row.observacoes || "",
     observacoesProducao: row.observacoes_producao || "",
     responsavel: row.responsavel || "",
+    responsaveisSecoes: row.responsaveis_secoes || {},
     prioridade: row.prioridade || "Normal",
     situacao: row.situacao || "Aguardando",
     medidas: row.medidas || {},
@@ -85,6 +86,13 @@ export function usePecasProducao() {
     await supabase.from("pedidos_alfaiataria").update({ responsavel }).eq("id", id);
   }
 
+  async function atualizarResponsavelSecao(id, secKey, nome) {
+    const pecaAtual = pecas.find((p) => p.id === id);
+    const responsaveisSecoes = { ...(pecaAtual?.responsaveisSecoes || {}), [secKey]: nome };
+    setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, responsaveisSecoes } : p)));
+    await supabase.from("pedidos_alfaiataria").update({ responsaveis_secoes: responsaveisSecoes }).eq("id", id);
+  }
+
   async function atualizarObservacaoProducao(id, texto) {
     setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, observacoesProducao: texto } : p)));
     await supabase.from("pedidos_alfaiataria").update({ observacoes_producao: texto }).eq("id", id);
@@ -109,6 +117,7 @@ export function usePecasProducao() {
     atualizarStatus,
     atualizarSituacao,
     atualizarResponsavel,
+    atualizarResponsavelSecao,
     pausar,
     retomar,
     desfazerInicio,

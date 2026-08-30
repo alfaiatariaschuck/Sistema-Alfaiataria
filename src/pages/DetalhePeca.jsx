@@ -37,6 +37,7 @@ const STATUS_PAGAMENTO_STYLE = {
   Parcial: { bg: "#FCEFC7", fg: "#8A6A0C" },
   Pendente: { bg: "#F6E3D9", fg: "#9C4A1E" },
 };
+const NOME_SECAO = { corpo: "Paletó", calca: "Calça", colete: "Colete" };
 
 export default function DetalhePeca({
   peca: p,
@@ -49,6 +50,7 @@ export default function DetalhePeca({
   previsoesFila,
   onMedida,
   onCaracteristica,
+  onResponsavelSecao,
   onRemover,
   onAddTecido,
   onTecido,
@@ -157,6 +159,27 @@ export default function DetalhePeca({
               ))}
             </select>
           </Field>
+          {(PECA_SECOES[p.tipoPeca] || []).length > 1 ? (
+            <Field label="Responsável por parte">
+              <div className="flex flex-col gap-2">
+                {PECA_SECOES[p.tipoPeca].map((secKey) => (
+                  <div key={secKey} className="flex items-center gap-2">
+                    <span style={{ fontSize: 12, color: TEXT_MUTED, minWidth: 70 }}>{NOME_SECAO[secKey] || secKey}</span>
+                    <input
+                      style={inputStyle}
+                      value={p.responsaveisSecoes?.[secKey] || ""}
+                      onChange={(e) => onResponsavelSecao(p.id, secKey, e.target.value)}
+                      placeholder="—"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Field>
+          ) : (
+            <Field label="Responsável">
+              <input style={inputStyle} value={p.responsavel} onChange={(e) => set("responsavel", e.target.value)} placeholder="—" />
+            </Field>
+          )}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1" style={{ fontSize: 11, color: TEXT_MUTED }}>
               <span>{statusParaEtapa("alfaiataria", p.status).label}</span>
@@ -242,16 +265,27 @@ export default function DetalhePeca({
             <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
           </Field>
           {sugestaoPrevisao && sugestaoPrevisao !== p.previsaoEntrega && (
-            <div className="flex items-center gap-2 -mt-3 mb-2 flex-wrap">
-              <span style={{ fontSize: 12, color: TEXT_MUTED }}>
-                {p.previsaoEntrega ? "Nova estimativa, com base no ritmo real da peça:" : "Sugestão com base na média de produção:"}{" "}
-                <strong style={{ color: "#16212E" }}>{fmtData(sugestaoPrevisao)}</strong>
+            <div
+              className="flex items-center gap-2 mb-3 flex-wrap"
+              style={{ background: "#FCEFC7", border: "1px solid #E6C97A", borderRadius: 8, padding: "10px 12px" }}
+            >
+              <span style={{ fontSize: 12, color: "#5A4200" }}>
+                {p.previsaoEntrega ? (
+                  <>
+                    ⚠ Essa previsão parece desatualizada — pelo ritmo real da peça, a estimativa agora é{" "}
+                    <strong>{fmtData(sugestaoPrevisao)}</strong>.
+                  </>
+                ) : (
+                  <>
+                    Sugestão com base na média de produção: <strong>{fmtData(sugestaoPrevisao)}</strong>
+                  </>
+                )}
               </span>
               <button
                 onClick={() => set("previsaoEntrega", sugestaoPrevisao)}
-                style={{ background: "#EDEAE0", color: BRASS, padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                style={{ background: BRASS, color: "#FFF", padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700 }}
               >
-                Usar essa data
+                Atualizar pra essa data
               </button>
             </div>
           )}

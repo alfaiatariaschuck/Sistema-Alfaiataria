@@ -315,6 +315,11 @@ export default function Shell() {
     const caracteristicas = { ...(peca?.caracteristicas || {}), [label]: valor };
     atualizarCampoPeca(pecaId, "caracteristicas", caracteristicas);
   }
+  function atualizarResponsavelSecaoPeca(pecaId, secKey, nome) {
+    const peca = pecas.find((p) => p.id === pecaId);
+    const responsaveisSecoes = { ...(peca?.responsaveisSecoes || {}), [secKey]: nome };
+    atualizarCampoPeca(pecaId, "responsaveisSecoes", responsaveisSecoes);
+  }
 
   const mediaDiasProducaoAlfaiataria = useMemo(() => mediaDiasProducaoComFallback(pecas), [pecas]);
   const mediaDiasPorTipoAlfaiataria = useMemo(() => {
@@ -339,6 +344,7 @@ export default function Shell() {
     previsoesFila: previsoesFilaAlfaiataria,
     onMedida: atualizarMedidaPeca,
     onCaracteristica: atualizarCaracteristicaPeca,
+    onResponsavelSecao: atualizarResponsavelSecaoPeca,
     onRemover: (id) => {
       removerPeca(id);
       setSelecionadaPeca(null);

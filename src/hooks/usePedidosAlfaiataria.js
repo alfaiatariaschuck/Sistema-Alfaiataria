@@ -27,6 +27,7 @@ export function pecaVazia() {
     dataPausaInicio: "",
     diasPausados: 0,
     responsavel: "",
+    responsaveisSecoes: {},
     prioridade: "Normal",
     situacao: "Aguardando",
     enviadoIcaro: false,
@@ -64,6 +65,7 @@ function rowParaPeca(row) {
     dataPausaInicio: row.data_pausa_inicio || "",
     diasPausados: row.dias_pausados || 0,
     responsavel: row.responsavel || "",
+    responsaveisSecoes: row.responsaveis_secoes || {},
     prioridade: row.prioridade || "Normal",
     situacao: row.situacao || "Aguardando",
     enviadoIcaro: row.enviado_icaro === undefined ? true : !!row.enviado_icaro,
@@ -113,6 +115,7 @@ const CAMPO_PARA_COLUNA = {
   dataPausaInicio: "data_pausa_inicio",
   diasPausados: "dias_pausados",
   responsavel: "responsavel",
+  responsaveisSecoes: "responsaveis_secoes",
   prioridade: "prioridade",
   situacao: "situacao",
 };
