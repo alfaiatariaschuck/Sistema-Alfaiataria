@@ -34,22 +34,25 @@ function diasReferenciaTipo(tipo) {
 
 // Gráfico de barras pareadas (2 séries) — mesmo padrão visual da
 // BarraSimples, mas com duas barras lado a lado por categoria e legenda
-// (obrigatória pra 2+ séries pelo skill de dataviz).
-function BarraComparativa({ dados }) {
+// (obrigatória pra 2+ séries pelo skill de dataviz). Genérico: recebe
+// dados já no formato {chave, a, b} e as cores/legendas/tooltip de cada
+// série, pra servir tanto pra "Referência vs Real" quanto pra "Vendidas
+// vs Entregues".
+function BarraDuasSeries({ dados, corA, corB, legendaA, legendaB, tooltipDe, notaDe }) {
   const [hover, setHover] = useState(null);
-  const maxValor = Math.max(1, ...dados.flatMap((d) => [d.referencia ?? 0, d.real ?? 0]));
+  const maxValor = Math.max(1, ...dados.flatMap((d) => [d.a ?? 0, d.b ?? 0]));
   const ALTURA = 130;
 
   return (
     <div>
       <div className="flex items-center gap-4 mb-4">
         <div className="flex items-center gap-1.5">
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: COR_REFERENCIA, display: "inline-block" }} />
-          <span style={{ fontSize: 12, color: TEXT_MUTED }}>Referência (parâmetro)</span>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: corA, display: "inline-block" }} />
+          <span style={{ fontSize: 12, color: TEXT_MUTED }}>{legendaA}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: COR_REAL, display: "inline-block" }} />
-          <span style={{ fontSize: 12, color: TEXT_MUTED }}>Real (histórico)</span>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: corB, display: "inline-block" }} />
+          <span style={{ fontSize: 12, color: TEXT_MUTED }}>{legendaB}</span>
         </div>
       </div>
       <div className="flex items-end gap-4 flex-wrap" style={{ minHeight: ALTURA + 50 }}>
@@ -82,14 +85,13 @@ function BarraComparativa({ dados }) {
                     boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                   }}
                 >
-                  {d.chave}: referência {d.referencia ?? "—"}d{d.horas ? ` (${d.horas}h)` : ""} · real {d.real ?? "—"}d
-                  {d.referencia && d.real ? ` — ${(d.real / d.referencia).toFixed(1)}x mais devagar` : ""}
+                  {tooltipDe ? tooltipDe(d) : `${d.chave}: ${legendaA} ${d.a ?? "—"} · ${legendaB} ${d.b ?? "—"}`}
                 </div>
               )}
               <div className="flex items-end gap-1.5" style={{ height: ALTURA }}>
                 {[
-                  { valor: d.referencia, cor: COR_REFERENCIA },
-                  { valor: d.real, cor: COR_REAL },
+                  { valor: d.a, cor: corA },
+                  { valor: d.b, cor: corB },
                 ].map((serie, i) => {
                   const altura = serie.valor ? (serie.valor / maxValor) * ALTURA : 0;
                   return (
@@ -115,19 +117,52 @@ function BarraComparativa({ dados }) {
               <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8, textAlign: "center" }}>
                 {d.chave}
               </div>
-              {d.referencia && d.real && (
-                <div
-                  className="fx-mono"
-                  style={{ fontSize: 11, fontWeight: 700, color: COR_REAL, marginTop: 2, textAlign: "center" }}
-                >
-                  {(d.real / d.referencia).toFixed(1)}x
-                </div>
-              )}
+              {notaDe && notaDe(d)}
             </div>
           );
         })}
       </div>
     </div>
+  );
+}
+
+function BarraComparativa({ dados }) {
+  const dadosAB = dados.map((d) => ({ chave: d.chave, a: d.referencia, b: d.real, horas: d.horas }));
+  return (
+    <BarraDuasSeries
+      dados={dadosAB}
+      corA={COR_REFERENCIA}
+      corB={COR_REAL}
+      legendaA="Referência (parâmetro)"
+      legendaB="Real (histórico)"
+      tooltipDe={(d) =>
+        `${d.chave}: referência ${d.a ?? "—"}d${d.horas ? ` (${d.horas}h)` : ""} · real ${d.b ?? "—"}d` +
+        (d.a && d.b ? ` — ${(d.b / d.a).toFixed(1)}x mais devagar` : "")
+      }
+      notaDe={(d) =>
+        d.a && d.b ? (
+          <div className="fx-mono" style={{ fontSize: 11, fontWeight: 700, color: COR_REAL, marginTop: 2, textAlign: "center" }}>
+            {(d.b / d.a).toFixed(1)}x
+          </div>
+        ) : null
+      }
+    />
+  );
+}
+
+// Vendidas vs entregues, mês a mês — pra ver se a produção está
+// acompanhando o ritmo de vendas (não é "sobra" exata, já que uma venda
+// de um mês pode entregar só depois, mas mostra a tendência).
+function BarraVendasEntregas({ dados }) {
+  return (
+    <BarraDuasSeries
+      dados={dados}
+      corA={COR_REFERENCIA}
+      corB={COR_REAL}
+      legendaA="Vendidas"
+      legendaB="Entregues"
+      tooltipDe={(d) => `${d.chave}: ${d.a} vendida(s) · ${d.b} entregue(s)`}
+    />
   );
 }
 
@@ -309,30 +344,47 @@ export default function HistoricoProducao({ pecas }) {
     const [ano, m] = mes.split("-");
     return `${MESES[parseInt(m, 10) - 1]}/${ano.slice(2)}`;
   }
-  const porMes = useMemo(() => {
+  const entregasPorMesRaw = useMemo(() => {
     const mapa = new Map();
     entregues.forEach((p) => {
       const mes = p.dataEntrega.slice(0, 7);
       mapa.set(mes, (mapa.get(mes) || 0) + 1);
     });
-    return [...mapa.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([mes, qtd]) => ({ chave: rotuloMes(mes), valor: qtd }));
+    return mapa;
   }, [entregues]);
+
+  const porMes = useMemo(
+    () => [...entregasPorMesRaw.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([mes, qtd]) => ({ chave: rotuloMes(mes), valor: qtd })),
+    [entregasPorMesRaw]
+  );
 
   // Quantidade de peças VENDIDAS por mês (data do pedido, não da
   // entrega) — todas as peças, entregues ou não, desde o início.
-  const vendasPorMes = useMemo(() => {
+  const vendasPorMesRaw = useMemo(() => {
     const mapa = new Map();
     pecas.forEach((p) => {
       if (!p.dataPedido) return;
       const mes = p.dataPedido.slice(0, 7);
       mapa.set(mes, (mapa.get(mes) || 0) + 1);
     });
-    return [...mapa.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([mes, qtd]) => ({ chave: rotuloMes(mes), valor: qtd }));
+    return mapa;
   }, [pecas]);
+
+  const vendasPorMes = useMemo(
+    () => [...vendasPorMesRaw.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([mes, qtd]) => ({ chave: rotuloMes(mes), valor: qtd })),
+    [vendasPorMesRaw]
+  );
+
+  // Confronto vendidas vs entregues, mês a mês — pra enxergar se a
+  // produção está dando conta do ritmo de vendas ou se o backlog está
+  // crescendo. Uma peça vendida num mês pode ser entregue só em outro,
+  // então isso não é "sobrou X sem entregar" — é o ritmo de cada lado.
+  const vendasVsEntregasPorMes = useMemo(() => {
+    const meses = new Set([...vendasPorMesRaw.keys(), ...entregasPorMesRaw.keys()]);
+    return [...meses]
+      .sort((a, b) => a.localeCompare(b))
+      .map((mes) => ({ chave: rotuloMes(mes), a: vendasPorMesRaw.get(mes) || 0, b: entregasPorMesRaw.get(mes) || 0 }));
+  }, [vendasPorMesRaw, entregasPorMesRaw]);
 
   const tabela = useMemo(
     () =>
@@ -431,6 +483,16 @@ export default function HistoricoProducao({ pecas }) {
           <BarraSimples dados={vendasPorMes} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) vendida(s)`} />
         </Card>
       </div>
+
+      <Card style={{ padding: 20 }} className="mb-6">
+        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+          Vendidas vs. Entregues por mês
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+          Confronto direto, mês a mês — mostra se a produção está no ritmo das vendas. Uma peça vendida num mês pode ser entregue em outro, então não é exatamente "sobra", mas mostra a tendência.
+        </div>
+        <BarraVendasEntregas dados={vendasVsEntregasPorMes} />
+      </Card>
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
