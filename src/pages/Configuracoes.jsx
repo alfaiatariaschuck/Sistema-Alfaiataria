@@ -12,6 +12,7 @@ const CHAVE_META_ALFAIATARIA = "meta_vendas_alfaiataria";
 const CHAVE_ALUGUEL = "custo_aluguel_mensal";
 const CHAVE_LUZ = "custo_luz_mensal";
 const CHAVE_PROLABORE = "custo_prolabore_mensal";
+const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
 
 export default function Configuracoes() {
   const [telFabi, setTelFabi] = useState("");
@@ -22,6 +23,7 @@ export default function Configuracoes() {
   const [aluguel, setAluguel] = useState("");
   const [luz, setLuz] = useState("");
   const [prolabore, setProlabore] = useState("");
+  const [custosFixosPJ, setCustosFixosPJ] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [salvo, setSalvo] = useState(null);
 
@@ -30,7 +32,17 @@ export default function Configuracoes() {
       const { data } = await supabase
         .from("config")
         .select("chave, valor")
-        .in("chave", [CHAVE_FABI, CHAVE_ICARO, CHAVE_SUMIDO, CHAVE_META_CAMISARIA, CHAVE_META_ALFAIATARIA, CHAVE_ALUGUEL, CHAVE_LUZ, CHAVE_PROLABORE]);
+        .in("chave", [
+          CHAVE_FABI,
+          CHAVE_ICARO,
+          CHAVE_SUMIDO,
+          CHAVE_META_CAMISARIA,
+          CHAVE_META_ALFAIATARIA,
+          CHAVE_ALUGUEL,
+          CHAVE_LUZ,
+          CHAVE_PROLABORE,
+          CHAVE_CUSTOS_FIXOS_PJ,
+        ]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_FABI) setTelFabi(row.valor || "");
         if (row.chave === CHAVE_ICARO) setTelIcaro(row.valor || "");
@@ -40,6 +52,7 @@ export default function Configuracoes() {
         if (row.chave === CHAVE_ALUGUEL) setAluguel(row.valor || "");
         if (row.chave === CHAVE_LUZ) setLuz(row.valor || "");
         if (row.chave === CHAVE_PROLABORE) setProlabore(row.valor || "");
+        if (row.chave === CHAVE_CUSTOS_FIXOS_PJ) setCustosFixosPJ(row.valor || "");
       });
       setCarregando(false);
     })();
@@ -56,6 +69,7 @@ export default function Configuracoes() {
       { chave: CHAVE_ALUGUEL, valor: aluguel },
       { chave: CHAVE_LUZ, valor: luz },
       { chave: CHAVE_PROLABORE, valor: prolabore },
+      { chave: CHAVE_CUSTOS_FIXOS_PJ, valor: custosFixosPJ },
     ]);
     setSalvo(!error);
   }
@@ -114,6 +128,9 @@ export default function Configuracoes() {
             </Field>
             <Field label="Seu pró-labore/retirada pessoal (R$/mês)">
               <input type="number" step="0.01" style={inputStyle} value={prolabore} onChange={(e) => setProlabore(e.target.value)} />
+            </Field>
+            <Field label="Outros custos fixos PJ (contador, sistema, etc. — R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={custosFixosPJ} onChange={(e) => setCustosFixosPJ(e.target.value)} />
             </Field>
           </div>
         )}

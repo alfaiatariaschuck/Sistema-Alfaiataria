@@ -7,6 +7,14 @@ export const BRASS_SOFT = "#EFE1CC";
 export const LINE = "#E4DECF";
 export const TEXT_MUTED = "#6B7280";
 
+// Cores de comparação (2 séries categóricas) — validadas com o
+// verificador de paleta do skill de dataviz (blue/orange, slots 1-2 da
+// paleta de referência): passam piso de croma, contraste e separação
+// por daltonismo. As cores da marca (BRASS/INK_SOFT) não passam o piso
+// de croma pra uso categórico, por isso essa dupla à parte.
+export const COR_REFERENCIA = "#eb6834";
+export const COR_REAL = "#2a78d6";
+
 export const STATUS = ["Aguardando Produção", "Em Produção", "Prova", "Pronto", "Entregue Parcial", "Entregue", "Doação"];
 
 // Alfaiataria tem etapas próprias, mais granulares (corte, provas,

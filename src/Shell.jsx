@@ -81,7 +81,6 @@ const NAV = [
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true, grupo: "Alfaiataria" },
   { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true, grupo: "Alfaiataria" },
   { id: "historico-producao", label: "Histórico de Produção", icon: BarChart3, primary: false, grupo: "Alfaiataria" },
-  { id: "equipe", label: "Equipe", icon: Users2, primary: false, grupo: "Alfaiataria" },
   { id: "custos-atelie", label: "Custos do Ateliê", icon: PiggyBank, primary: false, grupo: "Alfaiataria" },
   { id: "relatorio-alfaiataria", label: "Relatório Alfaiataria", icon: FileText, primary: false, grupo: "Alfaiataria" },
 
@@ -93,6 +92,7 @@ const NAV = [
   { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false, grupo: "Geral" },
   { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false, grupo: "Geral" },
 
+  { id: "equipe", label: "Equipe", icon: Users2, primary: false, grupo: "Sistema" },
   { id: "backup", label: "Backup", icon: ShieldCheck, primary: false, grupo: "Sistema" },
   { id: "config", label: "Configurações", icon: Settings, primary: false, grupo: "Sistema" },
 ];

@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { AlertTriangle, Clock, Hourglass, PackageCheck, Timer, Wallet, Zap } from "lucide-react";
-import { Card, Empty, PageTitle, StatCard } from "../components/ui";
+import { BarraDuasSeries, BarraSimples, Card, Empty, PageTitle, StatCard } from "../components/ui";
 import {
   BRASS,
+  COR_REAL,
+  COR_REFERENCIA,
   HORAS_PRODUTIVAS_POR_DIA_PADRAO,
   HORAS_REFERENCIA_TIPO_PECA,
   INK,
@@ -10,14 +12,6 @@ import {
   TEXT_MUTED,
 } from "../lib/constants";
 import { brl, diasEsperaCliente, diasProducaoReal, fmtData } from "../lib/helpers";
-
-// Cores de comparação (2 séries categóricas) — validadas com o
-// verificador de paleta do skill de dataviz (blue/orange, slots 1-2 da
-// paleta de referência): passam piso de croma, contraste e separação
-// por daltonismo. As cores da marca (BRASS/INK_SOFT) não passam o piso
-// de croma pra uso categórico, por isso essa dupla à parte só aqui.
-const COR_REFERENCIA = "#eb6834";
-const COR_REAL = "#2a78d6";
 
 // Dias de produção pura (máquina/trabalho manual), sem prova nem
 // espera — vem das horas de desenvolvimento da planilha de parâmetros
@@ -32,100 +26,6 @@ function diasProducaoBaseTipo(tipo) {
   const horas = HORAS_REFERENCIA_TIPO_PECA[tipo];
   if (!horas) return null;
   return Math.max(1, Math.round(horas / HORAS_PRODUTIVAS_POR_DIA_PADRAO));
-}
-
-// Gráfico de barras pareadas (2 séries) — mesmo padrão visual da
-// BarraSimples, mas com duas barras lado a lado por categoria e legenda
-// (obrigatória pra 2+ séries pelo skill de dataviz). Genérico: recebe
-// dados já no formato {chave, a, b} e as cores/legendas/tooltip de cada
-// série, pra servir tanto pra "Referência vs Real" quanto pra "Vendidas
-// vs Entregues".
-function BarraDuasSeries({ dados, corA, corB, legendaA, legendaB, tooltipDe, notaDe }) {
-  const [hover, setHover] = useState(null);
-  const maxValor = Math.max(1, ...dados.flatMap((d) => [d.a ?? 0, d.b ?? 0]));
-  const ALTURA = 130;
-
-  return (
-    <div>
-      <div className="flex items-center gap-4 mb-4">
-        <div className="flex items-center gap-1.5">
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: corA, display: "inline-block" }} />
-          <span style={{ fontSize: 12, color: TEXT_MUTED }}>{legendaA}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: corB, display: "inline-block" }} />
-          <span style={{ fontSize: 12, color: TEXT_MUTED }}>{legendaB}</span>
-        </div>
-      </div>
-      <div className="flex items-end gap-4 flex-wrap" style={{ minHeight: ALTURA + 50 }}>
-        {dados.map((d) => {
-          const emFoco = hover === d.chave;
-          return (
-            <div
-              key={d.chave}
-              className="flex flex-col items-center"
-              style={{ flex: "1 0 90px", minWidth: 90, position: "relative" }}
-              onMouseEnter={() => setHover(d.chave)}
-              onMouseLeave={() => setHover(null)}
-            >
-              {emFoco && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: ALTURA + 34,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    background: INK,
-                    color: "#FFF",
-                    padding: "7px 11px",
-                    borderRadius: 6,
-                    fontSize: 11,
-                    whiteSpace: "normal",
-                    maxWidth: 220,
-                    textAlign: "center",
-                    zIndex: 10,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                  }}
-                >
-                  {tooltipDe ? tooltipDe(d) : `${d.chave}: ${legendaA} ${d.a ?? "—"} · ${legendaB} ${d.b ?? "—"}`}
-                </div>
-              )}
-              <div className="flex items-end gap-1.5" style={{ height: ALTURA }}>
-                {[
-                  { valor: d.a, cor: corA },
-                  { valor: d.b, cor: corB },
-                ].map((serie, i) => {
-                  const altura = serie.valor ? (serie.valor / maxValor) * ALTURA : 0;
-                  return (
-                    <div key={i} className="flex flex-col items-center justify-end" style={{ height: ALTURA, width: 30 }}>
-                      {serie.valor != null && (
-                        <div className="fx-mono" style={{ fontSize: 11, fontWeight: 700, color: emFoco ? serie.cor : INK, marginBottom: 4 }}>
-                          {serie.valor}
-                        </div>
-                      )}
-                      <div
-                        style={{
-                          height: Math.max(serie.valor ? altura : 0, serie.valor ? 3 : 0),
-                          width: "100%",
-                          background: serie.cor,
-                          borderRadius: "4px 4px 0 0",
-                          opacity: emFoco ? 1 : 0.9,
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8, textAlign: "center" }}>
-                {d.chave}
-              </div>
-              {notaDe && notaDe(d)}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 function BarraComparativa({ dados }) {
@@ -165,75 +65,6 @@ function BarraVendasEntregas({ dados }) {
       legendaB="Entregues"
       tooltipDe={(d) => `${d.chave}: ${d.a} vendida(s) · ${d.b} entregue(s)`}
     />
-  );
-}
-
-// Barra simples, mesmo estilo do gráfico de tempo médio por mês já
-// usado no painel — uma cor só (BRASS), rótulo direto acima da barra,
-// tooltip no hover. Genérico o bastante pra servir tanto pra "por tipo"
-// quanto "por responsável".
-function BarraSimples({ dados, sufixoValor, formatarTooltip }) {
-  const [hover, setHover] = useState(null);
-  const maxValor = Math.max(1, ...dados.map((d) => d.valor));
-  const ALTURA = 130;
-
-  return (
-    <div className="flex items-end gap-3 flex-wrap" style={{ minHeight: ALTURA + 50 }}>
-      {dados.map((d) => {
-        const altura = (d.valor / maxValor) * ALTURA;
-        const emFoco = hover === d.chave;
-        return (
-          <div
-            key={d.chave}
-            className="flex flex-col items-center"
-            style={{ flex: "1 0 60px", minWidth: 60, position: "relative" }}
-            onMouseEnter={() => setHover(d.chave)}
-            onMouseLeave={() => setHover(null)}
-          >
-            {emFoco && (
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: altura + 34,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  background: INK,
-                  color: "#FFF",
-                  padding: "7px 11px",
-                  borderRadius: 6,
-                  fontSize: 11,
-                  whiteSpace: "normal",
-                  maxWidth: 220,
-                  textAlign: "center",
-                  zIndex: 10,
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                }}
-              >
-                {formatarTooltip ? formatarTooltip(d) : `${d.chave}: ${d.valor}${sufixoValor || ""}`}
-              </div>
-            )}
-            <div className="fx-mono" style={{ fontSize: 12, fontWeight: 700, color: emFoco ? BRASS : INK, marginBottom: 6 }}>
-              {d.valor}
-              {sufixoValor || ""}
-            </div>
-            <div
-              style={{
-                height: Math.max(altura, 3),
-                width: "100%",
-                maxWidth: 44,
-                margin: "0 auto",
-                background: BRASS,
-                borderRadius: "4px 4px 0 0",
-                opacity: emFoco ? 1 : 0.9,
-              }}
-            />
-            <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8, textAlign: "center" }}>
-              {d.chave}
-            </div>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 

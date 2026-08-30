@@ -1,16 +1,26 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarClock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Card, Empty, PageTitle, StatCard } from "../components/ui";
-import { BRASS, LINE, TEXT_MUTED } from "../lib/constants";
+import { BarraDuasSeries, Card, Empty, PageTitle, StatCard } from "../components/ui";
+import { BRASS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
 import { brl, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_ALUGUEL = "custo_aluguel_mensal";
 const CHAVE_LUZ = "custo_luz_mensal";
 const CHAVE_PROLABORE = "custo_prolabore_mensal";
+const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
 // Semanas por mês na média (365,25/7/12) — usado pra estimar o custo
 // mensal de quem recebe por diária (ex: freelancer 3x/semana).
 const SEMANAS_POR_MES = 4.345;
+const MESES_HISTORICO = 6;
+
+// Rótulo compacto pra caber no gráfico de barras (ex: R$4,5k) — o valor
+// cheio continua no tooltip ao passar o mouse.
+function brlCompacto(v) {
+  const num = parseFloat(v) || 0;
+  if (Math.abs(num) >= 1000) return `R$${(num / 1000).toFixed(1).replace(".", ",")}k`;
+  return brl(num);
+}
 
 function custoMensalDe(m) {
   if (m.tipoRemuneracao === "mensal") return parseFloat(m.valorRemuneracao) || 0;
@@ -36,15 +46,20 @@ export default function CustosAtelie({ pecas, equipe }) {
   const [aluguel, setAluguel] = useState(0);
   const [luz, setLuz] = useState(0);
   const [prolabore, setProlabore] = useState(0);
+  const [custosFixosPJ, setCustosFixosPJ] = useState(0);
   const [carregandoConfig, setCarregandoConfig] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_ALUGUEL, CHAVE_LUZ, CHAVE_PROLABORE]);
+      const { data } = await supabase
+        .from("config")
+        .select("chave, valor")
+        .in("chave", [CHAVE_ALUGUEL, CHAVE_LUZ, CHAVE_PROLABORE, CHAVE_CUSTOS_FIXOS_PJ]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_ALUGUEL) setAluguel(parseFloat(row.valor) || 0);
         if (row.chave === CHAVE_LUZ) setLuz(parseFloat(row.valor) || 0);
         if (row.chave === CHAVE_PROLABORE) setProlabore(parseFloat(row.valor) || 0);
+        if (row.chave === CHAVE_CUSTOS_FIXOS_PJ) setCustosFixosPJ(parseFloat(row.valor) || 0);
       });
       setCarregandoConfig(false);
     })();
@@ -72,7 +87,7 @@ export default function CustosAtelie({ pecas, equipe }) {
     [equipeComCusto]
   );
   const custoEquipeTotal = custoMensalistas + custoDiaristas;
-  const custoEstrutura = aluguel + luz;
+  const custoEstrutura = aluguel + luz + custosFixosPJ;
 
   // Custo de produção (tecido) do mês — soma metragem × valor/metro de
   // cada item de tecido das peças de alfaiataria pedidas nesse mês,
@@ -108,6 +123,28 @@ export default function CustosAtelie({ pecas, equipe }) {
   const sePagando = resultado >= 0;
 
   const semCadastro = equipeComCusto.filter((m) => !m.tipoRemuneracao);
+
+  // Últimos meses: receita real de cada mês (vendas) comparada ao custo
+  // mensal estimado de HOJE (equipe/estrutura/pró-labore/tecido atuais) —
+  // não é o custo que valia naquele mês exato, é uma régua fixa pra ver
+  // quantos meses recentes teriam coberto o patamar de custo de agora.
+  const historicoMensal = useMemo(() => {
+    const meses = [];
+    for (let i = MESES_HISTORICO - 1; i >= 0; i--) {
+      const d = new Date(anoAtual, mesAtual - i, 1);
+      const chaveMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(".", "");
+      meses.push({ chaveMes, label });
+    }
+    return meses.map(({ chaveMes, label }) => {
+      const receita = (pecas || [])
+        .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
+        .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+      return { chave: label, a: Math.round(custoTotal), b: Math.round(receita) };
+    });
+  }, [pecas, anoAtual, mesAtual, custoTotal]);
+
+  const mesesQueSePagaram = historicoMensal.filter((m) => m.b >= m.a).length;
 
   return (
     <div>
@@ -164,7 +201,7 @@ export default function CustosAtelie({ pecas, equipe }) {
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoDiaristas)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo fixo da empresa (aluguel + luz)</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo fixo da empresa (aluguel + luz + outros PJ)</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoEstrutura)}</div>
           </div>
           <div>
@@ -217,6 +254,27 @@ export default function CustosAtelie({ pecas, equipe }) {
             </tbody>
           </table>
         </div>
+      </Card>
+
+      <Card style={{ padding: 20 }}>
+        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+          Receita x custo — últimos {MESES_HISTORICO} meses
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+          A receita de cada mês é real (vendas daquele mês). O custo usa o patamar estimado de <strong>hoje</strong>{" "}
+          (equipe, estrutura, pró-labore e tecido atuais) como régua fixa — não é o custo exato que valia em cada mês,
+          é uma referência pra ver quantos meses recentes cobririam o custo de agora.{" "}
+          {mesesQueSePagaram} de {historicoMensal.length} meses se pagariam com esse patamar.
+        </div>
+        <BarraDuasSeries
+          dados={historicoMensal}
+          corA={COR_REFERENCIA}
+          corB={COR_REAL}
+          legendaA="Custo (patamar atual)"
+          legendaB="Receita real"
+          formatarValor={brlCompacto}
+          tooltipDe={(d) => `${d.chave}: custo (atual) ${brl(d.a)} · receita real ${brl(d.b)}`}
+        />
       </Card>
     </div>
   );
