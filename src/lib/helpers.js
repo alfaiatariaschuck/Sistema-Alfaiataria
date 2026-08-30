@@ -119,6 +119,19 @@ export function diasProducaoReal(peca) {
   return Math.max(0, bruto - (peca.diasPausados || 0) - pausadoAgora);
 }
 
+// Dos dias pausados de uma peça, quanto foi especificamente esperando o
+// cliente vir fazer uma prova (motivo "cliente_prova" no registro de
+// pausas) — separado dos outros motivos (falta de tecido, viagem etc.),
+// pra medir o gargalo do cliente isolado da produção em si. Só existe
+// pra pausas registradas depois que esse controle foi criado; peças
+// antigas sem `pausas` simplesmente não entram na conta.
+export function diasEsperaCliente(peca) {
+  if (!peca.pausas || !peca.pausas.length) return 0;
+  return peca.pausas
+    .filter((p) => p.motivo === "cliente_prova")
+    .reduce((soma, p) => soma + (diasEntre(p.dataInicio, p.dataFim || hojeISO()) || 0), 0);
+}
+
 // Média real de dias de produção (início -> entrega, já sem pausas) das
 // peças já entregues — base pra sugerir uma previsão de entrega pra quem
 // ainda não tem uma data calculada, sem precisar de um simulador de fila.

@@ -26,6 +26,7 @@ export function pecaVazia() {
     dataInicioProducao: "",
     dataPausaInicio: "",
     diasPausados: 0,
+    pausas: [],
     responsavel: "",
     responsaveisSecoes: {},
     prioridade: "Normal",
@@ -64,6 +65,12 @@ function rowParaPeca(row) {
     dataInicioProducao: row.data_inicio_producao || "",
     dataPausaInicio: row.data_pausa_inicio || "",
     diasPausados: row.dias_pausados || 0,
+    pausas: (row.pedidos_alfaiataria_pausas || []).map((pa) => ({
+      id: pa.id,
+      motivo: pa.motivo,
+      dataInicio: pa.data_inicio,
+      dataFim: pa.data_fim || "",
+    })),
     responsavel: row.responsavel || "",
     responsaveisSecoes: row.responsaveis_secoes || {},
     prioridade: row.prioridade || "Normal",
@@ -87,7 +94,7 @@ function rowParaPeca(row) {
   };
 }
 
-const SELECT = "*, clientes(nome), tecidos(*)";
+const SELECT = "*, clientes(nome), tecidos(*), pedidos_alfaiataria_pausas(*)";
 
 const CAMPO_PARA_COLUNA = {
   tipoPeca: "tipo_peca",
@@ -229,14 +236,31 @@ export function usePedidosAlfaiataria() {
   }
 
   // Pausa/retoma a produção — pra quando o cliente viaja ou some por um
-  // tempo e a peça fica parada sem culpa do Ícaro. Os dias pausados não
-  // contam no tempo de produção real (diasProducaoReal, em helpers.js).
-  async function pausarPeca(pecaId) {
-    const patch = { situacao: "Pausado", dataPausaInicio: hojeISO() };
-    setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
+  // tempo, ou fica esperando pra vir fazer uma prova, e a peça fica
+  // parada sem culpa do Ícaro. Os dias pausados não contam no tempo de
+  // produção real (diasProducaoReal, em helpers.js) — isso já valia
+  // antes e continua valendo igual, motivo-agnóstico. O registro em
+  // pedidos_alfaiataria_pausas é um log paralelo só pra categorizar por
+  // motivo (cliente_prova vs outro) e poder reportar o gargalo do
+  // cliente separado — não substitui a conta acima.
+  async function pausarPeca(pecaId, motivo = "outro") {
+    const dataInicio = hojeISO();
+    const patch = { situacao: "Pausado", dataPausaInicio: dataInicio };
+    setPecas((prev) =>
+      prev.map((p) =>
+        p.id === pecaId ? { ...p, ...patch, pausas: [...(p.pausas || []), { id: null, motivo, dataInicio, dataFim: "" }] } : p
+      )
+    );
     await comIndicador(async () => {
-      const { error } = await supabase.from("pedidos_alfaiataria").update({ situacao: "Pausado", data_pausa_inicio: patch.dataPausaInicio }).eq("id", pecaId);
+      const { error } = await supabase.from("pedidos_alfaiataria").update({ situacao: "Pausado", data_pausa_inicio: dataInicio }).eq("id", pecaId);
       if (error) setErro(error.message);
+      const { data: pausaRow, error: errPausa } = await supabase
+        .from("pedidos_alfaiataria_pausas")
+        .insert({ peca_id: pecaId, motivo, data_inicio: dataInicio })
+        .select("id")
+        .single();
+      if (errPausa) setErro(errPausa.message);
+      else setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, pausas: p.pausas.map((pa) => (pa.id === null && !pa.dataFim ? { ...pa, id: pausaRow.id } : pa)) } : p)));
     });
   }
 
@@ -245,14 +269,26 @@ export function usePedidosAlfaiataria() {
     if (!pecaAtual) return;
     const dias = pecaAtual.dataPausaInicio ? diasEntre(pecaAtual.dataPausaInicio, hojeISO()) || 0 : 0;
     const diasPausados = (pecaAtual.diasPausados || 0) + dias;
+    const dataFim = hojeISO();
+    const pausaAberta = (pecaAtual.pausas || []).find((pa) => !pa.dataFim);
     const patch = { situacao: "Em Produção", dataPausaInicio: "", diasPausados };
-    setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
+    setPecas((prev) =>
+      prev.map((p) =>
+        p.id === pecaId
+          ? { ...p, ...patch, pausas: (p.pausas || []).map((pa) => (pa === pausaAberta ? { ...pa, dataFim } : pa)) }
+          : p
+      )
+    );
     await comIndicador(async () => {
       const { error } = await supabase
         .from("pedidos_alfaiataria")
         .update({ situacao: "Em Produção", data_pausa_inicio: null, dias_pausados: diasPausados })
         .eq("id", pecaId);
       if (error) setErro(error.message);
+      if (pausaAberta?.id) {
+        const { error: errPausa } = await supabase.from("pedidos_alfaiataria_pausas").update({ data_fim: dataFim }).eq("id", pausaAberta.id);
+        if (errPausa) setErro(errPausa.message);
+      }
     });
   }
 

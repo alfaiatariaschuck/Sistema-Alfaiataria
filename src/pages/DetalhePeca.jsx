@@ -21,7 +21,7 @@ import {
   TEXT_MUTED,
   inputStyle,
 } from "../lib/constants";
-import { brl, diasProducaoReal, fmtData, hojeISO, previsaoEstimada, statusDividido, statusParaEtapa, totalDividido } from "../lib/helpers";
+import { brl, diasEsperaCliente, diasProducaoReal, fmtData, hojeISO, previsaoEstimada, statusDividido, statusParaEtapa, totalDividido } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
@@ -221,7 +221,9 @@ export default function DetalhePeca({
                 <span style={{ fontSize: 12, color: TEXT_MUTED }}>
                   · {p.status === "Entregue" ? "Tempo de produção:" : "Em produção há:"}{" "}
                   <strong style={{ color: "#16212E" }}>{diasProducaoReal(p)}d</strong>
-                  {p.diasPausados > 0 && ` (${p.diasPausados}d pausados não contam)`}
+                  {p.diasPausados > 0 && ` (${p.diasPausados}d pausados não contam`}
+                  {p.diasPausados > 0 && diasEsperaCliente(p) > 0 && `, sendo ${diasEsperaCliente(p)}d esperando cliente pra prova`}
+                  {p.diasPausados > 0 && ")"}
                 </span>
                 {p.status !== "Entregue" &&
                   (p.situacao === "Pausado" ? (
@@ -232,12 +234,22 @@ export default function DetalhePeca({
                       Retomar produção
                     </button>
                   ) : (
-                    <button
-                      onClick={() => onPausar(p.id)}
-                      style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
-                    >
-                      Pausar (cliente viajou, etc.)
-                    </button>
+                    <>
+                      <button
+                        onClick={() => onPausar(p.id, "cliente_prova")}
+                        style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                        title="Peça pronta, esperando o cliente vir fazer a prova — não conta como tempo de produção"
+                      >
+                        Pausar (aguardando prova)
+                      </button>
+                      <button
+                        onClick={() => onPausar(p.id, "outro")}
+                        style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                        title="Falta de tecido, doença, viagem etc."
+                      >
+                        Pausar (outro motivo)
+                      </button>
+                    </>
                   ))}
                 <button
                   onClick={() => onDesfazerInicio(p.id)}

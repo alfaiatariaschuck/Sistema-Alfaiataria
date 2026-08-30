@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Clock, PackageCheck, Timer, Zap } from "lucide-react";
+import { Clock, Hourglass, PackageCheck, Timer, Zap } from "lucide-react";
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
 import {
   BRASS,
@@ -9,7 +9,7 @@ import {
   LINE,
   TEXT_MUTED,
 } from "../lib/constants";
-import { diasProducaoReal, fmtData } from "../lib/helpers";
+import { diasEsperaCliente, diasProducaoReal, fmtData } from "../lib/helpers";
 
 // Cores de comparação (2 séries categóricas) — validadas com o
 // verificador de paleta do skill de dataviz (blue/orange, slots 1-2 da
@@ -253,6 +253,17 @@ export default function HistoricoProducao({ pecas }) {
   const maisRapido = porTipo[porTipo.length - 1];
   const maisLento = porTipo[0];
 
+  // Espera pelo cliente pra vir fazer a prova, separada da produção em
+  // si — só existe pras pausas registradas com esse motivo depois que
+  // esse controle entrou no ar (os pedidos históricos importados não
+  // têm esse detalhe: a planilha antiga só guardava uma data por etapa,
+  // sem separar quando a peça ficou pronta de quando o cliente veio).
+  const comEsperaCliente = useMemo(() => entregues.map((p) => diasEsperaCliente(p)).filter((d) => d > 0), [entregues]);
+  const mediaEsperaCliente = useMemo(
+    () => (comEsperaCliente.length ? Math.round(comEsperaCliente.reduce((s, v) => s + v, 0) / comEsperaCliente.length) : null),
+    [comEsperaCliente]
+  );
+
   // Referência (parâmetro de horas de desenvolvimento, convertido em
   // dias) vs Real (média histórica) — só entra na comparação o tipo que
   // tem referência configurada.
@@ -336,7 +347,13 @@ export default function HistoricoProducao({ pecas }) {
         <StatCard label="Média geral de produção" value={mediaGeral !== null ? `${mediaGeral}d` : "—"} icon={Timer} />
         {maisRapido && <StatCard label="Mais rápida em média" value={`${maisRapido.chave} · ${maisRapido.valor}d`} icon={Zap} />}
         {maisLento && <StatCard label="Mais demorada em média" value={`${maisLento.chave} · ${maisLento.valor}d`} icon={Clock} />}
+        <StatCard label="Espera média por prova" value={mediaEsperaCliente !== null ? `${mediaEsperaCliente}d` : "—"} icon={Hourglass} />
       </div>
+      {mediaEsperaCliente === null && (
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: -16, marginBottom: 20 }}>
+          "Espera média por prova" é uma métrica nova: só conta peças pausadas com o motivo "aguardando prova" a partir de agora — os pedidos históricos importados não têm esse detalhe registrado.
+        </div>
+      )}
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
