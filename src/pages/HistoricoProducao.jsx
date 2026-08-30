@@ -634,29 +634,38 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false }) {
         </Card>
       )}
 
-      {mostrarMargem && margemPorTipo.length > 0 && (
-        <>
-          <Card style={{ padding: 20 }} className="mb-6">
-            <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-              Margem média por tipo de peça
-            </div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-              Venda menos o valor devido ao Ícaro (mão de obra) — não desconta tecido, que não é rastreado por peça. Margem bruta aproximada.
-              {margemResumo && ` Margem total (entregues): ${brl(margemResumo.total)}.`}
-            </div>
-            <BarraSimples dados={margemPorTipo} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${brl(d.valor)} de margem em média (${d.qtd} peça(s))`} />
-          </Card>
+      {mostrarMargem && (
+        margemPorTipo.length > 0 ? (
+          <>
+            <Card style={{ padding: 20 }} className="mb-6">
+              <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+                Margem média por tipo de peça
+              </div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+                Venda menos o valor devido ao Ícaro (mão de obra) — não desconta tecido, que não é rastreado por peça. Margem bruta aproximada.
+                {margemResumo && ` Margem total (entregues): ${brl(margemResumo.total)}.`}
+              </div>
+              <BarraSimples dados={margemPorTipo} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${brl(d.valor)} de margem em média (${d.qtd} peça(s))`} />
+            </Card>
 
+            <Card style={{ padding: 20 }} className="mb-6">
+              <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+                Top 10 clientes por margem total
+              </div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+                Soma da margem de todas as peças entregues de cada cliente.
+              </div>
+              <BarraSimples dados={margemPorCliente} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${brl(d.valor)} de margem total`} />
+            </Card>
+          </>
+        ) : (
           <Card style={{ padding: 20 }} className="mb-6">
             <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-              Top 10 clientes por margem total
+              Margem por tipo de peça / cliente
             </div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-              Soma da margem de todas as peças entregues de cada cliente.
-            </div>
-            <BarraSimples dados={margemPorCliente} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${brl(d.valor)} de margem total`} />
+            <Empty texto="Nenhuma peça entregue tem valor de venda registrado ainda — as 15 peças históricas importadas só têm dados de produção, sem valor. Preencha 'Valor de venda' nas próximas entregas pra essa métrica aparecer." />
           </Card>
-        </>
+        )
       )}
 
       <Card style={{ padding: 20 }} className="mb-6">
