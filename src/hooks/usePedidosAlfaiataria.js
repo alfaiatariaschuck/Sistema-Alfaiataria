@@ -97,6 +97,7 @@ function rowParaPeca(row) {
         numero: t.numero || "",
         fornecedor: t.fornecedor || "",
         metragem: t.metragem || "",
+        valorMetro: t.valor_metro ?? "",
         comprado: !!t.comprado,
       })),
     medidasNovas: !!row.medidas_novas,
@@ -374,9 +375,11 @@ export function usePedidosAlfaiataria() {
         p.id === pecaId ? { ...p, tecidos: p.tecidos.map((t) => (t.id === tecidoId ? { ...t, [campo]: valor } : t)) } : p
       )
     );
-    const valorFinal = campo === "qtd" ? Number(valor) || 1 : valor;
+    // valorMetro é "valor_metro" (numeric) no banco — string vazia dá erro, tem que virar null.
+    const coluna = campo === "valorMetro" ? "valor_metro" : campo;
+    const valorFinal = campo === "qtd" ? Number(valor) || 1 : campo === "valorMetro" ? (valor === "" ? null : Number(valor)) : valor;
     await comIndicador(async () => {
-      const { error } = await supabase.from("tecidos").update({ [campo]: valorFinal }).eq("id", tecidoId);
+      const { error } = await supabase.from("tecidos").update({ [coluna]: valorFinal }).eq("id", tecidoId);
       if (error) setErro(error.message);
     });
   }

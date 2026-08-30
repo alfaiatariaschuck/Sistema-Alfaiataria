@@ -1,7 +1,15 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { CheckCircle2, Clock, Copy, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
-import { BRASS_SOFT, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS, BRASS_SOFT, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { brl } from "../lib/helpers";
+
+// Extrai o número da metragem em texto livre (ex: "3,5m" -> 3.5) pra dar
+// pra multiplicar pelo valor/metro — se não der pra entender, ignora.
+function metragemParaNumero(str) {
+  const match = (str || "").replace(",", ".").match(/[\d.]+/);
+  return match ? parseFloat(match[0]) : null;
+}
 
 // Junta variações de digitação (maiúscula/minúscula, espaço a mais) do
 // mesmo fornecedor conhecido num nome só, pra tudo ficar concentrado num
@@ -29,6 +37,7 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
   const [filtroFornecedor, setFiltroFornecedor] = useState("Todos");
   const [filtroStatus, setFiltroStatus] = useState("Pendente");
   const [copiado, setCopiado] = useState(null);
+  const [mostrarHistorico, setMostrarHistorico] = useState(false);
 
   const itens = [];
   pedidos.forEach((p) => {
@@ -43,6 +52,7 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
         qtd: t.qtd,
         numero: t.numero,
         metragem: t.metragem || "",
+        valorMetro: t.valorMetro ?? "",
         fornecedor: normalizarFornecedor(t.fornecedor),
         comprado: !!t.comprado,
         dataPedido: p.dataPedido,
@@ -61,6 +71,7 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
         qtd: t.qtd,
         numero: t.numero,
         metragem: t.metragem || "",
+        valorMetro: t.valorMetro ?? "",
         fornecedor: normalizarFornecedor(t.fornecedor),
         comprado: !!t.comprado,
         dataPedido: p.dataPedido,
@@ -68,6 +79,25 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
       });
     });
   });
+
+  // Histórico de preço por metro — junta todo item com valor/metro
+  // preenchido (independente dos filtros acima), pra virar um registro de
+  // quanto se pagou por fornecedor ao longo do tempo.
+  const historicoPreco = useMemo(() => {
+    const comValor = itens.filter((i) => i.valorMetro !== "" && i.valorMetro !== null);
+    const porFornec = new Map();
+    comValor.forEach((i) => {
+      if (!porFornec.has(i.fornecedor)) porFornec.set(i.fornecedor, []);
+      porFornec.get(i.fornecedor).push(i);
+    });
+    return [...porFornec.entries()]
+      .map(([fornecedor, lista]) => {
+        const ordenada = lista.slice().sort((a, b) => (b.dataPedido || "").localeCompare(a.dataPedido || ""));
+        const media = ordenada.reduce((s, i) => s + parseFloat(i.valorMetro), 0) / ordenada.length;
+        return { fornecedor, itens: ordenada, media };
+      })
+      .sort((a, b) => b.itens.length - a.itens.length);
+  }, [itens]);
 
   const fornecedores = ["Todos", ...new Set(itens.map((i) => i.fornecedor))];
 
@@ -95,6 +125,11 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
   function atualizarMetragem(item, valor) {
     if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "metragem", valor);
     else onTecidoPeca(item.pedidoId, item.tecidoId, "metragem", valor);
+  }
+
+  function atualizarValorMetro(item, valor) {
+    if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "valorMetro", valor);
+    else onTecidoPeca(item.pedidoId, item.tecidoId, "valorMetro", valor);
   }
 
   function abrirItem(item) {
@@ -143,6 +178,47 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
           <option>Todos</option>
         </select>
       </div>
+
+      {historicoPreco.length > 0 && (
+        <Card style={{ padding: 16 }} className="mb-5">
+          <button
+            type="button"
+            onClick={() => setMostrarHistorico((v) => !v)}
+            className="flex items-center justify-between w-full text-left"
+          >
+            <div className="fx-serif" style={{ fontSize: 14, fontWeight: 600 }}>
+              Histórico de preço por metro
+            </div>
+            <span style={{ fontSize: 12, color: TEXT_MUTED }}>{mostrarHistorico ? "Ocultar" : "Ver"}</span>
+          </button>
+          {mostrarHistorico && (
+            <div className="mt-3" style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+              {historicoPreco.map(({ fornecedor, itens: lista, media }) => (
+                <div key={fornecedor}>
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>{fornecedor}</span>
+                    <span className="fx-mono" style={{ fontSize: 11, color: BRASS, fontWeight: 700 }}>
+                      média {brl(media)}/m
+                    </span>
+                  </div>
+                  <div style={{ maxHeight: 160, overflowY: "auto" }}>
+                    {lista.map((i) => (
+                      <div
+                        key={i.origem + "-" + i.pedidoId + "-" + i.tecidoId}
+                        className="flex items-center justify-between"
+                        style={{ fontSize: 11, color: TEXT_MUTED, padding: "3px 0", borderBottom: `1px solid ${LINE}` }}
+                      >
+                        <span>{i.dataPedido ? new Date(i.dataPedido + "T00:00:00").toLocaleDateString("pt-BR") : "—"} · {i.codigo || "—"}</span>
+                        <span className="fx-mono" style={{ fontWeight: 600 }}>{brl(i.valorMetro)}/m</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {filtrados.length === 0 && (
         <Card style={{ padding: 20 }}>
@@ -201,6 +277,23 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
                   value={item.metragem}
                   onChange={(e) => atualizarMetragem(item, e.target.value)}
                 />
+              </div>
+              <div className="flex flex-col items-start flex-shrink-0" style={{ width: 90 }}>
+                <label style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 600 }}>R$/metro</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  style={{ ...inputStyle, padding: "5px 8px", fontSize: 12 }}
+                  placeholder="ex: 45"
+                  value={item.valorMetro}
+                  onChange={(e) => atualizarValorMetro(item, e.target.value)}
+                />
+                {item.valorMetro !== "" && metragemParaNumero(item.metragem) !== null && (
+                  <span className="fx-mono" style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 2 }}>
+                    Total {brl(metragemParaNumero(item.metragem) * parseFloat(item.valorMetro))}
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => alternarComprado(item)}
