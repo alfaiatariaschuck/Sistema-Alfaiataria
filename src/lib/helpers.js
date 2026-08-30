@@ -331,9 +331,14 @@ export function projetarPrevisoesFilaPorEquipe(pecasAbertas, mediaDiasFn, equipe
 
   const previsoes = new Map();
   grupos.forEach(({ tipos, membros }) => {
-    const capacidade = membros.length
-      ? Math.max(1, Math.round(membros.reduce((s, m) => s + ((m.diasPorSemana ?? 5) / 5) * ((m.horasPorDia ?? 8) / 8), 0)))
-      : 1;
+    // Grupo sem ninguém ativo cobrindo esses tipos (ex: só o Felipe faz
+    // calça e ele está inativo) — de propósito NÃO cai num "1 vaga"
+    // fictício aqui: isso ficava indistinguível de um freelancer parcial
+    // (ex: 3 dias/semana arredonda pra 1 vaga também), escondendo que na
+    // real ninguém está fazendo aquele tipo agora. Fica sem previsão
+    // (a peça mostra "sem previsão" em vez de uma data enganosa).
+    if (!membros.length) return;
+    const capacidade = Math.max(1, Math.round(membros.reduce((s, m) => s + ((m.diasPorSemana ?? 5) / 5) * ((m.horasPorDia ?? 8) / 8), 0)));
     const pecasDoGrupo = pecasAbertas.filter((p) => tipos.has(p.tipoPeca));
     const resultado = projetarPrevisoesFila(pecasDoGrupo, mediaDiasFn, capacidade);
     resultado.forEach((data, id) => previsoes.set(id, data));
