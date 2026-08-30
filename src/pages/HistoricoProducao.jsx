@@ -1,8 +1,118 @@
 import React, { useMemo, useState } from "react";
 import { Clock, PackageCheck, Timer, Zap } from "lucide-react";
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
-import { BRASS, INK, LINE, TEXT_MUTED } from "../lib/constants";
+import {
+  BRASS,
+  DIAS_REFERENCIA_TIPO_PECA,
+  HORAS_PRODUTIVAS_POR_DIA_PADRAO,
+  HORAS_REFERENCIA_TIPO_PECA,
+  INK,
+  LINE,
+  TEXT_MUTED,
+} from "../lib/constants";
 import { diasProducaoReal, fmtData } from "../lib/helpers";
+
+// Cores de comparação (2 séries categóricas) — validadas com o
+// verificador de paleta do skill de dataviz (blue/orange, slots 1-2 da
+// paleta de referência): passam piso de croma, contraste e separação
+// por daltonismo. As cores da marca (BRASS/INK_SOFT) não passam o piso
+// de croma pra uso categórico, por isso essa dupla à parte só aqui.
+const COR_REFERENCIA = "#eb6834";
+const COR_REAL = "#2a78d6";
+
+function diasReferenciaTipo(tipo) {
+  if (DIAS_REFERENCIA_TIPO_PECA[tipo]) return DIAS_REFERENCIA_TIPO_PECA[tipo];
+  const horas = HORAS_REFERENCIA_TIPO_PECA[tipo];
+  if (!horas) return null;
+  return Math.max(1, Math.round(horas / HORAS_PRODUTIVAS_POR_DIA_PADRAO));
+}
+
+// Gráfico de barras pareadas (2 séries) — mesmo padrão visual da
+// BarraSimples, mas com duas barras lado a lado por categoria e legenda
+// (obrigatória pra 2+ séries pelo skill de dataviz).
+function BarraComparativa({ dados }) {
+  const [hover, setHover] = useState(null);
+  const maxValor = Math.max(1, ...dados.flatMap((d) => [d.referencia ?? 0, d.real ?? 0]));
+  const ALTURA = 130;
+
+  return (
+    <div>
+      <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-1.5">
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: COR_REFERENCIA, display: "inline-block" }} />
+          <span style={{ fontSize: 12, color: TEXT_MUTED }}>Referência (parâmetro)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: COR_REAL, display: "inline-block" }} />
+          <span style={{ fontSize: 12, color: TEXT_MUTED }}>Real (histórico)</span>
+        </div>
+      </div>
+      <div className="flex items-end gap-4" style={{ minHeight: ALTURA + 50, overflowX: "auto" }}>
+        {dados.map((d) => {
+          const emFoco = hover === d.chave;
+          return (
+            <div
+              key={d.chave}
+              className="flex flex-col items-center"
+              style={{ flex: "1 0 90px", minWidth: 90, position: "relative" }}
+              onMouseEnter={() => setHover(d.chave)}
+              onMouseLeave={() => setHover(null)}
+            >
+              {emFoco && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: ALTURA + 34,
+                    background: INK,
+                    color: "#FFF",
+                    padding: "7px 11px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    whiteSpace: "nowrap",
+                    zIndex: 10,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  {d.chave}: referência {d.referencia ?? "—"}d · real {d.real ?? "—"}d
+                  {d.referencia && d.real ? ` (${d.real > d.referencia ? "+" : ""}${d.real - d.referencia}d)` : ""}
+                </div>
+              )}
+              <div className="flex items-end gap-1.5" style={{ height: ALTURA }}>
+                {[
+                  { valor: d.referencia, cor: COR_REFERENCIA },
+                  { valor: d.real, cor: COR_REAL },
+                ].map((serie, i) => {
+                  const altura = serie.valor ? (serie.valor / maxValor) * ALTURA : 0;
+                  return (
+                    <div key={i} className="flex flex-col items-center justify-end" style={{ height: ALTURA, width: 30 }}>
+                      {serie.valor != null && (
+                        <div className="fx-mono" style={{ fontSize: 11, fontWeight: 700, color: emFoco ? serie.cor : INK, marginBottom: 4 }}>
+                          {serie.valor}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          height: Math.max(serie.valor ? altura : 0, serie.valor ? 3 : 0),
+                          width: "100%",
+                          background: serie.cor,
+                          borderRadius: "4px 4px 0 0",
+                          opacity: emFoco ? 1 : 0.9,
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8, textAlign: "center" }}>
+                {d.chave}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 // Barra simples, mesmo estilo do gráfico de tempo médio por mês já
 // usado no painel — uma cor só (BRASS), rótulo direto acima da barra,
@@ -122,6 +232,42 @@ export default function HistoricoProducao({ pecas }) {
   const maisRapido = porTipo[porTipo.length - 1];
   const maisLento = porTipo[0];
 
+  // Referência (parâmetro configurado) vs Real (média histórica) — só
+  // entra na comparação o tipo que tem referência configurada.
+  const comparativo = useMemo(
+    () =>
+      porTipo
+        .map((d) => ({ chave: d.chave, real: d.valor, referencia: diasReferenciaTipo(d.chave) }))
+        .filter((d) => d.referencia !== null),
+    [porTipo]
+  );
+
+  // Quantidade de peças entregues por tipo (mesma lista do gráfico de
+  // média, mas ordenada e lida pela quantidade em vez do tempo).
+  const qtdPorTipo = useMemo(
+    () =>
+      [...porTipo].sort((a, b) => b.qtd - a.qtd).map((d) => ({ chave: d.chave, valor: d.qtd })),
+    [porTipo]
+  );
+
+  // Quantidade de peças entregues por mês (agrupado pela data de
+  // entrega, últimos 12 meses com dado).
+  const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const porMes = useMemo(() => {
+    const mapa = new Map();
+    entregues.forEach((p) => {
+      const mes = p.dataEntrega.slice(0, 7);
+      mapa.set(mes, (mapa.get(mes) || 0) + 1);
+    });
+    return [...mapa.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-12)
+      .map(([mes, qtd]) => {
+        const [ano, m] = mes.split("-");
+        return { chave: `${MESES[parseInt(m, 10) - 1]}/${ano.slice(2)}`, valor: qtd };
+      });
+  }, [entregues]);
+
   const tabela = useMemo(
     () =>
       entregues
@@ -161,6 +307,40 @@ export default function HistoricoProducao({ pecas }) {
         </div>
         <BarraSimples dados={porTipo} sufixoValor="d" formatarTooltip={(d) => `${d.chave}: ${d.valor} dias em média (${d.qtd} peça(s))`} />
       </Card>
+
+      {comparativo.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Referência vs. Real por tipo de peça
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+            Dias previstos no parâmetro (horas de desenvolvimento) contra a média real do histórico — mede o quanto a produção está distante do planejado.
+          </div>
+          <BarraComparativa dados={comparativo} />
+        </Card>
+      )}
+
+      <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+        <Card style={{ padding: 20 }}>
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Peças entregues por tipo
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+            Quantidade de peças, agrupada por tipo — só peças já entregues.
+          </div>
+          <BarraSimples dados={qtdPorTipo} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) entregue(s)`} />
+        </Card>
+
+        <Card style={{ padding: 20 }}>
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Peças entregues por mês
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+            Quantidade entregue por mês, agrupada pela data de entrega.
+          </div>
+          <BarraSimples dados={porMes} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) entregue(s)`} />
+        </Card>
+      </div>
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
