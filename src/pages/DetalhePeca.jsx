@@ -21,7 +21,7 @@ import {
   TEXT_MUTED,
   inputStyle,
 } from "../lib/constants";
-import { brl, diasEsperaCliente, diasProducaoReal, fmtData, hojeISO, previsaoEstimada, statusDividido, statusEvento, statusParaEtapa, totalDividido } from "../lib/helpers";
+import { brl, diasEsperaCliente, diasProducaoReal, fmtData, hojeISO, previsaoEfetivaDe, previsaoEstimada, statusDividido, statusEvento, statusParaEtapa, totalDividido } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
@@ -58,7 +58,7 @@ export default function DetalhePeca({
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const sugestaoPrevisao = p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo?.(p.tipoPeca)) : previsoesFila?.get(p.id) || null;
-  const previsaoEfetivaAtual = p.previsaoEntrega || sugestaoPrevisao || null;
+  const previsaoEfetivaAtual = previsaoEfetivaDe(p, sugestaoPrevisao);
   const statusEventoAtual = statusEvento({ ...p, previsaoEfetiva: previsaoEfetivaAtual });
 
   function set(campo, valor) {
@@ -276,30 +276,37 @@ export default function DetalhePeca({
             <input type="date" style={inputStyle} value={p.dataPedido} onChange={(e) => set("dataPedido", e.target.value)} />
           </Field>
           <Field label="Previsão de entrega">
-            <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
+            <input
+              type="date"
+              style={inputStyle}
+              value={previsaoEfetivaAtual || ""}
+              onChange={(e) => set("previsaoEntrega", e.target.value)}
+            />
+            {!p.previsaoManual && (
+              <span style={{ fontSize: 10, color: TEXT_MUTED }}>
+                estimativa automática — acompanha a fila/equipe sozinha, sem precisar editar
+              </span>
+            )}
           </Field>
-          {sugestaoPrevisao && sugestaoPrevisao !== p.previsaoEntrega && (
+          {p.previsaoManual && sugestaoPrevisao && sugestaoPrevisao !== p.previsaoEntrega && (
             <div
               className="flex items-center gap-2 mb-3 flex-wrap"
               style={{ background: "#FCEFC7", border: "1px solid #E6C97A", borderRadius: 8, padding: "10px 12px" }}
             >
               <span style={{ fontSize: 12, color: "#5A4200" }}>
-                {p.previsaoEntrega ? (
-                  <>
-                    ⚠ Essa previsão parece desatualizada — pelo ritmo real da peça, a estimativa agora é{" "}
-                    <strong>{fmtData(sugestaoPrevisao)}</strong>.
-                  </>
-                ) : (
-                  <>
-                    Sugestão com base na média de produção: <strong>{fmtData(sugestaoPrevisao)}</strong>
-                  </>
-                )}
+                ⚠ Essa data foi travada manualmente e já não bate com a estimativa atual (<strong>{fmtData(sugestaoPrevisao)}</strong>).
               </span>
               <button
                 onClick={() => set("previsaoEntrega", sugestaoPrevisao)}
                 style={{ background: BRASS, color: "#FFF", padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700 }}
               >
                 Atualizar pra essa data
+              </button>
+              <button
+                onClick={() => set("previsaoEntrega", "")}
+                style={{ background: "transparent", border: `1px solid ${BRASS}`, color: BRASS, padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700 }}
+              >
+                Voltar pro automático
               </button>
             </div>
           )}

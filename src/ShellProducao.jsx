@@ -4,7 +4,7 @@ import { useAuth } from "./contexts/AuthContext";
 import { usePecasProducao } from "./hooks/usePecasProducao";
 import { useEquipeProducao } from "./hooks/useEquipeProducao";
 import { BRASS, CANVAS, INK, INK_SOFT, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_ALFAIATARIA, TEXT_MUTED, inputStyle } from "./lib/constants";
-import { diasProducaoReal, fmtData, hojeISO, mediaDiasProducaoPorTipo, previsaoEstimada, projetarPrevisoesFilaPorEquipe, statusEvento, statusParaEtapa } from "./lib/helpers";
+import { diasProducaoReal, fmtData, hojeISO, mediaDiasProducaoPorTipo, previsaoEfetivaDe, previsaoEstimada, projetarPrevisoesFilaPorEquipe, statusEvento, statusParaEtapa } from "./lib/helpers";
 import { Card, Empty } from "./components/ui";
 import TabelaControleProducao from "./components/TabelaControleProducao";
 import HistoricoProducao from "./pages/HistoricoProducao";
@@ -87,8 +87,8 @@ export default function ShellProducao() {
   const hoje = hojeISO();
   const atrasadas = useMemo(() => {
     return todasAbertas.filter((p) => {
-      const previsaoEfetiva =
-        p.previsaoEntrega || (p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo(p.tipoPeca)) : previsoesFila.get(p.id)) || null;
+      const estimativa = p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo(p.tipoPeca)) : previsoesFila.get(p.id);
+      const previsaoEfetiva = previsaoEfetivaDe(p, estimativa);
       return previsaoEfetiva && previsaoEfetiva < hoje;
     }).length;
   }, [todasAbertas, mediaDiasPorTipo, previsoesFila, hoje]);
@@ -238,8 +238,8 @@ export default function ShellProducao() {
           {abertas.map((p) => {
             const etapa = statusParaEtapa("alfaiataria", p.status);
             const aberto = expandido === p.id;
-            const previsaoEfetiva =
-              p.previsaoEntrega || (p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo(p.tipoPeca)) : previsoesFila.get(p.id)) || null;
+            const estimativaAtual = p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo(p.tipoPeca)) : previsoesFila.get(p.id);
+            const previsaoEfetiva = previsaoEfetivaDe(p, estimativaAtual);
             const atrasada = previsaoEfetiva && previsaoEfetiva < hoje;
             const statusEventoAtual = statusEvento({ ...p, previsaoEfetiva });
             return (
@@ -275,7 +275,7 @@ export default function ShellProducao() {
                 <div style={{ fontSize: 12, color: TEXT_MUTED }} className="mb-2">
                   Pedido {fmtData(p.dataPedido)}
                   {previsaoEfetiva
-                    ? ` · Entrega ${p.previsaoEntrega ? "prevista" : "estimada"} ${fmtData(previsaoEfetiva)}`
+                    ? ` · Entrega ${p.previsaoManual ? "prevista" : "estimada"} ${fmtData(previsaoEfetiva)}`
                     : ""}
                 </div>
 

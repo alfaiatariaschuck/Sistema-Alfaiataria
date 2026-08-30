@@ -1,0 +1,13 @@
+-- Distingue uma previsão de entrega DIGITADA DE PROPÓSITO (o Tales
+-- decidiu essa data e ela deve ficar travada) de uma que só foi
+-- sugerida automaticamente pelo sistema (deve continuar acompanhando a
+-- fila/equipe conforme elas mudam, sem precisar clicar em nada).
+--
+-- Todas as linhas existentes começam com previsao_manual = false de
+-- propósito: até aqui a previsão sempre foi só sugestão automática que
+-- ficava presa no valor de quando o pedido foi criado (bug), nunca uma
+-- promessa deliberada — então o comportamento correto é elas voltarem
+-- a acompanhar a estimativa viva a partir de agora. Compromissos
+-- rígidos de cliente (casamento etc.) já têm campo próprio
+-- (data_limite_evento, schema_v35), não dependem deste.
+alter table pedidos_alfaiataria add column if not exists previsao_manual boolean not null default false;

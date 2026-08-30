@@ -57,6 +57,17 @@ export function statusEvento(peca) {
   return null;
 }
 
+// Previsão "de verdade" pra mostrar/comparar: se o Tales digitou uma
+// data de propósito (previsaoManual), essa data manda — senão a
+// estimativa viva sempre ganha, mesmo que exista um valor antigo salvo
+// em previsaoEntrega (ex: uma sugestão automática de quando o pedido
+// foi criado). Isso garante que mudar a equipe/fila atualiza a
+// previsão sozinho, sem precisar reabrir cada pedido e clicar em nada.
+export function previsaoEfetivaDe(peca, estimativa) {
+  if (peca.previsaoManual && peca.previsaoEntrega) return peca.previsaoEntrega;
+  return estimativa || peca.previsaoEntrega || null;
+}
+
 export function diasEntre(isoInicio, isoFim) {
   if (!isoInicio || !isoFim) return null;
   const a = new Date(isoInicio + "T00:00:00");

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { AlertTriangle, ArrowDown, ArrowUp, PartyPopper, Pause, Play } from "lucide-react";
 import { Empty, Pill } from "./ui";
 import { BRASS, INK, LINE, STATUS_ALFAIATARIA, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { diasAte, diasProducaoReal, fmtData, previsaoEstimada, statusEvento, statusParaEtapa } from "../lib/helpers";
+import { diasAte, diasProducaoReal, fmtData, previsaoEfetivaDe, previsaoEstimada, statusEvento, statusParaEtapa } from "../lib/helpers";
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
@@ -43,13 +43,13 @@ export default function TabelaControleProducao({
         const estimativa = p.dataInicioProducao
           ? previsaoEstimada(p, mediaDiasPorTipo?.(p.tipoPeca))
           : previsoesFila?.get(p.id) || null;
-        const previsaoEfetiva = p.previsaoEntrega || estimativa || null;
+        const previsaoEfetiva = previsaoEfetivaDe(p, estimativa);
         return {
           ...p,
           percentual: statusParaEtapa("alfaiataria", p.status).percentual,
           diasFila: p.dataPedido ? -diasAte(p.dataPedido) : 0,
           diasProducao: diasProducaoReal(p),
-          previsaoEstimada: !p.previsaoEntrega ? estimativa : null,
+          previsaoEstimada: !p.previsaoManual ? estimativa : null,
           previsaoEfetiva,
           statusEvento: statusEvento({ ...p, previsaoEfetiva }),
         };
@@ -143,9 +143,9 @@ export default function TabelaControleProducao({
                   {p.previsaoEfetiva && (
                     <div
                       style={{ fontSize: 10, color: atrasado ? VERMELHO : emRisco ? "#8A6A0C" : TEXT_MUTED, fontWeight: atrasado || emRisco ? 600 : 400 }}
-                      title={p.previsaoEntrega ? "Previsão definida manualmente" : "Estimativa — sem previsão manual definida"}
+                      title={p.previsaoManual ? "Previsão definida manualmente" : "Estimativa — acompanha a fila/equipe automaticamente"}
                     >
-                      {p.previsaoEntrega ? "prev." : "~ prev."} {fmtData(p.previsaoEfetiva)}
+                      {p.previsaoManual ? "prev." : "~ prev."} {fmtData(p.previsaoEfetiva)}
                     </div>
                   )}
                 </td>

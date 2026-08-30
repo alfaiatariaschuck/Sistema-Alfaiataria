@@ -3,7 +3,7 @@ import { AlertTriangle, CalendarDays, Clock, Eye, Flame, PackageCheck, Scissors,
 import { Card, PageTitle, StatCard } from "../components/ui";
 import TabelaControleProducao from "../components/TabelaControleProducao";
 import { TEXT_MUTED } from "../lib/constants";
-import { fmtData, hojeISO, previsaoEstimada } from "../lib/helpers";
+import { fmtData, hojeISO, previsaoEfetivaDe, previsaoEstimada } from "../lib/helpers";
 
 const VERMELHO = "#9C4A1E";
 const AMARELO = "#8A6A0C";
@@ -42,13 +42,10 @@ export default function ControleProducao({
   // prazos quanto pra achar a próxima entrega.
   const comPrevisaoEfetiva = useMemo(
     () =>
-      abertas.map((p) => ({
-        ...p,
-        previsaoEfetiva:
-          p.previsaoEntrega ||
-          (p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo?.(p.tipoPeca)) : previsoesFila?.get(p.id)) ||
-          null,
-      })),
+      abertas.map((p) => {
+        const estimativa = p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo?.(p.tipoPeca)) : previsoesFila?.get(p.id) || null;
+        return { ...p, previsaoEfetiva: previsaoEfetivaDe(p, estimativa) };
+      }),
     [abertas, mediaDiasPorTipo, previsoesFila]
   );
 

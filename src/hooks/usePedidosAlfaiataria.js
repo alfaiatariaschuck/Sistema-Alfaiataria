@@ -9,6 +9,7 @@ export function pecaVazia() {
     tipoPeca: "Traje",
     dataPedido: hojeISO(),
     previsaoEntrega: "",
+    previsaoManual: false,
     dataLimiteEvento: "",
     dataEntrega: "",
     status: "Aguardando Produção",
@@ -49,6 +50,7 @@ function rowParaPeca(row) {
     tipoPeca: row.tipo_peca,
     dataPedido: row.data_pedido,
     previsaoEntrega: row.previsao_entrega || "",
+    previsaoManual: !!row.previsao_manual,
     dataLimiteEvento: row.data_limite_evento || "",
     dataEntrega: row.data_entrega || "",
     status: row.status,
@@ -102,6 +104,7 @@ const CAMPO_PARA_COLUNA = {
   tipoPeca: "tipo_peca",
   dataPedido: "data_pedido",
   previsaoEntrega: "previsao_entrega",
+  previsaoManual: "previsao_manual",
   dataLimiteEvento: "data_limite_evento",
   dataEntrega: "data_entrega",
   status: "status",
@@ -220,10 +223,14 @@ export function usePedidosAlfaiataria() {
     // Produção" — senão a peça fica com início lançado mas ainda
     // aparecendo como "Aguardando", o que não faz sentido.
     const marcarEmProducao = campo === "dataInicioProducao" && valor && pecaAtual && pecaAtual.situacao === "Aguardando";
+    // Editar a previsão de entrega diretamente é um ato deliberado — a
+    // partir daqui ela vira "manual" (trava, não acompanha mais a fila/
+    // equipe sozinha). Limpar o campo devolve pro automático.
     const patch = {
       [campo]: valor,
       ...(marcarEntrega ? { dataEntrega: hojeISO() } : {}),
       ...(marcarEmProducao ? { situacao: "Em Produção" } : {}),
+      ...(campo === "previsaoEntrega" ? { previsaoManual: !!valor } : {}),
     };
 
     setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
@@ -232,6 +239,7 @@ export function usePedidosAlfaiataria() {
     const valorFinal = ["valorTotal", "pago", "valorVenda", "valorEntrada", "valorRestante"].includes(campo) ? (valor === "" ? null : Number(valor)) : valor;
     await comIndicador(async () => {
       const update = { [coluna]: valorFinal };
+      if (campo === "previsaoEntrega") update.previsao_manual = !!valor;
       if (marcarEntrega) update.data_entrega = patch.dataEntrega;
       if (marcarEmProducao) update.situacao = "Em Produção";
       const { error } = await supabase.from("pedidos_alfaiataria").update(update).eq("id", pecaId);
