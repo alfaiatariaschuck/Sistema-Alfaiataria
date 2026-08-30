@@ -105,6 +105,31 @@ export default function Equipe({ equipe, loading, onAdicionar, onCampo, onRemove
                     style={{ ...inputStyle, width: 50, padding: "4px 6px", fontSize: 12 }}
                   />
                 </label>
+                <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  Pagamento
+                  <select
+                    value={m.tipoRemuneracao}
+                    onChange={(e) => onCampo(m.id, "tipoRemuneracao", e.target.value)}
+                    style={{ ...inputStyle, padding: "4px 6px", fontSize: 12 }}
+                  >
+                    <option value="">— não informado</option>
+                    <option value="mensal">Mensal (salário fixo)</option>
+                    <option value="diaria">Diária (freelancer)</option>
+                  </select>
+                </label>
+                {m.tipoRemuneracao && (
+                  <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: TEXT_MUTED }}>
+                    {m.tipoRemuneracao === "mensal" ? "Valor/mês (R$)" : "Valor/dia (R$)"}
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={m.valorRemuneracao}
+                      onChange={(e) => onCampo(m.id, "valorRemuneracao", e.target.value)}
+                      style={{ ...inputStyle, width: 90, padding: "4px 6px", fontSize: 12 }}
+                    />
+                  </label>
+                )}
               </div>
 
               <div>

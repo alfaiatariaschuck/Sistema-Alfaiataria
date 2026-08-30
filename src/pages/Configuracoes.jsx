@@ -9,6 +9,8 @@ const CHAVE_ICARO = "telefone_icaro";
 const CHAVE_SUMIDO = "cliente_sumido_meses";
 const CHAVE_META_CAMISARIA = "meta_vendas_camisaria";
 const CHAVE_META_ALFAIATARIA = "meta_vendas_alfaiataria";
+const CHAVE_ALUGUEL = "custo_aluguel_mensal";
+const CHAVE_LUZ = "custo_luz_mensal";
 
 export default function Configuracoes() {
   const [telFabi, setTelFabi] = useState("");
@@ -16,6 +18,8 @@ export default function Configuracoes() {
   const [sumidoMeses, setSumidoMeses] = useState("6");
   const [metaCamisaria, setMetaCamisaria] = useState("");
   const [metaAlfaiataria, setMetaAlfaiataria] = useState("");
+  const [aluguel, setAluguel] = useState("");
+  const [luz, setLuz] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [salvo, setSalvo] = useState(null);
 
@@ -24,13 +28,15 @@ export default function Configuracoes() {
       const { data } = await supabase
         .from("config")
         .select("chave, valor")
-        .in("chave", [CHAVE_FABI, CHAVE_ICARO, CHAVE_SUMIDO, CHAVE_META_CAMISARIA, CHAVE_META_ALFAIATARIA]);
+        .in("chave", [CHAVE_FABI, CHAVE_ICARO, CHAVE_SUMIDO, CHAVE_META_CAMISARIA, CHAVE_META_ALFAIATARIA, CHAVE_ALUGUEL, CHAVE_LUZ]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_FABI) setTelFabi(row.valor || "");
         if (row.chave === CHAVE_ICARO) setTelIcaro(row.valor || "");
         if (row.chave === CHAVE_SUMIDO) setSumidoMeses(row.valor || "6");
         if (row.chave === CHAVE_META_CAMISARIA) setMetaCamisaria(row.valor || "");
         if (row.chave === CHAVE_META_ALFAIATARIA) setMetaAlfaiataria(row.valor || "");
+        if (row.chave === CHAVE_ALUGUEL) setAluguel(row.valor || "");
+        if (row.chave === CHAVE_LUZ) setLuz(row.valor || "");
       });
       setCarregando(false);
     })();
@@ -44,6 +50,8 @@ export default function Configuracoes() {
       { chave: CHAVE_SUMIDO, valor: sumidoMeses },
       { chave: CHAVE_META_CAMISARIA, valor: metaCamisaria },
       { chave: CHAVE_META_ALFAIATARIA, valor: metaAlfaiataria },
+      { chave: CHAVE_ALUGUEL, valor: aluguel },
+      { chave: CHAVE_LUZ, valor: luz },
     ]);
     setSalvo(!error);
   }
@@ -93,6 +101,12 @@ export default function Configuracoes() {
             </Field>
             <Field label="Meta de vendas do mês — Alfaiataria (R$)">
               <input type="number" step="0.01" style={inputStyle} value={metaAlfaiataria} onChange={(e) => setMetaAlfaiataria(e.target.value)} />
+            </Field>
+            <Field label="Aluguel da sala (R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={aluguel} onChange={(e) => setAluguel(e.target.value)} />
+            </Field>
+            <Field label="Luz (R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={luz} onChange={(e) => setLuz(e.target.value)} />
             </Field>
           </div>
         )}

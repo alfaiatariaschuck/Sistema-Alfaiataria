@@ -10,6 +10,8 @@ function rowParaMembro(row) {
     tiposPeca: row.tipos_peca || [],
     horasPorDia: row.horas_por_dia ?? 8,
     diasPorSemana: row.dias_por_semana ?? 5,
+    tipoRemuneracao: row.tipo_remuneracao || "",
+    valorRemuneracao: row.valor_remuneracao ?? "",
   };
 }
 
@@ -18,6 +20,8 @@ const CAMPO_PARA_COLUNA = {
   tiposPeca: "tipos_peca",
   horasPorDia: "horas_por_dia",
   diasPorSemana: "dias_por_semana",
+  tipoRemuneracao: "tipo_remuneracao",
+  valorRemuneracao: "valor_remuneracao",
 };
 
 // Equipe de produção (Ícaro + freelancers) — quem está ativo no time e
@@ -49,7 +53,10 @@ export function useEquipeProducao() {
   async function atualizarMembro(id, campo, valor) {
     const coluna = CAMPO_PARA_COLUNA[campo] || campo;
     setEquipe((prev) => prev.map((m) => (m.id === id ? { ...m, [campo]: valor } : m)));
-    await supabase.from("equipe_producao").update({ [coluna]: valor }).eq("id", id);
+    // valor_remuneracao é numeric no banco — string vazia dá erro, tem
+    // que virar null (mesmo problema já visto com colunas de data).
+    const valorFinal = campo === "valorRemuneracao" ? (valor === "" ? null : Number(valor)) : valor;
+    await supabase.from("equipe_producao").update({ [coluna]: valorFinal }).eq("id", id);
   }
 
   async function removerMembro(id) {

@@ -13,6 +13,7 @@ import {
   Menu,
   PackageCheck,
   PieChart,
+  PiggyBank,
   Plus,
   Receipt,
   Ruler,
@@ -57,6 +58,7 @@ import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import ControleProducao from "./pages/ControleProducao";
 import Equipe from "./pages/Equipe";
 import HistoricoProducao from "./pages/HistoricoProducao";
+import CustosAtelie from "./pages/CustosAtelie";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
@@ -77,6 +79,7 @@ const NAV = [
   { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true },
   { id: "historico-producao", label: "Histórico de Produção", icon: BarChart3, primary: false },
   { id: "equipe", label: "Equipe", icon: Users2, primary: false },
+  { id: "custos-atelie", label: "Custos do Ateliê", icon: PiggyBank, primary: false },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false },
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false },
   { id: "metas", label: "Metas", icon: Target, primary: false },
@@ -585,6 +588,7 @@ export default function Shell() {
               {tab === "equipe" && (
                 <Equipe equipe={equipe} loading={loadingEquipe} onAdicionar={adicionarMembro} onCampo={atualizarMembro} onRemover={removerMembro} />
               )}
+              {tab === "custos-atelie" && !loadingPecas && <CustosAtelie pecas={pecas} equipe={equipe} />}
               {tab === "planos-assinatura" && !loadingPlanos && (
                 <PlanosAssinatura
                   planos={planos}
