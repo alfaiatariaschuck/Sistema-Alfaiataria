@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp, LayoutGrid, LogOut, Ruler, Search, Table2 } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, FileText, LayoutGrid, LogOut, Ruler, Search, Table2 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePecasProducao } from "./hooks/usePecasProducao";
 import { useEquipeProducao } from "./hooks/useEquipeProducao";
@@ -7,6 +7,8 @@ import { BRASS, CANVAS, INK, INK_SOFT, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, S
 import { diasProducaoReal, fmtData, hojeISO, mediaDiasProducaoPorTipo, previsaoEstimada, projetarPrevisoesFilaPorEquipe, statusParaEtapa } from "./lib/helpers";
 import { Card, Empty } from "./components/ui";
 import TabelaControleProducao from "./components/TabelaControleProducao";
+import HistoricoProducao from "./pages/HistoricoProducao";
+import FichaImprimivelAlfaiataria from "./pages/FichaImprimivelAlfaiataria";
 
 const NOME_SECAO = { corpo: "Paletó", calca: "Calça", colete: "Colete" };
 
@@ -61,6 +63,8 @@ export default function ShellProducao() {
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [visualizacao, setVisualizacao] = useState("tabela");
+  const [pagina, setPagina] = useState("producao");
+  const [pecaFicha, setPecaFicha] = useState(null);
 
   const todasAbertas = useMemo(() => pecas.filter((p) => p.status !== "Entregue"), [pecas]);
   const abertas = todasAbertas.filter((p) => p.cliente.toLowerCase().includes(busca.toLowerCase()));
@@ -115,6 +119,44 @@ export default function ShellProducao() {
         </button>
       </div>
 
+      <div className="px-5 pt-4 flex items-center gap-1" style={{ background: INK }}>
+        <button
+          onClick={() => setPagina("producao")}
+          className="flex items-center gap-1.5"
+          style={{
+            background: pagina === "producao" ? CANVAS : "transparent",
+            color: pagina === "producao" ? INK : "#A9B4C0",
+            padding: "8px 14px",
+            borderRadius: "8px 8px 0 0",
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          <Ruler size={14} /> Produção
+        </button>
+        <button
+          onClick={() => setPagina("historico")}
+          className="flex items-center gap-1.5"
+          style={{
+            background: pagina === "historico" ? CANVAS : "transparent",
+            color: pagina === "historico" ? INK : "#A9B4C0",
+            padding: "8px 14px",
+            borderRadius: "8px 8px 0 0",
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          <BarChart3 size={14} /> Histórico de Produção
+        </button>
+      </div>
+
+      {pagina === "historico" && (
+        <div className="max-w-3xl mx-auto px-5 py-6">
+          <HistoricoProducao pecas={pecas} />
+        </div>
+      )}
+
+      {pagina === "producao" && (
       <div className="max-w-3xl mx-auto px-5 py-6">
         {atrasadas > 0 && (
           <div
@@ -325,9 +367,16 @@ export default function ShellProducao() {
                 )}
 
                 <button
+                  onClick={() => setPecaFicha(p)}
+                  className="w-full flex items-center gap-1.5 py-1.5"
+                  style={{ borderTop: `1px solid ${LINE}`, marginTop: 4, color: BRASS, fontSize: 12, fontWeight: 600 }}
+                >
+                  <FileText size={14} /> Ver ficha do pedido
+                </button>
+
+                <button
                   onClick={() => setExpandido(aberto ? null : p.id)}
                   className="w-full flex items-center justify-between py-1.5"
-                  style={{ borderTop: `1px solid ${LINE}`, marginTop: 4 }}
                 >
                   <span style={{ fontSize: 12, color: BRASS, fontWeight: 600 }}>{aberto ? "Ocultar medidas e observações" : "Ver medidas e observações"}</span>
                   {aberto ? <ChevronUp size={14} color={BRASS} /> : <ChevronDown size={14} color={BRASS} />}
@@ -342,7 +391,6 @@ export default function ShellProducao() {
                           <div key={i} style={{ color: TEXT_MUTED }}>
                             {t.codigo} · Qtd {t.qtd}
                             {t.numero ? ` · ${t.numero}` : ""}
-                            {t.fornecedor ? ` · ${t.fornecedor}` : ""}
                           </div>
                         ))}
                       </div>
@@ -384,6 +432,11 @@ export default function ShellProducao() {
         </div>
         )}
       </div>
+      )}
+
+      {pecaFicha && (
+        <FichaImprimivelAlfaiataria peca={pecaFicha} onFechar={() => setPecaFicha(null)} />
+      )}
     </div>
   );
 }

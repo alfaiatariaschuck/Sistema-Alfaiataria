@@ -8,7 +8,7 @@ import { diasEntre, hojeISO } from "../lib/helpers";
 // restrinja o resto do banco pra esse papel, essa tela nem pede esses
 // campos, então eles nunca chegam a trafegar até o navegador dele.
 const SELECT_PRODUCAO =
-  "id, cliente_id, data_pedido, previsao_entrega, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, responsaveis_secoes, prioridade, situacao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor)";
+  "id, cliente_id, data_pedido, previsao_entrega, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, responsaveis_secoes, prioridade, situacao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor), pedidos_alfaiataria_pausas(motivo, data_inicio, data_fim)";
 
 function rowParaPecaProducao(row) {
   return {
@@ -22,6 +22,7 @@ function rowParaPecaProducao(row) {
     dataInicioProducao: row.data_inicio_producao || "",
     dataPausaInicio: row.data_pausa_inicio || "",
     diasPausados: row.dias_pausados || 0,
+    pausas: (row.pedidos_alfaiataria_pausas || []).map((pa) => ({ motivo: pa.motivo, dataInicio: pa.data_inicio, dataFim: pa.data_fim || "" })),
     status: row.status,
     observacoes: row.observacoes || "",
     observacoesProducao: row.observacoes_producao || "",
