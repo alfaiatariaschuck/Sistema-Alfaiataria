@@ -132,25 +132,21 @@ export function mediaDiasProducaoReal(pecas) {
 }
 
 // Sugestão de previsão de entrega pra peças já iniciadas mas sem previsão
-// manual. Usa o RITMO real da própria peça sempre que possível: se já
-// avançou X% das etapas em N dias, projeta o total (N / X%) e some ao
-// início — assim uma peça que está andando mais rápido (ou mais devagar)
-// que a média geral tem uma previsão que reflete isso, em vez de sempre
-// cravar "início + média" mesmo já em etapa avançada. Só cai pra média
-// histórica quando ainda não tem ritmo suficiente pra confiar nele
-// (acabou de começar, sem dias suficientes decorridos).
-export function previsaoEstimada(peca, mediaDias) {
-  if (!peca.dataInicioProducao || peca.status === "Entregue") return null;
+// manual. Trabalho que ainda falta = tempo total do tipo (parâmetros de
+// horas ÷ capacidade, ou média real do tipo — ver
+// mediaDiasProducaoPorTipo) vezes o quanto ainda NÃO foi concluído
+// (100% - etapa atual), projetado a partir de HOJE — não do início.
+// Deliberadamente não olha pra quanto tempo já se passou desde o
+// início: imprevisto, pausa e espera de prova distorceriam o cálculo;
+// a régua é só "quanto trabalho ainda falta pra essa etapa", que é
+// exatamente a lógica da planilha de progresso por peça.
+export function previsaoEstimada(peca, diasTotaisTipo) {
+  if (!peca.dataInicioProducao || peca.status === "Entregue" || !diasTotaisTipo) return null;
 
   const { percentual } = statusParaEtapa("alfaiataria", peca.status);
-  const diasDecorridos = diasProducaoReal(peca);
-  if (diasDecorridos && diasDecorridos >= 3 && percentual > 0 && percentual < 100) {
-    const tempoTotalPeloRitmo = Math.round(diasDecorridos / (percentual / 100));
-    return somarDias(peca.dataInicioProducao, Math.max(tempoTotalPeloRitmo, diasDecorridos));
-  }
-
-  if (!mediaDias) return null;
-  return somarDias(peca.dataInicioProducao, mediaDias);
+  if (percentual >= 100) return hojeISO();
+  const diasRestantes = Math.max(0, Math.round(diasTotaisTipo * (1 - percentual / 100)));
+  return somarDias(hojeISO(), diasRestantes);
 }
 
 // Média "com fallback": usa a produção real (início -> entrega) assim

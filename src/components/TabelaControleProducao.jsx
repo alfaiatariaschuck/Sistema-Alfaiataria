@@ -121,12 +121,12 @@ export default function TabelaControleProducao({
                 <td style={{ padding: "12px", color: TEXT_MUTED }}>{i + 1}</td>
                 <td onClick={() => onAbrir && onAbrir(p.id)} style={{ padding: "12px", cursor: onAbrir ? "pointer" : "default", whiteSpace: "nowrap" }}>
                   <div style={{ fontWeight: 600 }}>{p.cliente || "Sem nome"}</div>
-                  {p.previsaoEstimada && (
+                  {p.previsaoEfetiva && (
                     <div
                       style={{ fontSize: 10, color: atrasado ? VERMELHO : emRisco ? "#8A6A0C" : TEXT_MUTED, fontWeight: atrasado || emRisco ? 600 : 400 }}
-                      title="Estimativa com base na média de produção — sem previsão manual definida"
+                      title={p.previsaoEntrega ? "Previsão definida manualmente" : "Estimativa — sem previsão manual definida"}
                     >
-                      ~ prev. {fmtData(p.previsaoEstimada)}
+                      {p.previsaoEntrega ? "prev." : "~ prev."} {fmtData(p.previsaoEfetiva)}
                     </div>
                   )}
                 </td>
