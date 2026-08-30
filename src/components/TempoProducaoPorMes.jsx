@@ -47,7 +47,7 @@ export default function TempoProducaoPorMes({ lista, titulo }) {
       <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
         Dias entre o pedido e a entrega, agrupado pelo mês em que foi entregue — só pedidos já entregues.
       </div>
-      <div className="flex items-end gap-2" style={{ minHeight: ALTURA_GRAFICO + 50 }}>
+      <div className="flex items-end gap-2 flex-wrap" style={{ minHeight: ALTURA_GRAFICO + 50 }}>
         {dados.map((d) => {
           const altura = (d.media / maxValor) * ALTURA_GRAFICO;
           const emFoco = hover === d.mes;
@@ -64,12 +64,16 @@ export default function TempoProducaoPorMes({ lista, titulo }) {
                   style={{
                     position: "absolute",
                     bottom: altura + 34,
+                    left: "50%",
+                    transform: "translateX(-50%)",
                     background: INK,
                     color: "#FFF",
                     padding: "7px 11px",
                     borderRadius: 6,
                     fontSize: 11,
-                    whiteSpace: "nowrap",
+                    whiteSpace: "normal",
+                    maxWidth: 220,
+                    textAlign: "center",
                     zIndex: 10,
                     boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                   }}

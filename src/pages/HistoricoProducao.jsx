@@ -52,7 +52,7 @@ function BarraComparativa({ dados }) {
           <span style={{ fontSize: 12, color: TEXT_MUTED }}>Real (histórico)</span>
         </div>
       </div>
-      <div className="flex items-end gap-4" style={{ minHeight: ALTURA + 50, overflowX: "auto" }}>
+      <div className="flex items-end gap-4 flex-wrap" style={{ minHeight: ALTURA + 50 }}>
         {dados.map((d) => {
           const emFoco = hover === d.chave;
           return (
@@ -68,12 +68,16 @@ function BarraComparativa({ dados }) {
                   style={{
                     position: "absolute",
                     bottom: ALTURA + 34,
+                    left: "50%",
+                    transform: "translateX(-50%)",
                     background: INK,
                     color: "#FFF",
                     padding: "7px 11px",
                     borderRadius: 6,
                     fontSize: 11,
-                    whiteSpace: "nowrap",
+                    whiteSpace: "normal",
+                    maxWidth: 220,
+                    textAlign: "center",
                     zIndex: 10,
                     boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                   }}
@@ -129,7 +133,7 @@ function BarraSimples({ dados, sufixoValor, formatarTooltip }) {
   const ALTURA = 130;
 
   return (
-    <div className="flex items-end gap-3" style={{ minHeight: ALTURA + 50, overflowX: "auto" }}>
+    <div className="flex items-end gap-3 flex-wrap" style={{ minHeight: ALTURA + 50 }}>
       {dados.map((d) => {
         const altura = (d.valor / maxValor) * ALTURA;
         const emFoco = hover === d.chave;
@@ -146,12 +150,16 @@ function BarraSimples({ dados, sufixoValor, formatarTooltip }) {
                 style={{
                   position: "absolute",
                   bottom: altura + 34,
+                  left: "50%",
+                  transform: "translateX(-50%)",
                   background: INK,
                   color: "#FFF",
                   padding: "7px 11px",
                   borderRadius: 6,
                   fontSize: 11,
-                  whiteSpace: "nowrap",
+                  whiteSpace: "normal",
+                  maxWidth: 220,
+                  textAlign: "center",
                   zIndex: 10,
                   boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                 }}
