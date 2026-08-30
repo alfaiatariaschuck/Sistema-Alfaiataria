@@ -125,10 +125,24 @@ export function mediaDiasProducaoReal(pecas) {
 }
 
 // Sugestão de previsão de entrega pra peças já iniciadas mas sem previsão
-// manual: início + média histórica de produção. Só sugere quando dá pra
-// calcular algo (tem início e já existe histórico de peças entregues).
+// manual. Usa o RITMO real da própria peça sempre que possível: se já
+// avançou X% das etapas em N dias, projeta o total (N / X%) e some ao
+// início — assim uma peça que está andando mais rápido (ou mais devagar)
+// que a média geral tem uma previsão que reflete isso, em vez de sempre
+// cravar "início + média" mesmo já em etapa avançada. Só cai pra média
+// histórica quando ainda não tem ritmo suficiente pra confiar nele
+// (acabou de começar, sem dias suficientes decorridos).
 export function previsaoEstimada(peca, mediaDias) {
-  if (!peca.dataInicioProducao || peca.previsaoEntrega || !mediaDias) return null;
+  if (!peca.dataInicioProducao || peca.previsaoEntrega || peca.status === "Entregue") return null;
+
+  const { percentual } = statusParaEtapa("alfaiataria", peca.status);
+  const diasDecorridos = diasProducaoReal(peca);
+  if (diasDecorridos && diasDecorridos >= 3 && percentual > 0 && percentual < 100) {
+    const tempoTotalPeloRitmo = Math.round(diasDecorridos / (percentual / 100));
+    return somarDias(peca.dataInicioProducao, Math.max(tempoTotalPeloRitmo, diasDecorridos));
+  }
+
+  if (!mediaDias) return null;
   return somarDias(peca.dataInicioProducao, mediaDias);
 }
 
