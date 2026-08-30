@@ -36,7 +36,7 @@ import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
 import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
 import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
-import { hojeISO } from "./lib/helpers";
+import { hojeISO, mediaDiasProducaoReal } from "./lib/helpers";
 import Dashboard from "./pages/Dashboard";
 import DashboardAlfaiataria from "./pages/DashboardAlfaiataria";
 import NovoPedido from "./pages/NovoPedido";
@@ -311,11 +311,14 @@ export default function Shell() {
     atualizarCampoPeca(pecaId, "caracteristicas", caracteristicas);
   }
 
+  const mediaDiasProducaoAlfaiataria = useMemo(() => mediaDiasProducaoReal(pecas), [pecas]);
+
   const acoesPeca = {
     onCampo: atualizarCampoPeca,
     onPausar: pausarPeca,
     onRetomar: retomarPeca,
     onDesfazerInicio: desfazerInicioPeca,
+    mediaDiasProducao: mediaDiasProducaoAlfaiataria,
     onMedida: atualizarMedidaPeca,
     onCaracteristica: atualizarCaracteristicaPeca,
     onRemover: (id) => {
@@ -542,6 +545,7 @@ export default function Shell() {
                   onPausar={pausarPeca}
                   onRetomar={retomarPeca}
                   onDesfazerInicio={desfazerInicioPeca}
+                  mediaDiasProducao={mediaDiasProducaoAlfaiataria}
                   irParaPeca={irParaPeca}
                 />
               )}

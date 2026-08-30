@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { AlertTriangle, ArrowDown, ArrowUp, Pause, Play } from "lucide-react";
 import { Empty, Pill } from "./ui";
 import { BRASS, INK, LINE, STATUS_ALFAIATARIA, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { diasAte, diasProducaoReal, statusParaEtapa } from "../lib/helpers";
+import { diasAte, diasProducaoReal, fmtData, previsaoEstimada, statusParaEtapa } from "../lib/helpers";
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
@@ -20,7 +20,18 @@ const COLUNAS = [
 // Tabela compartilhada entre a tela do dono (Controle de Produção,
 // edição completa) e a tela do Ícaro (edição restrita) — mesma "cara"
 // nos dois lados, só muda o que cada um pode mexer.
-export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, responsaveisConhecidos, onCampo, onAbrir, onMarcarInicio, onPausar, onRetomar, onDesfazerInicio }) {
+export default function TabelaControleProducao({
+  pecas,
+  podeEditarAtribuicao,
+  responsaveisConhecidos,
+  onCampo,
+  onAbrir,
+  onMarcarInicio,
+  onPausar,
+  onRetomar,
+  onDesfazerInicio,
+  mediaDiasProducao,
+}) {
   const [ordenarPor, setOrdenarPor] = useState(null);
   const [ordemDesc, setOrdemDesc] = useState(false);
 
@@ -31,8 +42,9 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
         percentual: statusParaEtapa("alfaiataria", p.status).percentual,
         diasFila: p.dataPedido ? -diasAte(p.dataPedido) : 0,
         diasProducao: diasProducaoReal(p),
+        previsaoEstimada: previsaoEstimada(p, mediaDiasProducao),
       })),
-    [pecas]
+    [pecas, mediaDiasProducao]
   );
 
   const ordenadas = useMemo(() => {
@@ -94,8 +106,13 @@ export default function TabelaControleProducao({ pecas, podeEditarAtribuicao, re
             return (
               <tr key={p.id} style={{ borderBottom: `1px solid ${LINE}` }} className="fx-row-hover">
                 <td style={{ padding: "12px", color: TEXT_MUTED }}>{i + 1}</td>
-                <td onClick={() => onAbrir && onAbrir(p.id)} style={{ padding: "12px", fontWeight: 600, cursor: onAbrir ? "pointer" : "default", whiteSpace: "nowrap" }}>
-                  {p.cliente || "Sem nome"}
+                <td onClick={() => onAbrir && onAbrir(p.id)} style={{ padding: "12px", cursor: onAbrir ? "pointer" : "default", whiteSpace: "nowrap" }}>
+                  <div style={{ fontWeight: 600 }}>{p.cliente || "Sem nome"}</div>
+                  {p.previsaoEstimada && (
+                    <div style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 400 }} title="Estimativa com base na média de produção — sem previsão manual definida">
+                      ~ prev. {fmtData(p.previsaoEstimada)}
+                    </div>
+                  )}
                 </td>
                 <td style={{ padding: "12px", whiteSpace: "nowrap" }}>{p.tipoPeca}</td>
                 <td className="fx-mono" style={{ padding: "12px", color: BRASS, fontWeight: 700 }}>

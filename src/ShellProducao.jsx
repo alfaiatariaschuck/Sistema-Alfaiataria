@@ -7,6 +7,33 @@ import { diasProducaoReal, fmtData, statusParaEtapa } from "./lib/helpers";
 import { Card, Empty } from "./components/ui";
 import TabelaControleProducao from "./components/TabelaControleProducao";
 
+// Resumo de medidas por seção — usado tanto pra peça atual quanto pro
+// histórico de pedidos anteriores do mesmo cliente (mesma "cara").
+function ResumoMedidas({ medidas, tipoPeca }) {
+  const secoes = PECA_SECOES[tipoPeca] || [];
+  return (
+    <>
+      {secoes.map((secKey) => {
+        const sec = MEDIDAS_ALFAIATARIA[secKey];
+        const campos = sec.campos.filter((c) => medidas?.[secKey]?.[c.label]);
+        if (campos.length === 0) return null;
+        return (
+          <div key={secKey} className="mb-2">
+            <div style={{ fontSize: 11, fontWeight: 600, color: BRASS, marginBottom: 3 }}>{sec.titulo}</div>
+            <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))" }}>
+              {campos.map((c) => (
+                <div key={c.label} className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                  {c.label}: <strong style={{ color: "#16212E" }}>{medidas[secKey][c.label]}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 // App enxuto pro Ícaro: só as peças de alfaiataria em produção — sem
 // valores, sem dados pessoais de cliente, sem nenhuma outra aba. Ele só
 // avança o status (etapa), marca quando começou a produzir de verdade e
@@ -112,7 +139,6 @@ export default function ShellProducao() {
           {abertas.map((p) => {
             const etapa = statusParaEtapa("alfaiataria", p.status);
             const aberto = expandido === p.id;
-            const secoes = PECA_SECOES[p.tipoPeca] || [];
             return (
               <Card key={p.id} style={{ padding: 18 }}>
                 <div className="flex items-center justify-between mb-1">
@@ -217,24 +243,8 @@ export default function ShellProducao() {
                         ))}
                       </div>
                     )}
-                    {secoes.map((secKey) => {
-                      const sec = MEDIDAS_ALFAIATARIA[secKey];
-                      const campos = sec.campos.filter((c) => p.medidas?.[secKey]?.[c.label]);
-                      if (campos.length === 0) return null;
-                      return (
-                        <div key={secKey} className="mb-3">
-                          <div style={{ fontSize: 12, fontWeight: 600, color: BRASS, marginBottom: 4 }}>{sec.titulo}</div>
-                          <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
-                            {campos.map((c) => (
-                              <div key={c.label} className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                                {c.label}: <strong style={{ color: "#16212E" }}>{p.medidas[secKey][c.label]}</strong>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div>
+                    <ResumoMedidas medidas={p.medidas} tipoPeca={p.tipoPeca} />
+                    <div className="mb-3">
                       <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Sua observação</div>
                       <textarea
                         style={{ ...inputStyle, minHeight: 70 }}
@@ -243,6 +253,25 @@ export default function ShellProducao() {
                         onBlur={(e) => atualizarObservacaoProducao(p.id, e.target.value)}
                       />
                     </div>
+                    {(() => {
+                      const historico = pecas
+                        .filter((h) => h.id !== p.id && h.clienteId && h.clienteId === p.clienteId)
+                        .sort((a, b) => (b.dataPedido || "").localeCompare(a.dataPedido || ""));
+                      if (historico.length === 0) return null;
+                      return (
+                        <div style={{ borderTop: `1px solid ${LINE}`, paddingTop: 10 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Histórico de medidas deste cliente</div>
+                          {historico.map((h) => (
+                            <div key={h.id} className="mb-3 p-2" style={{ background: "#F3EEDF", borderRadius: 6 }}>
+                              <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>
+                                {fmtData(h.dataPedido)} · {h.tipoPeca}
+                              </div>
+                              <ResumoMedidas medidas={h.medidas} tipoPeca={h.tipoPeca} />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </Card>

@@ -21,7 +21,7 @@ import {
   TEXT_MUTED,
   inputStyle,
 } from "../lib/constants";
-import { brl, diasProducaoReal, fmtData, hojeISO, statusDividido, statusParaEtapa, totalDividido } from "../lib/helpers";
+import { brl, diasProducaoReal, fmtData, hojeISO, previsaoEstimada, statusDividido, statusParaEtapa, totalDividido } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
@@ -38,9 +38,23 @@ const STATUS_PAGAMENTO_STYLE = {
   Pendente: { bg: "#F6E3D9", fg: "#9C4A1E" },
 };
 
-export default function DetalhePeca({ peca: p, onVoltar, onCampo, onPausar, onRetomar, onDesfazerInicio, onMedida, onCaracteristica, onRemover, onAddTecido, onTecido }) {
+export default function DetalhePeca({
+  peca: p,
+  onVoltar,
+  onCampo,
+  onPausar,
+  onRetomar,
+  onDesfazerInicio,
+  mediaDiasProducao,
+  onMedida,
+  onCaracteristica,
+  onRemover,
+  onAddTecido,
+  onTecido,
+}) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
+  const sugestaoPrevisao = previsaoEstimada(p, mediaDiasProducao);
 
   function set(campo, valor) {
     onCampo(p.id, campo, valor);
@@ -226,6 +240,19 @@ export default function DetalhePeca({ peca: p, onVoltar, onCampo, onPausar, onRe
           <Field label="Previsão de entrega">
             <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
           </Field>
+          {!p.previsaoEntrega && sugestaoPrevisao && (
+            <div className="flex items-center gap-2 -mt-3 mb-2 flex-wrap">
+              <span style={{ fontSize: 12, color: TEXT_MUTED }}>
+                Sugestão com base na média de produção: <strong style={{ color: "#16212E" }}>{fmtData(sugestaoPrevisao)}</strong>
+              </span>
+              <button
+                onClick={() => set("previsaoEntrega", sugestaoPrevisao)}
+                style={{ background: "#EDEAE0", color: BRASS, padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+              >
+                Usar essa data
+              </button>
+            </div>
+          )}
         </Card>
 
         <Card style={{ padding: 20 }}>

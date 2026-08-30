@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
-import { AlertTriangle, Clock, Flame, PackageCheck, Scissors } from "lucide-react";
+import { AlertTriangle, Clock, Flame, PackageCheck, Scissors, Timer } from "lucide-react";
 import { Card, PageTitle, StatCard } from "../components/ui";
 import TabelaControleProducao from "../components/TabelaControleProducao";
-import { TEXT_MUTED } from "../lib/constants";
+import { RESPONSAVEIS_ALFAIATARIA, TEXT_MUTED } from "../lib/constants";
 import { hojeISO } from "../lib/helpers";
 
 const VERMELHO = "#9C4A1E";
@@ -10,7 +10,7 @@ const VERMELHO = "#9C4A1E";
 // Réplica (fase 1) da planilha "Controle de Produção": fila de peças em
 // aberto + um painel de indicadores parecido com a aba DASHBOARD dela.
 // A simulação de fila por capacidade/freelancers fica pra uma fase 2.
-export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, onDesfazerInicio, irParaPeca }) {
+export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, onDesfazerInicio, mediaDiasProducao, irParaPeca }) {
   const abertas = useMemo(() => pecas.filter((p) => p.status !== "Entregue"), [pecas]);
   const hoje = hojeISO();
 
@@ -26,7 +26,10 @@ export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, 
     return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
   }, [abertas]);
 
-  const responsaveisConhecidos = useMemo(() => [...new Set(pecas.map((p) => p.responsavel).filter(Boolean))], [pecas]);
+  const responsaveisConhecidos = useMemo(
+    () => [...new Set([...RESPONSAVEIS_ALFAIATARIA, ...pecas.map((p) => p.responsavel).filter(Boolean)])],
+    [pecas]
+  );
 
   return (
     <div>
@@ -39,6 +42,7 @@ export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, 
         <StatCard label="Pausados" value={pausados} icon={Clock} />
         <StatCard label="Atrasados" value={atrasados} icon={AlertTriangle} accent={atrasados > 0 ? VERMELHO : undefined} />
         <StatCard label="Urgentes (Alta)" value={urgentes} icon={Flame} accent={urgentes > 0 ? VERMELHO : undefined} />
+        <StatCard label="Tempo médio de produção" value={mediaDiasProducao !== null ? `${mediaDiasProducao}d` : "—"} icon={Timer} />
       </div>
 
       {composicao.length > 0 && (
@@ -65,6 +69,7 @@ export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, 
           onPausar={onPausar}
           onRetomar={onRetomar}
           onDesfazerInicio={onDesfazerInicio}
+          mediaDiasProducao={mediaDiasProducao}
         />
       </Card>
     </div>

@@ -112,6 +112,26 @@ export function diasProducaoReal(peca) {
   return Math.max(0, bruto - (peca.diasPausados || 0) - pausadoAgora);
 }
 
+// Média real de dias de produção (início -> entrega, já sem pausas) das
+// peças já entregues — base pra sugerir uma previsão de entrega pra quem
+// ainda não tem uma data calculada, sem precisar de um simulador de fila.
+export function mediaDiasProducaoReal(pecas) {
+  const validos = pecas
+    .filter((p) => p.status === "Entregue" && p.dataInicioProducao && p.dataEntrega)
+    .map((p) => diasProducaoReal(p))
+    .filter((d) => d !== null && d >= 0);
+  if (!validos.length) return null;
+  return Math.round(validos.reduce((a, b) => a + b, 0) / validos.length);
+}
+
+// Sugestão de previsão de entrega pra peças já iniciadas mas sem previsão
+// manual: início + média histórica de produção. Só sugere quando dá pra
+// calcular algo (tem início e já existe histórico de peças entregues).
+export function previsaoEstimada(peca, mediaDias) {
+  if (!peca.dataInicioProducao || peca.previsaoEntrega || !mediaDias) return null;
+  return somarDias(peca.dataInicioProducao, mediaDias);
+}
+
 // Traduz o status bruto do pedido/peça pra uma etapa do acompanhamento
 // público — cobre status antigos da Alfaiataria (de antes de ter etapas
 // próprias) mapeando pro equivalente mais próximo, pra nenhum pedido

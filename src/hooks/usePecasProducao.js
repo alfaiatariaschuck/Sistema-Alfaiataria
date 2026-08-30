@@ -8,11 +8,12 @@ import { diasEntre, hojeISO } from "../lib/helpers";
 // restrinja o resto do banco pra esse papel, essa tela nem pede esses
 // campos, então eles nunca chegam a trafegar até o navegador dele.
 const SELECT_PRODUCAO =
-  "id, data_pedido, previsao_entrega, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, prioridade, situacao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor)";
+  "id, cliente_id, data_pedido, previsao_entrega, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, prioridade, situacao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor)";
 
 function rowParaPecaProducao(row) {
   return {
     id: row.id,
+    clienteId: row.cliente_id,
     cliente: row.clientes?.nome || "",
     tipoPeca: row.tipo_peca,
     dataPedido: row.data_pedido,
