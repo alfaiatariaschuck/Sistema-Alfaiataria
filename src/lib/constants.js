@@ -88,17 +88,23 @@ export const CATEGORIAS_DESPESA = ["Aluguel", "Água/Luz/Internet", "Impostos", 
 export const TIPOS_PECA = ["Traje", "Costume", "Casaco", "Bomber", "Calça", "Colete", "Blazer", "Outro"];
 
 // Estimativa inicial de dias corridos de produção por tipo de peça,
-// usada enquanto aquele tipo ainda não acumulou entregas reais
-// suficientes no sistema pra calcular a própria média (ver
-// mediaDiasProducaoPorTipo em helpers.js). Só entram aqui os tipos com
-// um número de dias corridos confirmado DIRETAMENTE pelo Tales (calça
-// ~1-2 dias de máquina, sem contar prova) — tem prioridade sobre a
-// conta por horas abaixo. Qualquer outro tipo usa horas de
-// desenvolvimento (HORAS_REFERENCIA_TIPO_PECA) dividido pela
-// capacidade de produção; dá pra colocar outros tipos aqui assim que
-// tiver o número real de dias corridos de cada um.
+// baseada no histórico REAL da planilha do Ícaro (aba "Histórico de
+// Pedidos Entregues" — início real até entrega real, já incluindo
+// prova, agenda do cliente etc). Usada só enquanto aquele tipo ainda
+// não acumulou 3+ entregas reais no PRÓPRIO sistema (ver
+// mediaDiasProducaoPorTipo em helpers.js), que aí passa a calcular a
+// média automaticamente e esses números somem de vista. Tem
+// prioridade sobre a conta por horas abaixo, que é só o tempo de
+// trabalho manual — sempre otimista, porque não inclui espera nenhuma.
+// Traje/Blazer/Casaco/Bomber vieram de só 1-2 entregas reais (pouca
+// amostra, mas ainda assim mais realista que a conta por horas —
+// Calça, por exemplo, tem 6 entregas reais com média de 21 dias
+// corridos, bem longe das ~2h de trabalho de máquina puro).
 export const DIAS_REFERENCIA_TIPO_PECA = {
-  Calça: 2,
+  Traje: 33,
+  Blazer: 19,
+  Casaco: 13,
+  Bomber: 28,
 };
 
 // Horas de desenvolvimento por tipo de peça (planilha de parâmetros do
