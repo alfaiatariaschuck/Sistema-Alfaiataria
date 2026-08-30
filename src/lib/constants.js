@@ -90,14 +90,36 @@ export const TIPOS_PECA = ["Traje", "Costume", "Casaco", "Bomber", "Calça", "Co
 // Estimativa inicial de dias corridos de produção por tipo de peça,
 // usada enquanto aquele tipo ainda não acumulou entregas reais
 // suficientes no sistema pra calcular a própria média (ver
-// mediaDiasProducaoPorTipo em helpers.js). Só entram aqui os tipos que
-// já têm um número confirmado pelo Tales — hoje só Calça (~1-2 dias de
-// máquina, sem contar prova). Qualquer tipo fora dessa lista usa a
-// média geral de produção até acumular dados reais próprios; dá pra
-// adicionar outros tipos aqui assim que tiver o número real de cada um.
+// mediaDiasProducaoPorTipo em helpers.js). Só entram aqui os tipos com
+// um número de dias corridos confirmado DIRETAMENTE pelo Tales (calça
+// ~1-2 dias de máquina, sem contar prova) — tem prioridade sobre a
+// conta por horas abaixo. Qualquer outro tipo usa horas de
+// desenvolvimento (HORAS_REFERENCIA_TIPO_PECA) dividido pela
+// capacidade de produção; dá pra colocar outros tipos aqui assim que
+// tiver o número real de dias corridos de cada um.
 export const DIAS_REFERENCIA_TIPO_PECA = {
   Calça: 2,
 };
+
+// Horas de desenvolvimento por tipo de peça (planilha de parâmetros do
+// Ícaro) — tempo de trabalho manual, sem contar espera de prova/agenda
+// do cliente. Convertido em dias corridos dividindo pela capacidade de
+// produção (HORAS_PRODUTIVAS_POR_DIA_PADRAO) — é isso que entra na
+// conta da previsão pros tipos que não têm um número direto de dias em
+// DIAS_REFERENCIA_TIPO_PECA acima.
+export const HORAS_REFERENCIA_TIPO_PECA = {
+  Traje: 23,
+  Costume: 23,
+  Blazer: 23,
+  Casaco: 23,
+  Bomber: 23,
+  Colete: 10,
+};
+
+// Capacidade de produção padrão (horas produtivas por dia) usada pra
+// converter horas de desenvolvimento em dias corridos — 8h, conforme
+// confirmado pelo Tales (não 6h).
+export const HORAS_PRODUTIVAS_POR_DIA_PADRAO = 8;
 
 // Medidas de alfaiataria, agrupadas por seção (evita colisão de campos
 // com o mesmo nome, ex: "Comprimento" existe em corpo e em calça).

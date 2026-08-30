@@ -1,4 +1,11 @@
-import { DIAS_REFERENCIA_TIPO_PECA, ETAPAS_ACOMPANHAMENTO_ALFAIATARIA, ETAPAS_ACOMPANHAMENTO_CAMISARIA, MEDIDA_REGRAS } from "./constants";
+import {
+  DIAS_REFERENCIA_TIPO_PECA,
+  ETAPAS_ACOMPANHAMENTO_ALFAIATARIA,
+  ETAPAS_ACOMPANHAMENTO_CAMISARIA,
+  HORAS_PRODUTIVAS_POR_DIA_PADRAO,
+  HORAS_REFERENCIA_TIPO_PECA,
+  MEDIDA_REGRAS,
+} from "./constants";
 
 export function finalDaMedida(label, mp) {
   const r = MEDIDA_REGRAS[label];
@@ -154,13 +161,17 @@ export function mediaDiasProducaoComFallback(pecas) {
   return mediaDiasProducaoReal(pecas) ?? tempoMedioProducaoGenerico(pecas);
 }
 
-// Média de dias de produção POR TIPO DE PEÇA. Enquanto um tipo ainda não
-// acumulou entregas reais suficientes (< 3), usa a estimativa inicial
-// confirmada (DIAS_REFERENCIA_TIPO_PECA — ex: calça ~2 dias) quando
-// existe uma pro tipo, senão cai pra média geral de produção. Assim que
-// o tipo acumular pelo menos 3 entregas com início e entrega
-// registrados, troca sozinho pra média REAL daquele tipo específico —
-// nenhuma migração manual necessária, só ir usando o sistema.
+// Média de dias de produção POR TIPO DE PEÇA. Ordem de prioridade:
+// 1) Média REAL do próprio tipo, assim que acumular 3+ entregas com
+//    início e entrega registrados — migração automática, sem precisar
+//    mexer em nada.
+// 2) Número de dias corridos confirmado diretamente pelo Tales
+//    (DIAS_REFERENCIA_TIPO_PECA — ex: calça ~2 dias).
+// 3) Horas de desenvolvimento da planilha de parâmetros
+//    (HORAS_REFERENCIA_TIPO_PECA) divididas pela capacidade de
+//    produção (HORAS_PRODUTIVAS_POR_DIA_PADRAO) — parâmetros x
+//    capacidade, não uma média genérica puxada por outros tipos.
+// 4) Só na falta de tudo isso, cai pra média geral de produção.
 export function mediaDiasProducaoPorTipo(pecas, tipoPeca) {
   const doTipo = pecas.filter((p) => p.tipoPeca === tipoPeca);
   const entreguesDoTipo = doTipo.filter((p) => p.status === "Entregue" && p.dataInicioProducao && p.dataEntrega);
@@ -170,6 +181,9 @@ export function mediaDiasProducaoPorTipo(pecas, tipoPeca) {
   }
 
   if (DIAS_REFERENCIA_TIPO_PECA[tipoPeca] != null) return DIAS_REFERENCIA_TIPO_PECA[tipoPeca];
+  if (HORAS_REFERENCIA_TIPO_PECA[tipoPeca] != null) {
+    return Math.max(1, Math.round(HORAS_REFERENCIA_TIPO_PECA[tipoPeca] / HORAS_PRODUTIVAS_POR_DIA_PADRAO));
+  }
   return mediaDiasProducaoComFallback(pecas);
 }
 
