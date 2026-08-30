@@ -61,7 +61,7 @@ export const ETAPAS_ACOMPANHAMENTO_CAMISARIA = [
 ];
 
 export const ETAPAS_ACOMPANHAMENTO_ALFAIATARIA = [
-  { status: "Aguardando Produção", label: "Aguardando produção", percentual: 5 },
+  { status: "Aguardando Produção", label: "Aguardando produção", percentual: 0 },
   { status: "Molde", label: "Molde", percentual: 15 },
   { status: "Corte", label: "Corte do tecido", percentual: 28 },
   { status: "Prova na Tela", label: "Prova na tela", percentual: 40 },
