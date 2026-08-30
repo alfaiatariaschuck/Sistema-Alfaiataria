@@ -3,7 +3,6 @@ import { Clock, PackageCheck, Timer, Zap } from "lucide-react";
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
 import {
   BRASS,
-  DIAS_REFERENCIA_TIPO_PECA,
   HORAS_PRODUTIVAS_POR_DIA_PADRAO,
   HORAS_REFERENCIA_TIPO_PECA,
   INK,
@@ -20,8 +19,14 @@ import { diasProducaoReal, fmtData } from "../lib/helpers";
 const COR_REFERENCIA = "#eb6834";
 const COR_REAL = "#2a78d6";
 
+// Aqui "referência" é sempre a conta pura de horas de desenvolvimento
+// da planilha de parâmetros (ex.: 23h pra um traje) convertida em dias
+// pela capacidade produtiva padrão — de propósito NÃO usa
+// DIAS_REFERENCIA_TIPO_PECA (esse número já foi recalibrado com o
+// próprio histórico real, então empataria com a barra "Real" e
+// esconderia o atraso que é justamente o que esse gráfico existe pra
+// mostrar).
 function diasReferenciaTipo(tipo) {
-  if (DIAS_REFERENCIA_TIPO_PECA[tipo]) return DIAS_REFERENCIA_TIPO_PECA[tipo];
   const horas = HORAS_REFERENCIA_TIPO_PECA[tipo];
   if (!horas) return null;
   return Math.max(1, Math.round(horas / HORAS_PRODUTIVAS_POR_DIA_PADRAO));
@@ -73,8 +78,8 @@ function BarraComparativa({ dados }) {
                     boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                   }}
                 >
-                  {d.chave}: referência {d.referencia ?? "—"}d · real {d.real ?? "—"}d
-                  {d.referencia && d.real ? ` (${d.real > d.referencia ? "+" : ""}${d.real - d.referencia}d)` : ""}
+                  {d.chave}: referência {d.referencia ?? "—"}d{d.horas ? ` (${d.horas}h)` : ""} · real {d.real ?? "—"}d
+                  {d.referencia && d.real ? ` — ${(d.real / d.referencia).toFixed(1)}x mais devagar` : ""}
                 </div>
               )}
               <div className="flex items-end gap-1.5" style={{ height: ALTURA }}>
@@ -232,15 +237,34 @@ export default function HistoricoProducao({ pecas }) {
   const maisRapido = porTipo[porTipo.length - 1];
   const maisLento = porTipo[0];
 
-  // Referência (parâmetro configurado) vs Real (média histórica) — só
-  // entra na comparação o tipo que tem referência configurada.
+  // Referência (parâmetro de horas de desenvolvimento, convertido em
+  // dias) vs Real (média histórica) — só entra na comparação o tipo que
+  // tem referência configurada.
   const comparativo = useMemo(
     () =>
       porTipo
-        .map((d) => ({ chave: d.chave, real: d.valor, referencia: diasReferenciaTipo(d.chave) }))
+        .map((d) => ({
+          chave: d.chave,
+          real: d.valor,
+          referencia: diasReferenciaTipo(d.chave),
+          horas: HORAS_REFERENCIA_TIPO_PECA[d.chave] || null,
+          qtd: d.qtd,
+        }))
         .filter((d) => d.referencia !== null),
     [porTipo]
   );
+
+  // Resumo geral do atraso: soma dos dias reais vs soma dos dias de
+  // referência, ponderado pela quantidade de peças de cada tipo — dá
+  // um único número (múltiplo) pra responder "o quanto estamos
+  // atrasados" sem precisar olhar tipo por tipo.
+  const atrasoResumo = useMemo(() => {
+    if (!comparativo.length) return null;
+    const somaReal = comparativo.reduce((s, d) => s + d.real * d.qtd, 0);
+    const somaRef = comparativo.reduce((s, d) => s + d.referencia * d.qtd, 0);
+    if (!somaRef) return null;
+    return somaReal / somaRef;
+  }, [comparativo]);
 
   // Quantidade de peças entregues por tipo (mesma lista do gráfico de
   // média, mas ordenada e lida pela quantidade em vez do tempo).
@@ -314,8 +338,16 @@ export default function HistoricoProducao({ pecas }) {
             Referência vs. Real por tipo de peça
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-            Dias previstos no parâmetro (horas de desenvolvimento) contra a média real do histórico — mede o quanto a produção está distante do planejado.
+            Dias de trabalho previstos na planilha de parâmetros (ex.: 23h pra um traje) contra a média real do histórico de produção — o tamanho da diferença é o atraso real da produção.
           </div>
+          {atrasoResumo !== null && (
+            <div
+              className="fx-mono"
+              style={{ fontSize: 12, fontWeight: 700, color: COR_REAL, marginBottom: 16, background: "#EAF1FB", display: "inline-block", padding: "6px 12px", borderRadius: 6 }}
+            >
+              No geral, a produção está levando {atrasoResumo.toFixed(1)}x o tempo previsto no parâmetro
+            </div>
+          )}
           <BarraComparativa dados={comparativo} />
         </Card>
       )}
