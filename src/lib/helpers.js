@@ -86,6 +86,13 @@ export function brl(v) {
   return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+// Extrai o número da metragem em texto livre (ex: "3,5m" -> 3.5) — usado
+// pra multiplicar pelo valor/metro em Compras e no custo de tecido do mês.
+export function metragemParaNumero(str) {
+  const match = (str || "").replace(",", ".").match(/[\d.]+/);
+  return match ? parseFloat(match[0]) : null;
+}
+
 export function totalDividido(valorEntrada, valorRestante) {
   return (parseFloat(valorEntrada) || 0) + (parseFloat(valorRestante) || 0);
 }

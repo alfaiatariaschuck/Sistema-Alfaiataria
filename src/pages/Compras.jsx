@@ -2,14 +2,7 @@ import React, { useMemo, useState } from "react";
 import { CheckCircle2, Clock, Copy, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { BRASS, BRASS_SOFT, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl } from "../lib/helpers";
-
-// Extrai o número da metragem em texto livre (ex: "3,5m" -> 3.5) pra dar
-// pra multiplicar pelo valor/metro — se não der pra entender, ignora.
-function metragemParaNumero(str) {
-  const match = (str || "").replace(",", ".").match(/[\d.]+/);
-  return match ? parseFloat(match[0]) : null;
-}
+import { brl, metragemParaNumero } from "../lib/helpers";
 
 // Junta variações de digitação (maiúscula/minúscula, espaço a mais) do
 // mesmo fornecedor conhecido num nome só, pra tudo ficar concentrado num

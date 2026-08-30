@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarClock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
 import { BRASS, LINE, TEXT_MUTED } from "../lib/constants";
-import { brl, hojeISO } from "../lib/helpers";
+import { brl, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_ALUGUEL = "custo_aluguel_mensal";
 const CHAVE_LUZ = "custo_luz_mensal";
+const CHAVE_PROLABORE = "custo_prolabore_mensal";
 // Semanas por mês na média (365,25/7/12) — usado pra estimar o custo
 // mensal de quem recebe por diária (ex: freelancer 3x/semana).
 const SEMANAS_POR_MES = 4.345;
@@ -34,14 +35,16 @@ function contarSextasNoMes(ano, mes) {
 export default function CustosAtelie({ pecas, equipe }) {
   const [aluguel, setAluguel] = useState(0);
   const [luz, setLuz] = useState(0);
+  const [prolabore, setProlabore] = useState(0);
   const [carregandoConfig, setCarregandoConfig] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_ALUGUEL, CHAVE_LUZ]);
+      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_ALUGUEL, CHAVE_LUZ, CHAVE_PROLABORE]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_ALUGUEL) setAluguel(parseFloat(row.valor) || 0);
         if (row.chave === CHAVE_LUZ) setLuz(parseFloat(row.valor) || 0);
+        if (row.chave === CHAVE_PROLABORE) setProlabore(parseFloat(row.valor) || 0);
       });
       setCarregandoConfig(false);
     })();
@@ -70,7 +73,28 @@ export default function CustosAtelie({ pecas, equipe }) {
   );
   const custoEquipeTotal = custoMensalistas + custoDiaristas;
   const custoEstrutura = aluguel + luz;
-  const custoTotal = custoEquipeTotal + custoEstrutura;
+
+  // Custo de produção (tecido) do mês — soma metragem × valor/metro de
+  // cada item de tecido das peças de alfaiataria pedidas nesse mês,
+  // reaproveitando o valor/metro cadastrado em Compras. Só entra quando
+  // os dois campos estão preenchidos e a metragem dá pra entender.
+  const custoProducaoTecido = useMemo(
+    () =>
+      (pecas || [])
+        .filter((p) => p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
+        .reduce((soma, p) => {
+          const doTecido = (p.tecidos || []).reduce((s, t) => {
+            const metros = metragemParaNumero(t.metragem);
+            const valorMetro = parseFloat(t.valorMetro);
+            if (metros === null || !valorMetro) return s;
+            return s + metros * valorMetro;
+          }, 0);
+          return soma + doTecido;
+        }, 0),
+    [pecas, mesAtualStr]
+  );
+
+  const custoTotal = custoEquipeTotal + custoEstrutura + prolabore + custoProducaoTecido;
 
   const receitaMes = useMemo(
     () =>
@@ -127,26 +151,37 @@ export default function CustosAtelie({ pecas, equipe }) {
           Composição do custo mensal estimado
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Equipe (mensalistas + diaristas, com base no cadastro da aba Equipe) + estrutura (aluguel + luz, configurados em Configurações).
+          Mão de obra (equipe) + custo fixo da empresa (aluguel + luz) + custo fixo pessoal (seu pró-labore) + produção
+          (tecido, pelo valor/metro cadastrado em Compras) — os três últimos configurados em Configurações.
         </div>
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mensalistas (fixo)</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra — mensalistas</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoMensalistas)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Diaristas/freelancers</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra — diaristas/freelancers</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoDiaristas)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Estrutura (aluguel + luz)</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo fixo da empresa (aluguel + luz)</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoEstrutura)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Sem equipe (só estrutura + mensalistas)</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoMensalistas + custoEstrutura)}</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo fixo pessoal (pró-labore)</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(prolabore)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — tecido do mês</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoProducaoTecido)}</div>
           </div>
         </div>
+        {custoProducaoTecido === 0 && (
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>
+            Nenhum tecido com valor/metro cadastrado nas peças pedidas esse mês ainda — preencha em Compras pra esse
+            número aparecer aqui.
+          </div>
+        )}
 
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
