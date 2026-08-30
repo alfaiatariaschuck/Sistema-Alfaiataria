@@ -126,6 +126,12 @@ export default function TabelaControleProducao({
                 <td onClick={() => onAbrir && onAbrir(p.id)} style={{ padding: "12px", cursor: onAbrir ? "pointer" : "default", whiteSpace: "nowrap" }}>
                   <div className="flex items-center gap-1.5">
                     <span style={{ fontWeight: 600 }}>{p.cliente || "Sem nome"}</span>
+                    <div
+                      title={`${p.percentual}% concluído — ${statusParaEtapa("alfaiataria", p.status).label}`}
+                      style={{ background: LINE, borderRadius: 3, height: 6, width: 56, flexShrink: 0 }}
+                    >
+                      <div style={{ width: `${p.percentual}%`, background: BRASS, height: 6, borderRadius: 3 }} />
+                    </div>
                     {p.dataLimiteEvento && (
                       <span
                         className="flex items-center gap-1"
