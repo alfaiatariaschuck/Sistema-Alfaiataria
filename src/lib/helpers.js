@@ -1,4 +1,4 @@
-import { ETAPAS_ACOMPANHAMENTO_ALFAIATARIA, ETAPAS_ACOMPANHAMENTO_CAMISARIA, MEDIDA_REGRAS, RESPONSAVEIS_ALFAIATARIA } from "./constants";
+import { ETAPAS_ACOMPANHAMENTO_ALFAIATARIA, ETAPAS_ACOMPANHAMENTO_CAMISARIA, MEDIDA_REGRAS } from "./constants";
 
 export function finalDaMedida(label, mp) {
   const r = MEDIDA_REGRAS[label];
@@ -148,12 +148,13 @@ export function mediaDiasProducaoComFallback(pecas) {
 // simular horas por freelancer.
 //
 // Número de lanes: pelo menos uma por peça já em produção (cada uma
-// ocupada até o fim estimado dela), mas nunca menos que o tamanho da
-// equipe conhecida (Ícaro, Felipe, Zonzo, Gabriel) — senão, quando
-// ninguém ainda marcou início em nada, o modelo empilharia todo mundo
-// numa fila única de uma pessoa só, o que superestima muito o prazo já
-// que várias peças podem começar em paralelo por pessoas diferentes.
-export function projetarPrevisoesFila(pecasAbertas, mediaDias) {
+// ocupada até o fim estimado dela), mas nunca menos que "capacidadeMinima"
+// (quantas pessoas estão trabalhando hoje, ver useEquipeProducao) — senão,
+// quando ninguém ainda marcou início em nada, o modelo empilharia todo
+// mundo numa fila única de uma pessoa só, o que superestima muito o
+// prazo já que várias peças podem começar em paralelo por pessoas
+// diferentes.
+export function projetarPrevisoesFila(pecasAbertas, mediaDias, capacidadeMinima = 1) {
   const previsoes = new Map();
   if (!mediaDias) return previsoes;
 
@@ -167,7 +168,7 @@ export function projetarPrevisoesFila(pecasAbertas, mediaDias) {
       return (a.dataPedido || "").localeCompare(b.dataPedido || "");
     });
 
-  const numLanes = Math.max(RESPONSAVEIS_ALFAIATARIA.length, emProducao.length, 1);
+  const numLanes = Math.max(capacidadeMinima || 1, emProducao.length, 1);
   const lanes = Array.from({ length: numLanes }, (_, i) =>
     i < emProducao.length ? Math.max(0, diasAte(somarDias(emProducao[i].dataInicioProducao, mediaDias)) || 0) : 0
   );
@@ -186,10 +187,10 @@ export function projetarPrevisoesFila(pecasAbertas, mediaDias) {
 // Previsão pra um pedido que ainda nem foi salvo — usada no formulário de
 // novo pedido pra já mostrar um prazo assim que o cliente fecha, levando
 // em conta a fila de quem já está esperando.
-export function previsaoParaNovaPeca(pecasAbertas, mediaDias, prioridade, dataPedido) {
+export function previsaoParaNovaPeca(pecasAbertas, mediaDias, prioridade, dataPedido, capacidadeMinima) {
   if (!mediaDias) return null;
   const stub = { id: "__novo__", dataInicioProducao: "", dataPedido: dataPedido || hojeISO(), prioridade: prioridade || "Normal" };
-  return projetarPrevisoesFila([...pecasAbertas, stub], mediaDias).get("__novo__") || null;
+  return projetarPrevisoesFila([...pecasAbertas, stub], mediaDias, capacidadeMinima).get("__novo__") || null;
 }
 
 // Traduz o status bruto do pedido/peça pra uma etapa do acompanhamento

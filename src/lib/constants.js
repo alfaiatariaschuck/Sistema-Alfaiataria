@@ -87,11 +87,6 @@ export const CATEGORIAS_DESPESA = ["Aluguel", "Água/Luz/Internet", "Impostos", 
 
 export const TIPOS_PECA = ["Traje", "Costume", "Casaco", "Bomber", "Calça", "Colete", "Blazer", "Outro"];
 
-// Nomes fixos sempre disponíveis no campo "Responsável" da alfaiataria —
-// além deles, dá pra digitar qualquer outro nome manualmente (o campo
-// não é travado, é só uma lista de sugestão).
-export const RESPONSAVEIS_ALFAIATARIA = ["Ícaro", "Felipe", "Zonzo", "Gabriel"];
-
 // Medidas de alfaiataria, agrupadas por seção (evita colisão de campos
 // com o mesmo nome, ex: "Comprimento" existe em corpo e em calça).
 export const MEDIDAS_ALFAIATARIA = {

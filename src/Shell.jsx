@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   Users,
+  Users2,
   Wallet,
 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
@@ -32,6 +33,7 @@ import { useHistoricoVendas } from "./hooks/useHistoricoVendas";
 import { useTelefonesClientes } from "./hooks/useTelefonesClientes";
 import { useEstoqueTecidos } from "./hooks/useEstoqueTecidos";
 import { useDespesas } from "./hooks/useDespesas";
+import { useEquipeProducao } from "./hooks/useEquipeProducao";
 import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
 import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
 import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
@@ -52,6 +54,7 @@ import FluxoDeCaixa from "./pages/FluxoDeCaixa";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import ControleProducao from "./pages/ControleProducao";
+import Equipe from "./pages/Equipe";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
@@ -70,6 +73,7 @@ const NAV = [
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true },
   { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true },
+  { id: "equipe", label: "Equipe", icon: Users2, primary: false },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false },
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false },
   { id: "metas", label: "Metas", icon: Target, primary: false },
@@ -129,6 +133,7 @@ export default function Shell() {
   const { clientesComTelefone } = useTelefonesClientes();
   const { estoque: estoqueTecidos, movimentos: movimentosEstoque, consumoPorTecido, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
   const { despesas, criarDespesa, marcarPaga, atualizarValorPago, removerDespesa } = useDespesas();
+  const { equipe, loading: loadingEquipe, adicionarMembro, atualizarMembro, removerMembro } = useEquipeProducao();
   const { previsoes, criarPrevisao, removerPrevisao } = usePrevisoesVenda();
   const { notas: notasVendaFutura, criarNota, removerNota } = useNotasVendaFutura();
 
@@ -313,9 +318,10 @@ export default function Shell() {
 
   const mediaDiasProducaoAlfaiataria = useMemo(() => mediaDiasProducaoComFallback(pecas), [pecas]);
   const pecasAbertasAlfaiataria = useMemo(() => pecas.filter((p) => p.status !== "Entregue"), [pecas]);
+  const capacidadeHojeAlfaiataria = useMemo(() => equipe.filter((m) => m.ativo && m.trabalhandoHoje).length || 1, [equipe]);
   const previsoesFilaAlfaiataria = useMemo(
-    () => projetarPrevisoesFila(pecasAbertasAlfaiataria, mediaDiasProducaoAlfaiataria),
-    [pecasAbertasAlfaiataria, mediaDiasProducaoAlfaiataria]
+    () => projetarPrevisoesFila(pecasAbertasAlfaiataria, mediaDiasProducaoAlfaiataria, capacidadeHojeAlfaiataria),
+    [pecasAbertasAlfaiataria, mediaDiasProducaoAlfaiataria, capacidadeHojeAlfaiataria]
   );
 
   const acoesPeca = {
@@ -540,7 +546,14 @@ export default function Shell() {
                 />
               )}
               {tab === "painel-alfaiataria" && !loadingPecas && <DashboardAlfaiataria pecas={pecas} irPara={irParaPeca} />}
-              {tab === "alfaiataria" && !loadingPecas && <PedidoAlfaiataria onCriar={salvarNovaPeca} nomesClientes={nomesClientes} pecas={pecas} />}
+              {tab === "alfaiataria" && !loadingPecas && (
+                <PedidoAlfaiataria
+                  onCriar={salvarNovaPeca}
+                  nomesClientes={nomesClientes}
+                  pecas={pecas}
+                  capacidadeProducao={capacidadeHojeAlfaiataria}
+                />
+              )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
                 <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={setSelecionadaPeca} {...acoesPeca} />
               )}
@@ -553,8 +566,12 @@ export default function Shell() {
                   onDesfazerInicio={desfazerInicioPeca}
                   mediaDiasProducao={mediaDiasProducaoAlfaiataria}
                   previsoesFila={previsoesFilaAlfaiataria}
+                  equipe={equipe}
                   irParaPeca={irParaPeca}
                 />
+              )}
+              {tab === "equipe" && (
+                <Equipe equipe={equipe} loading={loadingEquipe} onAdicionar={adicionarMembro} onCampo={atualizarMembro} onRemover={removerMembro} />
               )}
               {tab === "planos-assinatura" && !loadingPlanos && (
                 <PlanosAssinatura

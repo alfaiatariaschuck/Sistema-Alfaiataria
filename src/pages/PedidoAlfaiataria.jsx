@@ -23,7 +23,7 @@ import { mediaDiasProducaoComFallback, previsaoParaNovaPeca, statusDividido, tot
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
-export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
+export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, capacidadeProducao }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -38,14 +38,14 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
   // estiver vazio ou com o valor que a própria sugestão colocou (se você
   // já digitou uma data na mão, não sobrescreve).
   useEffect(() => {
-    const sugestao = previsaoParaNovaPeca(abertas, mediaDias, novaPeca.prioridade, novaPeca.dataPedido);
+    const sugestao = previsaoParaNovaPeca(abertas, mediaDias, novaPeca.prioridade, novaPeca.dataPedido, capacidadeProducao);
     setNovaPeca((prev) => {
       const aindaEhSugestao = prev.previsaoEntrega === "" || prev.previsaoEntrega === previsaoAuto;
       return aindaEhSugestao && sugestao ? { ...prev, previsaoEntrega: sugestao } : prev;
     });
     setPrevisaoAuto(sugestao);
     // eslint-disable-next-line
-  }, [novaPeca.dataPedido, novaPeca.prioridade, mediaDias, abertas]);
+  }, [novaPeca.dataPedido, novaPeca.prioridade, mediaDias, abertas, capacidadeProducao]);
 
   useEffect(() => {
     const key = novaPeca.cliente.trim().toLowerCase();
