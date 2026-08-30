@@ -132,6 +132,60 @@ export function previsaoEstimada(peca, mediaDias) {
   return somarDias(peca.dataInicioProducao, mediaDias);
 }
 
+// Média "com fallback": usa a produção real (início -> entrega) assim
+// que já tem histórico suficiente; enquanto isso não acumula (início é
+// recente), cai pro cálculo antigo (data do pedido -> entrega) pra não
+// deixar a sugestão sem nenhuma base.
+export function mediaDiasProducaoComFallback(pecas) {
+  return mediaDiasProducaoReal(pecas) ?? tempoMedioProducaoGenerico(pecas);
+}
+
+// Simulador de fila por "lanes": cada peça já em produção ocupa uma lane
+// até o fim estimado dela (início + média); peças ainda aguardando
+// entram, em ordem de prioridade e depois de data do pedido, na lane que
+// libera mais cedo. Assim dá pra projetar a entrega de quem ainda nem
+// começou, considerando o que já está represado na fila — sem precisar
+// simular horas por freelancer.
+export function projetarPrevisoesFila(pecasAbertas, mediaDias) {
+  const previsoes = new Map();
+  if (!mediaDias) return previsoes;
+
+  const emProducao = pecasAbertas.filter((p) => p.dataInicioProducao);
+  const aguardando = pecasAbertas
+    .filter((p) => !p.dataInicioProducao)
+    .slice()
+    .sort((a, b) => {
+      if (a.prioridade === "Alta" && b.prioridade !== "Alta") return -1;
+      if (b.prioridade === "Alta" && a.prioridade !== "Alta") return 1;
+      return (a.dataPedido || "").localeCompare(b.dataPedido || "");
+    });
+
+  // Cada peça já em produção é uma "lane" ocupada até o fim estimado dela.
+  // Sem nenhuma em produção, assume uma lane livre a partir de hoje.
+  const lanes = emProducao.length
+    ? emProducao.map((p) => Math.max(0, diasAte(somarDias(p.dataInicioProducao, mediaDias)) || 0))
+    : [0];
+
+  aguardando.forEach((p) => {
+    let idx = 0;
+    for (let i = 1; i < lanes.length; i++) if (lanes[i] < lanes[idx]) idx = i;
+    const entregaOffset = lanes[idx] + mediaDias;
+    previsoes.set(p.id, somarDias(hojeISO(), entregaOffset));
+    lanes[idx] = entregaOffset;
+  });
+
+  return previsoes;
+}
+
+// Previsão pra um pedido que ainda nem foi salvo — usada no formulário de
+// novo pedido pra já mostrar um prazo assim que o cliente fecha, levando
+// em conta a fila de quem já está esperando.
+export function previsaoParaNovaPeca(pecasAbertas, mediaDias, prioridade, dataPedido) {
+  if (!mediaDias) return null;
+  const stub = { id: "__novo__", dataInicioProducao: "", dataPedido: dataPedido || hojeISO(), prioridade: prioridade || "Normal" };
+  return projetarPrevisoesFila([...pecasAbertas, stub], mediaDias).get("__novo__") || null;
+}
+
 // Traduz o status bruto do pedido/peça pra uma etapa do acompanhamento
 // público — cobre status antigos da Alfaiataria (de antes de ter etapas
 // próprias) mapeando pro equivalente mais próximo, pra nenhum pedido

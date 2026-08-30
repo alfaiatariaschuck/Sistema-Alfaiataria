@@ -7,10 +7,11 @@ import { hojeISO } from "../lib/helpers";
 
 const VERMELHO = "#9C4A1E";
 
-// Réplica (fase 1) da planilha "Controle de Produção": fila de peças em
-// aberto + um painel de indicadores parecido com a aba DASHBOARD dela.
-// A simulação de fila por capacidade/freelancers fica pra uma fase 2.
-export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, onDesfazerInicio, mediaDiasProducao, irParaPeca }) {
+// Réplica da planilha "Controle de Produção": fila de peças em aberto +
+// um painel de indicadores parecido com a aba DASHBOARD dela, incluindo
+// uma previsão de entrega estimada (início/fila + média de produção) pra
+// quem ainda não tem uma previsão definida manualmente.
+export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, onDesfazerInicio, mediaDiasProducao, previsoesFila, irParaPeca }) {
   const abertas = useMemo(() => pecas.filter((p) => p.status !== "Entregue"), [pecas]);
   const hoje = hojeISO();
 
@@ -70,6 +71,7 @@ export default function ControleProducao({ pecas, onCampo, onPausar, onRetomar, 
           onRetomar={onRetomar}
           onDesfazerInicio={onDesfazerInicio}
           mediaDiasProducao={mediaDiasProducao}
+          previsoesFila={previsoesFila}
         />
       </Card>
     </div>

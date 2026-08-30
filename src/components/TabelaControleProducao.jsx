@@ -31,6 +31,7 @@ export default function TabelaControleProducao({
   onRetomar,
   onDesfazerInicio,
   mediaDiasProducao,
+  previsoesFila,
 }) {
   const [ordenarPor, setOrdenarPor] = useState(null);
   const [ordemDesc, setOrdemDesc] = useState(false);
@@ -42,9 +43,13 @@ export default function TabelaControleProducao({
         percentual: statusParaEtapa("alfaiataria", p.status).percentual,
         diasFila: p.dataPedido ? -diasAte(p.dataPedido) : 0,
         diasProducao: diasProducaoReal(p),
-        previsaoEstimada: previsaoEstimada(p, mediaDiasProducao),
+        previsaoEstimada: p.dataInicioProducao
+          ? previsaoEstimada(p, mediaDiasProducao)
+          : !p.previsaoEntrega
+          ? previsoesFila?.get(p.id) || null
+          : null,
       })),
-    [pecas, mediaDiasProducao]
+    [pecas, mediaDiasProducao, previsoesFila]
   );
 
   const ordenadas = useMemo(() => {

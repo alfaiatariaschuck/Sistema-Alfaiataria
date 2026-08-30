@@ -46,6 +46,7 @@ export default function DetalhePeca({
   onRetomar,
   onDesfazerInicio,
   mediaDiasProducao,
+  previsoesFila,
   onMedida,
   onCaracteristica,
   onRemover,
@@ -54,7 +55,7 @@ export default function DetalhePeca({
 }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
-  const sugestaoPrevisao = previsaoEstimada(p, mediaDiasProducao);
+  const sugestaoPrevisao = p.dataInicioProducao ? previsaoEstimada(p, mediaDiasProducao) : previsoesFila?.get(p.id) || null;
 
   function set(campo, valor) {
     onCampo(p.id, campo, valor);

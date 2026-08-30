@@ -19,7 +19,7 @@ import {
   TIPOS_PECA,
   inputStyle,
 } from "../lib/constants";
-import { somarDias, statusDividido, tempoMedioProducaoGenerico, totalDividido } from "../lib/helpers";
+import { mediaDiasProducaoComFallback, previsaoParaNovaPeca, statusDividido, totalDividido } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
@@ -30,20 +30,22 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas }) {
   const [erro, setErro] = useState(null);
   const [previsaoAuto, setPrevisaoAuto] = useState(null);
   const [temPecaAnterior, setTemPecaAnterior] = useState(false);
-  const tempoMedio = useMemo(() => tempoMedioProducaoGenerico(pecas || []), [pecas]);
+  const mediaDias = useMemo(() => mediaDiasProducaoComFallback(pecas || []), [pecas]);
+  const abertas = useMemo(() => (pecas || []).filter((p) => p.status !== "Entregue"), [pecas]);
 
-  // Sugere a previsão de entrega com base no tempo médio de produção — só
-  // mexe se o campo ainda estiver vazio ou com o valor que a própria
-  // sugestão colocou (se você já digitou uma data na mão, não sobrescreve).
+  // Sugere a previsão de entrega já considerando a fila de quem está
+  // esperando (não só a média de produção) — só mexe se o campo ainda
+  // estiver vazio ou com o valor que a própria sugestão colocou (se você
+  // já digitou uma data na mão, não sobrescreve).
   useEffect(() => {
-    const sugestao = tempoMedio != null && novaPeca.dataPedido ? somarDias(novaPeca.dataPedido, tempoMedio) : null;
+    const sugestao = previsaoParaNovaPeca(abertas, mediaDias, novaPeca.prioridade, novaPeca.dataPedido);
     setNovaPeca((prev) => {
       const aindaEhSugestao = prev.previsaoEntrega === "" || prev.previsaoEntrega === previsaoAuto;
       return aindaEhSugestao && sugestao ? { ...prev, previsaoEntrega: sugestao } : prev;
     });
     setPrevisaoAuto(sugestao);
     // eslint-disable-next-line
-  }, [novaPeca.dataPedido, tempoMedio]);
+  }, [novaPeca.dataPedido, novaPeca.prioridade, mediaDias, abertas]);
 
   useEffect(() => {
     const key = novaPeca.cliente.trim().toLowerCase();

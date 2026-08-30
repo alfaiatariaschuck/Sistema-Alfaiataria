@@ -36,7 +36,7 @@ import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
 import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
 import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
-import { hojeISO, mediaDiasProducaoReal } from "./lib/helpers";
+import { hojeISO, mediaDiasProducaoComFallback, projetarPrevisoesFila } from "./lib/helpers";
 import Dashboard from "./pages/Dashboard";
 import DashboardAlfaiataria from "./pages/DashboardAlfaiataria";
 import NovoPedido from "./pages/NovoPedido";
@@ -311,7 +311,12 @@ export default function Shell() {
     atualizarCampoPeca(pecaId, "caracteristicas", caracteristicas);
   }
 
-  const mediaDiasProducaoAlfaiataria = useMemo(() => mediaDiasProducaoReal(pecas), [pecas]);
+  const mediaDiasProducaoAlfaiataria = useMemo(() => mediaDiasProducaoComFallback(pecas), [pecas]);
+  const pecasAbertasAlfaiataria = useMemo(() => pecas.filter((p) => p.status !== "Entregue"), [pecas]);
+  const previsoesFilaAlfaiataria = useMemo(
+    () => projetarPrevisoesFila(pecasAbertasAlfaiataria, mediaDiasProducaoAlfaiataria),
+    [pecasAbertasAlfaiataria, mediaDiasProducaoAlfaiataria]
+  );
 
   const acoesPeca = {
     onCampo: atualizarCampoPeca,
@@ -319,6 +324,7 @@ export default function Shell() {
     onRetomar: retomarPeca,
     onDesfazerInicio: desfazerInicioPeca,
     mediaDiasProducao: mediaDiasProducaoAlfaiataria,
+    previsoesFila: previsoesFilaAlfaiataria,
     onMedida: atualizarMedidaPeca,
     onCaracteristica: atualizarCaracteristicaPeca,
     onRemover: (id) => {
@@ -546,6 +552,7 @@ export default function Shell() {
                   onRetomar={retomarPeca}
                   onDesfazerInicio={desfazerInicioPeca}
                   mediaDiasProducao={mediaDiasProducaoAlfaiataria}
+                  previsoesFila={previsoesFilaAlfaiataria}
                   irParaPeca={irParaPeca}
                 />
               )}
