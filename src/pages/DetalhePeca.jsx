@@ -45,7 +45,7 @@ export default function DetalhePeca({
   onPausar,
   onRetomar,
   onDesfazerInicio,
-  mediaDiasProducao,
+  mediaDiasPorTipo,
   previsoesFila,
   onMedida,
   onCaracteristica,
@@ -55,7 +55,7 @@ export default function DetalhePeca({
 }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
-  const sugestaoPrevisao = p.dataInicioProducao ? previsaoEstimada(p, mediaDiasProducao) : previsoesFila?.get(p.id) || null;
+  const sugestaoPrevisao = p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo?.(p.tipoPeca)) : previsoesFila?.get(p.id) || null;
 
   function set(campo, valor) {
     onCampo(p.id, campo, valor);
@@ -241,10 +241,11 @@ export default function DetalhePeca({
           <Field label="Previsão de entrega">
             <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
           </Field>
-          {!p.previsaoEntrega && sugestaoPrevisao && (
+          {sugestaoPrevisao && sugestaoPrevisao !== p.previsaoEntrega && (
             <div className="flex items-center gap-2 -mt-3 mb-2 flex-wrap">
               <span style={{ fontSize: 12, color: TEXT_MUTED }}>
-                Sugestão com base na média de produção: <strong style={{ color: "#16212E" }}>{fmtData(sugestaoPrevisao)}</strong>
+                {p.previsaoEntrega ? "Nova estimativa, com base no ritmo real da peça:" : "Sugestão com base na média de produção:"}{" "}
+                <strong style={{ color: "#16212E" }}>{fmtData(sugestaoPrevisao)}</strong>
               </span>
               <button
                 onClick={() => set("previsaoEntrega", sugestaoPrevisao)}

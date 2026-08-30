@@ -19,33 +19,34 @@ import {
   TIPOS_PECA,
   inputStyle,
 } from "../lib/constants";
-import { mediaDiasProducaoComFallback, previsaoParaNovaPeca, statusDividido, totalDividido } from "../lib/helpers";
+import { mediaDiasProducaoPorTipo, previsaoParaNovaPeca, statusDividido, totalDividido } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
-export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, capacidadeProducao }) {
+export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
   const [previsaoAuto, setPrevisaoAuto] = useState(null);
   const [temPecaAnterior, setTemPecaAnterior] = useState(false);
-  const mediaDias = useMemo(() => mediaDiasProducaoComFallback(pecas || []), [pecas]);
   const abertas = useMemo(() => (pecas || []).filter((p) => p.status !== "Entregue"), [pecas]);
 
   // Sugere a previsão de entrega já considerando a fila de quem está
-  // esperando (não só a média de produção) — só mexe se o campo ainda
-  // estiver vazio ou com o valor que a própria sugestão colocou (se você
-  // já digitou uma data na mão, não sobrescreve).
+  // esperando (não só a média de produção) e quem na equipe realmente
+  // produz esse tipo de peça — só mexe se o campo ainda estiver vazio ou
+  // com o valor que a própria sugestão colocou (se você já digitou uma
+  // data na mão, não sobrescreve).
   useEffect(() => {
-    const sugestao = previsaoParaNovaPeca(abertas, mediaDias, novaPeca.prioridade, novaPeca.dataPedido, capacidadeProducao);
+    const mediaDiasFn = (p) => mediaDiasProducaoPorTipo(pecas || [], p.tipoPeca);
+    const sugestao = previsaoParaNovaPeca(abertas, mediaDiasFn, novaPeca.prioridade, novaPeca.dataPedido, novaPeca.tipoPeca, equipe);
     setNovaPeca((prev) => {
       const aindaEhSugestao = prev.previsaoEntrega === "" || prev.previsaoEntrega === previsaoAuto;
       return aindaEhSugestao && sugestao ? { ...prev, previsaoEntrega: sugestao } : prev;
     });
     setPrevisaoAuto(sugestao);
     // eslint-disable-next-line
-  }, [novaPeca.dataPedido, novaPeca.prioridade, mediaDias, abertas, capacidadeProducao]);
+  }, [novaPeca.dataPedido, novaPeca.prioridade, novaPeca.tipoPeca, pecas, abertas, equipe]);
 
   useEffect(() => {
     const key = novaPeca.cliente.trim().toLowerCase();

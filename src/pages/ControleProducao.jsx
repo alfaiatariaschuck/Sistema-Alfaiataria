@@ -20,6 +20,7 @@ export default function ControleProducao({
   onRetomar,
   onDesfazerInicio,
   mediaDiasProducao,
+  mediaDiasPorTipo,
   previsoesFila,
   equipe,
   irParaPeca,
@@ -44,9 +45,11 @@ export default function ControleProducao({
       abertas.map((p) => ({
         ...p,
         previsaoEfetiva:
-          p.previsaoEntrega || (p.dataInicioProducao ? previsaoEstimada(p, mediaDiasProducao) : previsoesFila?.get(p.id)) || null,
+          p.previsaoEntrega ||
+          (p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo?.(p.tipoPeca)) : previsoesFila?.get(p.id)) ||
+          null,
       })),
-    [abertas, mediaDiasProducao, previsoesFila]
+    [abertas, mediaDiasPorTipo, previsoesFila]
   );
 
   const projecaoPrazos = useMemo(() => {
@@ -152,7 +155,7 @@ export default function ControleProducao({
           onPausar={onPausar}
           onRetomar={onRetomar}
           onDesfazerInicio={onDesfazerInicio}
-          mediaDiasProducao={mediaDiasProducao}
+          mediaDiasPorTipo={mediaDiasPorTipo}
           previsoesFila={previsoesFila}
         />
       </Card>

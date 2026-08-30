@@ -87,6 +87,18 @@ export const CATEGORIAS_DESPESA = ["Aluguel", "Água/Luz/Internet", "Impostos", 
 
 export const TIPOS_PECA = ["Traje", "Costume", "Casaco", "Bomber", "Calça", "Colete", "Blazer", "Outro"];
 
+// Estimativa inicial de dias corridos de produção por tipo de peça,
+// usada enquanto aquele tipo ainda não acumulou entregas reais
+// suficientes no sistema pra calcular a própria média (ver
+// mediaDiasProducaoPorTipo em helpers.js). Só entram aqui os tipos que
+// já têm um número confirmado pelo Tales — hoje só Calça (~1-2 dias de
+// máquina, sem contar prova). Qualquer tipo fora dessa lista usa a
+// média geral de produção até acumular dados reais próprios; dá pra
+// adicionar outros tipos aqui assim que tiver o número real de cada um.
+export const DIAS_REFERENCIA_TIPO_PECA = {
+  Calça: 2,
+};
+
 // Medidas de alfaiataria, agrupadas por seção (evita colisão de campos
 // com o mesmo nome, ex: "Comprimento" existe em corpo e em calça).
 export const MEDIDAS_ALFAIATARIA = {

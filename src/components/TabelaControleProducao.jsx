@@ -30,7 +30,7 @@ export default function TabelaControleProducao({
   onPausar,
   onRetomar,
   onDesfazerInicio,
-  mediaDiasProducao,
+  mediaDiasPorTipo,
   previsoesFila,
 }) {
   const [ordenarPor, setOrdenarPor] = useState(null);
@@ -38,18 +38,20 @@ export default function TabelaControleProducao({
 
   const enriquecidas = useMemo(
     () =>
-      pecas.map((p) => ({
-        ...p,
-        percentual: statusParaEtapa("alfaiataria", p.status).percentual,
-        diasFila: p.dataPedido ? -diasAte(p.dataPedido) : 0,
-        diasProducao: diasProducaoReal(p),
-        previsaoEstimada: p.dataInicioProducao
-          ? previsaoEstimada(p, mediaDiasProducao)
-          : !p.previsaoEntrega
-          ? previsoesFila?.get(p.id) || null
-          : null,
-      })),
-    [pecas, mediaDiasProducao, previsoesFila]
+      pecas.map((p) => {
+        const estimativa = p.dataInicioProducao
+          ? previsaoEstimada(p, mediaDiasPorTipo?.(p.tipoPeca))
+          : previsoesFila?.get(p.id) || null;
+        return {
+          ...p,
+          percentual: statusParaEtapa("alfaiataria", p.status).percentual,
+          diasFila: p.dataPedido ? -diasAte(p.dataPedido) : 0,
+          diasProducao: diasProducaoReal(p),
+          previsaoEstimada: !p.previsaoEntrega ? estimativa : null,
+          previsaoEfetiva: p.previsaoEntrega || estimativa || null,
+        };
+      }),
+    [pecas, mediaDiasPorTipo, previsoesFila]
   );
 
   const ordenadas = useMemo(() => {
@@ -106,7 +108,12 @@ export default function TabelaControleProducao({
         </thead>
         <tbody>
           {ordenadas.map((p, i) => {
-            const atrasado = p.status !== "Entregue" && p.previsaoEntrega && p.previsaoEntrega < new Date().toISOString().slice(0, 10);
+            const hoje = new Date().toISOString().slice(0, 10);
+            const daqui7dias = new Date();
+            daqui7dias.setDate(daqui7dias.getDate() + 7);
+            const limiteRisco = daqui7dias.toISOString().slice(0, 10);
+            const atrasado = p.status !== "Entregue" && p.previsaoEfetiva && p.previsaoEfetiva < hoje;
+            const emRisco = p.status !== "Entregue" && !atrasado && p.previsaoEfetiva && p.previsaoEfetiva <= limiteRisco;
             const pausado = p.situacao === "Pausado";
             return (
               <tr key={p.id} style={{ borderBottom: `1px solid ${LINE}` }} className="fx-row-hover">
@@ -114,7 +121,10 @@ export default function TabelaControleProducao({
                 <td onClick={() => onAbrir && onAbrir(p.id)} style={{ padding: "12px", cursor: onAbrir ? "pointer" : "default", whiteSpace: "nowrap" }}>
                   <div style={{ fontWeight: 600 }}>{p.cliente || "Sem nome"}</div>
                   {p.previsaoEstimada && (
-                    <div style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 400 }} title="Estimativa com base na média de produção — sem previsão manual definida">
+                    <div
+                      style={{ fontSize: 10, color: atrasado ? VERMELHO : emRisco ? "#8A6A0C" : TEXT_MUTED, fontWeight: atrasado || emRisco ? 600 : 400 }}
+                      title="Estimativa com base na média de produção — sem previsão manual definida"
+                    >
                       ~ prev. {fmtData(p.previsaoEstimada)}
                     </div>
                   )}

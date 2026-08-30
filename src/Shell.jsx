@@ -38,7 +38,7 @@ import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
 import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
 import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
-import { hojeISO, mediaDiasProducaoComFallback, projetarPrevisoesFila } from "./lib/helpers";
+import { hojeISO, mediaDiasProducaoComFallback, mediaDiasProducaoPorTipo, projetarPrevisoesFilaPorEquipe } from "./lib/helpers";
 import Dashboard from "./pages/Dashboard";
 import DashboardAlfaiataria from "./pages/DashboardAlfaiataria";
 import NovoPedido from "./pages/NovoPedido";
@@ -317,11 +317,17 @@ export default function Shell() {
   }
 
   const mediaDiasProducaoAlfaiataria = useMemo(() => mediaDiasProducaoComFallback(pecas), [pecas]);
+  const mediaDiasPorTipoAlfaiataria = useMemo(() => {
+    const cache = new Map();
+    return (tipoPeca) => {
+      if (!cache.has(tipoPeca)) cache.set(tipoPeca, mediaDiasProducaoPorTipo(pecas, tipoPeca));
+      return cache.get(tipoPeca);
+    };
+  }, [pecas]);
   const pecasAbertasAlfaiataria = useMemo(() => pecas.filter((p) => p.status !== "Entregue"), [pecas]);
-  const capacidadeHojeAlfaiataria = useMemo(() => equipe.filter((m) => m.ativo && m.trabalhandoHoje).length || 1, [equipe]);
   const previsoesFilaAlfaiataria = useMemo(
-    () => projetarPrevisoesFila(pecasAbertasAlfaiataria, mediaDiasProducaoAlfaiataria, capacidadeHojeAlfaiataria),
-    [pecasAbertasAlfaiataria, mediaDiasProducaoAlfaiataria, capacidadeHojeAlfaiataria]
+    () => projetarPrevisoesFilaPorEquipe(pecasAbertasAlfaiataria, (p) => mediaDiasPorTipoAlfaiataria(p.tipoPeca), equipe),
+    [pecasAbertasAlfaiataria, mediaDiasPorTipoAlfaiataria, equipe]
   );
 
   const acoesPeca = {
@@ -329,7 +335,7 @@ export default function Shell() {
     onPausar: pausarPeca,
     onRetomar: retomarPeca,
     onDesfazerInicio: desfazerInicioPeca,
-    mediaDiasProducao: mediaDiasProducaoAlfaiataria,
+    mediaDiasPorTipo: mediaDiasPorTipoAlfaiataria,
     previsoesFila: previsoesFilaAlfaiataria,
     onMedida: atualizarMedidaPeca,
     onCaracteristica: atualizarCaracteristicaPeca,
@@ -547,12 +553,7 @@ export default function Shell() {
               )}
               {tab === "painel-alfaiataria" && !loadingPecas && <DashboardAlfaiataria pecas={pecas} irPara={irParaPeca} />}
               {tab === "alfaiataria" && !loadingPecas && (
-                <PedidoAlfaiataria
-                  onCriar={salvarNovaPeca}
-                  nomesClientes={nomesClientes}
-                  pecas={pecas}
-                  capacidadeProducao={capacidadeHojeAlfaiataria}
-                />
+                <PedidoAlfaiataria onCriar={salvarNovaPeca} nomesClientes={nomesClientes} pecas={pecas} equipe={equipe} />
               )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
                 <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={setSelecionadaPeca} {...acoesPeca} />
@@ -565,6 +566,7 @@ export default function Shell() {
                   onRetomar={retomarPeca}
                   onDesfazerInicio={desfazerInicioPeca}
                   mediaDiasProducao={mediaDiasProducaoAlfaiataria}
+                  mediaDiasPorTipo={mediaDiasPorTipoAlfaiataria}
                   previsoesFila={previsoesFilaAlfaiataria}
                   equipe={equipe}
                   irParaPeca={irParaPeca}

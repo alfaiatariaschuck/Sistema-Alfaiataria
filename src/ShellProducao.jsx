@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { ChevronDown, ChevronUp, LayoutGrid, LogOut, Ruler, Search, Table2 } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { AlertTriangle, ChevronDown, ChevronUp, LayoutGrid, LogOut, Ruler, Search, Table2 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePecasProducao } from "./hooks/usePecasProducao";
+import { useEquipeProducao } from "./hooks/useEquipeProducao";
 import { BRASS, CANVAS, INK, INK_SOFT, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_ALFAIATARIA, TEXT_MUTED, inputStyle } from "./lib/constants";
-import { diasProducaoReal, fmtData, statusParaEtapa } from "./lib/helpers";
+import { diasProducaoReal, fmtData, hojeISO, mediaDiasProducaoPorTipo, previsaoEstimada, projetarPrevisoesFilaPorEquipe, statusParaEtapa } from "./lib/helpers";
 import { Card, Empty } from "./components/ui";
 import TabelaControleProducao from "./components/TabelaControleProducao";
 
@@ -42,13 +43,37 @@ function ResumoMedidas({ medidas, tipoPeca }) {
 export default function ShellProducao() {
   const { sair, perfil } = useAuth();
   const { pecas, loading, marcarInicio, atualizarStatus, atualizarSituacao, pausar, retomar, desfazerInicio, atualizarObservacaoProducao } = usePecasProducao();
+  const { equipe } = useEquipeProducao();
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [visualizacao, setVisualizacao] = useState("tabela");
 
-  const abertas = pecas
-    .filter((p) => p.status !== "Entregue")
-    .filter((p) => p.cliente.toLowerCase().includes(busca.toLowerCase()));
+  const todasAbertas = useMemo(() => pecas.filter((p) => p.status !== "Entregue"), [pecas]);
+  const abertas = todasAbertas.filter((p) => p.cliente.toLowerCase().includes(busca.toLowerCase()));
+
+  const mediaDiasPorTipo = useMemo(() => {
+    const cache = new Map();
+    return (tipoPeca) => {
+      if (!cache.has(tipoPeca)) cache.set(tipoPeca, mediaDiasProducaoPorTipo(pecas, tipoPeca));
+      return cache.get(tipoPeca);
+    };
+  }, [pecas]);
+
+  const previsoesFila = useMemo(
+    () => projetarPrevisoesFilaPorEquipe(todasAbertas, (p) => mediaDiasPorTipo(p.tipoPeca), equipe),
+    [todasAbertas, mediaDiasPorTipo, equipe]
+  );
+
+  // Contagem de atrasadas pra mostrar logo no topo — o Ícaro precisa ver
+  // isso de cara, sem precisar procurar linha por linha na tabela.
+  const hoje = hojeISO();
+  const atrasadas = useMemo(() => {
+    return todasAbertas.filter((p) => {
+      const previsaoEfetiva =
+        p.previsaoEntrega || (p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo(p.tipoPeca)) : previsoesFila.get(p.id)) || null;
+      return previsaoEfetiva && previsaoEfetiva < hoje;
+    }).length;
+  }, [todasAbertas, mediaDiasPorTipo, previsoesFila, hoje]);
 
   function onCampo(id, campo, valor) {
     if (campo === "situacao") atualizarSituacao(id, valor);
@@ -71,6 +96,14 @@ export default function ShellProducao() {
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6">
+        {atrasadas > 0 && (
+          <div
+            className="flex items-center gap-2 mb-4"
+            style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "10px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600 }}
+          >
+            <AlertTriangle size={16} /> {atrasadas} peça{atrasadas > 1 ? "s" : ""} com entrega atrasada — dá uma olhada na fila.
+          </div>
+        )}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 320, padding: "6px 10px" }}>
             <Search size={14} color={TEXT_MUTED} />
@@ -130,6 +163,8 @@ export default function ShellProducao() {
               onPausar={pausar}
               onRetomar={retomar}
               onDesfazerInicio={desfazerInicio}
+              mediaDiasPorTipo={mediaDiasPorTipo}
+              previsoesFila={previsoesFila}
             />
           </Card>
         )}
@@ -139,15 +174,27 @@ export default function ShellProducao() {
           {abertas.map((p) => {
             const etapa = statusParaEtapa("alfaiataria", p.status);
             const aberto = expandido === p.id;
+            const previsaoEfetiva =
+              p.previsaoEntrega || (p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo(p.tipoPeca)) : previsoesFila.get(p.id)) || null;
+            const atrasada = previsaoEfetiva && previsaoEfetiva < hoje;
             return (
               <Card key={p.id} style={{ padding: 18 }}>
                 <div className="flex items-center justify-between mb-1">
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{p.cliente || "Sem nome"}</div>
-                  <span style={{ fontSize: 12, color: TEXT_MUTED }}>{p.tipoPeca}</span>
+                  <div className="flex items-center gap-2">
+                    {atrasada && (
+                      <span className="flex items-center gap-1" style={{ color: "#9C4A1E", fontWeight: 600, fontSize: 11 }}>
+                        <AlertTriangle size={12} /> Atrasado
+                      </span>
+                    )}
+                    <span style={{ fontSize: 12, color: TEXT_MUTED }}>{p.tipoPeca}</span>
+                  </div>
                 </div>
                 <div style={{ fontSize: 12, color: TEXT_MUTED }} className="mb-2">
                   Pedido {fmtData(p.dataPedido)}
-                  {p.previsaoEntrega ? ` · Entrega prevista ${fmtData(p.previsaoEntrega)}` : ""}
+                  {previsaoEfetiva
+                    ? ` · Entrega ${p.previsaoEntrega ? "prevista" : "estimada"} ${fmtData(previsaoEfetiva)}`
+                    : ""}
                 </div>
 
                 <div className="mb-3">

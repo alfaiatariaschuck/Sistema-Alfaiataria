@@ -2,8 +2,23 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
 function rowParaMembro(row) {
-  return { id: row.id, nome: row.nome, ativo: row.ativo, trabalhandoHoje: row.trabalhando_hoje };
+  return {
+    id: row.id,
+    nome: row.nome,
+    ativo: row.ativo,
+    trabalhandoHoje: row.trabalhando_hoje,
+    tiposPeca: row.tipos_peca || [],
+    horasPorDia: row.horas_por_dia ?? 8,
+    diasPorSemana: row.dias_por_semana ?? 5,
+  };
 }
+
+const CAMPO_PARA_COLUNA = {
+  trabalhandoHoje: "trabalhando_hoje",
+  tiposPeca: "tipos_peca",
+  horasPorDia: "horas_por_dia",
+  diasPorSemana: "dias_por_semana",
+};
 
 // Equipe de produção (Ícaro + freelancers) — quem está ativo no time e
 // quem está trabalhando hoje. Usado pra sugerir nomes no campo
@@ -32,7 +47,7 @@ export function useEquipeProducao() {
   }
 
   async function atualizarMembro(id, campo, valor) {
-    const coluna = campo === "trabalhandoHoje" ? "trabalhando_hoje" : campo;
+    const coluna = CAMPO_PARA_COLUNA[campo] || campo;
     setEquipe((prev) => prev.map((m) => (m.id === id ? { ...m, [campo]: valor } : m)));
     await supabase.from("equipe_producao").update({ [coluna]: valor }).eq("id", id);
   }

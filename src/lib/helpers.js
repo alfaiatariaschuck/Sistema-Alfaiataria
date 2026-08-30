@@ -1,4 +1,4 @@
-import { ETAPAS_ACOMPANHAMENTO_ALFAIATARIA, ETAPAS_ACOMPANHAMENTO_CAMISARIA, MEDIDA_REGRAS } from "./constants";
+import { DIAS_REFERENCIA_TIPO_PECA, ETAPAS_ACOMPANHAMENTO_ALFAIATARIA, ETAPAS_ACOMPANHAMENTO_CAMISARIA, MEDIDA_REGRAS } from "./constants";
 
 export function finalDaMedida(label, mp) {
   const r = MEDIDA_REGRAS[label];
@@ -133,7 +133,7 @@ export function mediaDiasProducaoReal(pecas) {
 // histórica quando ainda não tem ritmo suficiente pra confiar nele
 // (acabou de começar, sem dias suficientes decorridos).
 export function previsaoEstimada(peca, mediaDias) {
-  if (!peca.dataInicioProducao || peca.previsaoEntrega || peca.status === "Entregue") return null;
+  if (!peca.dataInicioProducao || peca.status === "Entregue") return null;
 
   const { percentual } = statusParaEtapa("alfaiataria", peca.status);
   const diasDecorridos = diasProducaoReal(peca);
@@ -154,12 +154,33 @@ export function mediaDiasProducaoComFallback(pecas) {
   return mediaDiasProducaoReal(pecas) ?? tempoMedioProducaoGenerico(pecas);
 }
 
+// Média de dias de produção POR TIPO DE PEÇA. Enquanto um tipo ainda não
+// acumulou entregas reais suficientes (< 3), usa a estimativa inicial
+// confirmada (DIAS_REFERENCIA_TIPO_PECA — ex: calça ~2 dias) quando
+// existe uma pro tipo, senão cai pra média geral de produção. Assim que
+// o tipo acumular pelo menos 3 entregas com início e entrega
+// registrados, troca sozinho pra média REAL daquele tipo específico —
+// nenhuma migração manual necessária, só ir usando o sistema.
+export function mediaDiasProducaoPorTipo(pecas, tipoPeca) {
+  const doTipo = pecas.filter((p) => p.tipoPeca === tipoPeca);
+  const entreguesDoTipo = doTipo.filter((p) => p.status === "Entregue" && p.dataInicioProducao && p.dataEntrega);
+  if (entreguesDoTipo.length >= 3) {
+    const real = mediaDiasProducaoReal(doTipo);
+    if (real !== null) return real;
+  }
+
+  if (DIAS_REFERENCIA_TIPO_PECA[tipoPeca] != null) return DIAS_REFERENCIA_TIPO_PECA[tipoPeca];
+  return mediaDiasProducaoComFallback(pecas);
+}
+
 // Simulador de fila por "lanes": cada peça já em produção ocupa uma lane
-// até o fim estimado dela (início + média); peças ainda aguardando
-// entram, em ordem de prioridade e depois de data do pedido, na lane que
-// libera mais cedo. Assim dá pra projetar a entrega de quem ainda nem
-// começou, considerando o que já está represado na fila — sem precisar
-// simular horas por freelancer.
+// até o fim estimado dela (início + média do tipo dela); peças ainda
+// aguardando entram, em ordem de prioridade e depois de data do pedido,
+// na lane que libera mais cedo. Assim dá pra projetar a entrega de quem
+// ainda nem começou, considerando o que já está represado na fila — sem
+// precisar simular horas por freelancer. "mediaDiasFn" recebe a peça e
+// devolve a média de dias daquele tipo específico (ver
+// mediaDiasProducaoPorTipo), não um número fixo pra todo mundo.
 //
 // Número de lanes: pelo menos uma por peça já em produção (cada uma
 // ocupada até o fim estimado dela), mas nunca menos que "capacidadeMinima"
@@ -168,9 +189,8 @@ export function mediaDiasProducaoComFallback(pecas) {
 // mundo numa fila única de uma pessoa só, o que superestima muito o
 // prazo já que várias peças podem começar em paralelo por pessoas
 // diferentes.
-export function projetarPrevisoesFila(pecasAbertas, mediaDias, capacidadeMinima = 1) {
+export function projetarPrevisoesFila(pecasAbertas, mediaDiasFn, capacidadeMinima = 1) {
   const previsoes = new Map();
-  if (!mediaDias) return previsoes;
 
   const emProducao = pecasAbertas.filter((p) => p.dataInicioProducao);
   const aguardando = pecasAbertas
@@ -183,14 +203,18 @@ export function projetarPrevisoesFila(pecasAbertas, mediaDias, capacidadeMinima 
     });
 
   const numLanes = Math.max(capacidadeMinima || 1, emProducao.length, 1);
-  const lanes = Array.from({ length: numLanes }, (_, i) =>
-    i < emProducao.length ? Math.max(0, diasAte(somarDias(emProducao[i].dataInicioProducao, mediaDias)) || 0) : 0
-  );
+  const lanes = Array.from({ length: numLanes }, (_, i) => {
+    if (i >= emProducao.length) return 0;
+    const media = mediaDiasFn(emProducao[i]);
+    return media ? Math.max(0, diasAte(somarDias(emProducao[i].dataInicioProducao, media)) || 0) : 0;
+  });
 
   aguardando.forEach((p) => {
+    const media = mediaDiasFn(p);
+    if (!media) return;
     let idx = 0;
     for (let i = 1; i < lanes.length; i++) if (lanes[i] < lanes[idx]) idx = i;
-    const entregaOffset = lanes[idx] + mediaDias;
+    const entregaOffset = lanes[idx] + media;
     previsoes.set(p.id, somarDias(hojeISO(), entregaOffset));
     lanes[idx] = entregaOffset;
   });
@@ -198,13 +222,80 @@ export function projetarPrevisoesFila(pecasAbertas, mediaDias, capacidadeMinima 
   return previsoes;
 }
 
+// Junta os tipos de peça presentes num pedido em "grupos" — tipos que
+// compartilham pelo menos uma pessoa da equipe caem no mesmo grupo (ex:
+// se Ícaro e Zonzo fazem Traje e Costume, os dois viram um grupo só; se
+// só o Felipe faz Calça, Calça vira um grupo à parte). Cada grupo roda
+// sua própria fila (projetarPrevisoesFila) com a capacidade de quem
+// realmente pode produzir aquele grupo — assim uma calça não compete
+// por vaga com um traje, nem o contrário.
+function agruparTiposPorEquipe(tiposPresentes, membrosAtivos) {
+  const pai = new Map(tiposPresentes.map((t) => [t, t]));
+  function acha(t) {
+    while (pai.get(t) !== t) t = pai.get(t);
+    return t;
+  }
+  function uniao(a, b) {
+    const ra = acha(a);
+    const rb = acha(b);
+    if (ra !== rb) pai.set(ra, rb);
+  }
+  function tiposDoMembro(m) {
+    return m.tiposPeca && m.tiposPeca.length ? tiposPresentes.filter((t) => m.tiposPeca.includes(t)) : tiposPresentes;
+  }
+
+  membrosAtivos.forEach((m) => {
+    const seus = tiposDoMembro(m);
+    for (let i = 1; i < seus.length; i++) uniao(seus[0], seus[i]);
+  });
+
+  const grupos = new Map();
+  tiposPresentes.forEach((t) => {
+    const raiz = acha(t);
+    if (!grupos.has(raiz)) grupos.set(raiz, new Set());
+    grupos.get(raiz).add(t);
+  });
+
+  return [...grupos.values()].map((tiposDoGrupo) => ({
+    tipos: tiposDoGrupo,
+    membros: membrosAtivos.filter((m) => tiposDoMembro(m).some((t) => tiposDoGrupo.has(t))),
+  }));
+}
+
+// Versão do simulador de fila ciente de QUEM faz o quê: separa as peças
+// em grupos por especialidade (ver agruparTiposPorEquipe) e roda uma
+// fila independente em cada grupo, com capacidade baseada em quantos
+// dias/semana e horas/dia cada pessoa daquele grupo trabalha (ancorado
+// em 5 dias e 8h como "tempo integral" — ex: freelancer 3x/semana conta
+// como 0,6 de uma vaga). Sem ninguém cadastrado, cai pro simulador
+// simples com 1 vaga só.
+export function projetarPrevisoesFilaPorEquipe(pecasAbertas, mediaDiasFn, equipe) {
+  const membrosAtivos = (equipe || []).filter((m) => m.ativo && m.trabalhandoHoje);
+  if (!membrosAtivos.length) return projetarPrevisoesFila(pecasAbertas, mediaDiasFn, 1);
+
+  const tiposPresentes = [...new Set(pecasAbertas.map((p) => p.tipoPeca))];
+  const grupos = agruparTiposPorEquipe(tiposPresentes, membrosAtivos);
+
+  const previsoes = new Map();
+  grupos.forEach(({ tipos, membros }) => {
+    const capacidade = membros.length
+      ? Math.max(1, Math.round(membros.reduce((s, m) => s + ((m.diasPorSemana ?? 5) / 5) * ((m.horasPorDia ?? 8) / 8), 0)))
+      : 1;
+    const pecasDoGrupo = pecasAbertas.filter((p) => tipos.has(p.tipoPeca));
+    const resultado = projetarPrevisoesFila(pecasDoGrupo, mediaDiasFn, capacidade);
+    resultado.forEach((data, id) => previsoes.set(id, data));
+  });
+
+  return previsoes;
+}
+
 // Previsão pra um pedido que ainda nem foi salvo — usada no formulário de
 // novo pedido pra já mostrar um prazo assim que o cliente fecha, levando
-// em conta a fila de quem já está esperando.
-export function previsaoParaNovaPeca(pecasAbertas, mediaDias, prioridade, dataPedido, capacidadeMinima) {
-  if (!mediaDias) return null;
-  const stub = { id: "__novo__", dataInicioProducao: "", dataPedido: dataPedido || hojeISO(), prioridade: prioridade || "Normal" };
-  return projetarPrevisoesFila([...pecasAbertas, stub], mediaDias, capacidadeMinima).get("__novo__") || null;
+// em conta a fila de quem já está esperando, o tipo da peça nova e quem
+// na equipe realmente produz esse tipo.
+export function previsaoParaNovaPeca(pecasAbertas, mediaDiasFn, prioridade, dataPedido, tipoPeca, equipe) {
+  const stub = { id: "__novo__", dataInicioProducao: "", dataPedido: dataPedido || hojeISO(), prioridade: prioridade || "Normal", tipoPeca };
+  return projetarPrevisoesFilaPorEquipe([...pecasAbertas, stub], mediaDiasFn, equipe).get("__novo__") || null;
 }
 
 // Traduz o status bruto do pedido/peça pra uma etapa do acompanhamento
