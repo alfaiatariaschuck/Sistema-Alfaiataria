@@ -1,4 +1,4 @@
-import { ETAPAS_ACOMPANHAMENTO_ALFAIATARIA, ETAPAS_ACOMPANHAMENTO_CAMISARIA, MEDIDA_REGRAS } from "./constants";
+import { ETAPAS_ACOMPANHAMENTO_ALFAIATARIA, ETAPAS_ACOMPANHAMENTO_CAMISARIA, MEDIDA_REGRAS, RESPONSAVEIS_ALFAIATARIA } from "./constants";
 
 export function finalDaMedida(label, mp) {
   const r = MEDIDA_REGRAS[label];
@@ -146,6 +146,13 @@ export function mediaDiasProducaoComFallback(pecas) {
 // libera mais cedo. Assim dá pra projetar a entrega de quem ainda nem
 // começou, considerando o que já está represado na fila — sem precisar
 // simular horas por freelancer.
+//
+// Número de lanes: pelo menos uma por peça já em produção (cada uma
+// ocupada até o fim estimado dela), mas nunca menos que o tamanho da
+// equipe conhecida (Ícaro, Felipe, Zonzo, Gabriel) — senão, quando
+// ninguém ainda marcou início em nada, o modelo empilharia todo mundo
+// numa fila única de uma pessoa só, o que superestima muito o prazo já
+// que várias peças podem começar em paralelo por pessoas diferentes.
 export function projetarPrevisoesFila(pecasAbertas, mediaDias) {
   const previsoes = new Map();
   if (!mediaDias) return previsoes;
@@ -160,11 +167,10 @@ export function projetarPrevisoesFila(pecasAbertas, mediaDias) {
       return (a.dataPedido || "").localeCompare(b.dataPedido || "");
     });
 
-  // Cada peça já em produção é uma "lane" ocupada até o fim estimado dela.
-  // Sem nenhuma em produção, assume uma lane livre a partir de hoje.
-  const lanes = emProducao.length
-    ? emProducao.map((p) => Math.max(0, diasAte(somarDias(p.dataInicioProducao, mediaDias)) || 0))
-    : [0];
+  const numLanes = Math.max(RESPONSAVEIS_ALFAIATARIA.length, emProducao.length, 1);
+  const lanes = Array.from({ length: numLanes }, (_, i) =>
+    i < emProducao.length ? Math.max(0, diasAte(somarDias(emProducao[i].dataInicioProducao, mediaDias)) || 0) : 0
+  );
 
   aguardando.forEach((p) => {
     let idx = 0;
