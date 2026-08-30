@@ -384,6 +384,7 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
           ordemDesc={ordemDesc}
           onOrdenar={ordenarPorColuna}
           onAlternarContatado={alternarContatado}
+          anoFiltro={anoFiltro}
           onAbrir={(nome) => {
             setBusca(nome);
             setVisualizacao("cards");
@@ -578,7 +579,17 @@ const COLUNAS_TABELA = [
   { chave: "mesesSemComprar", label: "Inativo há" },
 ];
 
-function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAlternarContatado, onAbrir }) {
+// Camisas que o cliente comprou num ano específico — soma pedidos reais
+// (dataPedido daquele ano) + entradas da planilha antiga (campo "ano"),
+// mesmo critério já usado pra somar o total geral do cliente.
+function camisasNoAno(c, ano) {
+  if (!ano) return null;
+  const doPedidos = c.pedidos.filter((p) => (p.dataPedido || "").slice(0, 4) === ano).reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
+  const doHistorico = (c.historico || []).filter((h) => String(h.ano) === ano).reduce((s, h) => s + (parseFloat(h.quantidade) || 0), 0);
+  return doPedidos + doHistorico;
+}
+
+function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAlternarContatado, anoFiltro, onAbrir }) {
   return (
     <Card className="mb-6" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ overflowX: "auto" }}>
@@ -610,6 +621,11 @@ function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAlternar
               <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase" }}>
                 Camisas
               </th>
+              {anoFiltro && (
+                <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 600, fontSize: 11, color: BRASS, textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                  Camisas em {anoFiltro}
+                </th>
+              )}
               <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase" }}>
                 Alfaiataria
               </th>
@@ -647,6 +663,11 @@ function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAlternar
                   <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", color: TEXT_MUTED }}>
                     {totalCamisas || "—"}
                   </td>
+                  {anoFiltro && (
+                    <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", color: BRASS, fontWeight: 700 }}>
+                      {camisasNoAno(c, anoFiltro) || "—"}
+                    </td>
+                  )}
                   <td className="fx-mono" style={{ padding: "9px 16px", textAlign: "right", color: TEXT_MUTED }}>
                     {(c.pecas || []).length || "—"}
                   </td>
@@ -673,7 +694,7 @@ function TabelaClientes({ clientes, ordenarPor, ordemDesc, onOrdenar, onAlternar
             })}
             {clientes.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ padding: 24 }}>
+                <td colSpan={anoFiltro ? 10 : 9} style={{ padding: 24 }}>
                   <Empty texto="Nenhum cliente encontrado." />
                 </td>
               </tr>
