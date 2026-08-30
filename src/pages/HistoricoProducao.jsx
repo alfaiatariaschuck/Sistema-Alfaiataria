@@ -301,9 +301,14 @@ export default function HistoricoProducao({ pecas }) {
     [porTipo]
   );
 
-  // Quantidade de peças entregues por mês (agrupado pela data de
-  // entrega, últimos 12 meses com dado).
+  // Quantidade de peças entregues por mês, desde o início do histórico
+  // (agrupado pela data de entrega — sem limite de meses, é justamente
+  // pra ver a evolução completa).
   const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  function rotuloMes(mes) {
+    const [ano, m] = mes.split("-");
+    return `${MESES[parseInt(m, 10) - 1]}/${ano.slice(2)}`;
+  }
   const porMes = useMemo(() => {
     const mapa = new Map();
     entregues.forEach((p) => {
@@ -312,12 +317,22 @@ export default function HistoricoProducao({ pecas }) {
     });
     return [...mapa.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .slice(-12)
-      .map(([mes, qtd]) => {
-        const [ano, m] = mes.split("-");
-        return { chave: `${MESES[parseInt(m, 10) - 1]}/${ano.slice(2)}`, valor: qtd };
-      });
+      .map(([mes, qtd]) => ({ chave: rotuloMes(mes), valor: qtd }));
   }, [entregues]);
+
+  // Quantidade de peças VENDIDAS por mês (data do pedido, não da
+  // entrega) — todas as peças, entregues ou não, desde o início.
+  const vendasPorMes = useMemo(() => {
+    const mapa = new Map();
+    pecas.forEach((p) => {
+      if (!p.dataPedido) return;
+      const mes = p.dataPedido.slice(0, 7);
+      mapa.set(mes, (mapa.get(mes) || 0) + 1);
+    });
+    return [...mapa.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([mes, qtd]) => ({ chave: rotuloMes(mes), valor: qtd }));
+  }, [pecas]);
 
   const tabela = useMemo(
     () =>
@@ -327,12 +342,12 @@ export default function HistoricoProducao({ pecas }) {
     [entregues]
   );
 
-  if (entregues.length === 0) {
+  if (pecas.length === 0) {
     return (
       <div>
         <PageTitle eyebrow="Alfaiataria — histórico" title="Histórico de Produção" />
         <Card style={{ padding: 20 }}>
-          <Empty texto="Nenhuma peça com início e entrega registrados ainda." />
+          <Empty texto="Nenhuma peça registrada ainda." />
         </Card>
       </div>
     );
@@ -401,9 +416,19 @@ export default function HistoricoProducao({ pecas }) {
             Peças entregues por mês
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-            Quantidade entregue por mês, agrupada pela data de entrega.
+            Quantidade entregue por mês, desde o início do histórico (agrupada pela data de entrega).
           </div>
           <BarraSimples dados={porMes} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) entregue(s)`} />
+        </Card>
+
+        <Card style={{ padding: 20 }}>
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Peças vendidas por mês
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+            Quantidade de peças vendidas por mês, desde o início (agrupada pela data do pedido — entregues ou não).
+          </div>
+          <BarraSimples dados={vendasPorMes} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) vendida(s)`} />
         </Card>
       </div>
 
