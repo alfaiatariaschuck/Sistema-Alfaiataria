@@ -240,32 +240,19 @@ export default function DetalhePeca({
                     <div className="flex flex-col gap-2" style={{ width: "100%" }}>
                       <input
                         style={{ ...inputStyle, fontSize: 12, padding: "6px 8px" }}
-                        placeholder="Observação da pausa (opcional) — ex: cliente viajou até dia 20"
+                        placeholder="Motivo da pausa (opcional) — ex: cliente viajou até dia 20"
                         value={notaPausa}
                         onChange={(e) => setNotaPausa(e.target.value)}
                       />
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          onClick={() => {
-                            onPausar(p.id, "cliente_prova", notaPausa);
-                            setNotaPausa("");
-                          }}
-                          style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
-                          title="Peça pronta, esperando o cliente vir fazer a prova — não conta como tempo de produção"
-                        >
-                          Pausar (aguardando prova)
-                        </button>
-                        <button
-                          onClick={() => {
-                            onPausar(p.id, "outro", notaPausa);
-                            setNotaPausa("");
-                          }}
-                          style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
-                          title="Falta de tecido, doença, viagem etc."
-                        >
-                          Pausar (outro motivo)
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          onPausar(p.id, "outro", notaPausa);
+                          setNotaPausa("");
+                        }}
+                        style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, alignSelf: "flex-start" }}
+                      >
+                        Pausar
+                      </button>
                     </div>
                   ))}
                 <button
@@ -289,12 +276,11 @@ export default function DetalhePeca({
                   .map((pa, i) => (
                     <div key={pa.id || i} style={{ background: "#F3EEDF", borderRadius: 6, padding: "8px 10px", fontSize: 12 }}>
                       <div className="flex items-center justify-between">
-                        <span style={{ fontWeight: 600 }}>{pa.motivo === "cliente_prova" ? "Aguardando prova do cliente" : "Outro motivo"}</span>
-                        <span style={{ color: TEXT_MUTED }}>
+                        <span style={{ fontWeight: 600 }}>{pa.observacao || "Pausa sem motivo registrado"}</span>
+                        <span style={{ color: TEXT_MUTED, whiteSpace: "nowrap" }}>
                           {fmtData(pa.dataInicio)} — {pa.dataFim ? fmtData(pa.dataFim) : "em andamento"}
                         </span>
                       </div>
-                      {pa.observacao && <div style={{ color: TEXT_MUTED, marginTop: 2 }}>{pa.observacao}</div>}
                     </div>
                   ))}
               </div>
