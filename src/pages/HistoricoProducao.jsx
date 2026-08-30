@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Clock, Hourglass, PackageCheck, Timer, Zap } from "lucide-react";
+import { AlertTriangle, Clock, Hourglass, PackageCheck, Timer, Wallet, Zap } from "lucide-react";
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
 import {
   BRASS,
@@ -9,7 +9,7 @@ import {
   LINE,
   TEXT_MUTED,
 } from "../lib/constants";
-import { diasEsperaCliente, diasProducaoReal, fmtData } from "../lib/helpers";
+import { brl, diasEsperaCliente, diasProducaoReal, fmtData } from "../lib/helpers";
 
 // Cores de comparação (2 séries categóricas) — validadas com o
 // verificador de paleta do skill de dataviz (blue/orange, slots 1-2 da
@@ -240,7 +240,7 @@ function BarraSimples({ dados, sufixoValor, formatarTooltip }) {
 // Histórico de produção da alfaiataria: médias reais (início -> entrega,
 // já sem pausas) por tipo de peça e por responsável, com gráficos —
 // pensado pra apresentação/reunião de equipe, não pra edição de nada.
-export default function HistoricoProducao({ pecas }) {
+export default function HistoricoProducao({ pecas, mostrarMargem = false }) {
   const entregues = useMemo(
     () => pecas.filter((p) => p.status === "Entregue" && p.dataInicioProducao && p.dataEntrega),
     [pecas]
@@ -421,6 +421,88 @@ export default function HistoricoProducao({ pecas }) {
     [entregues]
   );
 
+  // Margem por peça: venda menos o valor devido ao Ícaro (custo de mão
+  // de obra) — não desconta tecido porque isso não é rastreado por
+  // peça no sistema, então é uma margem bruta aproximada, não líquida.
+  // Só entra quem tem valor de venda lançado. Só calculado quando
+  // mostrarMargem=true (tela do Ícaro não recebe valor_venda/valor_total
+  // do banco, então nem teria como calcular isso direito).
+  const comMargem = useMemo(() => {
+    if (!mostrarMargem) return [];
+    return entregues
+      .filter((p) => p.valorVenda !== "" && p.valorVenda != null)
+      .map((p) => {
+        const venda = parseFloat(p.valorVenda) || 0;
+        const custo = parseFloat(p.valorTotal) || 0;
+        const dias = diasProducaoReal(p);
+        return { ...p, margem: venda - custo, margemPorDia: dias ? (venda - custo) / dias : null };
+      });
+  }, [entregues, mostrarMargem]);
+
+  const margemPorTipo = useMemo(() => {
+    const mapa = new Map();
+    comMargem.forEach((p) => {
+      if (!mapa.has(p.tipoPeca)) mapa.set(p.tipoPeca, []);
+      mapa.get(p.tipoPeca).push(p.margem);
+    });
+    return [...mapa.entries()]
+      .map(([tipo, valores]) => ({ chave: tipo, valor: Math.round(valores.reduce((s, v) => s + v, 0) / valores.length), qtd: valores.length }))
+      .sort((a, b) => b.valor - a.valor);
+  }, [comMargem]);
+
+  const margemPorCliente = useMemo(() => {
+    const mapa = new Map();
+    comMargem.forEach((p) => {
+      const nome = p.cliente || "Sem nome";
+      mapa.set(nome, (mapa.get(nome) || 0) + p.margem);
+    });
+    return [...mapa.entries()]
+      .map(([nome, total]) => ({ chave: nome, valor: Math.round(total) }))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 10);
+  }, [comMargem]);
+
+  const margemResumo = useMemo(() => {
+    if (!comMargem.length) return null;
+    const total = comMargem.reduce((s, p) => s + p.margem, 0);
+    return { total, media: total / comMargem.length };
+  }, [comMargem]);
+
+  // Retrabalho: peças que precisaram de ajuste extra além do fluxo
+  // normal — sinaliza onde a produção está perdendo tempo/qualidade
+  // além do previsto.
+  const taxaRetrabalho = useMemo(() => {
+    if (!entregues.length) return null;
+    const qtd = entregues.filter((p) => p.retrabalho).length;
+    return Math.round((qtd / entregues.length) * 100);
+  }, [entregues]);
+
+  const retrabalhoPorResponsavel = useMemo(() => {
+    const mapa = new Map();
+    entregues
+      .filter((p) => p.retrabalho)
+      .forEach((p) => {
+        const nome = p.responsavel || "Sem responsável";
+        mapa.set(nome, (mapa.get(nome) || 0) + 1);
+      });
+    return [...mapa.entries()].map(([nome, qtd]) => ({ chave: nome, valor: qtd })).sort((a, b) => b.valor - a.valor);
+  }, [entregues]);
+
+  // Sazonalidade: vendas agrupadas por MÊS DO ANO (não pela data
+  // cronológica) — soma todos os anos disponíveis, pra revelar picos
+  // que se repetem (ex: casamentos em dezembro), independente de quando
+  // exatamente cada venda aconteceu.
+  const MESES_NOME = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const sazonalidade = useMemo(() => {
+    const somaPorMes = Array(12).fill(0);
+    pecas.forEach((p) => {
+      if (!p.dataPedido) return;
+      const mes = parseInt(p.dataPedido.slice(5, 7), 10) - 1;
+      if (mes >= 0 && mes < 12) somaPorMes[mes]++;
+    });
+    return MESES_NOME.map((nome, i) => ({ chave: nome, valor: somaPorMes[i] }));
+  }, [pecas]);
+
   if (pecas.length === 0) {
     return (
       <div>
@@ -442,6 +524,15 @@ export default function HistoricoProducao({ pecas }) {
         {maisRapido && <StatCard label="Mais rápida em média" value={`${maisRapido.chave} · ${maisRapido.valor}d`} icon={Zap} />}
         {maisLento && <StatCard label="Mais demorada em média" value={`${maisLento.chave} · ${maisLento.valor}d`} icon={Clock} />}
         <StatCard label="Espera média por prova" value={mediaEsperaCliente !== null ? `${mediaEsperaCliente}d` : "—"} icon={Hourglass} />
+        <StatCard
+          label="Taxa de retrabalho"
+          value={taxaRetrabalho !== null ? `${taxaRetrabalho}%` : "—"}
+          icon={AlertTriangle}
+          accent={taxaRetrabalho > 0 ? "#9C4A1E" : undefined}
+        />
+        {mostrarMargem && margemResumo !== null && (
+          <StatCard label="Margem média por peça" value={brl(margemResumo.media)} icon={Wallet} />
+        )}
       </div>
       {mediaEsperaCliente === null && (
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: -16, marginBottom: 20 }}>
@@ -509,6 +600,16 @@ export default function HistoricoProducao({ pecas }) {
           </div>
           <BarraSimples dados={vendasPorMes} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) vendida(s)`} />
         </Card>
+
+        <Card style={{ padding: 20 }}>
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Sazonalidade (vendas por mês do ano)
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+            Soma de todos os anos, por mês — mostra picos que se repetem (ex: casamentos), independente do ano exato.
+          </div>
+          <BarraSimples dados={sazonalidade} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) vendida(s) (todos os anos)`} />
+        </Card>
       </div>
 
       <Card style={{ padding: 20 }} className="mb-6">
@@ -520,6 +621,43 @@ export default function HistoricoProducao({ pecas }) {
         </div>
         <BarraVendasEntregas dados={vendasVsEntregasPorMes} />
       </Card>
+
+      {retrabalhoPorResponsavel.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Retrabalho por responsável
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+            Quantidade de peças que precisaram de ajuste extra além do fluxo normal, por quem produziu.
+          </div>
+          <BarraSimples dados={retrabalhoPorResponsavel} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) com retrabalho`} />
+        </Card>
+      )}
+
+      {mostrarMargem && margemPorTipo.length > 0 && (
+        <>
+          <Card style={{ padding: 20 }} className="mb-6">
+            <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+              Margem média por tipo de peça
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+              Venda menos o valor devido ao Ícaro (mão de obra) — não desconta tecido, que não é rastreado por peça. Margem bruta aproximada.
+              {margemResumo && ` Margem total (entregues): ${brl(margemResumo.total)}.`}
+            </div>
+            <BarraSimples dados={margemPorTipo} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${brl(d.valor)} de margem em média (${d.qtd} peça(s))`} />
+          </Card>
+
+          <Card style={{ padding: 20 }} className="mb-6">
+            <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+              Top 10 clientes por margem total
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+              Soma da margem de todas as peças entregues de cada cliente.
+            </div>
+            <BarraSimples dados={margemPorCliente} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${brl(d.valor)} de margem total`} />
+          </Card>
+        </>
+      )}
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>

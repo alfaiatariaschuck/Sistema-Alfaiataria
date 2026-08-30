@@ -8,7 +8,7 @@ import { diasEntre, hojeISO } from "../lib/helpers";
 // restrinja o resto do banco pra esse papel, essa tela nem pede esses
 // campos, então eles nunca chegam a trafegar até o navegador dele.
 const SELECT_PRODUCAO =
-  "id, cliente_id, data_pedido, previsao_entrega, previsao_manual, data_limite_evento, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, responsaveis_secoes, prioridade, situacao, medidas, caracteristicas, clientes(nome), tecidos(codigo, qtd, numero, fornecedor), pedidos_alfaiataria_pausas(motivo, data_inicio, data_fim)";
+  "id, cliente_id, data_pedido, previsao_entrega, previsao_manual, data_limite_evento, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, responsaveis_secoes, prioridade, situacao, medidas, caracteristicas, retrabalho, retrabalho_obs, clientes(nome), tecidos(codigo, qtd, numero, fornecedor), pedidos_alfaiataria_pausas(motivo, data_inicio, data_fim)";
 
 function rowParaPecaProducao(row) {
   return {
@@ -34,6 +34,8 @@ function rowParaPecaProducao(row) {
     situacao: row.situacao || "Aguardando",
     medidas: row.medidas || {},
     caracteristicas: row.caracteristicas || {},
+    retrabalho: !!row.retrabalho,
+    retrabalhoObs: row.retrabalho_obs || "",
     tecidos: row.tecidos || [],
   };
 }
@@ -101,6 +103,14 @@ export function usePecasProducao() {
     await supabase.from("pedidos_alfaiataria").update({ observacoes_producao: texto }).eq("id", id);
   }
 
+  // Marca que a peça precisou de ajuste extra (não caiu bem na prova,
+  // precisou refazer alguma parte) — o Ícaro é quem percebe isso na
+  // hora, então ele mesmo registra.
+  async function atualizarRetrabalho(id, retrabalho, retrabalhoObs) {
+    setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, retrabalho, retrabalhoObs } : p)));
+    await supabase.from("pedidos_alfaiataria").update({ retrabalho, retrabalho_obs: retrabalhoObs }).eq("id", id);
+  }
+
   // Desfaz um início marcado por engano — zera início, pausa e dias pausados.
   async function desfazerInicio(id) {
     setPecas((prev) =>
@@ -125,5 +135,6 @@ export function usePecasProducao() {
     retomar,
     desfazerInicio,
     atualizarObservacaoProducao,
+    atualizarRetrabalho,
   };
 }

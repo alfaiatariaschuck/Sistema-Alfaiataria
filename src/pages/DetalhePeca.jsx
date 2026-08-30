@@ -286,6 +286,20 @@ export default function DetalhePeca({
               </div>
             </div>
           )}
+          <div className="mb-4">
+            <label className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              <input type="checkbox" checked={p.retrabalho} onChange={(e) => { set("retrabalho", e.target.checked); }} />
+              Precisou de ajuste extra (retrabalho)
+            </label>
+            {p.retrabalho && (
+              <input
+                style={{ ...inputStyle, marginTop: 6 }}
+                placeholder="O que precisou ajustar?"
+                defaultValue={p.retrabalhoObs}
+                onBlur={(e) => set("retrabalhoObs", e.target.value)}
+              />
+            )}
+          </div>
           {p.status === "Finalização" && (
             <div className="mb-4">
               <AvisarClienteWhatsapp

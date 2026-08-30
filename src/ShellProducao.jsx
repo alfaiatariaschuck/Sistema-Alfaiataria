@@ -58,6 +58,7 @@ export default function ShellProducao() {
     retomar,
     desfazerInicio,
     atualizarObservacaoProducao,
+    atualizarRetrabalho,
   } = usePecasProducao();
   const { equipe } = useEquipeProducao();
   const [busca, setBusca] = useState("");
@@ -422,6 +423,24 @@ export default function ShellProducao() {
                         defaultValue={p.observacoesProducao}
                         onBlur={(e) => atualizarObservacaoProducao(p.id, e.target.value)}
                       />
+                    </div>
+                    <div className="mb-3">
+                      <label className="flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={p.retrabalho}
+                          onChange={(e) => atualizarRetrabalho(p.id, e.target.checked, p.retrabalhoObs)}
+                        />
+                        Precisou de ajuste extra (retrabalho)
+                      </label>
+                      {p.retrabalho && (
+                        <input
+                          style={{ ...inputStyle, marginTop: 6 }}
+                          placeholder="O que precisou ajustar?"
+                          defaultValue={p.retrabalhoObs}
+                          onBlur={(e) => atualizarRetrabalho(p.id, true, e.target.value)}
+                        />
+                      )}
                     </div>
                     {(() => {
                       const historico = pecas

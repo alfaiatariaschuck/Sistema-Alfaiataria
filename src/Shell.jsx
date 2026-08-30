@@ -581,7 +581,7 @@ export default function Shell() {
                   irParaPeca={irParaPeca}
                 />
               )}
-              {tab === "historico-producao" && !loadingPecas && <HistoricoProducao pecas={pecas} />}
+              {tab === "historico-producao" && !loadingPecas && <HistoricoProducao pecas={pecas} mostrarMargem />}
               {tab === "equipe" && (
                 <Equipe equipe={equipe} loading={loadingEquipe} onAdicionar={adicionarMembro} onCampo={atualizarMembro} onRemover={removerMembro} />
               )}
