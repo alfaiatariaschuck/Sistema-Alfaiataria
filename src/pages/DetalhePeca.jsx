@@ -57,6 +57,7 @@ export default function DetalhePeca({
 }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
+  const [notaPausa, setNotaPausa] = useState("");
   const sugestaoPrevisao = p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo?.(p.tipoPeca)) : previsoesFila?.get(p.id) || null;
   const previsaoEfetivaAtual = previsaoEfetivaDe(p, sugestaoPrevisao);
   const statusEventoAtual = statusEvento({ ...p, previsaoEfetiva: previsaoEfetivaAtual });
@@ -236,22 +237,36 @@ export default function DetalhePeca({
                       Retomar produção
                     </button>
                   ) : (
-                    <>
-                      <button
-                        onClick={() => onPausar(p.id, "cliente_prova")}
-                        style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
-                        title="Peça pronta, esperando o cliente vir fazer a prova — não conta como tempo de produção"
-                      >
-                        Pausar (aguardando prova)
-                      </button>
-                      <button
-                        onClick={() => onPausar(p.id, "outro")}
-                        style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
-                        title="Falta de tecido, doença, viagem etc."
-                      >
-                        Pausar (outro motivo)
-                      </button>
-                    </>
+                    <div className="flex flex-col gap-2" style={{ width: "100%" }}>
+                      <input
+                        style={{ ...inputStyle, fontSize: 12, padding: "6px 8px" }}
+                        placeholder="Observação da pausa (opcional) — ex: cliente viajou até dia 20"
+                        value={notaPausa}
+                        onChange={(e) => setNotaPausa(e.target.value)}
+                      />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => {
+                            onPausar(p.id, "cliente_prova", notaPausa);
+                            setNotaPausa("");
+                          }}
+                          style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                          title="Peça pronta, esperando o cliente vir fazer a prova — não conta como tempo de produção"
+                        >
+                          Pausar (aguardando prova)
+                        </button>
+                        <button
+                          onClick={() => {
+                            onPausar(p.id, "outro", notaPausa);
+                            setNotaPausa("");
+                          }}
+                          style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                          title="Falta de tecido, doença, viagem etc."
+                        >
+                          Pausar (outro motivo)
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 <button
                   onClick={() => onDesfazerInicio(p.id)}
@@ -263,6 +278,28 @@ export default function DetalhePeca({
               </>
             )}
           </div>
+          {p.pausas && p.pausas.length > 0 && (
+            <div className="mb-4">
+              <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, marginBottom: 6, textTransform: "uppercase" }}>
+                Histórico de pausas
+              </div>
+              <div className="flex flex-col gap-2">
+                {[...p.pausas]
+                  .sort((a, b) => (b.dataInicio || "").localeCompare(a.dataInicio || ""))
+                  .map((pa, i) => (
+                    <div key={pa.id || i} style={{ background: "#F3EEDF", borderRadius: 6, padding: "8px 10px", fontSize: 12 }}>
+                      <div className="flex items-center justify-between">
+                        <span style={{ fontWeight: 600 }}>{pa.motivo === "cliente_prova" ? "Aguardando prova do cliente" : "Outro motivo"}</span>
+                        <span style={{ color: TEXT_MUTED }}>
+                          {fmtData(pa.dataInicio)} — {pa.dataFim ? fmtData(pa.dataFim) : "em andamento"}
+                        </span>
+                      </div>
+                      {pa.observacao && <div style={{ color: TEXT_MUTED, marginTop: 2 }}>{pa.observacao}</div>}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
           {p.status === "Finalização" && (
             <div className="mb-4">
               <AvisarClienteWhatsapp

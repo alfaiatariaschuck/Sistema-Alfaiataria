@@ -74,6 +74,7 @@ function rowParaPeca(row) {
       motivo: pa.motivo,
       dataInicio: pa.data_inicio,
       dataFim: pa.data_fim || "",
+      observacao: pa.observacao || "",
     })),
     responsavel: row.responsavel || "",
     responsaveisSecoes: row.responsaveis_secoes || {},
@@ -255,12 +256,14 @@ export function usePedidosAlfaiataria() {
   // pedidos_alfaiataria_pausas é um log paralelo só pra categorizar por
   // motivo (cliente_prova vs outro) e poder reportar o gargalo do
   // cliente separado — não substitui a conta acima.
-  async function pausarPeca(pecaId, motivo = "outro") {
+  async function pausarPeca(pecaId, motivo = "outro", observacao = "") {
     const dataInicio = hojeISO();
     const patch = { situacao: "Pausado", dataPausaInicio: dataInicio };
     setPecas((prev) =>
       prev.map((p) =>
-        p.id === pecaId ? { ...p, ...patch, pausas: [...(p.pausas || []), { id: null, motivo, dataInicio, dataFim: "" }] } : p
+        p.id === pecaId
+          ? { ...p, ...patch, pausas: [...(p.pausas || []), { id: null, motivo, dataInicio, dataFim: "", observacao }] }
+          : p
       )
     );
     await comIndicador(async () => {
@@ -268,7 +271,7 @@ export function usePedidosAlfaiataria() {
       if (error) setErro(error.message);
       const { data: pausaRow, error: errPausa } = await supabase
         .from("pedidos_alfaiataria_pausas")
-        .insert({ peca_id: pecaId, motivo, data_inicio: dataInicio })
+        .insert({ peca_id: pecaId, motivo, data_inicio: dataInicio, observacao: observacao || null })
         .select("id")
         .single();
       if (errPausa) setErro(errPausa.message);
