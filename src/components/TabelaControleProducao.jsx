@@ -23,6 +23,7 @@ const COLUNAS = [
 export default function TabelaControleProducao({
   pecas,
   podeEditarAtribuicao,
+  podeEditarResponsavel,
   responsaveisConhecidos,
   onCampo,
   onAbrir,
@@ -154,7 +155,7 @@ export default function TabelaControleProducao({
                   )}
                 </td>
                 <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
-                  {podeEditarAtribuicao ? (
+                  {podeEditarAtribuicao || podeEditarResponsavel ? (
                     <>
                       <input
                         style={{ ...inputStyle, fontSize: 12, padding: "6px 8px", width: 130 }}

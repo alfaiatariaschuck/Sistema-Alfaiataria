@@ -80,6 +80,11 @@ export function usePecasProducao() {
     await supabase.from("pedidos_alfaiataria").update({ situacao: "Em Produção", data_pausa_inicio: null, dias_pausados: diasPausados }).eq("id", id);
   }
 
+  async function atualizarResponsavel(id, responsavel) {
+    setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, responsavel } : p)));
+    await supabase.from("pedidos_alfaiataria").update({ responsavel }).eq("id", id);
+  }
+
   async function atualizarObservacaoProducao(id, texto) {
     setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, observacoesProducao: texto } : p)));
     await supabase.from("pedidos_alfaiataria").update({ observacoes_producao: texto }).eq("id", id);
@@ -103,6 +108,7 @@ export function usePecasProducao() {
     marcarInicio,
     atualizarStatus,
     atualizarSituacao,
+    atualizarResponsavel,
     pausar,
     retomar,
     desfazerInicio,

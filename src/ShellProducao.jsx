@@ -42,7 +42,18 @@ function ResumoMedidas({ medidas, tipoPeca }) {
 // trafega nem chega perto dessa tela.
 export default function ShellProducao() {
   const { sair, perfil } = useAuth();
-  const { pecas, loading, marcarInicio, atualizarStatus, atualizarSituacao, pausar, retomar, desfazerInicio, atualizarObservacaoProducao } = usePecasProducao();
+  const {
+    pecas,
+    loading,
+    marcarInicio,
+    atualizarStatus,
+    atualizarSituacao,
+    atualizarResponsavel,
+    pausar,
+    retomar,
+    desfazerInicio,
+    atualizarObservacaoProducao,
+  } = usePecasProducao();
   const { equipe } = useEquipeProducao();
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
@@ -75,9 +86,15 @@ export default function ShellProducao() {
     }).length;
   }, [todasAbertas, mediaDiasPorTipo, previsoesFila, hoje]);
 
+  const responsaveisConhecidos = useMemo(
+    () => [...new Set([...equipe.filter((m) => m.ativo).map((m) => m.nome), ...pecas.map((p) => p.responsavel).filter(Boolean)])],
+    [pecas, equipe]
+  );
+
   function onCampo(id, campo, valor) {
     if (campo === "situacao") atualizarSituacao(id, valor);
     else if (campo === "status") atualizarStatus(id, valor);
+    else if (campo === "responsavel") atualizarResponsavel(id, valor);
   }
 
   return (
@@ -158,6 +175,8 @@ export default function ShellProducao() {
             <TabelaControleProducao
               pecas={abertas}
               podeEditarAtribuicao={false}
+              podeEditarResponsavel
+              responsaveisConhecidos={responsaveisConhecidos}
               onCampo={onCampo}
               onMarcarInicio={marcarInicio}
               onPausar={pausar}
@@ -219,20 +238,36 @@ export default function ShellProducao() {
                     </select>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Início da produção</div>
-                    {!p.dataInicioProducao ? (
-                      <button
-                        onClick={() => marcarInicio(p.id)}
-                        style={{ background: "#EDEAE0", color: BRASS, padding: "8px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, width: "100%" }}
-                      >
-                        Marcar início
-                      </button>
-                    ) : (
-                      <div style={{ fontSize: 13, fontWeight: 600, padding: "9px 0" }}>
-                        {fmtData(p.dataInicioProducao)} · {diasProducaoReal(p)}d
-                      </div>
-                    )}
+                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Responsável</div>
+                    <input
+                      style={inputStyle}
+                      list="lista-responsaveis-producao-cards"
+                      defaultValue={p.responsavel}
+                      onBlur={(e) => atualizarResponsavel(p.id, e.target.value)}
+                      placeholder="Quem vai fazer?"
+                    />
+                    <datalist id="lista-responsaveis-producao-cards">
+                      {responsaveisConhecidos.map((r) => (
+                        <option key={r} value={r} />
+                      ))}
+                    </datalist>
                   </div>
+                </div>
+
+                <div className="mb-3">
+                  <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Início da produção</div>
+                  {!p.dataInicioProducao ? (
+                    <button
+                      onClick={() => marcarInicio(p.id)}
+                      style={{ background: "#EDEAE0", color: BRASS, padding: "8px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, width: "100%" }}
+                    >
+                      Marcar início
+                    </button>
+                  ) : (
+                    <div style={{ fontSize: 13, fontWeight: 600, padding: "9px 0" }}>
+                      {fmtData(p.dataInicioProducao)} · {diasProducaoReal(p)}d
+                    </div>
+                  )}
                 </div>
                 {p.dataInicioProducao && (
                   <div className="mb-3 flex items-center gap-3 flex-wrap">
