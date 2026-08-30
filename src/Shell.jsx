@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import {
   AlertCircle,
   Archive,
+  BarChart3,
   ClipboardList,
   FileText,
   Gauge,
@@ -55,6 +56,7 @@ import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import ControleProducao from "./pages/ControleProducao";
 import Equipe from "./pages/Equipe";
+import HistoricoProducao from "./pages/HistoricoProducao";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
@@ -73,6 +75,7 @@ const NAV = [
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true },
   { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true },
+  { id: "historico-producao", label: "Histórico de Produção", icon: BarChart3, primary: false },
   { id: "equipe", label: "Equipe", icon: Users2, primary: false },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false },
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false },
@@ -578,6 +581,7 @@ export default function Shell() {
                   irParaPeca={irParaPeca}
                 />
               )}
+              {tab === "historico-producao" && !loadingPecas && <HistoricoProducao pecas={pecas} />}
               {tab === "equipe" && (
                 <Equipe equipe={equipe} loading={loadingEquipe} onAdicionar={adicionarMembro} onCampo={atualizarMembro} onRemover={removerMembro} />
               )}
