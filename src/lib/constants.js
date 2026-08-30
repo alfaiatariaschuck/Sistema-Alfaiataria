@@ -120,6 +120,7 @@ export const HORAS_REFERENCIA_TIPO_PECA = {
   Casaco: 23,
   Bomber: 23,
   Colete: 10,
+  Calça: 12,
 };
 
 // Capacidade de produção padrão (horas produtivas por dia) usada pra

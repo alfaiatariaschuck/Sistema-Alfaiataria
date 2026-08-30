@@ -237,7 +237,17 @@ export function usePedidosAlfaiataria() {
     setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
     const coluna = CAMPO_PARA_COLUNA[campo];
     if (!coluna) return;
-    const valorFinal = ["valorTotal", "pago", "valorVenda", "valorEntrada", "valorRestante"].includes(campo) ? (valor === "" ? null : Number(valor)) : valor;
+    const CAMPOS_NUMERICOS = ["valorTotal", "pago", "valorVenda", "valorEntrada", "valorRestante"];
+    // Colunas de data no Postgres não aceitam string vazia (só data
+    // válida ou nulo) — um input de data pode disparar onChange com ""
+    // no meio da digitação, antes de completar a data, então isso
+    // precisa virar null igual já fazíamos pros campos numéricos.
+    const CAMPOS_DATA = ["dataPedido", "previsaoEntrega", "dataLimiteEvento", "dataEntrega", "dataInicioProducao", "dataPausaInicio"];
+    const valorFinal = CAMPOS_NUMERICOS.includes(campo)
+      ? (valor === "" ? null : Number(valor))
+      : CAMPOS_DATA.includes(campo)
+        ? (valor === "" ? null : valor)
+        : valor;
     await comIndicador(async () => {
       const update = { [coluna]: valorFinal };
       if (campo === "previsaoEntrega") update.previsao_manual = !!valor;
