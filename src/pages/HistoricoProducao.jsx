@@ -115,6 +115,14 @@ function BarraComparativa({ dados }) {
               <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8, textAlign: "center" }}>
                 {d.chave}
               </div>
+              {d.referencia && d.real && (
+                <div
+                  className="fx-mono"
+                  style={{ fontSize: 11, fontWeight: 700, color: COR_REAL, marginTop: 2, textAlign: "center" }}
+                >
+                  {(d.real / d.referencia).toFixed(1)}x
+                </div>
+              )}
             </div>
           );
         })}
