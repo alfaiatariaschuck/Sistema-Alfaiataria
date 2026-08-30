@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
-import { BRASS_SOFT, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS_SOFT, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { fmtData } from "../lib/helpers";
 
-// Histórico de entregas — separado por linha de produção (tipo="camisaria"
-// só mostra pedidos de camisa, tipo="alfaiataria" só mostra peças). Assim
-// que um pedido/peça vira "Entregue" ele some das listas ativas (Pedidos e
+// Histórico de entregas — uma linha por vez (toggle interno Camisaria/
+// Alfaiataria), pra não precisar de duas abas na lateral. Assim que um
+// pedido/peça vira "Entregue" ele some das listas ativas (Pedidos e
 // Pedidos Alfaiataria) e passa a aparecer aqui, agrupado por cliente.
-export default function Entregues({ pedidos, pecas, tipo, irPara, irParaPeca }) {
+export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
+  const [tipo, setTipo] = useState("camisaria");
 
   const isCamisaria = tipo === "camisaria";
   const camisasEntregues = isCamisaria ? pedidos.filter((p) => p.status === "Entregue") : [];
@@ -36,7 +37,33 @@ export default function Entregues({ pedidos, pecas, tipo, irPara, irParaPeca }) 
 
   return (
     <div>
-      <PageTitle eyebrow={eyebrow} title={isCamisaria ? "Entregue Camisaria" : "Entregue Alfaiataria"} />
+      <PageTitle eyebrow={eyebrow} title="Entregues" />
+
+      <div className="flex items-center gap-2 mb-4">
+        {[
+          { id: "camisaria", label: "Camisaria" },
+          { id: "alfaiataria", label: "Alfaiataria" },
+        ].map((op) => (
+          <button
+            key={op.id}
+            onClick={() => {
+              setTipo(op.id);
+              setExpandido(null);
+            }}
+            style={{
+              background: tipo === op.id ? INK : "transparent",
+              color: tipo === op.id ? "#FFF" : TEXT_MUTED,
+              border: `1px solid ${tipo === op.id ? INK : LINE}`,
+              padding: "6px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {op.label}
+          </button>
+        ))}
+      </div>
 
       <div className="flex items-center gap-2 mb-4" style={{ ...inputStyle, maxWidth: 360, padding: "6px 10px" }}>
         <Search size={14} color={TEXT_MUTED} />

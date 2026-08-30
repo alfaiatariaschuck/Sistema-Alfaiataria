@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Archive,
   BarChart3,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   FileText,
   Gauge,
@@ -67,31 +69,34 @@ import Metas from "./pages/Metas";
 import BuscaGlobal from "./components/BuscaGlobal";
 
 const NAV = [
-  { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true },
-  { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true },
-  { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true },
-  { id: "entregues-camisaria", label: "Entregue Camisaria", icon: Archive, primary: false },
-  { id: "entregues-alfaiataria", label: "Entregue Alfaiataria", icon: Archive, primary: false },
-  { id: "compras", label: "Compras", icon: ShoppingCart, primary: true },
-  { id: "estoque-camisaria", label: "Estoque Camisaria", icon: PackageCheck, primary: false },
-  { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true },
-  { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true },
-  { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true },
-  { id: "historico-producao", label: "Histórico de Produção", icon: BarChart3, primary: false },
-  { id: "equipe", label: "Equipe", icon: Users2, primary: false },
-  { id: "custos-atelie", label: "Custos do Ateliê", icon: PiggyBank, primary: false },
-  { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false },
-  { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false },
-  { id: "metas", label: "Metas", icon: Target, primary: false },
-  { id: "consolidado", label: "Consolidado", icon: Layers, primary: false },
-  { id: "clientes", label: "Clientes", icon: Users, primary: false },
-  { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false },
-  { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false },
-  { id: "relatorio", label: "Relatório", icon: FileText, primary: false },
-  { id: "relatorio-alfaiataria", label: "Relatório Alfaiataria", icon: FileText, primary: false },
-  { id: "backup", label: "Backup", icon: ShieldCheck, primary: false },
-  { id: "config", label: "Configurações", icon: Settings, primary: false },
+  { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true, grupo: "Camisaria" },
+  { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true, grupo: "Camisaria" },
+  { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true, grupo: "Camisaria" },
+  { id: "estoque-camisaria", label: "Estoque Camisaria", icon: PackageCheck, primary: false, grupo: "Camisaria" },
+  { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false, grupo: "Camisaria" },
+  { id: "relatorio", label: "Relatório", icon: FileText, primary: false, grupo: "Camisaria" },
+
+  { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false, grupo: "Alfaiataria" },
+  { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true, grupo: "Alfaiataria" },
+  { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true, grupo: "Alfaiataria" },
+  { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true, grupo: "Alfaiataria" },
+  { id: "historico-producao", label: "Histórico de Produção", icon: BarChart3, primary: false, grupo: "Alfaiataria" },
+  { id: "equipe", label: "Equipe", icon: Users2, primary: false, grupo: "Alfaiataria" },
+  { id: "custos-atelie", label: "Custos do Ateliê", icon: PiggyBank, primary: false, grupo: "Alfaiataria" },
+  { id: "relatorio-alfaiataria", label: "Relatório Alfaiataria", icon: FileText, primary: false, grupo: "Alfaiataria" },
+
+  { id: "compras", label: "Compras", icon: ShoppingCart, primary: true, grupo: "Geral" },
+  { id: "entregues", label: "Entregues", icon: Archive, primary: false, grupo: "Geral" },
+  { id: "clientes", label: "Clientes", icon: Users, primary: false, grupo: "Geral" },
+  { id: "consolidado", label: "Consolidado", icon: Layers, primary: false, grupo: "Geral" },
+  { id: "metas", label: "Metas", icon: Target, primary: false, grupo: "Geral" },
+  { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false, grupo: "Geral" },
+  { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false, grupo: "Geral" },
+
+  { id: "backup", label: "Backup", icon: ShieldCheck, primary: false, grupo: "Sistema" },
+  { id: "config", label: "Configurações", icon: Settings, primary: false, grupo: "Sistema" },
 ];
+const GRUPOS_NAV = ["Camisaria", "Alfaiataria", "Geral", "Sistema"];
 const NAV_PRIMARIA = NAV.filter((n) => n.primary);
 const NAV_SECUNDARIA = NAV.filter((n) => !n.primary);
 
@@ -101,6 +106,14 @@ export default function Shell() {
   const [selecionado, setSelecionado] = useState(null);
   const [selecionadaPeca, setSelecionadaPeca] = useState(null);
   const [mostrarMais, setMostrarMais] = useState(false);
+  // Só o grupo da aba atual começa aberto — os outros ficam recolhidos pra
+  // lateral não ficar gigante; abrir/fechar não muda a aba selecionada.
+  const [gruposAbertos, setGruposAbertos] = useState(() => new Set([NAV.find((n) => n.id === "dashboard")?.grupo]));
+
+  useEffect(() => {
+    const grupo = NAV.find((n) => n.id === tab)?.grupo;
+    if (grupo) setGruposAbertos((prev) => (prev.has(grupo) ? prev : new Set(prev).add(grupo)));
+  }, [tab]);
 
   const { pedidos, loading, erro, saving, recarregar, limparErro, criarPedido, atualizarCampo, atualizarSubcampo, removerPedido, adicionarTecido, atualizarTecido } =
     usePedidos();
@@ -374,31 +387,56 @@ export default function Shell() {
               Controle de Pedidos
             </div>
           </div>
-          <nav className="flex-1 px-3">
-            {NAV.map((item) => {
-              const Icon = item.icon;
-              const active = tab === item.id;
+          <nav className="flex-1 px-3 overflow-y-auto">
+            {GRUPOS_NAV.map((grupo) => {
+              const itensGrupo = NAV.filter((n) => n.grupo === grupo);
+              const aberto = gruposAbertos.has(grupo);
               return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setTab(item.id);
-                    setSelecionado(null);
-                    setSelecionadaPeca(null);
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded"
-                  style={{
-                    background: active ? INK_SOFT : "transparent",
-                    borderLeft: active ? `3px solid ${BRASS}` : "3px solid transparent",
-                    color: active ? "#FFFFFF" : "#A9B4C0",
-                    fontSize: 14,
-                    fontWeight: active ? 600 : 500,
-                    transition: "all .15s",
-                  }}
-                >
-                  <Icon size={16} />
-                  {item.label}
-                </button>
+                <div key={grupo} className="mb-1">
+                  <button
+                    onClick={() =>
+                      setGruposAbertos((prev) => {
+                        const proximo = new Set(prev);
+                        if (proximo.has(grupo)) proximo.delete(grupo);
+                        else proximo.add(grupo);
+                        return proximo;
+                      })
+                    }
+                    className="w-full flex items-center justify-between px-3 py-2"
+                  >
+                    <span style={{ color: "#6B7A8C", fontSize: 11, fontWeight: 600, letterSpacing: 1 }} className="uppercase">
+                      {grupo}
+                    </span>
+                    {aberto ? <ChevronDown size={13} color="#6B7A8C" /> : <ChevronRight size={13} color="#6B7A8C" />}
+                  </button>
+                  {aberto &&
+                    itensGrupo.map((item) => {
+                      const Icon = item.icon;
+                      const active = tab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setTab(item.id);
+                            setSelecionado(null);
+                            setSelecionadaPeca(null);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded"
+                          style={{
+                            background: active ? INK_SOFT : "transparent",
+                            borderLeft: active ? `3px solid ${BRASS}` : "3px solid transparent",
+                            color: active ? "#FFFFFF" : "#A9B4C0",
+                            fontSize: 14,
+                            fontWeight: active ? 600 : 500,
+                            transition: "all .15s",
+                          }}
+                        >
+                          <Icon size={16} />
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                </div>
               );
             })}
           </nav>
@@ -526,10 +564,7 @@ export default function Shell() {
                 />
               )}
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
-              {tab === "entregues-camisaria" && <Entregues pedidos={pedidos} pecas={pecas} tipo="camisaria" irPara={irPara} irParaPeca={irParaPeca} />}
-              {tab === "entregues-alfaiataria" && !loadingPecas && (
-                <Entregues pedidos={pedidos} pecas={pecas} tipo="alfaiataria" irPara={irPara} irParaPeca={irParaPeca} />
-              )}
+              {tab === "entregues" && !loadingPecas && <Entregues pedidos={pedidos} pecas={pecas} irPara={irPara} irParaPeca={irParaPeca} />}
               {tab === "clientes" && (
                 <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} onCadastrar={cadastrarClienteManual} />
               )}
