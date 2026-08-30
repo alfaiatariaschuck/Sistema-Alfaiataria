@@ -4,7 +4,7 @@ import { useAuth } from "./contexts/AuthContext";
 import { usePecasProducao } from "./hooks/usePecasProducao";
 import { useEquipeProducao } from "./hooks/useEquipeProducao";
 import { BRASS, CANVAS, INK, INK_SOFT, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_ALFAIATARIA, TEXT_MUTED, inputStyle } from "./lib/constants";
-import { diasProducaoReal, fmtData, hojeISO, mediaDiasProducaoPorTipo, previsaoEstimada, projetarPrevisoesFilaPorEquipe, statusParaEtapa } from "./lib/helpers";
+import { diasProducaoReal, fmtData, hojeISO, mediaDiasProducaoPorTipo, previsaoEstimada, projetarPrevisoesFilaPorEquipe, statusEvento, statusParaEtapa } from "./lib/helpers";
 import { Card, Empty } from "./components/ui";
 import TabelaControleProducao from "./components/TabelaControleProducao";
 import HistoricoProducao from "./pages/HistoricoProducao";
@@ -241,10 +241,28 @@ export default function ShellProducao() {
             const previsaoEfetiva =
               p.previsaoEntrega || (p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo(p.tipoPeca)) : previsoesFila.get(p.id)) || null;
             const atrasada = previsaoEfetiva && previsaoEfetiva < hoje;
+            const statusEventoAtual = statusEvento({ ...p, previsaoEfetiva });
             return (
-              <Card key={p.id} style={{ padding: 18 }}>
+              <Card
+                key={p.id}
+                style={{
+                  padding: 18,
+                  background: statusEventoAtual === "atrasado" ? "#FBE1D6" : statusEventoAtual === "risco" ? "#FCEFC7" : undefined,
+                }}
+              >
                 <div className="flex items-center justify-between mb-1">
-                  <div style={{ fontWeight: 600, fontSize: 15 }}>{p.cliente || "Sem nome"}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span style={{ fontWeight: 600, fontSize: 15 }}>{p.cliente || "Sem nome"}</span>
+                    {p.dataLimiteEvento && (
+                      <span
+                        className="flex items-center gap-1"
+                        title={`Data limite (evento): ${fmtData(p.dataLimiteEvento)}`}
+                        style={{ fontSize: 11, fontWeight: 700, color: statusEventoAtual === "atrasado" ? "#9C4A1E" : statusEventoAtual === "risco" ? "#8A6A0C" : TEXT_MUTED }}
+                      >
+                        🎉 {fmtData(p.dataLimiteEvento)}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     {atrasada && (
                       <span className="flex items-center gap-1" style={{ color: "#9C4A1E", fontWeight: 600, fontSize: 11 }}>

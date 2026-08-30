@@ -21,7 +21,7 @@ import {
   TEXT_MUTED,
   inputStyle,
 } from "../lib/constants";
-import { brl, diasEsperaCliente, diasProducaoReal, fmtData, hojeISO, previsaoEstimada, statusDividido, statusParaEtapa, totalDividido } from "../lib/helpers";
+import { brl, diasEsperaCliente, diasProducaoReal, fmtData, hojeISO, previsaoEstimada, statusDividido, statusEvento, statusParaEtapa, totalDividido } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
@@ -58,6 +58,8 @@ export default function DetalhePeca({
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const sugestaoPrevisao = p.dataInicioProducao ? previsaoEstimada(p, mediaDiasPorTipo?.(p.tipoPeca)) : previsoesFila?.get(p.id) || null;
+  const previsaoEfetivaAtual = p.previsaoEntrega || sugestaoPrevisao || null;
+  const statusEventoAtual = statusEvento({ ...p, previsaoEfetiva: previsaoEfetivaAtual });
 
   function set(campo, valor) {
     onCampo(p.id, campo, valor);
@@ -299,6 +301,27 @@ export default function DetalhePeca({
               >
                 Atualizar pra essa data
               </button>
+            </div>
+          )}
+          <Field label="Data limite (evento do cliente)">
+            <input type="date" style={inputStyle} value={p.dataLimiteEvento || ""} onChange={(e) => set("dataLimiteEvento", e.target.value)} />
+            <span style={{ fontSize: 10, color: TEXT_MUTED }}>Casamento, formatura etc — data que não pode passar. Deixe em branco se não houver.</span>
+          </Field>
+          {p.dataLimiteEvento && (statusEventoAtual === "atrasado" || statusEventoAtual === "risco") && (
+            <div
+              className="flex items-center gap-2 mb-3"
+              style={{
+                background: statusEventoAtual === "atrasado" ? "#FBE1D6" : "#FCEFC7",
+                border: `1px solid ${statusEventoAtual === "atrasado" ? "#D98C5F" : "#E6C97A"}`,
+                borderRadius: 8,
+                padding: "10px 12px",
+              }}
+            >
+              <span style={{ fontSize: 12, color: statusEventoAtual === "atrasado" ? "#9C4A1E" : "#5A4200" }}>
+                {statusEventoAtual === "atrasado"
+                  ? `🎉 Evento em ${fmtData(p.dataLimiteEvento)} — a previsão atual não bate, ou o prazo já passou. Prioriza essa peça.`
+                  : `🎉 Evento chegando (${fmtData(p.dataLimiteEvento)}) — fica de olho mesmo estando no prazo.`}
+              </span>
             </div>
           )}
         </Card>

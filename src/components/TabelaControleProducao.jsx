@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, Pause, Play } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, PartyPopper, Pause, Play } from "lucide-react";
 import { Empty, Pill } from "./ui";
 import { BRASS, INK, LINE, STATUS_ALFAIATARIA, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { diasAte, diasProducaoReal, fmtData, previsaoEstimada, statusParaEtapa } from "../lib/helpers";
+import { diasAte, diasProducaoReal, fmtData, previsaoEstimada, statusEvento, statusParaEtapa } from "../lib/helpers";
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
@@ -43,13 +43,15 @@ export default function TabelaControleProducao({
         const estimativa = p.dataInicioProducao
           ? previsaoEstimada(p, mediaDiasPorTipo?.(p.tipoPeca))
           : previsoesFila?.get(p.id) || null;
+        const previsaoEfetiva = p.previsaoEntrega || estimativa || null;
         return {
           ...p,
           percentual: statusParaEtapa("alfaiataria", p.status).percentual,
           diasFila: p.dataPedido ? -diasAte(p.dataPedido) : 0,
           diasProducao: diasProducaoReal(p),
           previsaoEstimada: !p.previsaoEntrega ? estimativa : null,
-          previsaoEfetiva: p.previsaoEntrega || estimativa || null,
+          previsaoEfetiva,
+          statusEvento: statusEvento({ ...p, previsaoEfetiva }),
         };
       }),
     [pecas, mediaDiasPorTipo, previsoesFila]
@@ -116,11 +118,28 @@ export default function TabelaControleProducao({
             const atrasado = p.status !== "Entregue" && p.previsaoEfetiva && p.previsaoEfetiva < hoje;
             const emRisco = p.status !== "Entregue" && !atrasado && p.previsaoEfetiva && p.previsaoEfetiva <= limiteRisco;
             const pausado = p.situacao === "Pausado";
+            const corLinhaEvento =
+              p.statusEvento === "atrasado" ? "#FBE1D6" : p.statusEvento === "risco" ? "#FCEFC7" : undefined;
             return (
-              <tr key={p.id} style={{ borderBottom: `1px solid ${LINE}` }} className="fx-row-hover">
+              <tr key={p.id} style={{ borderBottom: `1px solid ${LINE}`, background: corLinhaEvento }} className="fx-row-hover">
                 <td style={{ padding: "12px", color: TEXT_MUTED }}>{i + 1}</td>
                 <td onClick={() => onAbrir && onAbrir(p.id)} style={{ padding: "12px", cursor: onAbrir ? "pointer" : "default", whiteSpace: "nowrap" }}>
-                  <div style={{ fontWeight: 600 }}>{p.cliente || "Sem nome"}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span style={{ fontWeight: 600 }}>{p.cliente || "Sem nome"}</span>
+                    {p.dataLimiteEvento && (
+                      <span
+                        className="flex items-center gap-1"
+                        title={`Data limite (evento): ${fmtData(p.dataLimiteEvento)}`}
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: p.statusEvento === "atrasado" ? VERMELHO : p.statusEvento === "risco" ? "#8A6A0C" : TEXT_MUTED,
+                        }}
+                      >
+                        <PartyPopper size={11} /> {fmtData(p.dataLimiteEvento)}
+                      </span>
+                    )}
+                  </div>
                   {p.previsaoEfetiva && (
                     <div
                       style={{ fontSize: 10, color: atrasado ? VERMELHO : emRisco ? "#8A6A0C" : TEXT_MUTED, fontWeight: atrasado || emRisco ? 600 : 400 }}

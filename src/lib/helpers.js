@@ -1,4 +1,5 @@
 import {
+  DIAS_ALERTA_EVENTO,
   DIAS_REFERENCIA_TIPO_PECA,
   ETAPAS_ACOMPANHAMENTO_ALFAIATARIA,
   ETAPAS_ACOMPANHAMENTO_CAMISARIA,
@@ -36,6 +37,24 @@ export function diasAte(iso) {
   const alvo = new Date(iso + "T00:00:00");
   const hoje = new Date(hojeISO() + "T00:00:00");
   return Math.round((alvo - hoje) / 86400000);
+}
+
+// Risco em relação à data limite de um evento do cliente (casamento,
+// formatura etc.) — separado da previsão de entrega normal, porque é
+// um compromisso rígido do cliente, não uma estimativa de produção.
+// "atrasado": a previsão atual (ou a falta dela) já aponta pra depois
+// do evento, ou o evento já passou sem entrega — precisa de atenção
+// AGORA. "risco": o evento está chegando perto (dentro de
+// DIAS_ALERTA_EVENTO), mesmo que a previsão hoje pareça tranquila —
+// produção sob medida sempre pode atrasar.
+export function statusEvento(peca) {
+  if (!peca.dataLimiteEvento || peca.status === "Entregue") return null;
+  const diasParaEvento = diasAte(peca.dataLimiteEvento);
+  if (diasParaEvento === null) return null;
+  if (diasParaEvento < 0) return "atrasado";
+  if (peca.previsaoEfetiva && peca.previsaoEfetiva > peca.dataLimiteEvento) return "atrasado";
+  if (diasParaEvento <= DIAS_ALERTA_EVENTO) return "risco";
+  return null;
 }
 
 export function diasEntre(isoInicio, isoFim) {

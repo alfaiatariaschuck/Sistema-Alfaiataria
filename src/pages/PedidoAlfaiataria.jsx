@@ -181,6 +181,15 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
                 <span style={{ fontSize: 10, color: TEXT_MUTED }}>sugerido com base no tempo médio de produção</span>
               )}
             </Field>
+            <Field label="Data limite (evento do cliente)">
+              <input
+                type="date"
+                style={inputStyle}
+                value={novaPeca.dataLimiteEvento}
+                onChange={(e) => setNovaPeca({ ...novaPeca, dataLimiteEvento: e.target.value })}
+              />
+              <span style={{ fontSize: 10, color: TEXT_MUTED }}>Casamento, formatura etc — data que não pode passar. Deixe em branco se não houver.</span>
+            </Field>
             <Field label="Status">
               <select style={inputStyle} value={novaPeca.status} onChange={(e) => setNovaPeca({ ...novaPeca, status: e.target.value })}>
                 {STATUS_ALFAIATARIA.map((s) => (

@@ -127,6 +127,12 @@ export const HORAS_REFERENCIA_TIPO_PECA = {
 // confirmado pelo Tales (não 6h).
 export const HORAS_PRODUTIVAS_POR_DIA_PADRAO = 8;
 
+// Quantos dias antes de uma data limite de evento (casamento, formatura
+// etc.) já vale acender o alerta de risco — mesmo que a produção ainda
+// esteja "no prazo" pela previsão normal, um evento rígido chegando
+// perto merece atenção redobrada.
+export const DIAS_ALERTA_EVENTO = 20;
+
 // Medidas de alfaiataria, agrupadas por seção (evita colisão de campos
 // com o mesmo nome, ex: "Comprimento" existe em corpo e em calça).
 export const MEDIDAS_ALFAIATARIA = {
