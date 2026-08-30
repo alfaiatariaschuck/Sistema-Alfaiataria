@@ -19,14 +19,16 @@ import { diasEsperaCliente, diasProducaoReal, fmtData } from "../lib/helpers";
 const COR_REFERENCIA = "#eb6834";
 const COR_REAL = "#2a78d6";
 
-// Aqui "referência" é sempre a conta pura de horas de desenvolvimento
-// da planilha de parâmetros (ex.: 23h pra um traje) convertida em dias
-// pela capacidade produtiva padrão — de propósito NÃO usa
-// DIAS_REFERENCIA_TIPO_PECA (esse número já foi recalibrado com o
-// próprio histórico real, então empataria com a barra "Real" e
-// esconderia o atraso que é justamente o que esse gráfico existe pra
-// mostrar).
-function diasReferenciaTipo(tipo) {
+// Dias de produção pura (máquina/trabalho manual), sem prova nem
+// espera — vem das horas de desenvolvimento da planilha de parâmetros
+// (ex.: 23h pra um traje) convertidas em dias pela capacidade
+// produtiva padrão. Isso sozinho é otimista demais como "referência":
+// não conta o gargalo real de prova/peça parada, que segundo o Tales é
+// inevitável mesmo indo tudo bem — por isso a referência final soma
+// esse número de produção com o "gargalo típico" (melhor resultado
+// real já registrado menos a produção pura), em vez de usar só a
+// conta de horas.
+function diasProducaoBaseTipo(tipo) {
   const horas = HORAS_REFERENCIA_TIPO_PECA[tipo];
   if (!horas) return null;
   return Math.max(1, Math.round(horas / HORAS_PRODUTIVAS_POR_DIA_PADRAO));
@@ -127,16 +129,16 @@ function BarraDuasSeries({ dados, corA, corB, legendaA, legendaB, tooltipDe, not
 }
 
 function BarraComparativa({ dados }) {
-  const dadosAB = dados.map((d) => ({ chave: d.chave, a: d.referencia, b: d.real, horas: d.horas }));
+  const dadosAB = dados.map((d) => ({ chave: d.chave, a: d.referencia, b: d.real, producaoBase: d.producaoBase, gargalo: d.gargalo }));
   return (
     <BarraDuasSeries
       dados={dadosAB}
       corA={COR_REFERENCIA}
       corB={COR_REAL}
-      legendaA="Referência (parâmetro)"
+      legendaA="Referência (produção + gargalo típico)"
       legendaB="Real (histórico)"
       tooltipDe={(d) =>
-        `${d.chave}: referência ${d.a ?? "—"}d${d.horas ? ` (${d.horas}h)` : ""} · real ${d.b ?? "—"}d` +
+        `${d.chave}: referência ${d.a ?? "—"}d (${d.producaoBase}d produção + ${d.gargalo}d prova/espera) · real ${d.b ?? "—"}d` +
         (d.a && d.b ? ` — ${(d.b / d.a).toFixed(1)}x mais devagar` : "")
       }
       notaDe={(d) =>
@@ -244,7 +246,7 @@ export default function HistoricoProducao({ pecas }) {
     [pecas]
   );
 
-  const porTipo = useMemo(() => {
+  const valoresPorTipo = useMemo(() => {
     const mapa = new Map();
     entregues.forEach((p) => {
       const dias = diasProducaoReal(p);
@@ -252,14 +254,29 @@ export default function HistoricoProducao({ pecas }) {
       if (!mapa.has(p.tipoPeca)) mapa.set(p.tipoPeca, []);
       mapa.get(p.tipoPeca).push(dias);
     });
-    return [...mapa.entries()]
-      .map(([tipo, valores]) => ({
-        chave: tipo,
-        valor: Math.round(valores.reduce((s, v) => s + v, 0) / valores.length),
-        qtd: valores.length,
-      }))
-      .sort((a, b) => b.valor - a.valor);
+    return mapa;
   }, [entregues]);
+
+  const porTipo = useMemo(
+    () =>
+      [...valoresPorTipo.entries()]
+        .map(([tipo, valores]) => ({
+          chave: tipo,
+          valor: Math.round(valores.reduce((s, v) => s + v, 0) / valores.length),
+          qtd: valores.length,
+        }))
+        .sort((a, b) => b.valor - a.valor),
+    [valoresPorTipo]
+  );
+
+  // Melhor resultado real já registrado por tipo — "dando tudo certo",
+  // já inclui o gargalo de prova/espera que sempre existe na prática
+  // (diferente do cálculo puro de horas, que é otimista demais).
+  const melhorCasoPorTipo = useMemo(() => {
+    const mapa = new Map();
+    valoresPorTipo.forEach((valores, tipo) => mapa.set(tipo, Math.min(...valores)));
+    return mapa;
+  }, [valoresPorTipo]);
 
   const porResponsavel = useMemo(() => {
     const mapa = new Map();
@@ -299,21 +316,31 @@ export default function HistoricoProducao({ pecas }) {
     [comEsperaCliente]
   );
 
-  // Referência (parâmetro de horas de desenvolvimento, convertido em
-  // dias) vs Real (média histórica) — só entra na comparação o tipo que
-  // tem referência configurada.
+  // Referência = produção pura (horas de desenvolvimento) + gargalo
+  // típico (melhor resultado real já registrado menos a produção pura)
+  // — soma os dois porque o Tales apontou que só a conta de horas é
+  // otimista demais: nem o melhor caso escapa de prova/espera, então a
+  // referência tem que incluir esse gargalo pra ser honesta. Só entra
+  // na comparação o tipo que tem parâmetro de horas configurado.
   const comparativo = useMemo(
     () =>
       porTipo
-        .map((d) => ({
-          chave: d.chave,
-          real: d.valor,
-          referencia: diasReferenciaTipo(d.chave),
-          horas: HORAS_REFERENCIA_TIPO_PECA[d.chave] || null,
-          qtd: d.qtd,
-        }))
-        .filter((d) => d.referencia !== null),
-    [porTipo]
+        .map((d) => {
+          const producaoBase = diasProducaoBaseTipo(d.chave);
+          if (producaoBase === null) return null;
+          const melhorCaso = melhorCasoPorTipo.get(d.chave) ?? producaoBase;
+          const gargalo = Math.max(0, melhorCaso - producaoBase);
+          return {
+            chave: d.chave,
+            real: d.valor,
+            referencia: producaoBase + gargalo,
+            producaoBase,
+            gargalo,
+            qtd: d.qtd,
+          };
+        })
+        .filter(Boolean),
+    [porTipo, melhorCasoPorTipo]
   );
 
   // Resumo geral do atraso: soma dos dias reais vs soma dos dias de
@@ -438,14 +465,14 @@ export default function HistoricoProducao({ pecas }) {
             Referência vs. Real por tipo de peça
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-            Dias de trabalho previstos na planilha de parâmetros (ex.: 23h pra um traje) contra a média real do histórico de produção — o tamanho da diferença é o atraso real da produção.
+            Referência = dias de produção pura (horas de máquina) + gargalo típico de prova/espera (a diferença entre o melhor resultado já registrado e a produção pura) — contra a média real do histórico. A diferença que sobra é o atraso de verdade, não o gargalo que já era esperado.
           </div>
           {atrasoResumo !== null && (
             <div
               className="fx-mono"
               style={{ fontSize: 12, fontWeight: 700, color: COR_REAL, marginBottom: 16, background: "#EAF1FB", display: "inline-block", padding: "6px 12px", borderRadius: 6 }}
             >
-              No geral, a produção está levando {atrasoResumo.toFixed(1)}x o tempo previsto no parâmetro
+              No geral, a produção está levando {atrasoResumo.toFixed(1)}x o tempo de referência (produção + gargalo típico)
             </div>
           )}
           <BarraComparativa dados={comparativo} />
