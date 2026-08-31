@@ -9,10 +9,13 @@ const CHAVE_ICARO = "telefone_icaro";
 const CHAVE_SUMIDO = "cliente_sumido_meses";
 const CHAVE_META_CAMISARIA = "meta_vendas_camisaria";
 const CHAVE_META_ALFAIATARIA = "meta_vendas_alfaiataria";
-const CHAVE_ALUGUEL = "custo_aluguel_mensal";
-const CHAVE_LUZ = "custo_luz_mensal";
+const CHAVE_ALUGUEL = "custo_aluguel_mensal"; // Aluguel do ateliê (produção)
+const CHAVE_LUZ = "custo_luz_mensal"; // Luz do ateliê (produção)
+const CHAVE_ALUGUEL_LOJA = "custo_aluguel_loja_mensal";
+const CHAVE_LUZ_LOJA = "custo_luz_loja_mensal";
 const CHAVE_PROLABORE = "custo_prolabore_mensal";
 const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
+const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
 
 export default function Configuracoes() {
   const [telFabi, setTelFabi] = useState("");
@@ -22,8 +25,11 @@ export default function Configuracoes() {
   const [metaAlfaiataria, setMetaAlfaiataria] = useState("");
   const [aluguel, setAluguel] = useState("");
   const [luz, setLuz] = useState("");
+  const [aluguelLoja, setAluguelLoja] = useState("");
+  const [luzLoja, setLuzLoja] = useState("");
   const [prolabore, setProlabore] = useState("");
   const [custosFixosPJ, setCustosFixosPJ] = useState("");
+  const [planoSaudePJ, setPlanoSaudePJ] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [salvo, setSalvo] = useState(null);
 
@@ -40,8 +46,11 @@ export default function Configuracoes() {
           CHAVE_META_ALFAIATARIA,
           CHAVE_ALUGUEL,
           CHAVE_LUZ,
+          CHAVE_ALUGUEL_LOJA,
+          CHAVE_LUZ_LOJA,
           CHAVE_PROLABORE,
           CHAVE_CUSTOS_FIXOS_PJ,
+          CHAVE_PLANO_SAUDE_PJ,
         ]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_FABI) setTelFabi(row.valor || "");
@@ -51,8 +60,11 @@ export default function Configuracoes() {
         if (row.chave === CHAVE_META_ALFAIATARIA) setMetaAlfaiataria(row.valor || "");
         if (row.chave === CHAVE_ALUGUEL) setAluguel(row.valor || "");
         if (row.chave === CHAVE_LUZ) setLuz(row.valor || "");
+        if (row.chave === CHAVE_ALUGUEL_LOJA) setAluguelLoja(row.valor || "");
+        if (row.chave === CHAVE_LUZ_LOJA) setLuzLoja(row.valor || "");
         if (row.chave === CHAVE_PROLABORE) setProlabore(row.valor || "");
         if (row.chave === CHAVE_CUSTOS_FIXOS_PJ) setCustosFixosPJ(row.valor || "");
+        if (row.chave === CHAVE_PLANO_SAUDE_PJ) setPlanoSaudePJ(row.valor || "");
       });
       setCarregando(false);
     })();
@@ -68,8 +80,11 @@ export default function Configuracoes() {
       { chave: CHAVE_META_ALFAIATARIA, valor: metaAlfaiataria },
       { chave: CHAVE_ALUGUEL, valor: aluguel },
       { chave: CHAVE_LUZ, valor: luz },
+      { chave: CHAVE_ALUGUEL_LOJA, valor: aluguelLoja },
+      { chave: CHAVE_LUZ_LOJA, valor: luzLoja },
       { chave: CHAVE_PROLABORE, valor: prolabore },
       { chave: CHAVE_CUSTOS_FIXOS_PJ, valor: custosFixosPJ },
+      { chave: CHAVE_PLANO_SAUDE_PJ, valor: planoSaudePJ },
     ]);
     setSalvo(!error);
   }
@@ -120,16 +135,25 @@ export default function Configuracoes() {
             <Field label="Meta de vendas do mês — Alfaiataria (R$)">
               <input type="number" step="0.01" style={inputStyle} value={metaAlfaiataria} onChange={(e) => setMetaAlfaiataria(e.target.value)} />
             </Field>
-            <Field label="Aluguel da sala (R$/mês)">
+            <Field label="Aluguel do Ateliê — produção (R$/mês)">
               <input type="number" step="0.01" style={inputStyle} value={aluguel} onChange={(e) => setAluguel(e.target.value)} />
             </Field>
-            <Field label="Luz (R$/mês)">
+            <Field label="Luz do Ateliê — produção (R$/mês)">
               <input type="number" step="0.01" style={inputStyle} value={luz} onChange={(e) => setLuz(e.target.value)} />
+            </Field>
+            <Field label="Aluguel da Loja — camisaria (R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={aluguelLoja} onChange={(e) => setAluguelLoja(e.target.value)} />
+            </Field>
+            <Field label="Luz da Loja — camisaria (R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={luzLoja} onChange={(e) => setLuzLoja(e.target.value)} />
             </Field>
             <Field label="Seu pró-labore/retirada pessoal (R$/mês)">
               <input type="number" step="0.01" style={inputStyle} value={prolabore} onChange={(e) => setProlabore(e.target.value)} />
             </Field>
-            <Field label="Outros custos fixos PJ (contador, sistema, etc. — R$/mês)">
+            <Field label="Plano de saúde empresarial (R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={planoSaudePJ} onChange={(e) => setPlanoSaudePJ(e.target.value)} />
+            </Field>
+            <Field label="Outros custos fixos PJ (contador, impostos, sistemas, marketing, combustível, internet, outros — R$/mês)">
               <input type="number" step="0.01" style={inputStyle} value={custosFixosPJ} onChange={(e) => setCustosFixosPJ(e.target.value)} />
             </Field>
           </div>

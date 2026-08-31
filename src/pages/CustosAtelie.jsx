@@ -9,6 +9,7 @@ const CHAVE_ALUGUEL = "custo_aluguel_mensal";
 const CHAVE_LUZ = "custo_luz_mensal";
 const CHAVE_PROLABORE = "custo_prolabore_mensal";
 const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
+const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
 // Semanas por mês na média (365,25/7/12) — usado pra estimar o custo
 // mensal de quem recebe por diária (ex: freelancer 3x/semana).
 const SEMANAS_POR_MES = 4.345;
@@ -47,6 +48,7 @@ export default function CustosAtelie({ pecas, equipe }) {
   const [luz, setLuz] = useState(0);
   const [prolabore, setProlabore] = useState(0);
   const [custosFixosPJ, setCustosFixosPJ] = useState(0);
+  const [planoSaudePJ, setPlanoSaudePJ] = useState(0);
   const [carregandoConfig, setCarregandoConfig] = useState(true);
 
   useEffect(() => {
@@ -54,12 +56,13 @@ export default function CustosAtelie({ pecas, equipe }) {
       const { data } = await supabase
         .from("config")
         .select("chave, valor")
-        .in("chave", [CHAVE_ALUGUEL, CHAVE_LUZ, CHAVE_PROLABORE, CHAVE_CUSTOS_FIXOS_PJ]);
+        .in("chave", [CHAVE_ALUGUEL, CHAVE_LUZ, CHAVE_PROLABORE, CHAVE_CUSTOS_FIXOS_PJ, CHAVE_PLANO_SAUDE_PJ]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_ALUGUEL) setAluguel(parseFloat(row.valor) || 0);
         if (row.chave === CHAVE_LUZ) setLuz(parseFloat(row.valor) || 0);
         if (row.chave === CHAVE_PROLABORE) setProlabore(parseFloat(row.valor) || 0);
         if (row.chave === CHAVE_CUSTOS_FIXOS_PJ) setCustosFixosPJ(parseFloat(row.valor) || 0);
+        if (row.chave === CHAVE_PLANO_SAUDE_PJ) setPlanoSaudePJ(parseFloat(row.valor) || 0);
       });
       setCarregandoConfig(false);
     })();
@@ -87,7 +90,7 @@ export default function CustosAtelie({ pecas, equipe }) {
     [equipeComCusto]
   );
   const custoEquipeTotal = custoMensalistas + custoDiaristas;
-  const custoEstrutura = aluguel + luz + custosFixosPJ;
+  const custoEstrutura = aluguel + luz + custosFixosPJ + planoSaudePJ;
 
   // Custo de produção (tecido) do mês — soma metragem × valor/metro de
   // cada item de tecido das peças de alfaiataria pedidas nesse mês,
@@ -201,7 +204,7 @@ export default function CustosAtelie({ pecas, equipe }) {
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoDiaristas)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo fixo da empresa (aluguel + luz + outros PJ)</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo fixo da empresa (aluguel + luz do ateliê + plano de saúde + outros PJ)</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoEstrutura)}</div>
           </div>
           <div>
