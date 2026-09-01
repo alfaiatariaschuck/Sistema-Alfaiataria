@@ -33,7 +33,8 @@ export default function ContasAPagar({
   irParaPedido,
   irParaPeca,
 }) {
-  const [verTudo, setVerTudo] = useState(false);
+  const [dataIniJanela, setDataIniJanela] = useState(hojeISO());
+  const [dataFimJanela, setDataFimJanela] = useState(somarDias(hojeISO(), 14));
   const [formDespesa, setFormDespesa] = useState(false);
   const [nova, setNova] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "" });
   const [formPrevisao, setFormPrevisao] = useState(false);
@@ -65,8 +66,23 @@ export default function ContasAPagar({
   }
 
   const hoje = hojeISO();
-  const limite14 = somarDias(hoje, 14);
-  const dentroDaJanela = (dataISO) => verTudo || (dataISO || hoje) <= limite14;
+  // Período livre — data vazia de um lado significa "sem limite" desse
+  // lado, então limpar os dois campos vira "ver tudo".
+  const dentroDaJanela = (dataISO) => {
+    const data = dataISO || hoje;
+    if (dataIniJanela && data < dataIniJanela) return false;
+    if (dataFimJanela && data > dataFimJanela) return false;
+    return true;
+  };
+  function definirPeriodo(dias) {
+    setDataIniJanela(hoje);
+    setDataFimJanela(somarDias(hoje, dias));
+  }
+  function limparPeriodo() {
+    setDataIniJanela("");
+    setDataFimJanela("");
+  }
+  const verTudo = !dataIniJanela && !dataFimJanela;
 
   function recebidoEfetivo(p, valorTotal, statusTotal) {
     return valorRecebidoEfetivo({
@@ -80,7 +96,7 @@ export default function ContasAPagar({
     });
   }
 
-  // Só entra na conta (e no filtro de 14 dias) quem tem previsão de entrega
+  // Só entra na conta (e no filtro de período) quem tem previsão de entrega
   // real — sem isso não dá pra saber quando o dinheiro entra, então fica só
   // listado à parte, visível, mas fora do total (pra não distorcer o "falta
   // faturar" com algo sem data pra acontecer).
@@ -353,19 +369,44 @@ export default function ContasAPagar({
         </div>
       )}
 
-      <div className="flex items-center gap-2 mb-5">
+      <div className="flex items-center gap-2 mb-5 flex-wrap">
+        {[
+          { rotulo: "7 dias", dias: 7 },
+          { rotulo: "14 dias", dias: 14 },
+          { rotulo: "30 dias", dias: 30 },
+        ].map(({ rotulo, dias }) => {
+          const ativo = dataIniJanela === hoje && dataFimJanela === somarDias(hoje, dias);
+          return (
+            <button
+              key={rotulo}
+              onClick={() => definirPeriodo(dias)}
+              style={{ background: ativo ? INK : "#EDEAE0", color: ativo ? "#FFF" : INK, padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
+            >
+              {rotulo}
+            </button>
+          );
+        })}
         <button
-          onClick={() => setVerTudo(false)}
-          style={{ background: !verTudo ? INK : "#EDEAE0", color: !verTudo ? "#FFF" : INK, padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
-        >
-          Próximos 14 dias
-        </button>
-        <button
-          onClick={() => setVerTudo(true)}
+          onClick={limparPeriodo}
           style={{ background: verTudo ? INK : "#EDEAE0", color: verTudo ? "#FFF" : INK, padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
         >
           Ver tudo
         </button>
+        <span style={{ width: 1, height: 20, background: LINE, margin: "0 4px" }} />
+        <span style={{ fontSize: 11, color: TEXT_MUTED }}>De</span>
+        <input
+          type="date"
+          value={dataIniJanela}
+          onChange={(e) => setDataIniJanela(e.target.value)}
+          style={{ ...inputStyle, padding: "6px 10px", fontSize: 12, width: 145 }}
+        />
+        <span style={{ fontSize: 11, color: TEXT_MUTED }}>até</span>
+        <input
+          type="date"
+          value={dataFimJanela}
+          onChange={(e) => setDataFimJanela(e.target.value)}
+          style={{ ...inputStyle, padding: "6px 10px", fontSize: 12, width: 145 }}
+        />
       </div>
 
       <Card style={{ padding: 16 }} className="mb-6">
@@ -479,7 +520,7 @@ export default function ContasAPagar({
             </form>
           )}
 
-          {despesasJanela.length === 0 && <Empty texto={verTudo ? "Nenhuma despesa pendente." : "Nada vencendo nos próximos 14 dias."} />}
+          {despesasJanela.length === 0 && <Empty texto={verTudo ? "Nenhuma despesa pendente." : "Nada vencendo no período selecionado."} />}
           {despesasJanela.map((d) => {
             const atrasada = d.vencimento < hoje;
             const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
@@ -693,7 +734,7 @@ export default function ContasAPagar({
           )}
 
           {receberJanela.length === 0 && previsoesJanela.length === 0 && (
-            <Empty texto={verTudo ? "Nada a receber." : "Nada esperado nos próximos 14 dias."} />
+            <Empty texto={verTudo ? "Nada a receber." : "Nada esperado no período selecionado."} />
           )}
 
           {receberJanela.map((p) => (
