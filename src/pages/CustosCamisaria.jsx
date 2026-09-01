@@ -62,6 +62,16 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
   );
   const pedidosVendidosDoMes = useMemo(() => pedidosDoMes.filter((p) => p.status !== "Doação"), [pedidosDoMes]);
 
+  // Pedidos com tecido lançado mas sem valor/metro cadastrado — o custo
+  // deles fica de fora da conta sem avisar, então lista quem é.
+  const pedidosSemValorTecido = useMemo(
+    () =>
+      pedidosDoMes.filter((p) =>
+        (p.tecidos || []).some((t) => metragemParaNumero(t.metragem) !== null && !parseFloat(t.valorMetro))
+      ),
+    [pedidosDoMes]
+  );
+
   // Mão de obra da Fabiana — não é salário fixo, é o que se paga por
   // pedido (inclui os de Doação, que ela também produz).
   const custoMaoDeObra = useMemo(
@@ -99,9 +109,14 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
   const resultado = receitaMes - custoTotal;
   const sePagando = resultado >= 0;
 
+  // Pró-labore é retirada pessoal do dono, dividida 50/50 entre as duas
+  // linhas (independe de quem vendeu mais no mês). O resto do custo
+  // compartilhado segue o rateio por receita.
   const receitaTotalAmbasLinhas = receitaMes + receitaMesOutraLinha;
   const fatiaCamisaria = receitaTotalAmbasLinhas > 0 ? receitaMes / receitaTotalAmbasLinhas : 0.5;
-  const custoCompartilhadoRateado = custoCompartilhado * fatiaCamisaria;
+  const prolaboreMetade = prolabore * 0.5;
+  const custoCompartilhadoRateavel = custosFixosPJ + planoSaudePJ;
+  const custoCompartilhadoRateado = prolaboreMetade + custoCompartilhadoRateavel * fatiaCamisaria;
   const custoTotalComRateio = custoTotal + custoCompartilhadoRateado;
 
   const historicoMensal = useMemo(() => {
@@ -140,17 +155,18 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-          Custos compartilhados da empresa — rateio por receita
+          Custos compartilhados da empresa — pró-labore meio a meio, resto por receita
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Pró-labore, contador, sistemas, marketing, impostos e plano de saúde são da empresa como um todo — o ateliê
-          também se beneficia deles, então <strong>não entram 100% no custo próprio da camisaria acima</strong>. A
-          camisaria representa {(fatiaCamisaria * 100).toFixed(0)}% da receita do mês entre as duas linhas, então é
-          essa fatia do custo compartilhado que cai sobre ela abaixo.
+          também se beneficia deles, então <strong>não entram 100% no custo próprio da camisaria acima</strong>. O
+          pró-labore é dividido <strong>50/50</strong> entre as duas linhas (é retirada pessoal sua, não tem a ver
+          com quem vendeu mais). Os outros custos compartilhados são rateados pela receita do mês — a camisaria
+          representa {(fatiaCamisaria * 100).toFixed(0)}% dela entre as duas linhas.
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Pró-labore</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Pró-labore (metade = {brl(prolaboreMetade)})</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(prolabore)}</div>
           </div>
           <div>
@@ -199,10 +215,10 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoProducaoTecido)}</div>
           </div>
         </div>
-        {custoProducaoTecido === 0 && (
-          <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 12 }}>
-            Nenhum tecido com valor/metro cadastrado nos pedidos desse mês ainda — preencha em Compras pra esse
-            número aparecer aqui.
+        {pedidosSemValorTecido.length > 0 && (
+          <div style={{ fontSize: 11, color: "#9C4A1E", marginTop: 12 }}>
+            Sem valor/metro cadastrado (custo de tecido fora da conta): {pedidosSemValorTecido.map((p) => p.cliente).join(", ")}{" "}
+            — preencha em Compras.
           </div>
         )}
       </Card>

@@ -91,7 +91,17 @@ export const FORMAS_PAGAMENTO = ["Cartão de Crédito", "PIX", "Dinheiro", "Tran
 
 export const FORNECEDORES_TECIDO = ["Imperiale", "Wtext", "LS Tecidos", "Markbel", "Erlu", "Dab Dab", "Cataguases"];
 
-export const CATEGORIAS_DESPESA = ["Aluguel", "Água/Luz/Internet", "Impostos", "Material/Tecido avulso", "Manutenção", "Salários", "Outros"];
+export const CATEGORIAS_DESPESA = [
+  "Aluguel",
+  "Água/Luz/Internet",
+  "Impostos",
+  "Material/Tecido avulso",
+  "Manutenção",
+  "Salários",
+  "Pró-labore",
+  "Plano de Saúde",
+  "Outros",
+];
 
 export const TIPOS_PECA = ["Traje", "Costume", "Casaco", "Bomber", "Calça", "Colete", "Blazer", "Outro"];
 

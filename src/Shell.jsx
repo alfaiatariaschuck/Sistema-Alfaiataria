@@ -8,6 +8,7 @@ import {
   ClipboardList,
   FileText,
   Gauge,
+  GitCompare,
   Layers,
   LayoutDashboard,
   ListChecks,
@@ -66,6 +67,7 @@ import Aviamentos from "./pages/Aviamentos";
 import HistoricoProducao from "./pages/HistoricoProducao";
 import CustosAtelie from "./pages/CustosAtelie";
 import CustosCamisaria from "./pages/CustosCamisaria";
+import ComparativoMensal from "./pages/ComparativoMensal";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
@@ -94,6 +96,7 @@ const NAV = [
   { id: "entregues", label: "Entregues", icon: Archive, primary: false, grupo: "Geral" },
   { id: "clientes", label: "Clientes", icon: Users, primary: false, grupo: "Geral" },
   { id: "consolidado", label: "Consolidado", icon: Layers, primary: false, grupo: "Geral" },
+  { id: "comparativo-mensal", label: "Comparativo Mensal", icon: GitCompare, primary: false, grupo: "Geral" },
   { id: "metas", label: "Metas", icon: Target, primary: false, grupo: "Geral" },
   { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false, grupo: "Geral" },
   { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false, grupo: "Geral" },
@@ -698,9 +701,10 @@ export default function Shell() {
               {tab === "consolidado" && !loadingPecas && !loadingPlanos && (
                 <Consolidado pedidos={pedidos} pecas={pecas} planos={planos} irPara={irPara} irParaPeca={irParaPeca} />
               )}
+              {tab === "comparativo-mensal" && !loadingPecas && !loading && <ComparativoMensal pedidos={pedidos} pecas={pecas} />}
               {tab === "metas" && !loadingPecas && <Metas pedidos={pedidos} pecas={pecas} />}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
-              {tab === "config" && <Configuracoes />}
+              {tab === "config" && <Configuracoes despesas={despesas} onCriarDespesa={criarDespesa} />}
             </>
           )}
         </main>

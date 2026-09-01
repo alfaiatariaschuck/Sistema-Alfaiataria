@@ -146,6 +146,22 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
     [pecas, mesAtualStr]
   );
 
+  // Peças com tecido lançado mas sem valor/metro cadastrado — o custo
+  // delas fica de fora da conta sem avisar, então lista quem é.
+  const pecasSemValorTecido = useMemo(
+    () =>
+      pecasDoMes.filter((p) =>
+        (p.tecidos || []).some((t) => metragemParaNumero(t.metragem) !== null && !parseFloat(t.valorMetro))
+      ),
+    [pecasDoMes]
+  );
+  // Peças de tipo composto (Traje, Costume...) sem mapeamento de
+  // aviamentos conhecido — hoje só "Outro" cai nesse caso.
+  const pecasSemAviamento = useMemo(
+    () => pecasDoMes.filter((p) => !COMPOSICAO_AVIAMENTOS[p.tipoPeca]),
+    [pecasDoMes]
+  );
+
   const receitaMes = useMemo(() => pecasDoMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0), [pecasDoMes]);
 
   const resultado = receitaMes - custoTotal;
@@ -155,9 +171,15 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
   // receita de cada uma no mês — assim nenhuma das duas carrega 100% de
   // um custo que beneficia as duas. Sem receita nenhuma das duas, divide
   // meio a meio pra não zerar a fatia.
+  // Pró-labore é retirada pessoal do dono — não faz sentido ratear por
+  // receita (ele não "produz" mais só porque uma linha vendeu mais).
+  // Divide meio a meio entre as duas operações. O resto (contador,
+  // sistemas, plano de saúde etc.) segue o rateio por receita.
   const receitaTotalAmbasLinhas = receitaMes + receitaMesOutraLinha;
   const fatiaAtelie = receitaTotalAmbasLinhas > 0 ? receitaMes / receitaTotalAmbasLinhas : 0.5;
-  const custoCompartilhadoRateado = custoCompartilhado * fatiaAtelie;
+  const prolaboreMetade = prolabore * 0.5;
+  const custoCompartilhadoRateavel = custosFixosPJ + planoSaudePJ;
+  const custoCompartilhadoRateado = prolaboreMetade + custoCompartilhadoRateavel * fatiaAtelie;
   const custoTotalComRateio = custoTotal + custoCompartilhadoRateado;
 
   const semCadastro = equipeComCusto.filter((m) => !m.tipoRemuneracao);
@@ -217,17 +239,18 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-          Custos compartilhados da empresa — rateio por receita
+          Custos compartilhados da empresa — pró-labore meio a meio, resto por receita
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Pró-labore, contador, sistemas, marketing, impostos e plano de saúde são da empresa como um todo — a
           camisaria também se beneficia deles, então <strong>não entram 100% no custo próprio do ateliê acima</strong>.
-          O ateliê representa {(fatiaAtelie * 100).toFixed(0)}% da receita do mês entre as duas linhas, então é essa
-          fatia do custo compartilhado que cai sobre ele abaixo.
+          O pró-labore é dividido <strong>50/50</strong> entre as duas linhas (é retirada pessoal sua, não tem a ver
+          com quem vendeu mais). Os outros custos compartilhados são rateados pela receita do mês — o ateliê
+          representa {(fatiaAtelie * 100).toFixed(0)}% dela entre as duas linhas.
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Pró-labore</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Pró-labore (metade = {brl(prolaboreMetade)})</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(prolabore)}</div>
           </div>
           <div>
@@ -289,16 +312,15 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoAviamentos)}</div>
           </div>
         </div>
-        {custoProducaoTecido === 0 && (
-          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>
-            Nenhum tecido com valor/metro cadastrado nas peças pedidas esse mês ainda — preencha em Compras pra esse
-            número aparecer aqui.
+        {pecasSemValorTecido.length > 0 && (
+          <div style={{ fontSize: 11, color: "#9C4A1E", marginBottom: 4 }}>
+            Sem valor/metro cadastrado (custo de tecido fora da conta): {pecasSemValorTecido.map((p) => p.cliente).join(", ")}{" "}
+            — preencha em Compras.
           </div>
         )}
-        {custoAviamentos === 0 && (
+        {pecasSemAviamento.length > 0 && (
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>
-            Nenhuma peça com aviamento cadastrado pedida esse mês ainda — ou é do tipo "Outro", que não tem
-            composição conhecida (avise se quiser mapear).
+            Sem composição de aviamento conhecida (tipo "Outro"): {pecasSemAviamento.map((p) => p.cliente).join(", ")}.
           </div>
         )}
 

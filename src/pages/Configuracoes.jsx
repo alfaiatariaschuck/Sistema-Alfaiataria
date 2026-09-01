@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Receipt } from "lucide-react";
 import { Card, Field, PageTitle } from "../components/ui";
-import { INK, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS, INK, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { brl, hojeISO } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_FABI = "telefone_fabi";
@@ -17,7 +18,7 @@ const CHAVE_PROLABORE = "custo_prolabore_mensal";
 const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
 const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
 
-export default function Configuracoes() {
+export default function Configuracoes({ despesas = [], onCriarDespesa }) {
   const [telFabi, setTelFabi] = useState("");
   const [telIcaro, setTelIcaro] = useState("");
   const [sumidoMeses, setSumidoMeses] = useState("6");
@@ -87,6 +88,57 @@ export default function Configuracoes() {
       { chave: CHAVE_PLANO_SAUDE_PJ, valor: planoSaudePJ },
     ]);
     setSalvo(!error);
+  }
+
+  const [gerando, setGerando] = useState(false);
+  const [resultadoGeracao, setResultadoGeracao] = useState(null);
+
+  // Lança em Contas a Pagar uma despesa recorrente pra cada custo fixo
+  // preenchido acima — só na primeira vez, já que "recorrente" cuida
+  // sozinho de lançar a ocorrência do mês seguinte quando marcada como
+  // paga. Se já existe uma despesa com essa descrição nesse mês, pula
+  // (evita duplicar se clicar de novo).
+  async function gerarContasAPagar() {
+    setGerando(true);
+    setResultadoGeracao(null);
+    const mesAtual = hojeISO().slice(0, 7);
+    const vencimentoPadrao = `${mesAtual}-05`;
+    const itens = [
+      { descricao: "Pró-labore", categoria: "Pró-labore", valor: prolabore },
+      { descricao: "Aluguel — Ateliê", categoria: "Aluguel", valor: aluguel },
+      { descricao: "Luz — Ateliê", categoria: "Água/Luz/Internet", valor: luz },
+      { descricao: "Aluguel — Loja", categoria: "Aluguel", valor: aluguelLoja },
+      { descricao: "Luz — Loja", categoria: "Água/Luz/Internet", valor: luzLoja },
+      { descricao: "Plano de saúde empresarial", categoria: "Plano de Saúde", valor: planoSaudePJ },
+      { descricao: "Outros custos fixos PJ", categoria: "Outros", valor: custosFixosPJ },
+    ].filter((it) => (parseFloat(it.valor) || 0) > 0);
+
+    let criadas = 0;
+    let jaExistiam = 0;
+    let totalCriado = 0;
+    for (const item of itens) {
+      const existe = despesas.some((d) => d.descricao === item.descricao && d.vencimento && d.vencimento.slice(0, 7) === mesAtual);
+      if (existe) {
+        jaExistiam++;
+        continue;
+      }
+      await onCriarDespesa({
+        descricao: item.descricao,
+        categoria: item.categoria,
+        fornecedor: "",
+        valor: item.valor,
+        vencimento: vencimentoPadrao,
+        recorrente: true,
+      });
+      criadas++;
+      totalCriado += parseFloat(item.valor) || 0;
+    }
+    setResultadoGeracao(
+      criadas > 0
+        ? `Lançadas ${criadas} conta(s) nova(s), totalizando ${brl(totalCriado)}${jaExistiam > 0 ? ` (${jaExistiam} já existiam esse mês, puladas)` : ""}.`
+        : `Nada novo pra lançar — ${jaExistiam > 0 ? "todas já existem esse mês" : "preencha algum custo fixo acima primeiro"}.`
+    );
+    setGerando(false);
   }
 
   return (
@@ -172,6 +224,33 @@ export default function Configuracoes() {
           </div>
         )}
       </Card>
+
+      {onCriarDespesa && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 16, fontWeight: 600 }}>
+            Contas a Pagar — lançar os custos fixos deste mês
+          </div>
+          <p style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 16 }}>
+            Cria (ou atualiza, se já existir) uma despesa recorrente em Contas a Pagar pra cada custo fixo preenchido
+            acima — pró-labore, aluguel/luz do ateliê e da loja, plano de saúde e outros custos PJ. Recorrente já
+            lança a próxima ocorrência automaticamente quando você marca como paga, então normalmente só precisa
+            clicar isso uma vez.
+          </p>
+          <button
+            onClick={gerarContasAPagar}
+            disabled={gerando}
+            className="flex items-center gap-1.5"
+            style={{ background: BRASS, color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13, opacity: gerando ? 0.6 : 1 }}
+          >
+            <Receipt size={15} /> {gerando ? "Lançando…" : "Lançar custos fixos deste mês"}
+          </button>
+          {resultadoGeracao && (
+            <div className="mt-3 px-4 py-2 rounded" style={{ background: "#DCEBDD", color: "#2C6E31", fontSize: 13 }}>
+              {resultadoGeracao}
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
