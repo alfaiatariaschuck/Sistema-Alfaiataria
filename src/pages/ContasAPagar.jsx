@@ -15,6 +15,22 @@ function totalDespesa(d) {
   return (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
 }
 
+function novaDespesaVazia() {
+  return {
+    descricao: "",
+    categoria: "",
+    fornecedor: "",
+    valor: "",
+    frete: "",
+    vencimento: hojeISO(),
+    recorrente: false,
+    linha: "",
+    parcelas: "1",
+    dividirLinha: false,
+    valorCamisaria: "",
+  };
+}
+
 export default function ContasAPagar({
   pedidos,
   pecas,
@@ -36,7 +52,7 @@ export default function ContasAPagar({
   const [dataIniJanela, setDataIniJanela] = useState(hojeISO());
   const [dataFimJanela, setDataFimJanela] = useState(somarDias(hojeISO(), 14));
   const [formDespesa, setFormDespesa] = useState(false);
-  const [nova, setNova] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "", parcelas: "1" });
+  const [nova, setNova] = useState(novaDespesaVazia());
   // Vencimento de cada parcela, editável uma a uma — parcelado nem sempre
   // é mês a mês certinho (às vezes é 30/45, não 30/60/90), então só serve
   // de sugestão inicial (+30 dias da parcela anterior).
@@ -351,32 +367,59 @@ export default function ContasAPagar({
     setNova((p) => ({ ...p, parcelas: String(n), recorrente: n > 1 ? false : p.recorrente }));
   }
 
+  // Monta a lista de despesas a criar a partir do formulário — trata
+  // parcelas (N despesas com vencimentos próprios) e a divisão por linha
+  // (mesmo fornecedor, mas parte do valor é de tecido da camisaria e
+  // parte da alfaiataria) juntas: quando as duas se combinam, cada linha
+  // vira seu próprio conjunto de parcelas.
+  function montarDespesasParaCriar() {
+    const n = Math.max(1, parseInt(nova.parcelas, 10) || 1);
+    const totalValor = parseFloat(nova.valor) || 0;
+    const totalFrete = parseFloat(nova.frete) || 0;
+
+    const porLinha = nova.dividirLinha
+      ? [
+          { linha: "Camisaria", valor: parseFloat(nova.valorCamisaria) || 0 },
+          { linha: "Alfaiataria", valor: Math.max(0, totalValor - (parseFloat(nova.valorCamisaria) || 0)) },
+        ].filter((l) => l.valor > 0)
+      : [{ linha: nova.linha, valor: totalValor }];
+
+    const despesas = [];
+    porLinha.forEach(({ linha, valor }) => {
+      const fracao = totalValor > 0 ? valor / totalValor : 0;
+      const freteDaLinha = nova.dividirLinha ? totalFrete * fracao : totalFrete;
+      const parcelasValor = dividirEmCentavos(valor, n);
+      const parcelasFrete = dividirEmCentavos(freteDaLinha, n);
+      for (let i = 0; i < n; i++) {
+        const sufixoLinha = nova.dividirLinha ? ` (${linha})` : "";
+        const sufixoParcela = n > 1 ? ` (${i + 1}/${n})` : "";
+        despesas.push({
+          ...nova,
+          descricao: `${nova.descricao}${sufixoLinha}${sufixoParcela}`,
+          valor: parcelasValor[i],
+          frete: parcelasFrete[i],
+          vencimento: n > 1 ? vencimentosParcelas[i] || nova.vencimento : nova.vencimento,
+          linha,
+          recorrente: n > 1 ? false : nova.recorrente,
+        });
+      }
+    });
+    return despesas;
+  }
+
   async function salvarDespesa(e) {
     e.preventDefault();
     if (!nova.descricao.trim() || !nova.valor) return;
+    if (nova.dividirLinha && (parseFloat(nova.valorCamisaria) || 0) > (parseFloat(nova.valor) || 0)) {
+      setErro("O valor da Camisaria não pode ser maior que o valor total.");
+      return;
+    }
     setErro(null);
-    const n = Math.max(1, parseInt(nova.parcelas, 10) || 1);
     try {
-      if (n === 1) {
-        await onCriarDespesa(nova);
-      } else {
-        // Boleto parcelado — não é recorrente (não repete sozinho depois
-        // que acaba), então cada parcela já nasce lançada de uma vez, com
-        // o vencimento que foi escolhido pra cada uma.
-        const parcelasValor = dividirEmCentavos(nova.valor, n);
-        const parcelasFrete = dividirEmCentavos(nova.frete || 0, n);
-        for (let i = 0; i < n; i++) {
-          await onCriarDespesa({
-            ...nova,
-            descricao: `${nova.descricao} (${i + 1}/${n})`,
-            valor: parcelasValor[i],
-            frete: parcelasFrete[i],
-            vencimento: vencimentosParcelas[i] || nova.vencimento,
-            recorrente: false,
-          });
-        }
+      for (const d of montarDespesasParaCriar()) {
+        await onCriarDespesa(d);
       }
-      setNova({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "", parcelas: "1" });
+      setNova(novaDespesaVazia());
       setVencimentosParcelas([]);
       setFormDespesa(false);
     } catch (e) {
@@ -689,17 +732,49 @@ export default function ContasAPagar({
                 <Field label="Vencimento">
                   <input type="date" style={inputStyle} value={nova.vencimento} onChange={(e) => setNova({ ...nova, vencimento: e.target.value })} required />
                 </Field>
-                <Field label="Linha (pra destinar o custo à operação certa)">
-                  <select style={inputStyle} value={nova.linha} onChange={(e) => setNova({ ...nova, linha: e.target.value })}>
-                    <option value="">Compartilhado (empresa toda)</option>
-                    <option value="Camisaria">Camisaria</option>
-                    <option value="Alfaiataria">Alfaiataria</option>
-                  </select>
-                </Field>
+                {!nova.dividirLinha && (
+                  <Field label="Linha (pra destinar o custo à operação certa)">
+                    <select style={inputStyle} value={nova.linha} onChange={(e) => setNova({ ...nova, linha: e.target.value })}>
+                      <option value="">Compartilhado (empresa toda)</option>
+                      <option value="Camisaria">Camisaria</option>
+                      <option value="Alfaiataria">Alfaiataria</option>
+                    </select>
+                  </Field>
+                )}
+                {nova.dividirLinha && (
+                  <Field label="Valor Camisaria (R$)">
+                    <input
+                      type="number"
+                      step="0.01"
+                      style={inputStyle}
+                      value={nova.valorCamisaria}
+                      onChange={(e) => setNova({ ...nova, valorCamisaria: e.target.value })}
+                      placeholder="0,00"
+                    />
+                  </Field>
+                )}
                 <Field label="Parcelas (boleto em Nx)">
                   <input type="number" min="1" step="1" style={inputStyle} value={nova.parcelas} onChange={(e) => handleParcelasChange(e.target.value)} />
                 </Field>
               </div>
+              <label className="flex items-center gap-2 mb-2" style={{ cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={nova.dividirLinha}
+                  onChange={(e) => setNova({ ...nova, dividirLinha: e.target.checked, linha: "" })}
+                  style={{ width: 15, height: 15, accentColor: BRASS }}
+                />
+                <span style={{ fontSize: 12, fontWeight: 600 }}>
+                  Mesmo fornecedor, tecido das duas linhas — dividir o valor entre Camisaria e Alfaiataria
+                </span>
+              </label>
+              {nova.dividirLinha && (
+                <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+                  Lança duas despesas separadas com o mesmo fornecedor e vencimento: Camisaria {brl(parseFloat(nova.valorCamisaria) || 0)} e Alfaiataria{" "}
+                  {brl(Math.max(0, (parseFloat(nova.valor) || 0) - (parseFloat(nova.valorCamisaria) || 0)))} — cada uma já aparece separada em "quanto é de
+                  cada linha".
+                </div>
+              )}
               {parseInt(nova.parcelas, 10) > 1 && (
                 <div className="mb-3 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
                   <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
