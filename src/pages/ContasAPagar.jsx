@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, Pencil, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, HelpCircle, Pencil, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Wallet, X } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, CATEGORIAS_DESPESA, FORNECEDORES_TECIDO, INK, LINE, LINHA_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData, hojeISO, metragemParaNumero, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
@@ -50,6 +50,7 @@ export default function ContasAPagar({
   const hojeInicial = new Date(hojeISO() + "T00:00:00");
   const [mesCalendario, setMesCalendario] = useState(hojeInicial.getMonth());
   const [anoCalendario, setAnoCalendario] = useState(hojeInicial.getFullYear());
+  const [mostrarGuia, setMostrarGuia] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -354,6 +355,29 @@ export default function ContasAPagar({
     <div>
       <PageTitle eyebrow="Financeiro" title="Contas a Pagar" />
 
+      {mostrarGuia ? (
+        <Card style={{ padding: 16 }} className="mb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <HelpCircle size={16} color={BRASS} style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ fontSize: 12, color: TEXT_MUTED, lineHeight: 1.6 }}>
+                <strong style={{ color: INK }}>Rotina sugerida, toda semana:</strong> clique em "7 dias" abaixo → olhe o
+                resumo em frase logo depois (quanto sai, quanto entra, se sobra ou falta) → se estiver faltando,
+                cobre quem te deve ou corra atrás de vender mais essa semana, em vez de descobrir só quando a conta
+                já venceu.
+              </div>
+            </div>
+            <button onClick={() => setMostrarGuia(false)} title="Ocultar" style={{ flexShrink: 0 }}>
+              <X size={14} color={TEXT_MUTED} />
+            </button>
+          </div>
+        </Card>
+      ) : (
+        <button onClick={() => setMostrarGuia(true)} className="flex items-center gap-1 mb-4" style={{ color: BRASS, fontSize: 11, fontWeight: 600 }}>
+          <HelpCircle size={13} /> como usar essa página
+        </button>
+      )}
+
       {venceEmBreve.length > 0 && (
         <div
           className="flex items-center gap-2 mb-4"
@@ -408,6 +432,33 @@ export default function ContasAPagar({
           style={{ ...inputStyle, padding: "6px 10px", fontSize: 12, width: 145 }}
         />
       </div>
+
+      <Card style={{ padding: 18, background: saldo >= 0 ? "#DCEBDD" : "#F6E3D9" }} className="mb-6">
+        <div style={{ fontSize: 14, lineHeight: 1.6, color: saldo >= 0 ? "#1F4D22" : "#7A3315" }}>
+          {verTudo ? (
+            <>Considerando tudo que está em aberto: </>
+          ) : (
+            <>
+              De <strong>{fmtData(dataIniJanela || hoje)}</strong> até <strong>{fmtData(dataFimJanela || hoje)}</strong>:{" "}
+            </>
+          )}
+          você precisa pagar <strong>{brl(totalDespesas)}</strong>
+          {tecidoPendente > 0 && (
+            <>
+              {" "}+ <strong>{brl(tecidoPendente)}</strong> de tecido ainda por comprar
+            </>
+          )}
+          , e espera receber <strong>{brl(totalReceita)}</strong>.{" "}
+          {saldo >= 0 ? (
+            <>Sobra <strong>{brl(saldo)}</strong> — tá tranquilo por enquanto.</>
+          ) : (
+            <>
+              Falta <strong>{brl(Math.abs(saldo))}</strong> — vale cobrar quem está te devendo ou correr atrás de vender
+              mais nesse período.
+            </>
+          )}
+        </div>
+      </Card>
 
       <Card style={{ padding: 16 }} className="mb-6">
         <div className="flex items-center gap-3 flex-wrap">
