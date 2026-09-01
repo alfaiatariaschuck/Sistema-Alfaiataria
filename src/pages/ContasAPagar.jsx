@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, HelpCircle, Pencil, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Wallet, X } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, HelpCircle, Pencil, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Undo2, Wallet, X } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, CATEGORIAS_DESPESA, FORNECEDORES_TECIDO, INK, LINE, LINHA_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData, hojeISO, metragemParaNumero, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
@@ -51,6 +51,8 @@ export default function ContasAPagar({
   const [mesCalendario, setMesCalendario] = useState(hojeInicial.getMonth());
   const [anoCalendario, setAnoCalendario] = useState(hojeInicial.getFullYear());
   const [mostrarGuia, setMostrarGuia] = useState(true);
+  const [desfazerRecente, setDesfazerRecente] = useState(null);
+  const [mostrarPagas, setMostrarPagas] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -137,6 +139,12 @@ export default function ContasAPagar({
   const receberSemPrevisao = receberPendente.filter((p) => !p.temPrevisao);
 
   const despesasPendentes = despesas.filter((d) => d.status !== "Pago");
+  // Últimas pagas — pra reabrir quando alguém clica errado e só percebe
+  // depois que o aviso de "desfazer" já sumiu da tela.
+  const despesasPagas = despesas
+    .filter((d) => d.status === "Pago")
+    .sort((a, b) => (b.vencimento || "").localeCompare(a.vencimento || ""))
+    .slice(0, 15);
   const despesasJanela = despesasPendentes.filter((d) => dentroDaJanela(d.vencimento)).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
   const receberJanela = receberComPrevisao.filter((p) => dentroDaJanela(p.dataRef));
   const previsoesJanela = previsoes.filter((p) => dentroDaJanela(p.dataEsperada));
@@ -275,6 +283,45 @@ export default function ContasAPagar({
   })();
   const totalFreteHistorico = historicoFrete.reduce((s, m) => s + m.total, 0);
 
+  // Histórico de contas pagas — mesmo princípio do frete, mas com o total
+  // de TODAS as despesas quitadas, mês a mês. É a base pra comparar um mês
+  // com o outro e enxergar se o gasto está subindo ou não.
+  const historicoDespesas = (() => {
+    const meses = [];
+    const hojeD = new Date(hoje + "T00:00:00");
+    for (let i = MESES_HISTORICO_FRETE - 1; i >= 0; i--) {
+      const d = new Date(hojeD.getFullYear(), hojeD.getMonth() - i, 1);
+      const chaveMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(".", "");
+      meses.push({ chaveMes, label, total: 0 });
+    }
+    despesas
+      .filter((d) => d.status === "Pago" && d.vencimento)
+      .forEach((d) => {
+        const chaveMes = d.vencimento.slice(0, 7);
+        const mes = meses.find((m) => m.chaveMes === chaveMes);
+        if (mes) mes.total += totalDespesa(d);
+      });
+    return meses;
+  })();
+  const mesesComHistorico = historicoDespesas.filter((m) => m.total > 0);
+  const mediaHistoricoDespesas = mesesComHistorico.length > 0 ? mesesComHistorico.reduce((s, m) => s + m.total, 0) / mesesComHistorico.length : 0;
+
+  // Por categoria, somando os últimos MESES_HISTORICO_FRETE meses de uma
+  // vez — pra ver de cara onde o dinheiro está indo e o que dá pra cortar,
+  // sem precisar escolher mês por mês.
+  const porCategoriaHistorico = (() => {
+    const chaveMesLimite = historicoDespesas[0]?.chaveMes;
+    const mapa = new Map();
+    despesas
+      .filter((d) => d.status === "Pago" && d.vencimento && chaveMesLimite && d.vencimento.slice(0, 7) >= chaveMesLimite)
+      .forEach((d) => {
+        const chave = d.categoria || "Sem categoria";
+        mapa.set(chave, (mapa.get(chave) || 0) + totalDespesa(d));
+      });
+    return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
+  })();
+
   async function salvarDespesa(e) {
     e.preventDefault();
     if (!nova.descricao.trim() || !nova.valor) return;
@@ -299,6 +346,33 @@ export default function ContasAPagar({
       setEditandoDespesa(null);
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + ").");
+    }
+  }
+
+  // Marca como paga e deixa um "desfazer" na tela por alguns segundos —
+  // pro clique errado não virar um problema difícil de achar depois.
+  async function handleMarcarPaga(d) {
+    setErro(null);
+    try {
+      await onMarcarPaga(d.id);
+      setDesfazerRecente({ id: d.id, descricao: d.descricao });
+      setTimeout(() => setDesfazerRecente((atual) => (atual?.id === d.id ? null : atual)), 8000);
+    } catch (e) {
+      setErro("Não consegui marcar como paga (" + e.message + ").");
+    }
+  }
+
+  // Reabre uma despesa (zera o valor pago, status volta a Pendente) — vale
+  // tanto pro "desfazer" de cima quanto pra lista de pagas mais abaixo.
+  // Atenção: se a despesa era recorrente, marcar como paga já lançou a
+  // ocorrência do mês seguinte — reabrir essa aqui não desfaz aquela.
+  async function reabrirDespesa(id) {
+    setErro(null);
+    try {
+      await onAtualizarValorPago(id, 0);
+      setDesfazerRecente((atual) => (atual?.id === id ? null : atual));
+    } catch (e) {
+      setErro("Não consegui reabrir (" + e.message + ").");
     }
   }
 
@@ -354,6 +428,24 @@ export default function ContasAPagar({
   return (
     <div>
       <PageTitle eyebrow="Financeiro" title="Contas a Pagar" />
+
+      {desfazerRecente && (
+        <div
+          className="flex items-center justify-between gap-3 mb-4"
+          style={{ background: "#DCEBDD", border: `1px solid ${VERDE}`, borderRadius: 8, padding: "10px 14px" }}
+        >
+          <span style={{ fontSize: 13, color: "#1F4D22" }}>
+            ✓ <strong>{desfazerRecente.descricao}</strong> marcada como paga.
+          </span>
+          <button
+            onClick={() => reabrirDespesa(desfazerRecente.id)}
+            className="flex items-center gap-1"
+            style={{ background: "#FFF", color: "#1F4D22", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+          >
+            <Undo2 size={13} /> Desfazer
+          </button>
+        </div>
+      )}
 
       {mostrarGuia ? (
         <Card style={{ padding: 16 }} className="mb-4">
@@ -606,7 +698,7 @@ export default function ContasAPagar({
                     <button onClick={() => abrirEdicaoValorPago(d)} title="Editar despesa">
                       <Pencil size={14} color={TEXT_MUTED} />
                     </button>
-                    <button onClick={() => onMarcarPaga(d.id)} title="Marcar como totalmente paga">
+                    <button onClick={() => handleMarcarPaga(d)} title="Marcar como totalmente paga">
                       <CheckCircle2 size={16} color={VERDE} />
                     </button>
                     <button onClick={() => onRemoverDespesa(d.id)} title="Remover">
@@ -731,6 +823,35 @@ export default function ContasAPagar({
                     <span className="fx-mono" style={{ fontSize: 12, fontWeight: 600 }}>
                       {brl(valor)}
                     </span>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {despesasPagas.length > 0 && (
+            <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
+              <button
+                onClick={() => setMostrarPagas((v) => !v)}
+                className="flex items-center justify-between w-full"
+                style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, marginBottom: mostrarPagas ? 6 : 0 }}
+              >
+                <span>ÚLTIMAS PAGAS (CLIQUE PRA REABRIR SE FOI ENGANO)</span>
+                <span>{mostrarPagas ? "ocultar" : "ver"}</span>
+              </button>
+              {mostrarPagas &&
+                despesasPagas.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between py-1.5">
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>{d.descricao}</div>
+                      <div style={{ fontSize: 10, color: TEXT_MUTED }}>vencia {fmtData(d.vencimento)} · pago {brl(totalDespesa(d))}</div>
+                    </div>
+                    <button
+                      onClick={() => reabrirDespesa(d.id)}
+                      className="flex items-center gap-1"
+                      style={{ color: BRASS, fontSize: 11, fontWeight: 600, flexShrink: 0 }}
+                    >
+                      <Undo2 size={12} /> Reabrir
+                    </button>
                   </div>
                 ))}
             </div>
@@ -957,6 +1078,52 @@ export default function ContasAPagar({
           </div>
         </Card>
       </div>
+
+      {mesesComHistorico.length > 0 && (
+        <div className="grid gap-6 mt-6" style={{ gridTemplateColumns: "3fr 2fr" }}>
+          <Card style={{ padding: 20 }}>
+            <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+              Histórico de contas pagas
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+              Total quitado por mês (usando o vencimento como referência de quando a conta foi paga). Média dos meses
+              com movimento: <strong>{brl(mediaHistoricoDespesas)}</strong>/mês — serve de régua pra comparar: mês
+              acima da média, vale olhar por quê.
+            </div>
+            <div className="flex items-end gap-3 flex-wrap">
+              {historicoDespesas.map((m) => (
+                <div key={m.chaveMes} style={{ textAlign: "center", flex: "1 0 80px" }}>
+                  <div
+                    className="fx-mono"
+                    style={{ fontSize: 12, fontWeight: 700, color: m.total > mediaHistoricoDespesas ? VERMELHO : m.total > 0 ? BRASS : TEXT_MUTED }}
+                  >
+                    {brl(m.total)}
+                  </div>
+                  <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 4 }}>{m.label}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card style={{ padding: 20 }}>
+            <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+              Onde o dinheiro foi
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+              Soma por categoria, últimos {MESES_HISTORICO_FRETE} meses — o topo da lista é o melhor lugar pra
+              procurar corte de custo.
+            </div>
+            {porCategoriaHistorico.map(([categoria, valor], i) => (
+              <div key={categoria} className="flex items-center justify-between py-1.5" style={{ borderBottom: i < porCategoriaHistorico.length - 1 ? `1px solid ${LINE}` : "none" }}>
+                <span style={{ fontSize: 12, fontWeight: i === 0 ? 700 : 500 }}>{categoria}</span>
+                <span className="fx-mono" style={{ fontSize: 12, fontWeight: 700, color: i === 0 ? VERMELHO : INK }}>
+                  {brl(valor)}
+                </span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      )}
 
       {totalFreteHistorico > 0 && (
         <Card style={{ padding: 20 }} className="mt-6">
