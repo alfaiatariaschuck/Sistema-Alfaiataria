@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarClock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, Empty, PageTitle, StatCard } from "../components/ui";
-import { BRASS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
+import { BRASS, COMPOSICAO_AVIAMENTOS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
 import { brl, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
@@ -112,15 +112,19 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
     [pecas, mesAtualStr]
   );
 
-  // Custo de aviamentos do mês — só bate direto quando o tipo de peça
-  // vendido tem o mesmo nome de uma peça-base cadastrada (Calça, Colete,
-  // Casaco, Bomber). Peças compostas (Traje, Costume, Blazer — que juntam
-  // várias peças-base) ainda não têm essa soma automática.
+  // Custo de aviamentos do mês — soma as peças-base que compõem cada
+  // tipo de peça vendido (ex: Traje = Paletó+Calça+Colete), pelo
+  // mapeamento em COMPOSICAO_AVIAMENTOS. "Outro" não tem composição
+  // conhecida e fica de fora.
   const custoAviamentos = useMemo(
     () =>
       (pecas || [])
         .filter((p) => p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
-        .reduce((soma, p) => soma + (custoAviamentosPorPecaBase[p.tipoPeca] || 0), 0),
+        .reduce((soma, p) => {
+          const composicao = COMPOSICAO_AVIAMENTOS[p.tipoPeca] || [];
+          const custoPeca = composicao.reduce((s, base) => s + (custoAviamentosPorPecaBase[base] || 0), 0);
+          return soma + custoPeca;
+        }, 0),
     [pecas, mesAtualStr, custoAviamentosPorPecaBase]
   );
 
@@ -240,8 +244,8 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
         )}
         {custoAviamentos === 0 && (
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>
-            Aviamentos só soma automático pra peças com nome igual a uma peça-base cadastrada (Calça, Colete, Casaco,
-            Bomber) — peças compostas (Traje, Costume, Blazer) ainda não somam sozinhas.
+            Nenhuma peça com aviamento cadastrado pedida esse mês ainda — ou é do tipo "Outro", que não tem
+            composição conhecida (avise se quiser mapear).
           </div>
         )}
 

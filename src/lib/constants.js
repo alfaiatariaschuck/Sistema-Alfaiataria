@@ -95,6 +95,20 @@ export const CATEGORIAS_DESPESA = ["Aluguel", "Água/Luz/Internet", "Impostos", 
 
 export const TIPOS_PECA = ["Traje", "Costume", "Casaco", "Bomber", "Calça", "Colete", "Blazer", "Outro"];
 
+// Peças-base (aba Aviamentos) que compõem cada tipo de peça vendido —
+// confirmado batendo com os valores de aviamentos que o Tales já tinha
+// fechado (ex: Costume = Paletó+Calça = R$267,86 exato). "Outro" fica
+// sem composição — não dá pra saber o que é sem perguntar.
+export const COMPOSICAO_AVIAMENTOS = {
+  Blazer: ["Paletó"],
+  Costume: ["Paletó", "Calça"],
+  Traje: ["Paletó", "Calça", "Colete"],
+  Casaco: ["Casaco"],
+  Bomber: ["Bomber"],
+  Calça: ["Calça"],
+  Colete: ["Colete"],
+};
+
 // Estimativa inicial de dias corridos de produção por tipo de peça,
 // baseada no histórico REAL da planilha do Ícaro (aba "Histórico de
 // Pedidos Entregues" — início real até entrega real, já incluindo
