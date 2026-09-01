@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarClock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, Empty, PageTitle, StatCard } from "../components/ui";
+import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
 import { BRASS, COMPOSICAO_AVIAMENTOS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
 import { brl, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
@@ -43,7 +44,7 @@ function contarSextasNoMes(ano, mes) {
   return qtd;
 }
 
-export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase = {} }) {
+export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase = {}, receitaMesOutraLinha = 0 }) {
   const [aluguel, setAluguel] = useState(0);
   const [luz, setLuz] = useState(0);
   const [prolabore, setProlabore] = useState(0);
@@ -139,20 +140,25 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
   // alfaiataria). Pró-labore e custos fixos PJ NÃO entram aqui — são da
   // empresa toda, camisaria também se beneficia deles.
   const custoTotal = custoEquipeTotal + custoEstrutura + custoProducaoTecido + custoAviamentos;
-  // Visão consolidada (ateliê + custos compartilhados) — só informativa,
-  // já que a camisaria ainda não tem custo próprio calculado aqui.
-  const custoTotalComCompartilhado = custoTotal + custoCompartilhado;
 
-  const receitaMes = useMemo(
-    () =>
-      pecas
-        .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
-        .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0),
+  const pecasDoMes = useMemo(
+    () => (pecas || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr),
     [pecas, mesAtualStr]
   );
 
+  const receitaMes = useMemo(() => pecasDoMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0), [pecasDoMes]);
+
   const resultado = receitaMes - custoTotal;
   const sePagando = resultado >= 0;
+
+  // Rateio do custo compartilhado entre as duas linhas, proporcional à
+  // receita de cada uma no mês — assim nenhuma das duas carrega 100% de
+  // um custo que beneficia as duas. Sem receita nenhuma das duas, divide
+  // meio a meio pra não zerar a fatia.
+  const receitaTotalAmbasLinhas = receitaMes + receitaMesOutraLinha;
+  const fatiaAtelie = receitaTotalAmbasLinhas > 0 ? receitaMes / receitaTotalAmbasLinhas : 0.5;
+  const custoCompartilhadoRateado = custoCompartilhado * fatiaAtelie;
+  const custoTotalComRateio = custoTotal + custoCompartilhadoRateado;
 
   const semCadastro = equipeComCusto.filter((m) => !m.tipoRemuneracao);
 
@@ -211,12 +217,13 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-          Custos compartilhados da empresa (fora do ateliê)
+          Custos compartilhados da empresa — rateio por receita
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Pró-labore, contador, sistemas, marketing, impostos e plano de saúde são da empresa como um todo — a
-          camisaria também se beneficia deles, então <strong>não entram no custo próprio do ateliê acima</strong>.
-          Enquanto não existir uma visão de custos da camisaria pra ratear, fica registrado à parte aqui.
+          camisaria também se beneficia deles, então <strong>não entram 100% no custo próprio do ateliê acima</strong>.
+          O ateliê representa {(fatiaAtelie * 100).toFixed(0)}% da receita do mês entre as duas linhas, então é essa
+          fatia do custo compartilhado que cai sobre ele abaixo.
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
@@ -232,12 +239,16 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(planoSaudePJ)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Total compartilhado</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: BRASS }}>{carregandoConfig ? "…" : brl(custoCompartilhado)}</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Total compartilhado da empresa</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoCompartilhado)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo total (ateliê + compartilhado)</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoTotalComCompartilhado)}</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Fatia do ateliê ({(fatiaAtelie * 100).toFixed(0)}%)</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: BRASS }}>{carregandoConfig ? "…" : brl(custoCompartilhadoRateado)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo real do ateliê (com rateio)</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoTotalComRateio)}</div>
           </div>
         </div>
       </Card>
@@ -326,6 +337,13 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
           </table>
         </div>
       </Card>
+
+      <CalculadoraMarkup
+        custoFixoMes={custoEquipeTotal + custoEstrutura + custoCompartilhadoRateado}
+        qtdPadrao={pecasDoMes.length || 1}
+        custoVariavelPadrao={pecasDoMes.length > 0 ? (custoProducaoTecido + custoAviamentos) / pecasDoMes.length : 0}
+        unidadeLabel="peça"
+      />
 
       <Card style={{ padding: 20 }}>
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>

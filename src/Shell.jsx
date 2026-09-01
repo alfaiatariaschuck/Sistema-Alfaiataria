@@ -65,6 +65,7 @@ import Fornecedores from "./pages/Fornecedores";
 import Aviamentos from "./pages/Aviamentos";
 import HistoricoProducao from "./pages/HistoricoProducao";
 import CustosAtelie from "./pages/CustosAtelie";
+import CustosCamisaria from "./pages/CustosCamisaria";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
@@ -78,6 +79,7 @@ const NAV = [
   { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true, grupo: "Camisaria" },
   { id: "estoque-camisaria", label: "Estoque Camisaria", icon: PackageCheck, primary: false, grupo: "Camisaria" },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false, grupo: "Camisaria" },
+  { id: "custos-camisaria", label: "Custos da Camisaria", icon: PiggyBank, primary: false, grupo: "Camisaria" },
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false, grupo: "Camisaria" },
 
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false, grupo: "Alfaiataria" },
@@ -163,6 +165,25 @@ export default function Shell() {
   const { itens: aviamentos, loading: loadingAviamentos, adicionarItem: adicionarAviamento, atualizarItem: atualizarAviamento, removerItem: removerAviamento, custoPorPecaBase } = useAviamentos();
   const { previsoes, criarPrevisao, removerPrevisao } = usePrevisoesVenda();
   const { notas: notasVendaFutura, criarNota, removerNota } = useNotasVendaFutura();
+
+  // Receita do mês de cada linha — usada só pra ratear os custos
+  // compartilhados da empresa entre Custos do Ateliê e Custos da
+  // Camisaria (cada página recebe a receita da linha "de fora").
+  const mesAtualStr = hojeISO().slice(0, 7);
+  const receitaMesCamisaria = useMemo(
+    () =>
+      (pedidos || [])
+        .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
+        .reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0),
+    [pedidos, mesAtualStr]
+  );
+  const receitaMesAlfaiataria = useMemo(
+    () =>
+      (pecas || [])
+        .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
+        .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0),
+    [pecas, mesAtualStr]
+  );
 
   const clientes = useMemo(() => {
     const map = new Map();
@@ -608,7 +629,13 @@ export default function Shell() {
               )}
               {tab === "painel-alfaiataria" && !loadingPecas && <DashboardAlfaiataria pecas={pecas} irPara={irParaPeca} />}
               {tab === "alfaiataria" && !loadingPecas && (
-                <PedidoAlfaiataria onCriar={salvarNovaPeca} nomesClientes={nomesClientes} pecas={pecas} equipe={equipe} />
+                <PedidoAlfaiataria
+                  onCriar={salvarNovaPeca}
+                  nomesClientes={nomesClientes}
+                  pecas={pecas}
+                  equipe={equipe}
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
+                />
               )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
                 <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={setSelecionadaPeca} {...acoesPeca} />
@@ -631,7 +658,10 @@ export default function Shell() {
               {tab === "equipe" && (
                 <Equipe equipe={equipe} loading={loadingEquipe} onAdicionar={adicionarMembro} onCampo={atualizarMembro} onRemover={removerMembro} />
               )}
-              {tab === "custos-atelie" && !loadingPecas && <CustosAtelie pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />}
+              {tab === "custos-atelie" && !loadingPecas && (
+                <CustosAtelie pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} receitaMesOutraLinha={receitaMesCamisaria} />
+              )}
+              {tab === "custos-camisaria" && !loading && <CustosCamisaria pedidos={pedidos} receitaMesOutraLinha={receitaMesAlfaiataria} />}
               {tab === "fornecedores" && (
                 <Fornecedores
                   fornecedores={fornecedores}

@@ -8,6 +8,7 @@ import {
   BRASS,
   BRASS_SOFT,
   CARACTERISTICAS_TRAJE,
+  COMPOSICAO_AVIAMENTOS,
   FORMAS_PAGAMENTO,
   FORNECEDORES_TECIDO,
   INK,
@@ -19,11 +20,11 @@ import {
   TIPOS_PECA,
   inputStyle,
 } from "../lib/constants";
-import { mediaDiasProducaoPorTipo, previsaoParaNovaPeca, statusDividido, totalDividido } from "../lib/helpers";
+import { brl, mediaDiasProducaoPorTipo, previsaoParaNovaPeca, statusDividido, totalDividido } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
-export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe }) {
+export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe, custoAviamentosPorPecaBase = {} }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -31,6 +32,11 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
   const [previsaoAuto, setPrevisaoAuto] = useState(null);
   const [temPecaAnterior, setTemPecaAnterior] = useState(false);
   const abertas = useMemo(() => (pecas || []).filter((p) => p.status !== "Entregue"), [pecas]);
+
+  const custoAviamentosPeca = useMemo(() => {
+    const composicao = COMPOSICAO_AVIAMENTOS[novaPeca.tipoPeca] || [];
+    return composicao.reduce((s, base) => s + (custoAviamentosPorPecaBase[base] || 0), 0);
+  }, [novaPeca.tipoPeca, custoAviamentosPorPecaBase]);
 
   // Sugere a previsão de entrega já considerando a fila de quem está
   // esperando (não só a média de produção) e quem na equipe realmente
@@ -223,6 +229,12 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
             <div className="fx-serif mb-2" style={{ fontSize: 14, fontWeight: 600 }}>
               Valor de venda (cliente)
             </div>
+            {custoAviamentosPeca > 0 && (
+              <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+                Custo de aviamentos dessa peça ({novaPeca.tipoPeca}): <strong>{brl(custoAviamentosPeca)}</strong> — some o
+                tecido e o custo fixo por peça (ver Custos do Ateliê) antes de definir o preço.
+              </div>
+            )}
             <Field label="Forma de pagamento">
               <select style={inputStyle} value={novaPeca.formaPagamento} onChange={(e) => setNovaPeca({ ...novaPeca, formaPagamento: e.target.value })}>
                 <option value="">Selecione</option>
