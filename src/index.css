@@ -43,10 +43,23 @@ textarea {
   background: var(--line);
   border-radius: 4px;
 }
+/* size explícito — sem isso o navegador usa o último papel/orientação
+   configurado (às vezes Letter, às vezes paisagem de outra impressão),
+   o que espremia ou cortava a ficha de forma imprevisível. */
 @page {
+  size: A4 portrait;
   margin: 12mm;
 }
 @media print {
+  /* O fundo bege do app (--canvas) é pintado no <body> inteiro — como
+     ele não é filho de si mesmo, a regra "body *" abaixo não o esconde,
+     e sozinho ele sobra como um bloco bege nas áreas em branco da
+     página impressa (mais visível ainda depois do color-adjust:exact
+     abaixo, que força cores de fundo a aparecerem na impressão). */
+  html,
+  body {
+    background: #fff !important;
+  }
   body * {
     visibility: hidden;
   }
@@ -71,6 +84,26 @@ textarea {
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    /* Sem isso, boa parte dos navegadores some com o fundo colorido dos
+       avisos (medidas novas, recompra) e do zebrado das tabelas na hora
+       de imprimir, a menos que a pessoa marque "gráficos de segundo
+       plano" nas opções — a maioria não sabe que essa opção existe. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Evita que uma tabela (medidas, características, tecido) comece numa
+     página e continue cortada na próxima — a tabela inteira pula pra
+     página seguinte se não couber no que resta da atual. */
+  #ficha-print table,
+  #ficha-print tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  /* E evita o título de uma seção ("Medidas", "Características"...)
+     ficar sozinho no fim de uma página, separado da tabela dele. */
+  #ficha-print .fx-serif {
+    page-break-after: avoid;
+    break-after: avoid;
   }
   .no-print {
     display: none !important;
