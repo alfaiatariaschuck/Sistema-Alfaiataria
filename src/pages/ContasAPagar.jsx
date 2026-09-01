@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { CheckCircle2, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, StatCard } from "../components/ui";
 import { BRASS, CATEGORIAS_DESPESA, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, fmtData, hojeISO, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, fmtData, hojeISO, metragemParaNumero, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const VERMELHO = "#9C4A1E";
@@ -116,14 +116,28 @@ export default function ContasAPagar({
   const totalDespesas = despesasJanela.reduce((s, d) => s + Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0)), 0);
   const totalReceita = receberJanela.reduce((s, p) => s + p.pendente, 0) + previsoesJanela.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
   const caixaNum = parseFloat(caixaAtual) || 0;
-  // Saldo projetado = o que já tenho em caixa + o que ainda vou receber - o
-  // que ainda vou pagar. Falta faturar = quanto de venda nova (fora do que
-  // já está previsto) eu preciso pra cobrir a despesa com o caixa que tenho.
-  const saldo = caixaNum + totalReceita - totalDespesas;
-  const faltaFaturar = Math.max(0, totalDespesas - caixaNum - totalReceita);
 
-  // Quanto devo por fornecedor — olha todas as despesas em aberto (não só a
-  // janela de 14 dias), pra dar a visão real de quanto falta pra cada um.
+  // Tecido ainda não comprado (pedidos + peças, ver aba Compras) — é
+  // dinheiro que vai sair e não está na provisão de custo mensal (essa
+  // é da produção recorrente, não de compra pontual), então entra aqui
+  // direto no saldo projetado como se fosse mais uma despesa pendente.
+  const tecidoPendenteItens = [];
+  (pedidos || []).forEach((p) => (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push(t)));
+  (pecas || []).forEach((p) => (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push(t)));
+  const tecidoPendenteComPreco = tecidoPendenteItens.filter((t) => metragemParaNumero(t.metragem) !== null && parseFloat(t.valorMetro));
+  const tecidoPendente = tecidoPendenteComPreco.reduce((s, t) => s + metragemParaNumero(t.metragem) * parseFloat(t.valorMetro), 0);
+  const tecidoPendenteSemPreco = tecidoPendenteItens.length - tecidoPendenteComPreco.length;
+
+  // Saldo projetado = o que já tenho em caixa + o que ainda vou receber - o
+  // que ainda vou pagar (despesas + tecido pendente de compra). Falta
+  // faturar = quanto de venda nova (fora do que já está previsto) eu
+  // preciso pra cobrir tudo isso com o caixa que tenho.
+  const saldo = caixaNum + totalReceita - totalDespesas - tecidoPendente;
+  const faltaFaturar = Math.max(0, totalDespesas + tecidoPendente - caixaNum - totalReceita);
+
+  // Quanto devo por fornecedor — despesas em aberto (não só a janela de 14
+  // dias) + tecido pendente de compra com preço já cadastrado, pra dar a
+  // visão real de quanto falta pra cada um.
   const porFornecedor = (() => {
     const mapa = new Map();
     despesasPendentes
@@ -131,6 +145,12 @@ export default function ContasAPagar({
       .forEach((d) => {
         const pendente = Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0));
         mapa.set(d.fornecedor, (mapa.get(d.fornecedor) || 0) + pendente);
+      });
+    tecidoPendenteComPreco
+      .filter((t) => (t.fornecedor || "").trim())
+      .forEach((t) => {
+        const nome = t.fornecedor.trim();
+        mapa.set(nome, (mapa.get(nome) || 0) + metragemParaNumero(t.metragem) * parseFloat(t.valorMetro));
       });
     return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
   })();
@@ -240,12 +260,21 @@ export default function ContasAPagar({
         </div>
       </Card>
 
-      <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+      <div className="grid gap-4 mb-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
         <StatCard label="Caixa atual" value={brl(caixaNum)} icon={PiggyBank} />
         <StatCard label="A pagar no período" value={brl(totalDespesas)} icon={TrendingDown} accent={VERMELHO} />
+        <StatCard label="Tecido pendente de compra" value={brl(tecidoPendente)} icon={TrendingDown} accent={VERMELHO} />
         <StatCard label="A receber no período" value={brl(totalReceita)} icon={TrendingUp} accent={VERDE} />
         <StatCard label="Saldo projetado" value={brl(saldo)} icon={Wallet} accent={saldo < 0 ? VERMELHO : VERDE} />
         <StatCard label="Falta faturar" value={brl(faltaFaturar)} icon={TrendingUp} accent={faltaFaturar > 0 ? VERMELHO : VERDE} />
+      </div>
+      <div className="mb-8">
+        {tecidoPendenteSemPreco > 0 && (
+          <div style={{ fontSize: 11, color: TEXT_MUTED }}>
+            {tecidoPendenteSemPreco} item(ns) de tecido pendente sem metragem/preço cadastrado ainda em Compras —
+            fora da soma acima, então o "tecido pendente de compra" real é maior que isso.
+          </div>
+        )}
       </div>
 
       {erro && (

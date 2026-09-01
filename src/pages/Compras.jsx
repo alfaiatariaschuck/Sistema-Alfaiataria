@@ -108,7 +108,18 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
     porFornecedor.get(i.fornecedor).push(i);
   });
 
-  const pendentes = itens.filter((i) => !i.comprado).length;
+  const itensPendentes = itens.filter((i) => !i.comprado);
+  const pendentes = itensPendentes.length;
+  // Quanto ainda vai precisar desembolsar em tecido não comprado — só
+  // conta quem já tem metragem e valor/metro preenchidos; o resto é
+  // pendente também, mas sem preço ainda pra somar (fica só no contador).
+  const totalPendenteReais = itensPendentes.reduce((s, i) => {
+    const metros = metragemParaNumero(i.metragem);
+    const valorMetro = parseFloat(i.valorMetro);
+    if (metros === null || !valorMetro) return s;
+    return s + metros * valorMetro;
+  }, 0);
+  const pendentesSemPreco = itensPendentes.filter((i) => metragemParaNumero(i.metragem) === null || !parseFloat(i.valorMetro)).length;
 
   function alternarComprado(item) {
     if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "comprado", !item.comprado);
@@ -149,6 +160,21 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
   return (
     <div>
       <PageTitle eyebrow={`${pendentes} item(ns) pendente(s)`} title="Compras" />
+
+      {pendentes > 0 && (
+        <Card style={{ padding: 16 }} className="mb-5">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 600, textTransform: "uppercase" }}>Desembolso pendente em tecido</div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>
+                Ainda não comprado — dinheiro que vai sair e ainda não está na provisão de custo mensal.
+                {pendentesSemPreco > 0 && ` ${pendentesSemPreco} item(ns) sem metragem/preço ainda, fora dessa soma.`}
+              </div>
+            </div>
+            <span className="fx-mono" style={{ fontSize: 20, fontWeight: 700, color: "#9C4A1E" }}>{brl(totalPendenteReais)}</span>
+          </div>
+        </Card>
+      )}
 
       <div className="flex flex-col md:flex-row gap-3 mb-5">
         <div className="flex items-center gap-2 flex-1" style={{ ...inputStyle, padding: "6px 10px" }}>
