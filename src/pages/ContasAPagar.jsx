@@ -8,6 +8,12 @@ import { supabase } from "../supabaseClient";
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
 const CHAVE_CAIXA = "caixa_atual";
+const MESES_HISTORICO_FRETE = 6;
+
+// Total de uma despesa = valor do produto/serviço + frete (quando tiver).
+function totalDespesa(d) {
+  return (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
+}
 
 export default function ContasAPagar({
   pedidos,
@@ -29,14 +35,14 @@ export default function ContasAPagar({
 }) {
   const [verTudo, setVerTudo] = useState(false);
   const [formDespesa, setFormDespesa] = useState(false);
-  const [nova, setNova] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", vencimento: hojeISO(), recorrente: false, linha: "" });
+  const [nova, setNova] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "" });
   const [formPrevisao, setFormPrevisao] = useState(false);
   const [novaPrevisao, setNovaPrevisao] = useState({ descricao: "", valor: "", dataEsperada: hojeISO() });
   const [formNota, setFormNota] = useState(false);
   const [novaNota, setNovaNota] = useState({ descricao: "", valor: "", dataEsperada: "" });
   const [editandoDespesa, setEditandoDespesa] = useState(null);
   const [valorPagoEdit, setValorPagoEdit] = useState("");
-  const [edicaoDespesa, setEdicaoDespesa] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", vencimento: "", linha: "" });
+  const [edicaoDespesa, setEdicaoDespesa] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: "", linha: "" });
   const [erro, setErro] = useState(null);
   const [caixaAtual, setCaixaAtual] = useState("");
   const [caixaSalvo, setCaixaSalvo] = useState(null);
@@ -115,7 +121,7 @@ export default function ContasAPagar({
   const receberJanela = receberComPrevisao.filter((p) => dentroDaJanela(p.dataRef));
   const previsoesJanela = previsoes.filter((p) => dentroDaJanela(p.dataEsperada));
 
-  const totalDespesas = despesasJanela.reduce((s, d) => s + Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0)), 0);
+  const totalDespesas = despesasJanela.reduce((s, d) => s + Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)), 0);
   const totalReceita = receberJanela.reduce((s, p) => s + p.pendente, 0) + previsoesJanela.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
   const caixaNum = parseFloat(caixaAtual) || 0;
 
@@ -145,7 +151,7 @@ export default function ContasAPagar({
     despesasPendentes
       .filter((d) => d.fornecedor)
       .forEach((d) => {
-        const pendente = Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0));
+        const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
         mapa.set(d.fornecedor, (mapa.get(d.fornecedor) || 0) + pendente);
       });
     tecidoPendenteComPreco
@@ -162,12 +168,36 @@ export default function ContasAPagar({
   const porLinha = (() => {
     const totais = { Camisaria: 0, Alfaiataria: 0, Compartilhado: 0 };
     despesasPendentes.forEach((d) => {
-      const pendente = Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0));
+      const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
       const chave = d.linha === "Camisaria" || d.linha === "Alfaiataria" ? d.linha : "Compartilhado";
       totais[chave] += pendente;
     });
     return totais;
   })();
+
+  // Histórico de frete — soma o frete das despesas já PAGAS (só assim dá
+  // pra saber que o gasto de fato aconteceu), agrupado pelo mês de
+  // vencimento — não temos data de pagamento separada, então o
+  // vencimento é a melhor aproximação de quando a conta foi quitada.
+  const historicoFrete = (() => {
+    const meses = [];
+    const hojeD = new Date(hoje + "T00:00:00");
+    for (let i = MESES_HISTORICO_FRETE - 1; i >= 0; i--) {
+      const d = new Date(hojeD.getFullYear(), hojeD.getMonth() - i, 1);
+      const chaveMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(".", "");
+      meses.push({ chaveMes, label, total: 0 });
+    }
+    despesas
+      .filter((d) => d.status === "Pago" && parseFloat(d.frete) > 0 && d.vencimento)
+      .forEach((d) => {
+        const chaveMes = d.vencimento.slice(0, 7);
+        const mes = meses.find((m) => m.chaveMes === chaveMes);
+        if (mes) mes.total += parseFloat(d.frete) || 0;
+      });
+    return meses;
+  })();
+  const totalFreteHistorico = historicoFrete.reduce((s, m) => s + m.total, 0);
 
   async function salvarDespesa(e) {
     e.preventDefault();
@@ -175,7 +205,7 @@ export default function ContasAPagar({
     setErro(null);
     try {
       await onCriarDespesa(nova);
-      setNova({ descricao: "", categoria: "", fornecedor: "", valor: "", vencimento: hojeISO(), recorrente: false, linha: "" });
+      setNova({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "" });
       setFormDespesa(false);
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + ").");
@@ -208,6 +238,7 @@ export default function ContasAPagar({
       categoria: d.categoria,
       fornecedor: d.fornecedor,
       valor: String(d.valor ?? ""),
+      frete: String(d.frete || ""),
       vencimento: d.vencimento,
       linha: d.linha || "",
     });
@@ -345,6 +376,9 @@ export default function ContasAPagar({
                 <Field label="Valor (R$)">
                   <input type="number" step="0.01" style={inputStyle} value={nova.valor} onChange={(e) => setNova({ ...nova, valor: e.target.value })} required />
                 </Field>
+                <Field label="Frete (R$, opcional)">
+                  <input type="number" step="0.01" style={inputStyle} value={nova.frete} onChange={(e) => setNova({ ...nova, frete: e.target.value })} placeholder="0,00" />
+                </Field>
                 <Field label="Vencimento">
                   <input type="date" style={inputStyle} value={nova.vencimento} onChange={(e) => setNova({ ...nova, vencimento: e.target.value })} required />
                 </Field>
@@ -374,7 +408,7 @@ export default function ContasAPagar({
           {despesasJanela.length === 0 && <Empty texto={verTudo ? "Nenhuma despesa pendente." : "Nada vencendo nos próximos 14 dias."} />}
           {despesasJanela.map((d) => {
             const atrasada = d.vencimento < hoje;
-            const pendente = Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0));
+            const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
             const editando = editandoDespesa === d.id;
             return (
               <div key={d.id} className="py-2" style={{ borderBottom: `1px solid ${LINE}` }}>
@@ -389,6 +423,7 @@ export default function ContasAPagar({
                     <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
                       {d.fornecedor ? `${d.fornecedor} · ` : d.categoria ? `${d.categoria} · ` : ""}vence {fmtData(d.vencimento)}
                       {atrasada ? " — atrasada" : ""}
+                      {parseFloat(d.frete) > 0 && ` · frete ${brl(d.frete)}`}
                     </div>
                   </button>
                   <div className="flex items-center gap-2">
@@ -398,7 +433,7 @@ export default function ContasAPagar({
                       </span>
                       {d.status === "Parcial" && (
                         <div style={{ fontSize: 10, color: TEXT_MUTED }}>
-                          {brl(d.valorPago)} de {brl(d.valor)} pago
+                          {brl(d.valorPago)} de {brl(totalDespesa(d))} pago
                         </div>
                       )}
                     </div>
@@ -430,6 +465,15 @@ export default function ContasAPagar({
                           style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
                           value={edicaoDespesa.valor}
                           onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, valor: e.target.value })}
+                        />
+                      </Field>
+                      <Field label="Frete (R$)">
+                        <input
+                          type="number"
+                          step="0.01"
+                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+                          value={edicaoDespesa.frete}
+                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, frete: e.target.value })}
                         />
                       </Field>
                       <Field label="Vencimento">
@@ -639,6 +683,28 @@ export default function ContasAPagar({
           )}
         </Card>
       </div>
+
+      {totalFreteHistorico > 0 && (
+        <Card style={{ padding: 20 }} className="mt-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Histórico de frete
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+            Soma o frete das despesas já pagas, por mês (usando o vencimento como referência, já que não há data de
+            pagamento separada). {brl(totalFreteHistorico)} nos últimos {MESES_HISTORICO_FRETE} meses.
+          </div>
+          <div className="flex items-end gap-3 flex-wrap">
+            {historicoFrete.map((m) => (
+              <div key={m.chaveMes} style={{ textAlign: "center", flex: "1 0 70px" }}>
+                <div className="fx-mono" style={{ fontSize: 12, fontWeight: 700, color: m.total > 0 ? BRASS : TEXT_MUTED }}>
+                  {brl(m.total)}
+                </div>
+                <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 4 }}>{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card style={{ padding: 20 }} className="mt-6">
         <div className="flex items-center justify-between mb-3">

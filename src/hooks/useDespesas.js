@@ -8,6 +8,7 @@ function rowParaDespesa(row) {
     categoria: row.categoria || "",
     fornecedor: row.fornecedor || "",
     valor: row.valor,
+    frete: row.frete ?? 0,
     valorPago: row.valor_pago ?? 0,
     vencimento: row.vencimento,
     status: row.status,
@@ -47,13 +48,14 @@ export function useDespesas() {
     recarregar();
   }, [recarregar]);
 
-  async function criarDespesa({ descricao, categoria, fornecedor, valor, vencimento, recorrente, linha }) {
+  async function criarDespesa({ descricao, categoria, fornecedor, valor, frete, vencimento, recorrente, linha }) {
     return comIndicador(async () => {
       const { error } = await supabase.from("despesas").insert({
         descricao,
         categoria: categoria || null,
         fornecedor: fornecedor || null,
         valor: Number(valor) || 0,
+        frete: Number(frete) || 0,
         valor_pago: 0,
         vencimento,
         recorrente: !!recorrente,
@@ -66,10 +68,10 @@ export function useDespesas() {
   }
 
   // Edita os dados de uma despesa (descrição, categoria, fornecedor, valor,
-  // vencimento, linha) — útil pra lançar um valor estimado agora e corrigir
-  // depois quando a nota fiscal/valor exato chegar, sem precisar apagar e
-  // recriar.
-  async function atualizarDespesa(id, { descricao, categoria, fornecedor, valor, vencimento, linha }) {
+  // frete, vencimento, linha) — útil pra lançar um valor estimado agora e
+  // corrigir depois quando a nota fiscal/valor exato chegar, sem precisar
+  // apagar e recriar.
+  async function atualizarDespesa(id, { descricao, categoria, fornecedor, valor, frete, vencimento, linha }) {
     return comIndicador(async () => {
       const { error } = await supabase
         .from("despesas")
@@ -78,6 +80,7 @@ export function useDespesas() {
           categoria: categoria || null,
           fornecedor: fornecedor || null,
           valor: Number(valor) || 0,
+          frete: Number(frete) || 0,
           vencimento,
           linha: linha || null,
         })
@@ -88,13 +91,14 @@ export function useDespesas() {
   }
 
   // Ao registrar um pagamento (total ou parcial), atualiza o status conforme
-  // o quanto já foi pago — e, se a despesa é recorrente e ficou totalmente
-  // paga, já lança a próxima ocorrência (mesmo dia, um mês depois) pendente.
+  // o quanto já foi pago do total (valor + frete) — e, se a despesa é
+  // recorrente e ficou totalmente paga, já lança a próxima ocorrência
+  // (mesmo dia, um mês depois) pendente.
   async function atualizarValorPago(id, novoValorPago) {
     const despesa = despesas.find((d) => d.id === id);
     return comIndicador(async () => {
       const pago = Math.max(0, Number(novoValorPago) || 0);
-      const total = parseFloat(despesa?.valor) || 0;
+      const total = (parseFloat(despesa?.valor) || 0) + (parseFloat(despesa?.frete) || 0);
       const status = pago <= 0 ? "Pendente" : pago >= total ? "Pago" : "Parcial";
       const { error } = await supabase.from("despesas").update({ valor_pago: pago, status }).eq("id", id);
       if (error) throw error;
@@ -106,6 +110,7 @@ export function useDespesas() {
           categoria: despesa.categoria || null,
           fornecedor: despesa.fornecedor || null,
           valor: despesa.valor,
+          frete: despesa.frete || 0,
           valor_pago: 0,
           vencimento: proxima.toISOString().slice(0, 10),
           recorrente: true,
@@ -118,10 +123,10 @@ export function useDespesas() {
     });
   }
 
-  // Atalho pro botão de "marcar como paga" — quita o valor inteiro de uma vez.
+  // Atalho pro botão de "marcar como paga" — quita o valor inteiro (produto + frete) de uma vez.
   async function marcarPaga(id) {
     const despesa = despesas.find((d) => d.id === id);
-    return atualizarValorPago(id, despesa?.valor || 0);
+    return atualizarValorPago(id, (parseFloat(despesa?.valor) || 0) + (parseFloat(despesa?.frete) || 0));
   }
 
   async function removerDespesa(id) {
