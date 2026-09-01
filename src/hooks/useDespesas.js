@@ -1,6 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
+// Soma um mês mantendo o mesmo dia — quando o mês seguinte é mais curto
+// (ex: vencimento dia 31 e o mês seguinte só tem 28/29/30), usa o último
+// dia daquele mês em vez de "estourar" pro mês depois (o que o
+// Date.setMonth faria sozinho: 31/jan + 1 mês vira 03/mar, não 28/fev).
+function somarUmMes(dataISO) {
+  const [ano, mes, dia] = dataISO.split("-").map(Number);
+  const proximoMesIndex = mes; // mes já é 1-indexed; próximo mês (0-indexed) = mes
+  const ultimoDiaProximoMes = new Date(ano, proximoMesIndex + 1, 0).getDate();
+  const diaFinal = Math.min(dia, ultimoDiaProximoMes);
+  const anoFinal = ano + Math.floor(proximoMesIndex / 12);
+  const mesFinal = (proximoMesIndex % 12) + 1;
+  return `${anoFinal}-${String(mesFinal).padStart(2, "0")}-${String(diaFinal).padStart(2, "0")}`;
+}
+
 function rowParaDespesa(row) {
   return {
     id: row.id,
@@ -103,8 +117,6 @@ export function useDespesas() {
       const { error } = await supabase.from("despesas").update({ valor_pago: pago, status }).eq("id", id);
       if (error) throw error;
       if (despesa && despesa.recorrente && status === "Pago") {
-        const proxima = new Date(despesa.vencimento + "T00:00:00");
-        proxima.setMonth(proxima.getMonth() + 1);
         const { error: errProx } = await supabase.from("despesas").insert({
           descricao: despesa.descricao,
           categoria: despesa.categoria || null,
@@ -112,7 +124,7 @@ export function useDespesas() {
           valor: despesa.valor,
           frete: despesa.frete || 0,
           valor_pago: 0,
-          vencimento: proxima.toISOString().slice(0, 10),
+          vencimento: somarUmMes(despesa.vencimento),
           recorrente: true,
           status: "Pendente",
           linha: despesa.linha || null,

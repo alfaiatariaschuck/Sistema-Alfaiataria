@@ -37,6 +37,10 @@ export default function ContasAPagar({
   const [dataFimJanela, setDataFimJanela] = useState(somarDias(hojeISO(), 14));
   const [formDespesa, setFormDespesa] = useState(false);
   const [nova, setNova] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "", parcelas: "1" });
+  // Vencimento de cada parcela, editável uma a uma — parcelado nem sempre
+  // é mês a mês certinho (às vezes é 30/45, não 30/60/90), então só serve
+  // de sugestão inicial (+30 dias da parcela anterior).
+  const [vencimentosParcelas, setVencimentosParcelas] = useState([]);
   const [formPrevisao, setFormPrevisao] = useState(false);
   const [novaPrevisao, setNovaPrevisao] = useState({ descricao: "", valor: "", dataEsperada: hojeISO() });
   const [formNota, setFormNota] = useState(false);
@@ -331,10 +335,20 @@ export default function ContasAPagar({
     return Array.from({ length: n }, (_, i) => (base + (i < resto ? 1 : 0)) / 100);
   }
 
-  function somarMeses(dataISO, meses) {
-    const d = new Date(dataISO + "T00:00:00");
-    d.setMonth(d.getMonth() + meses);
-    return d.toISOString().slice(0, 10);
+  // Ajusta a quantidade de parcelas: mantém as datas já editadas e só
+  // preenche as novas com uma sugestão (+30 dias da parcela anterior) —
+  // parcelado nem sempre é mês certo, às vezes é 30/45, não 30/60/90.
+  function handleParcelasChange(valorStr) {
+    const n = Math.max(1, parseInt(valorStr, 10) || 1);
+    setVencimentosParcelas((prev) => {
+      const arr = prev.slice(0, n);
+      while (arr.length < n) {
+        const anterior = arr[arr.length - 1] || nova.vencimento || hojeISO();
+        arr.push(somarDias(anterior, 30));
+      }
+      return arr;
+    });
+    setNova((p) => ({ ...p, parcelas: String(n), recorrente: n > 1 ? false : p.recorrente }));
   }
 
   async function salvarDespesa(e) {
@@ -348,7 +362,7 @@ export default function ContasAPagar({
       } else {
         // Boleto parcelado — não é recorrente (não repete sozinho depois
         // que acaba), então cada parcela já nasce lançada de uma vez, com
-        // vencimento um mês depois da anterior.
+        // o vencimento que foi escolhido pra cada uma.
         const parcelasValor = dividirEmCentavos(nova.valor, n);
         const parcelasFrete = dividirEmCentavos(nova.frete || 0, n);
         for (let i = 0; i < n; i++) {
@@ -357,12 +371,13 @@ export default function ContasAPagar({
             descricao: `${nova.descricao} (${i + 1}/${n})`,
             valor: parcelasValor[i],
             frete: parcelasFrete[i],
-            vencimento: somarMeses(nova.vencimento, i),
+            vencimento: vencimentosParcelas[i] || nova.vencimento,
             recorrente: false,
           });
         }
       }
       setNova({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "", parcelas: "1" });
+      setVencimentosParcelas([]);
       setFormDespesa(false);
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + ").");
@@ -682,20 +697,32 @@ export default function ContasAPagar({
                   </select>
                 </Field>
                 <Field label="Parcelas (boleto em Nx)">
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    style={inputStyle}
-                    value={nova.parcelas}
-                    onChange={(e) => setNova({ ...nova, parcelas: e.target.value, recorrente: parseInt(e.target.value, 10) > 1 ? false : nova.recorrente })}
-                  />
+                  <input type="number" min="1" step="1" style={inputStyle} value={nova.parcelas} onChange={(e) => handleParcelasChange(e.target.value)} />
                 </Field>
               </div>
               {parseInt(nova.parcelas, 10) > 1 && (
-                <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
-                  Lança {parseInt(nova.parcelas, 10)} despesas de {brl((parseFloat(nova.valor) || 0) / parseInt(nova.parcelas, 10))} cada, uma por mês a partir do
-                  vencimento acima — o valor total ({brl(parseFloat(nova.valor) || 0)}) fica dividido, não repetido.
+                <div className="mb-3 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
+                  <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
+                    Lança {parseInt(nova.parcelas, 10)} despesas de {brl((parseFloat(nova.valor) || 0) / parseInt(nova.parcelas, 10))} cada (valor total{" "}
+                    {brl(parseFloat(nova.valor) || 0)} dividido, não repetido) — ajuste o vencimento de cada uma, já que nem todo parcelamento é mês a mês
+                    certinho.
+                  </div>
+                  <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))" }}>
+                    {vencimentosParcelas.map((venc, i) => (
+                      <Field key={i} label={`Parcela ${i + 1}/${nova.parcelas}`}>
+                        <input
+                          type="date"
+                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+                          value={venc}
+                          onChange={(e) => {
+                            const copia = vencimentosParcelas.slice();
+                            copia[i] = e.target.value;
+                            setVencimentosParcelas(copia);
+                          }}
+                        />
+                      </Field>
+                    ))}
+                  </div>
                 </div>
               )}
               {parseInt(nova.parcelas, 10) <= 1 && (
