@@ -260,6 +260,11 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
               statusRestante={novaPeca.statusRestante}
               onValorRestante={(v) => setPagamento({ valorRestante: v })}
               onStatusRestante={(v) => setPagamento({ statusRestante: v })}
+              formasPagamento={FORMAS_PAGAMENTO}
+              formaPagamentoEntrada={novaPeca.formaPagamentoEntrada}
+              onFormaPagamentoEntrada={(v) => setPagamento({ formaPagamentoEntrada: v })}
+              formaPagamentoRestante={novaPeca.formaPagamentoRestante}
+              onFormaPagamentoRestante={(v) => setPagamento({ formaPagamentoRestante: v })}
             />
           </div>
 

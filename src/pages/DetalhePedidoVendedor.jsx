@@ -86,6 +86,11 @@ export default function DetalhePedidoVendedor({ pedido: p, onVoltar, onCampo, on
             statusRestante={p.statusRestante}
             onValorRestante={(v) => setPagamento({ valorRestante: v })}
             onStatusRestante={(v) => setPagamento({ statusRestante: v })}
+            formasPagamento={FORMAS_PAGAMENTO}
+            formaPagamentoEntrada={p.formaPagamentoEntrada}
+            onFormaPagamentoEntrada={(v) => setPagamento({ formaPagamentoEntrada: v })}
+            formaPagamentoRestante={p.formaPagamentoRestante}
+            onFormaPagamentoRestante={(v) => setPagamento({ formaPagamentoRestante: v })}
           />
         </div>
       </Card>

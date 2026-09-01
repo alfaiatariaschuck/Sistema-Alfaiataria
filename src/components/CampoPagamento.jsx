@@ -5,6 +5,10 @@ import { brl } from "../lib/helpers";
 
 // Bloco de pagamento reutilizável — à vista (um valor + status) ou
 // dividido em entrada + restante na entrega, cada um com seu status.
+// Quando `formasPagamento` é passado, cada parte ganha também um select
+// de forma de pagamento — pra cobrir o caso de o cliente pagar parte no
+// PIX e parte no cartão (a forma "de cima", única, continua sendo a do
+// caso à vista).
 export function CampoPagamento({
   valor,
   statusPagamento,
@@ -20,13 +24,20 @@ export function CampoPagamento({
   statusRestante,
   onValorRestante,
   onStatusRestante,
+  formasPagamento,
+  formaPagamentoEntrada,
+  onFormaPagamentoEntrada,
+  formaPagamentoRestante,
+  onFormaPagamentoRestante,
   labelValor = "Valor (R$)",
   labelPago = "Recebido",
   labelDividido = "Pagamento dividido (entrada + entrega)",
   labelEntrada = "Entrada (R$)",
   labelStatusEntrada = "Status da entrada",
+  labelFormaEntrada = "Forma de pagamento (entrada)",
   labelRestante = "Restante na entrega (R$)",
   labelStatusRestante = "Status do restante",
+  labelFormaRestante = "Forma de pagamento (restante)",
   labelFalta = "Falta receber",
 }) {
   const falta =
@@ -65,6 +76,16 @@ export function CampoPagamento({
                 <option>{labelPago}</option>
               </select>
             </Field>
+            {formasPagamento && (
+              <Field label={labelFormaEntrada}>
+                <select style={inputStyle} value={formaPagamentoEntrada || ""} onChange={(e) => onFormaPagamentoEntrada(e.target.value)}>
+                  <option value="">Selecione</option>
+                  {formasPagamento.map((f) => (
+                    <option key={f}>{f}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <Field label={labelRestante}>
               <input type="number" step="0.01" style={inputStyle} value={valorRestante} onChange={(e) => onValorRestante(e.target.value)} />
             </Field>
@@ -74,6 +95,16 @@ export function CampoPagamento({
                 <option>{labelPago}</option>
               </select>
             </Field>
+            {formasPagamento && (
+              <Field label={labelFormaRestante}>
+                <select style={inputStyle} value={formaPagamentoRestante || ""} onChange={(e) => onFormaPagamentoRestante(e.target.value)}>
+                  <option value="">Selecione</option>
+                  {formasPagamento.map((f) => (
+                    <option key={f}>{f}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
           </div>
           <div className="flex justify-between" style={{ fontSize: 12, color: INK_SOFT }}>
             <span>

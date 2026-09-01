@@ -229,6 +229,11 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             statusRestante={p.statusRestante}
             onValorRestante={(v) => setPagamento({ valorRestante: v })}
             onStatusRestante={(v) => setPagamento({ statusRestante: v })}
+            formasPagamento={FORMAS_PAGAMENTO}
+            formaPagamentoEntrada={p.formaPagamentoEntrada}
+            onFormaPagamentoEntrada={(v) => setPagamento({ formaPagamentoEntrada: v })}
+            formaPagamentoRestante={p.formaPagamentoRestante}
+            onFormaPagamentoRestante={(v) => setPagamento({ formaPagamentoRestante: v })}
           />
           <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
             <Field label="Forma de pagamento">
