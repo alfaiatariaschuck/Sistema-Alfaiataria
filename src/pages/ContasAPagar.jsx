@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, Pencil, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, Pencil, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, CATEGORIAS_DESPESA, FORNECEDORES_TECIDO, INK, LINE, LINHA_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData, hojeISO, metragemParaNumero, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
@@ -46,6 +46,9 @@ export default function ContasAPagar({
   const [erro, setErro] = useState(null);
   const [caixaAtual, setCaixaAtual] = useState("");
   const [caixaSalvo, setCaixaSalvo] = useState(null);
+  const hojeInicial = new Date(hojeISO() + "T00:00:00");
+  const [mesCalendario, setMesCalendario] = useState(hojeInicial.getMonth());
+  const [anoCalendario, setAnoCalendario] = useState(hojeInicial.getFullYear());
 
   useEffect(() => {
     (async () => {
@@ -175,6 +178,62 @@ export default function ContasAPagar({
     return totais;
   })();
 
+  // Quantos dias uma despesa está atrasada (positivo) ou faltam pra vencer
+  // (negativo) — base pro relatório de atrasadas e pro aviso de "vence em
+  // breve".
+  function diasAteVencimento(venc) {
+    const d1 = new Date(venc + "T00:00:00");
+    const d2 = new Date(hoje + "T00:00:00");
+    return Math.round((d1 - d2) / 86400000);
+  }
+
+  // Relatório de atrasadas (aging) — só despesas em aberto com vencimento
+  // no passado, agrupadas por faixa de dias atrasados.
+  const FAIXAS_ATRASO = [
+    { rotulo: "1–7 dias", min: 1, max: 7 },
+    { rotulo: "8–15 dias", min: 8, max: 15 },
+    { rotulo: "16–30 dias", min: 16, max: 30 },
+    { rotulo: "31+ dias", min: 31, max: Infinity },
+  ];
+  const despesasAtrasadas = despesasPendentes.filter((d) => diasAteVencimento(d.vencimento) < 0);
+  const agingAtrasadas = FAIXAS_ATRASO.map((faixa) => {
+    const itens = despesasAtrasadas.filter((d) => {
+      const dias = -diasAteVencimento(d.vencimento);
+      return dias >= faixa.min && dias <= faixa.max;
+    });
+    return { ...faixa, itens, total: itens.reduce((s, d) => s + Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)), 0) };
+  }).filter((f) => f.itens.length > 0);
+  const totalAtrasado = agingAtrasadas.reduce((s, f) => s + f.total, 0);
+
+  // Vencendo em breve (próximos 3 dias, ainda não atrasada) — o "lembrete"
+  // possível num app sem infraestrutura de notificação: um aviso bem
+  // visível assim que a pessoa abre a página.
+  const venceEmBreve = despesasPendentes.filter((d) => {
+    const dias = diasAteVencimento(d.vencimento);
+    return dias >= 0 && dias <= 3;
+  });
+  const totalVenceEmBreve = venceEmBreve.reduce((s, d) => s + Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)), 0);
+
+  // Calendário do mês — agrupa as despesas em aberto do mês selecionado
+  // por dia de vencimento, pra dar pra ver de uma vez os dias com mais
+  // conta batendo junto (em vez de só uma lista corrida).
+  const calendarioPorDia = (() => {
+    const mapa = {};
+    despesasPendentes
+      .filter((d) => {
+        if (!d.vencimento) return false;
+        const [ano, mes] = d.vencimento.split("-").map(Number);
+        return ano === anoCalendario && mes === mesCalendario + 1;
+      })
+      .forEach((d) => {
+        const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
+        if (!mapa[d.vencimento]) mapa[d.vencimento] = { total: 0, itens: [] };
+        mapa[d.vencimento].total += pendente;
+        mapa[d.vencimento].itens.push(d);
+      });
+    return mapa;
+  })();
+
   // Histórico de frete — soma o frete das despesas já PAGAS (só assim dá
   // pra saber que o gasto de fato aconteceu), agrupado pelo mês de
   // vencimento — não temos data de pagamento separada, então o
@@ -278,6 +337,21 @@ export default function ContasAPagar({
   return (
     <div>
       <PageTitle eyebrow="Financeiro" title="Contas a Pagar" />
+
+      {venceEmBreve.length > 0 && (
+        <div
+          className="flex items-center gap-2 mb-4"
+          style={{ background: "#FCEFC7", border: "1px solid #E6C97A", borderRadius: 8, padding: "12px 14px" }}
+        >
+          <CalendarClock size={18} color="#8A6A0C" style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: 13, color: "#5A4200" }}>
+            <strong>
+              {venceEmBreve.length} conta{venceEmBreve.length > 1 ? "s" : ""} vencendo nos próximos 3 dias
+            </strong>{" "}
+            — {brl(totalVenceEmBreve)} no total: {venceEmBreve.map((d) => d.descricao).join(", ")}.
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-5">
         <button
@@ -681,6 +755,114 @@ export default function ContasAPagar({
               ))}
             </div>
           )}
+        </Card>
+      </div>
+
+      <div className="grid gap-6 mt-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
+        <Card style={{ padding: 20 }}>
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Contas atrasadas
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+            {agingAtrasadas.length > 0 ? `${brl(totalAtrasado)} em aberto, vencidas.` : "Nenhuma conta atrasada agora."}
+          </div>
+          {agingAtrasadas.map((faixa) => (
+            <div key={faixa.rotulo} className="mb-3">
+              <div className="flex items-center justify-between mb-1">
+                <span style={{ fontSize: 12, fontWeight: 700, color: faixa.min >= 31 ? VERMELHO : INK }}>{faixa.rotulo}</span>
+                <span className="fx-mono" style={{ fontSize: 12, fontWeight: 700 }}>{brl(faixa.total)}</span>
+              </div>
+              {faixa.itens.map((d) => (
+                <div key={d.id} className="flex items-center justify-between py-1" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                  <span>{d.descricao} {d.fornecedor ? `— ${d.fornecedor}` : ""}</span>
+                  <span className="fx-mono">{brl(Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)))}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </Card>
+
+        <Card style={{ padding: 20 }}>
+          <div className="flex items-center justify-between mb-1">
+            <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+              Calendário do mês
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  if (mesCalendario === 0) {
+                    setMesCalendario(11);
+                    setAnoCalendario((a) => a - 1);
+                  } else {
+                    setMesCalendario((m) => m - 1);
+                  }
+                }}
+                style={{ padding: 4 }}
+              >
+                <ChevronLeft size={16} color={TEXT_MUTED} />
+              </button>
+              <span style={{ fontSize: 12, fontWeight: 600, minWidth: 110, textAlign: "center" }}>
+                {new Date(anoCalendario, mesCalendario, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+              </span>
+              <button
+                onClick={() => {
+                  if (mesCalendario === 11) {
+                    setMesCalendario(0);
+                    setAnoCalendario((a) => a + 1);
+                  } else {
+                    setMesCalendario((m) => m + 1);
+                  }
+                }}
+                style={{ padding: 4 }}
+              >
+                <ChevronRight size={16} color={TEXT_MUTED} />
+              </button>
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>Dias com conta pendente vencendo, e quanto.</div>
+          <div className="grid gap-1 mb-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+            {["D", "S", "T", "Q", "Q", "S", "S"].map((d, i) => (
+              <div key={i} style={{ fontSize: 10, color: TEXT_MUTED, textAlign: "center", fontWeight: 600 }}>
+                {d}
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+            {(() => {
+              const primeiroDiaSemana = new Date(anoCalendario, mesCalendario, 1).getDay();
+              const diasNoMes = new Date(anoCalendario, mesCalendario + 1, 0).getDate();
+              const celulas = [];
+              for (let i = 0; i < primeiroDiaSemana; i++) celulas.push(null);
+              for (let dia = 1; dia <= diasNoMes; dia++) celulas.push(dia);
+              return celulas.map((dia, i) => {
+                if (dia === null) return <div key={i} />;
+                const iso = `${anoCalendario}-${String(mesCalendario + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+                const info = calendarioPorDia[iso];
+                const ehHoje = iso === hoje;
+                const atrasado = info && iso < hoje;
+                return (
+                  <div
+                    key={i}
+                    title={info ? info.itens.map((d) => d.descricao).join(", ") : undefined}
+                    style={{
+                      minHeight: 46,
+                      border: ehHoje ? `2px solid ${BRASS}` : `1px solid ${LINE}`,
+                      borderRadius: 6,
+                      padding: 4,
+                      background: atrasado ? "#F6E3D9" : info ? "#FCEFC7" : "transparent",
+                    }}
+                  >
+                    <div style={{ fontSize: 10, fontWeight: ehHoje ? 700 : 500, color: ehHoje ? BRASS : INK }}>{dia}</div>
+                    {info && (
+                      <div className="fx-mono" style={{ fontSize: 9, color: atrasado ? VERMELHO : "#8A6A0C", fontWeight: 700, marginTop: 2 }}>
+                        {brl(info.total)}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+          </div>
         </Card>
       </div>
 
