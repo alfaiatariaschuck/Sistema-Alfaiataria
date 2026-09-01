@@ -1,13 +1,8 @@
 import React, { useState } from "react";
 import { ChevronRight, Download, Package, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
-import { FORMAS_PAGAMENTO, LINE, PAG_STYLE, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
+import { FORMAS_PAGAMENTO, LINE, LINHA_STYLE, PAG_STYLE, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
 import { brl, fmtData, valorRecebidoEfetivo } from "../lib/helpers";
-
-const LINE_STYLE = {
-  Camisaria: { bg: "#EFE1CC", fg: "#A9793E" },
-  Alfaiataria: { bg: "#E9E1F5", fg: "#5B3E96" },
-};
 
 // statusPagamento aqui já reflete pagamento dividido (entrada recebida +
 // restante pendente vira "Parcial", não "Pendente" com o valor inteiro).
@@ -267,7 +262,7 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
               <div>
                 <div className="flex items-center gap-1.5">
                   <span style={{ fontWeight: 600, fontSize: 14 }}>{l.cliente || "Sem nome"}</span>
-                  <Pill text={l.linha} style={LINE_STYLE[l.linha]} />
+                  <Pill text={l.linha} style={LINHA_STYLE[l.linha]} />
                 </div>
                 <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                   {l.tipo} · {fmtData(l.dataPedido)} · {l.formaPagamento || "forma não informada"} · {l.quantidade} un

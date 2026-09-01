@@ -12,6 +12,7 @@ function rowParaDespesa(row) {
     vencimento: row.vencimento,
     status: row.status,
     recorrente: !!row.recorrente,
+    linha: row.linha || "",
   };
 }
 
@@ -46,7 +47,7 @@ export function useDespesas() {
     recarregar();
   }, [recarregar]);
 
-  async function criarDespesa({ descricao, categoria, fornecedor, valor, vencimento, recorrente }) {
+  async function criarDespesa({ descricao, categoria, fornecedor, valor, vencimento, recorrente, linha }) {
     return comIndicador(async () => {
       const { error } = await supabase.from("despesas").insert({
         descricao,
@@ -57,7 +58,30 @@ export function useDespesas() {
         vencimento,
         recorrente: !!recorrente,
         status: "Pendente",
+        linha: linha || null,
       });
+      if (error) throw error;
+      await recarregar();
+    });
+  }
+
+  // Edita os dados de uma despesa (descrição, categoria, fornecedor, valor,
+  // vencimento, linha) — útil pra lançar um valor estimado agora e corrigir
+  // depois quando a nota fiscal/valor exato chegar, sem precisar apagar e
+  // recriar.
+  async function atualizarDespesa(id, { descricao, categoria, fornecedor, valor, vencimento, linha }) {
+    return comIndicador(async () => {
+      const { error } = await supabase
+        .from("despesas")
+        .update({
+          descricao,
+          categoria: categoria || null,
+          fornecedor: fornecedor || null,
+          valor: Number(valor) || 0,
+          vencimento,
+          linha: linha || null,
+        })
+        .eq("id", id);
       if (error) throw error;
       await recarregar();
     });
@@ -86,6 +110,7 @@ export function useDespesas() {
           vencimento: proxima.toISOString().slice(0, 10),
           recorrente: true,
           status: "Pendente",
+          linha: despesa.linha || null,
         });
         if (errProx) throw errProx;
       }
@@ -117,6 +142,7 @@ export function useDespesas() {
     criarDespesa,
     marcarPaga,
     atualizarValorPago,
+    atualizarDespesa,
     removerDespesa,
   };
 }

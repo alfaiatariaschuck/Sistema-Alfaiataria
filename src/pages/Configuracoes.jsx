@@ -104,13 +104,13 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
     const mesAtual = hojeISO().slice(0, 7);
     const vencimentoPadrao = `${mesAtual}-05`;
     const itens = [
-      { descricao: "Pró-labore", categoria: "Pró-labore", valor: prolabore },
-      { descricao: "Aluguel — Ateliê", categoria: "Aluguel", valor: aluguel },
-      { descricao: "Luz — Ateliê", categoria: "Água/Luz/Internet", valor: luz },
-      { descricao: "Aluguel — Loja", categoria: "Aluguel", valor: aluguelLoja },
-      { descricao: "Luz — Loja", categoria: "Água/Luz/Internet", valor: luzLoja },
-      { descricao: "Plano de saúde empresarial", categoria: "Plano de Saúde", valor: planoSaudePJ },
-      { descricao: "Outros custos fixos PJ", categoria: "Outros", valor: custosFixosPJ },
+      { descricao: "Pró-labore", categoria: "Pró-labore", valor: prolabore, linha: "" },
+      { descricao: "Aluguel — Ateliê", categoria: "Aluguel", valor: aluguel, linha: "Alfaiataria" },
+      { descricao: "Luz — Ateliê", categoria: "Água/Luz/Internet", valor: luz, linha: "Alfaiataria" },
+      { descricao: "Aluguel — Loja", categoria: "Aluguel", valor: aluguelLoja, linha: "Camisaria" },
+      { descricao: "Luz — Loja", categoria: "Água/Luz/Internet", valor: luzLoja, linha: "Camisaria" },
+      { descricao: "Plano de saúde empresarial", categoria: "Plano de Saúde", valor: planoSaudePJ, linha: "" },
+      { descricao: "Outros custos fixos PJ", categoria: "Outros", valor: custosFixosPJ, linha: "" },
     ].filter((it) => (parseFloat(it.valor) || 0) > 0);
 
     let criadas = 0;
@@ -129,6 +129,7 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
         valor: item.valor,
         vencimento: vencimentoPadrao,
         recorrente: true,
+        linha: item.linha,
       });
       criadas++;
       totalCriado += parseFloat(item.valor) || 0;

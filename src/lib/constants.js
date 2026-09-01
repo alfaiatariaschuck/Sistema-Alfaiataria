@@ -89,6 +89,11 @@ export const PAG_STYLE = {
 
 export const FORMAS_PAGAMENTO = ["Cartão de Crédito", "PIX", "Dinheiro", "Transferência", "Boleto"];
 
+export const LINHA_STYLE = {
+  Camisaria: { bg: "#EFE1CC", fg: "#A9793E" },
+  Alfaiataria: { bg: "#E9E1F5", fg: "#5B3E96" },
+};
+
 export const FORNECEDORES_TECIDO = ["Imperiale", "Wtext", "LS Tecidos", "Markbel", "Erlu", "Dab Dab", "Cataguases"];
 
 export const CATEGORIAS_DESPESA = [

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Card, Empty, Field, PageTitle, StatCard } from "../components/ui";
-import { BRASS, CATEGORIAS_DESPESA, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { CheckCircle2, Pencil, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
+import { BRASS, CATEGORIAS_DESPESA, FORNECEDORES_TECIDO, INK, LINE, LINHA_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData, hojeISO, metragemParaNumero, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
@@ -18,6 +18,7 @@ export default function ContasAPagar({
   onCriarDespesa,
   onMarcarPaga,
   onAtualizarValorPago,
+  onAtualizarDespesa,
   onRemoverDespesa,
   onCriarPrevisao,
   onRemoverPrevisao,
@@ -28,13 +29,14 @@ export default function ContasAPagar({
 }) {
   const [verTudo, setVerTudo] = useState(false);
   const [formDespesa, setFormDespesa] = useState(false);
-  const [nova, setNova] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", vencimento: hojeISO(), recorrente: false });
+  const [nova, setNova] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", vencimento: hojeISO(), recorrente: false, linha: "" });
   const [formPrevisao, setFormPrevisao] = useState(false);
   const [novaPrevisao, setNovaPrevisao] = useState({ descricao: "", valor: "", dataEsperada: hojeISO() });
   const [formNota, setFormNota] = useState(false);
   const [novaNota, setNovaNota] = useState({ descricao: "", valor: "", dataEsperada: "" });
   const [editandoDespesa, setEditandoDespesa] = useState(null);
   const [valorPagoEdit, setValorPagoEdit] = useState("");
+  const [edicaoDespesa, setEdicaoDespesa] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", vencimento: "", linha: "" });
   const [erro, setErro] = useState(null);
   const [caixaAtual, setCaixaAtual] = useState("");
   const [caixaSalvo, setCaixaSalvo] = useState(null);
@@ -155,22 +157,38 @@ export default function ContasAPagar({
     return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
   })();
 
+  // Quanto das despesas em aberto é de cada linha — só as marcadas com
+  // "Linha" ao criar/editar; o resto cai em "Compartilhado".
+  const porLinha = (() => {
+    const totais = { Camisaria: 0, Alfaiataria: 0, Compartilhado: 0 };
+    despesasPendentes.forEach((d) => {
+      const pendente = Math.max(0, (parseFloat(d.valor) || 0) - (parseFloat(d.valorPago) || 0));
+      const chave = d.linha === "Camisaria" || d.linha === "Alfaiataria" ? d.linha : "Compartilhado";
+      totais[chave] += pendente;
+    });
+    return totais;
+  })();
+
   async function salvarDespesa(e) {
     e.preventDefault();
     if (!nova.descricao.trim() || !nova.valor) return;
     setErro(null);
     try {
       await onCriarDespesa(nova);
-      setNova({ descricao: "", categoria: "", fornecedor: "", valor: "", vencimento: hojeISO(), recorrente: false });
+      setNova({ descricao: "", categoria: "", fornecedor: "", valor: "", vencimento: hojeISO(), recorrente: false, linha: "" });
       setFormDespesa(false);
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + ").");
     }
   }
 
-  async function salvarValorPago(id) {
+  // Salva de uma vez o valor pago e, se mudou algo, os dados da despesa
+  // (útil pra corrigir um valor lançado como estimativa quando a nota
+  // fiscal/valor exato chega).
+  async function salvarEdicaoDespesa(id) {
     setErro(null);
     try {
+      await onAtualizarDespesa(id, edicaoDespesa);
       await onAtualizarValorPago(id, valorPagoEdit);
       setEditandoDespesa(null);
     } catch (e) {
@@ -185,6 +203,14 @@ export default function ContasAPagar({
     }
     setEditandoDespesa(d.id);
     setValorPagoEdit(String(d.valorPago || ""));
+    setEdicaoDespesa({
+      descricao: d.descricao,
+      categoria: d.categoria,
+      fornecedor: d.fornecedor,
+      valor: String(d.valor ?? ""),
+      vencimento: d.vencimento,
+      linha: d.linha || "",
+    });
   }
 
   async function salvarNota(e) {
@@ -322,6 +348,13 @@ export default function ContasAPagar({
                 <Field label="Vencimento">
                   <input type="date" style={inputStyle} value={nova.vencimento} onChange={(e) => setNova({ ...nova, vencimento: e.target.value })} required />
                 </Field>
+                <Field label="Linha (pra destinar o custo à operação certa)">
+                  <select style={inputStyle} value={nova.linha} onChange={(e) => setNova({ ...nova, linha: e.target.value })}>
+                    <option value="">Compartilhado (empresa toda)</option>
+                    <option value="Camisaria">Camisaria</option>
+                    <option value="Alfaiataria">Alfaiataria</option>
+                  </select>
+                </Field>
               </div>
               <label className="flex items-center gap-2 mb-2" style={{ cursor: "pointer" }}>
                 <input
@@ -346,9 +379,12 @@ export default function ContasAPagar({
             return (
               <div key={d.id} className="py-2" style={{ borderBottom: `1px solid ${LINE}` }}>
                 <div className="flex items-center justify-between">
-                  <button onClick={() => abrirEdicaoValorPago(d)} style={{ textAlign: "left" }} title="Ver/editar valor pago">
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>
-                      {d.descricao} {d.recorrente && "↻"}
+                  <button onClick={() => abrirEdicaoValorPago(d)} style={{ textAlign: "left" }} title="Editar despesa">
+                    <div className="flex items-center gap-1.5">
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>
+                        {d.descricao} {d.recorrente && "↻"}
+                      </span>
+                      {d.linha && <Pill text={d.linha} style={LINHA_STYLE[d.linha]} />}
                     </div>
                     <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
                       {d.fornecedor ? `${d.fornecedor} · ` : d.categoria ? `${d.categoria} · ` : ""}vence {fmtData(d.vencimento)}
@@ -366,6 +402,9 @@ export default function ContasAPagar({
                         </div>
                       )}
                     </div>
+                    <button onClick={() => abrirEdicaoValorPago(d)} title="Editar despesa">
+                      <Pencil size={14} color={TEXT_MUTED} />
+                    </button>
                     <button onClick={() => onMarcarPaga(d.id)} title="Marcar como totalmente paga">
                       <CheckCircle2 size={16} color={VERDE} />
                     </button>
@@ -375,21 +414,76 @@ export default function ContasAPagar({
                   </div>
                 </div>
                 {editando && (
-                  <div className="flex items-center gap-2 mt-2 p-2 flex-wrap" style={{ background: "#F3EEDF", borderRadius: 6 }}>
-                    <span style={{ fontSize: 11, color: TEXT_MUTED }}>Valor pago até agora (de {brl(d.valor)}):</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      style={{ ...inputStyle, width: 100 }}
-                      value={valorPagoEdit}
-                      onChange={(e) => setValorPagoEdit(e.target.value)}
-                    />
-                    <button
-                      onClick={() => salvarValorPago(d.id)}
-                      style={{ background: INK, color: "#FFF", padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
-                    >
-                      Salvar
-                    </button>
+                  <div className="mt-2 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
+                    <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: "2fr 1fr 1fr" }}>
+                      <Field label="Descrição">
+                        <input
+                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+                          value={edicaoDespesa.descricao}
+                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, descricao: e.target.value })}
+                        />
+                      </Field>
+                      <Field label="Valor (R$)">
+                        <input
+                          type="number"
+                          step="0.01"
+                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+                          value={edicaoDespesa.valor}
+                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, valor: e.target.value })}
+                        />
+                      </Field>
+                      <Field label="Vencimento">
+                        <input
+                          type="date"
+                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+                          value={edicaoDespesa.vencimento}
+                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, vencimento: e.target.value })}
+                        />
+                      </Field>
+                      <Field label="Categoria">
+                        <input
+                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+                          list="lista-categorias-despesa"
+                          value={edicaoDespesa.categoria}
+                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, categoria: e.target.value })}
+                        />
+                      </Field>
+                      <Field label="Fornecedor">
+                        <input
+                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+                          list="lista-fornecedores-despesa"
+                          value={edicaoDespesa.fornecedor}
+                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, fornecedor: e.target.value })}
+                        />
+                      </Field>
+                      <Field label="Linha">
+                        <select
+                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+                          value={edicaoDespesa.linha}
+                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, linha: e.target.value })}
+                        >
+                          <option value="">Compartilhado</option>
+                          <option value="Camisaria">Camisaria</option>
+                          <option value="Alfaiataria">Alfaiataria</option>
+                        </select>
+                      </Field>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span style={{ fontSize: 11, color: TEXT_MUTED }}>Valor pago até agora:</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, width: 100 }}
+                        value={valorPagoEdit}
+                        onChange={(e) => setValorPagoEdit(e.target.value)}
+                      />
+                      <button
+                        onClick={() => salvarEdicaoDespesa(d.id)}
+                        style={{ background: INK, color: "#FFF", padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                      >
+                        Salvar
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -407,6 +501,28 @@ export default function ContasAPagar({
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {(porLinha.Camisaria > 0 || porLinha.Alfaiataria > 0 || porLinha.Compartilhado > 0) && (
+            <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, marginBottom: 6 }}>QUANTO É DE CADA LINHA</div>
+              {[
+                ["Camisaria", porLinha.Camisaria],
+                ["Alfaiataria", porLinha.Alfaiataria],
+                ["Compartilhado", porLinha.Compartilhado],
+              ]
+                .filter(([, valor]) => valor > 0)
+                .map(([linha, valor]) => (
+                  <div key={linha} className="flex items-center justify-between py-1">
+                    <span className="flex items-center gap-1.5" style={{ fontSize: 12 }}>
+                      {linha !== "Compartilhado" ? <Pill text={linha} style={LINHA_STYLE[linha]} /> : linha}
+                    </span>
+                    <span className="fx-mono" style={{ fontSize: 12, fontWeight: 600 }}>
+                      {brl(valor)}
+                    </span>
+                  </div>
+                ))}
             </div>
           )}
         </Card>
