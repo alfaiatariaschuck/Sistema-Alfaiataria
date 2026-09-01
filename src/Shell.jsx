@@ -38,6 +38,8 @@ import { useTelefonesClientes } from "./hooks/useTelefonesClientes";
 import { useEstoqueTecidos } from "./hooks/useEstoqueTecidos";
 import { useDespesas } from "./hooks/useDespesas";
 import { useEquipeProducao } from "./hooks/useEquipeProducao";
+import { useFornecedores } from "./hooks/useFornecedores";
+import { useAviamentos } from "./hooks/useAviamentos";
 import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
 import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
 import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
@@ -59,6 +61,8 @@ import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import ControleProducao from "./pages/ControleProducao";
 import Equipe from "./pages/Equipe";
+import Fornecedores from "./pages/Fornecedores";
+import Aviamentos from "./pages/Aviamentos";
 import HistoricoProducao from "./pages/HistoricoProducao";
 import CustosAtelie from "./pages/CustosAtelie";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
@@ -93,6 +97,8 @@ const NAV = [
   { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false, grupo: "Geral" },
 
   { id: "equipe", label: "Equipe", icon: Users2, primary: false, grupo: "Sistema" },
+  { id: "fornecedores", label: "Fornecedores", icon: ShoppingCart, primary: false, grupo: "Sistema" },
+  { id: "aviamentos", label: "Aviamentos", icon: PackageCheck, primary: false, grupo: "Sistema" },
   { id: "backup", label: "Backup", icon: ShieldCheck, primary: false, grupo: "Sistema" },
   { id: "config", label: "Configurações", icon: Settings, primary: false, grupo: "Sistema" },
 ];
@@ -153,6 +159,8 @@ export default function Shell() {
   const { estoque: estoqueTecidos, movimentos: movimentosEstoque, consumoPorTecido, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
   const { despesas, criarDespesa, marcarPaga, atualizarValorPago, removerDespesa } = useDespesas();
   const { equipe, loading: loadingEquipe, adicionarMembro, atualizarMembro, removerMembro } = useEquipeProducao();
+  const { fornecedores, loading: loadingFornecedores, adicionarFornecedor, atualizarFornecedor, removerFornecedor } = useFornecedores();
+  const { itens: aviamentos, loading: loadingAviamentos, adicionarItem: adicionarAviamento, atualizarItem: atualizarAviamento, removerItem: removerAviamento, custoPorPecaBase } = useAviamentos();
   const { previsoes, criarPrevisao, removerPrevisao } = usePrevisoesVenda();
   const { notas: notasVendaFutura, criarNota, removerNota } = useNotasVendaFutura();
 
@@ -623,7 +631,26 @@ export default function Shell() {
               {tab === "equipe" && (
                 <Equipe equipe={equipe} loading={loadingEquipe} onAdicionar={adicionarMembro} onCampo={atualizarMembro} onRemover={removerMembro} />
               )}
-              {tab === "custos-atelie" && !loadingPecas && <CustosAtelie pecas={pecas} equipe={equipe} />}
+              {tab === "custos-atelie" && !loadingPecas && <CustosAtelie pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />}
+              {tab === "fornecedores" && (
+                <Fornecedores
+                  fornecedores={fornecedores}
+                  loading={loadingFornecedores}
+                  onAdicionar={adicionarFornecedor}
+                  onCampo={atualizarFornecedor}
+                  onRemover={removerFornecedor}
+                />
+              )}
+              {tab === "aviamentos" && (
+                <Aviamentos
+                  itens={aviamentos}
+                  loading={loadingAviamentos}
+                  fornecedores={fornecedores}
+                  onAdicionar={adicionarAviamento}
+                  onCampo={atualizarAviamento}
+                  onRemover={removerAviamento}
+                />
+              )}
               {tab === "planos-assinatura" && !loadingPlanos && (
                 <PlanosAssinatura
                   planos={planos}

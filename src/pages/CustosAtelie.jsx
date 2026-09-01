@@ -43,7 +43,7 @@ function contarSextasNoMes(ano, mes) {
   return qtd;
 }
 
-export default function CustosAtelie({ pecas, equipe }) {
+export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase = {} }) {
   const [aluguel, setAluguel] = useState(0);
   const [luz, setLuz] = useState(0);
   const [prolabore, setProlabore] = useState(0);
@@ -112,7 +112,19 @@ export default function CustosAtelie({ pecas, equipe }) {
     [pecas, mesAtualStr]
   );
 
-  const custoTotal = custoEquipeTotal + custoEstrutura + prolabore + custoProducaoTecido;
+  // Custo de aviamentos do mês — só bate direto quando o tipo de peça
+  // vendido tem o mesmo nome de uma peça-base cadastrada (Calça, Colete,
+  // Casaco, Bomber). Peças compostas (Traje, Costume, Blazer — que juntam
+  // várias peças-base) ainda não têm essa soma automática.
+  const custoAviamentos = useMemo(
+    () =>
+      (pecas || [])
+        .filter((p) => p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
+        .reduce((soma, p) => soma + (custoAviamentosPorPecaBase[p.tipoPeca] || 0), 0),
+    [pecas, mesAtualStr, custoAviamentosPorPecaBase]
+  );
+
+  const custoTotal = custoEquipeTotal + custoEstrutura + prolabore + custoProducaoTecido + custoAviamentos;
 
   const receitaMes = useMemo(
     () =>
@@ -215,11 +227,21 @@ export default function CustosAtelie({ pecas, equipe }) {
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — tecido do mês</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoProducaoTecido)}</div>
           </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — aviamentos do mês</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoAviamentos)}</div>
+          </div>
         </div>
         {custoProducaoTecido === 0 && (
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>
             Nenhum tecido com valor/metro cadastrado nas peças pedidas esse mês ainda — preencha em Compras pra esse
             número aparecer aqui.
+          </div>
+        )}
+        {custoAviamentos === 0 && (
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>
+            Aviamentos só soma automático pra peças com nome igual a uma peça-base cadastrada (Calça, Colete, Casaco,
+            Bomber) — peças compostas (Traje, Costume, Blazer) ainda não somam sozinhas.
           </div>
         )}
 
