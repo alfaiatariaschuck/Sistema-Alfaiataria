@@ -28,6 +28,8 @@ function rowParaDespesa(row) {
     status: row.status,
     recorrente: !!row.recorrente,
     linha: row.linha || "",
+    valorCamisaria: row.valor_camisaria ?? "",
+    valorAlfaiataria: row.valor_alfaiataria ?? "",
   };
 }
 
@@ -62,7 +64,7 @@ export function useDespesas() {
     recarregar();
   }, [recarregar]);
 
-  async function criarDespesa({ descricao, categoria, fornecedor, valor, frete, vencimento, recorrente, linha }) {
+  async function criarDespesa({ descricao, categoria, fornecedor, valor, frete, vencimento, recorrente, linha, valorCamisaria, valorAlfaiataria }) {
     return comIndicador(async () => {
       const { error } = await supabase.from("despesas").insert({
         descricao,
@@ -75,6 +77,8 @@ export function useDespesas() {
         recorrente: !!recorrente,
         status: "Pendente",
         linha: linha || null,
+        valor_camisaria: valorCamisaria === "" || valorCamisaria == null ? null : Number(valorCamisaria),
+        valor_alfaiataria: valorAlfaiataria === "" || valorAlfaiataria == null ? null : Number(valorAlfaiataria),
       });
       if (error) throw error;
       await recarregar();
@@ -82,10 +86,10 @@ export function useDespesas() {
   }
 
   // Edita os dados de uma despesa (descrição, categoria, fornecedor, valor,
-  // frete, vencimento, linha) — útil pra lançar um valor estimado agora e
-  // corrigir depois quando a nota fiscal/valor exato chegar, sem precisar
-  // apagar e recriar.
-  async function atualizarDespesa(id, { descricao, categoria, fornecedor, valor, frete, vencimento, linha }) {
+  // frete, vencimento, linha, valor por linha) — útil pra lançar um valor
+  // estimado agora e corrigir depois quando a nota fiscal/valor exato
+  // chegar, sem precisar apagar e recriar.
+  async function atualizarDespesa(id, { descricao, categoria, fornecedor, valor, frete, vencimento, linha, valorCamisaria, valorAlfaiataria }) {
     return comIndicador(async () => {
       const { error } = await supabase
         .from("despesas")
@@ -97,6 +101,8 @@ export function useDespesas() {
           frete: Number(frete) || 0,
           vencimento,
           linha: linha || null,
+          valor_camisaria: valorCamisaria === "" || valorCamisaria == null ? null : Number(valorCamisaria),
+          valor_alfaiataria: valorAlfaiataria === "" || valorAlfaiataria == null ? null : Number(valorAlfaiataria),
         })
         .eq("id", id);
       if (error) throw error;
@@ -128,6 +134,8 @@ export function useDespesas() {
           recorrente: true,
           status: "Pendente",
           linha: despesa.linha || null,
+          valor_camisaria: despesa.valorCamisaria === "" || despesa.valorCamisaria == null ? null : Number(despesa.valorCamisaria),
+          valor_alfaiataria: despesa.valorAlfaiataria === "" || despesa.valorAlfaiataria == null ? null : Number(despesa.valorAlfaiataria),
         });
         if (errProx) throw errProx;
       }

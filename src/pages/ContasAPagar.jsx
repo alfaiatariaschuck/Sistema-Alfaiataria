@@ -28,6 +28,7 @@ function novaDespesaVazia() {
     parcelas: "1",
     dividirLinha: false,
     valorCamisaria: "",
+    valorAlfaiataria: "",
   };
 }
 
@@ -63,7 +64,17 @@ export default function ContasAPagar({
   const [novaNota, setNovaNota] = useState({ descricao: "", valor: "", dataEsperada: "" });
   const [editandoDespesa, setEditandoDespesa] = useState(null);
   const [valorPagoEdit, setValorPagoEdit] = useState("");
-  const [edicaoDespesa, setEdicaoDespesa] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: "", linha: "" });
+  const [edicaoDespesa, setEdicaoDespesa] = useState({
+    descricao: "",
+    categoria: "",
+    fornecedor: "",
+    valor: "",
+    frete: "",
+    vencimento: "",
+    linha: "",
+    valorCamisaria: "",
+    valorAlfaiataria: "",
+  });
   const [erro, setErro] = useState(null);
   const [caixaAtual, setCaixaAtual] = useState("");
   const [caixaSalvo, setCaixaSalvo] = useState(null);
@@ -211,14 +222,24 @@ export default function ContasAPagar({
     return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
   })();
 
-  // Quanto das despesas em aberto é de cada linha — só as marcadas com
-  // "Linha" ao criar/editar; o resto cai em "Compartilhado".
+  // Quanto das despesas em aberto é de cada linha — despesas com tecido
+  // discriminado (valorCamisaria/valorAlfaiataria) ratam o pendente na
+  // mesma proporção; as marcadas só com "Linha" vão inteiras pra ela; o
+  // resto cai em "Compartilhado".
   const porLinha = (() => {
     const totais = { Camisaria: 0, Alfaiataria: 0, Compartilhado: 0 };
     despesasPendentes.forEach((d) => {
       const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
-      const chave = d.linha === "Camisaria" || d.linha === "Alfaiataria" ? d.linha : "Compartilhado";
-      totais[chave] += pendente;
+      const cam = parseFloat(d.valorCamisaria) || 0;
+      const alf = parseFloat(d.valorAlfaiataria) || 0;
+      if (cam > 0 || alf > 0) {
+        const totalTecido = cam + alf;
+        totais.Camisaria += pendente * (cam / totalTecido);
+        totais.Alfaiataria += pendente * (alf / totalTecido);
+      } else {
+        const chave = d.linha === "Camisaria" || d.linha === "Alfaiataria" ? d.linha : "Compartilhado";
+        totais[chave] += pendente;
+      }
     });
     return totais;
   })();
@@ -367,51 +388,48 @@ export default function ContasAPagar({
     setNova((p) => ({ ...p, parcelas: String(n), recorrente: n > 1 ? false : p.recorrente }));
   }
 
-  // Monta a lista de despesas a criar a partir do formulário — trata
-  // parcelas (N despesas com vencimentos próprios) e a divisão por linha
-  // (mesmo fornecedor, mas parte do valor é de tecido da camisaria e
-  // parte da alfaiataria) juntas: quando as duas se combinam, cada linha
-  // vira seu próprio conjunto de parcelas.
+  // Monta a lista de despesas a criar a partir do formulário — sempre UMA
+  // despesa por parcela (nunca duas), mesmo quando o valor é dividido
+  // entre Camisaria e Alfaiataria: nesse caso o tecido de cada linha e o
+  // frete ficam discriminados dentro da mesma despesa, e valor = soma dos
+  // dois — é uma dívida só com o fornecedor, só com a origem do tecido
+  // anotada dentro dela.
   function montarDespesasParaCriar() {
     const n = Math.max(1, parseInt(nova.parcelas, 10) || 1);
-    const totalValor = parseFloat(nova.valor) || 0;
+    const valorCam = nova.dividirLinha ? parseFloat(nova.valorCamisaria) || 0 : 0;
+    const valorAlf = nova.dividirLinha ? parseFloat(nova.valorAlfaiataria) || 0 : 0;
+    const totalValor = nova.dividirLinha ? valorCam + valorAlf : parseFloat(nova.valor) || 0;
     const totalFrete = parseFloat(nova.frete) || 0;
 
-    const porLinha = nova.dividirLinha
-      ? [
-          { linha: "Camisaria", valor: parseFloat(nova.valorCamisaria) || 0 },
-          { linha: "Alfaiataria", valor: Math.max(0, totalValor - (parseFloat(nova.valorCamisaria) || 0)) },
-        ].filter((l) => l.valor > 0)
-      : [{ linha: nova.linha, valor: totalValor }];
+    const parcelasValor = dividirEmCentavos(totalValor, n);
+    const parcelasFrete = dividirEmCentavos(totalFrete, n);
+    const parcelasCam = nova.dividirLinha ? dividirEmCentavos(valorCam, n) : null;
+    const parcelasAlf = nova.dividirLinha ? dividirEmCentavos(valorAlf, n) : null;
 
     const despesas = [];
-    porLinha.forEach(({ linha, valor }) => {
-      const fracao = totalValor > 0 ? valor / totalValor : 0;
-      const freteDaLinha = nova.dividirLinha ? totalFrete * fracao : totalFrete;
-      const parcelasValor = dividirEmCentavos(valor, n);
-      const parcelasFrete = dividirEmCentavos(freteDaLinha, n);
-      for (let i = 0; i < n; i++) {
-        const sufixoLinha = nova.dividirLinha ? ` (${linha})` : "";
-        const sufixoParcela = n > 1 ? ` (${i + 1}/${n})` : "";
-        despesas.push({
-          ...nova,
-          descricao: `${nova.descricao}${sufixoLinha}${sufixoParcela}`,
-          valor: parcelasValor[i],
-          frete: parcelasFrete[i],
-          vencimento: n > 1 ? vencimentosParcelas[i] || nova.vencimento : nova.vencimento,
-          linha,
-          recorrente: n > 1 ? false : nova.recorrente,
-        });
-      }
-    });
+    for (let i = 0; i < n; i++) {
+      const sufixoParcela = n > 1 ? ` (${i + 1}/${n})` : "";
+      despesas.push({
+        ...nova,
+        descricao: `${nova.descricao}${sufixoParcela}`,
+        valor: parcelasValor[i],
+        frete: parcelasFrete[i],
+        vencimento: n > 1 ? vencimentosParcelas[i] || nova.vencimento : nova.vencimento,
+        linha: nova.dividirLinha ? "" : nova.linha,
+        valorCamisaria: nova.dividirLinha ? parcelasCam[i] : "",
+        valorAlfaiataria: nova.dividirLinha ? parcelasAlf[i] : "",
+        recorrente: n > 1 ? false : nova.recorrente,
+      });
+    }
     return despesas;
   }
 
   async function salvarDespesa(e) {
     e.preventDefault();
-    if (!nova.descricao.trim() || !nova.valor) return;
-    if (nova.dividirLinha && (parseFloat(nova.valorCamisaria) || 0) > (parseFloat(nova.valor) || 0)) {
-      setErro("O valor da Camisaria não pode ser maior que o valor total.");
+    if (!nova.descricao.trim()) return;
+    if (!nova.dividirLinha && !nova.valor) return;
+    if (nova.dividirLinha && (parseFloat(nova.valorCamisaria) || 0) + (parseFloat(nova.valorAlfaiataria) || 0) <= 0) {
+      setErro("Preencha o valor da Camisaria e/ou da Alfaiataria.");
       return;
     }
     setErro(null);
@@ -483,6 +501,8 @@ export default function ContasAPagar({
       frete: String(d.frete || ""),
       vencimento: d.vencimento,
       linha: d.linha || "",
+      valorCamisaria: String(d.valorCamisaria || ""),
+      valorAlfaiataria: String(d.valorAlfaiataria || ""),
     });
   }
 
@@ -723,9 +743,35 @@ export default function ContasAPagar({
                     ))}
                   </datalist>
                 </Field>
-                <Field label="Valor (R$)">
-                  <input type="number" step="0.01" style={inputStyle} value={nova.valor} onChange={(e) => setNova({ ...nova, valor: e.target.value })} required />
-                </Field>
+                {!nova.dividirLinha && (
+                  <Field label="Valor (R$)">
+                    <input type="number" step="0.01" style={inputStyle} value={nova.valor} onChange={(e) => setNova({ ...nova, valor: e.target.value })} required />
+                  </Field>
+                )}
+                {nova.dividirLinha && (
+                  <>
+                    <Field label="Tecido Camisaria (R$)">
+                      <input
+                        type="number"
+                        step="0.01"
+                        style={inputStyle}
+                        value={nova.valorCamisaria}
+                        onChange={(e) => setNova({ ...nova, valorCamisaria: e.target.value })}
+                        placeholder="0,00"
+                      />
+                    </Field>
+                    <Field label="Tecido Alfaiataria (R$)">
+                      <input
+                        type="number"
+                        step="0.01"
+                        style={inputStyle}
+                        value={nova.valorAlfaiataria}
+                        onChange={(e) => setNova({ ...nova, valorAlfaiataria: e.target.value })}
+                        placeholder="0,00"
+                      />
+                    </Field>
+                  </>
+                )}
                 <Field label="Frete (R$, opcional)">
                   <input type="number" step="0.01" style={inputStyle} value={nova.frete} onChange={(e) => setNova({ ...nova, frete: e.target.value })} placeholder="0,00" />
                 </Field>
@@ -741,18 +787,6 @@ export default function ContasAPagar({
                     </select>
                   </Field>
                 )}
-                {nova.dividirLinha && (
-                  <Field label="Valor Camisaria (R$)">
-                    <input
-                      type="number"
-                      step="0.01"
-                      style={inputStyle}
-                      value={nova.valorCamisaria}
-                      onChange={(e) => setNova({ ...nova, valorCamisaria: e.target.value })}
-                      placeholder="0,00"
-                    />
-                  </Field>
-                )}
                 <Field label="Parcelas (boleto em Nx)">
                   <input type="number" min="1" step="1" style={inputStyle} value={nova.parcelas} onChange={(e) => handleParcelasChange(e.target.value)} />
                 </Field>
@@ -761,26 +795,28 @@ export default function ContasAPagar({
                 <input
                   type="checkbox"
                   checked={nova.dividirLinha}
-                  onChange={(e) => setNova({ ...nova, dividirLinha: e.target.checked, linha: "" })}
+                  onChange={(e) => setNova({ ...nova, dividirLinha: e.target.checked, linha: "", valor: "" })}
                   style={{ width: 15, height: 15, accentColor: BRASS }}
                 />
                 <span style={{ fontSize: 12, fontWeight: 600 }}>
-                  Mesmo fornecedor, tecido das duas linhas — dividir o valor entre Camisaria e Alfaiataria
+                  Mesmo fornecedor, tecido das duas linhas — discriminar quanto é de cada uma dentro dessa despesa
                 </span>
               </label>
               {nova.dividirLinha && (
                 <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
-                  Lança duas despesas separadas com o mesmo fornecedor e vencimento: Camisaria {brl(parseFloat(nova.valorCamisaria) || 0)} e Alfaiataria{" "}
-                  {brl(Math.max(0, (parseFloat(nova.valor) || 0) - (parseFloat(nova.valorCamisaria) || 0)))} — cada uma já aparece separada em "quanto é de
-                  cada linha".
+                  Uma despesa só, com o tecido de cada linha anotado dentro dela: Camisaria {brl(parseFloat(nova.valorCamisaria) || 0)} + Alfaiataria{" "}
+                  {brl(parseFloat(nova.valorAlfaiataria) || 0)}
+                  {parseFloat(nova.frete) > 0 && <> + frete {brl(parseFloat(nova.frete) || 0)}</>} = total da dívida com o fornecedor{" "}
+                  <strong>
+                    {brl((parseFloat(nova.valorCamisaria) || 0) + (parseFloat(nova.valorAlfaiataria) || 0) + (parseFloat(nova.frete) || 0))}
+                  </strong>
+                  .
                 </div>
               )}
               {parseInt(nova.parcelas, 10) > 1 && (
                 <div className="mb-3 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
                   <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
-                    Lança {parseInt(nova.parcelas, 10)} despesas de {brl((parseFloat(nova.valor) || 0) / parseInt(nova.parcelas, 10))} cada (valor total{" "}
-                    {brl(parseFloat(nova.valor) || 0)} dividido, não repetido) — ajuste o vencimento de cada uma, já que nem todo parcelamento é mês a mês
-                    certinho.
+                    Lança {parseInt(nova.parcelas, 10)} despesas — ajuste o vencimento de cada uma, já que nem todo parcelamento é mês a mês certinho.
                   </div>
                   <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))" }}>
                     {vencimentosParcelas.map((venc, i) => (
@@ -830,7 +866,14 @@ export default function ContasAPagar({
                       <span style={{ fontSize: 13, fontWeight: 600 }}>
                         {d.descricao} {d.recorrente && "↻"}
                       </span>
-                      {d.linha && <Pill text={d.linha} style={LINHA_STYLE[d.linha]} />}
+                      {(parseFloat(d.valorCamisaria) > 0 || parseFloat(d.valorAlfaiataria) > 0) ? (
+                        <>
+                          {parseFloat(d.valorCamisaria) > 0 && <Pill text={`Camisaria ${brl(d.valorCamisaria)}`} style={LINHA_STYLE.Camisaria} />}
+                          {parseFloat(d.valorAlfaiataria) > 0 && <Pill text={`Alfaiataria ${brl(d.valorAlfaiataria)}`} style={LINHA_STYLE.Alfaiataria} />}
+                        </>
+                      ) : (
+                        d.linha && <Pill text={d.linha} style={LINHA_STYLE[d.linha]} />
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
                       {d.fornecedor ? `${d.fornecedor} · ` : d.categoria ? `${d.categoria} · ` : ""}vence {fmtData(d.vencimento)}
@@ -923,6 +966,30 @@ export default function ContasAPagar({
                           <option value="Alfaiataria">Alfaiataria</option>
                         </select>
                       </Field>
+                      <Field label="Tecido Camisaria (R$)">
+                        <input
+                          type="number"
+                          step="0.01"
+                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+                          value={edicaoDespesa.valorCamisaria}
+                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, valorCamisaria: e.target.value })}
+                          placeholder="0,00"
+                        />
+                      </Field>
+                      <Field label="Tecido Alfaiataria (R$)">
+                        <input
+                          type="number"
+                          step="0.01"
+                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+                          value={edicaoDespesa.valorAlfaiataria}
+                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, valorAlfaiataria: e.target.value })}
+                          placeholder="0,00"
+                        />
+                      </Field>
+                    </div>
+                    <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 8 }}>
+                      Preenchendo Camisaria/Alfaiataria acima, lembre de ajustar o "Valor" pra a soma das duas + o que for compartilhado (o campo Valor não
+                      se recalcula sozinho).
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span style={{ fontSize: 11, color: TEXT_MUTED }}>Valor pago até agora:</span>
