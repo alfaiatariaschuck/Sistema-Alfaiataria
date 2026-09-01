@@ -73,11 +73,36 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
   );
 
   // Mão de obra da Fabiana — não é salário fixo, é o que se paga por
-  // pedido (inclui os de Doação, que ela também produz).
+  // pedido (inclui os de Doação, que ela também produz). Como o
+  // pagamento dela é feito ao longo do mês, cedo no mês esse número
+  // ainda está bem incompleto — por isso a opção de projetar com base
+  // no que foi pago mês passado.
   const custoMaoDeObra = useMemo(
     () => pedidosDoMes.reduce((s, p) => s + (parseFloat(p.pagoFabiana?.valor) || 0), 0),
     [pedidosDoMes]
   );
+
+  const mesAnteriorStr = useMemo(() => {
+    const d = new Date(anoAtual, mesAtual - 1, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }, [anoAtual, mesAtual]);
+  const custoMaoDeObraMesAnterior = useMemo(
+    () =>
+      (pedidos || [])
+        .filter((p) => p.dataPedido && p.dataPedido.slice(0, 7) === mesAnteriorStr)
+        .reduce((s, p) => s + (parseFloat(p.pagoFabiana?.valor) || 0), 0),
+    [pedidos, mesAnteriorStr]
+  );
+
+  const [usarProjecaoFabiana, setUsarProjecaoFabiana] = useState(true);
+  // Enquanto o valor real do mês ainda não superou o do mês passado, a
+  // projeção é a estimativa mais realista — assim que o real ultrapassa,
+  // já é melhor confiar nele em vez da projeção antiga.
+  useEffect(() => {
+    if (custoMaoDeObra >= custoMaoDeObraMesAnterior && custoMaoDeObra > 0) setUsarProjecaoFabiana(false);
+    // eslint-disable-next-line
+  }, [mesAtualStr]);
+  const custoMaoDeObraEfetivo = usarProjecaoFabiana ? custoMaoDeObraMesAnterior : custoMaoDeObra;
 
   // Tecido dos pedidos de camisaria pedidos esse mês — mesmo padrão do
   // Ateliê: metragem × valor/metro cadastrado em Compras.
@@ -95,7 +120,7 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
     [pedidosDoMes]
   );
 
-  const custoTotal = custoMaoDeObra + custoEstrutura + custoProducaoTecido;
+  const custoTotal = custoMaoDeObraEfetivo + custoEstrutura + custoProducaoTecido;
 
   const receitaMes = useMemo(
     () => pedidosVendidosDoMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0),
@@ -118,6 +143,16 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
   const custoCompartilhadoRateavel = custosFixosPJ + planoSaudePJ;
   const custoCompartilhadoRateado = prolaboreMetade + custoCompartilhadoRateavel * fatiaCamisaria;
   const custoTotalComRateio = custoTotal + custoCompartilhadoRateado;
+
+  // Simulação: quanto falta faturar esse mês pra cobrir tudo (custo
+  // próprio + fatia rateada do compartilhado), e quanto isso dá por dia
+  // nos dias que restam do mês.
+  const metaFaturamento = custoTotalComRateio;
+  const faltaFaturar = Math.max(0, metaFaturamento - receitaMes);
+  const percentualAtingido = metaFaturamento > 0 ? Math.min(100, (receitaMes / metaFaturamento) * 100) : 100;
+  const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
+  const diasRestantes = Math.max(1, diasNoMes - hoje.getDate() + 1);
+  const faturamentoPorDiaNecessario = faltaFaturar > 0 ? faltaFaturar / diasRestantes : 0;
 
   const historicoMensal = useMemo(() => {
     const meses = [];
@@ -152,6 +187,38 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
         />
         <StatCard label="Camisaria cobre seus custos próprios?" value={sePagando ? "Sim" : "Não"} icon={sePagando ? TrendingUp : AlertTriangle} accent={sePagando ? "#2C6E31" : "#9C4A1E"} />
       </div>
+
+      <Card style={{ padding: 20 }} className="mb-6">
+        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+          Quanto preciso faturar esse mês
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+          Meta = custo próprio da camisaria + fatia rateada do compartilhado (com a projeção da Fabiana, se estiver
+          marcada acima). {diasRestantes} dia(s) restam no mês.
+        </div>
+        <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Meta de faturamento do mês</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(metaFaturamento)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Faturado até agora</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: "#2C6E31" }}>{brl(receitaMes)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Falta faturar</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: faltaFaturar > 0 ? "#9C4A1E" : "#2C6E31" }}>{brl(faltaFaturar)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Precisa faturar/dia (resto do mês)</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: BRASS }}>{brl(faturamentoPorDiaNecessario)}</div>
+          </div>
+        </div>
+        <div style={{ background: "#EDEAE0", borderRadius: 999, height: 8, overflow: "hidden" }}>
+          <div style={{ background: percentualAtingido >= 100 ? "#2C6E31" : BRASS, height: "100%", width: `${percentualAtingido}%` }} />
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 6 }}>{percentualAtingido.toFixed(0)}% da meta atingida.</div>
+      </Card>
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
@@ -201,10 +268,10 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
           + tecido dos pedidos (pelo valor/metro cadastrado em Compras). Não inclui os custos compartilhados da
           empresa (acima).
         </div>
-        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+        <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra — pago à Fabiana</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoMaoDeObra)}</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra — pago à Fabiana {usarProjecaoFabiana ? "(projetado)" : "(real até agora)"}</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: usarProjecaoFabiana ? BRASS : undefined }}>{brl(custoMaoDeObraEfetivo)}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Aluguel + luz da loja</div>
@@ -214,6 +281,22 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — tecido do mês</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoProducaoTecido)}</div>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap p-3" style={{ background: "#F3EEDF", borderRadius: 8, marginBottom: pedidosSemValorTecido.length > 0 ? 12 : 0 }}>
+          <label className="flex items-center gap-2" style={{ cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={usarProjecaoFabiana}
+              onChange={(e) => setUsarProjecaoFabiana(e.target.checked)}
+              style={{ width: 15, height: 15, accentColor: BRASS }}
+            />
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Projetar mão de obra da Fabiana com base no mês passado</span>
+          </label>
+          <span style={{ fontSize: 11, color: TEXT_MUTED }}>
+            Pago a ela até agora esse mês: <strong>{brl(custoMaoDeObra)}</strong> · Pago mês passado inteiro: <strong>{brl(custoMaoDeObraMesAnterior)}</strong>
+            {" — "}como você paga ao longo do mês, cedo no mês o valor real ainda está incompleto; a projeção usa o total do mês anterior como estimativa até fechar o mês.
+          </span>
         </div>
         {pedidosSemValorTecido.length > 0 && (
           <div style={{ fontSize: 11, color: "#9C4A1E", marginTop: 12 }}>
@@ -226,7 +309,7 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
       <CalculadoraMarkup
         custoFixoMes={custoEstrutura + custoCompartilhadoRateado}
         qtdPadrao={quantidadeVendidaMes || 1}
-        custoVariavelPadrao={quantidadeVendidaMes > 0 ? custoMaoDeObra / quantidadeVendidaMes : 0}
+        custoVariavelPadrao={quantidadeVendidaMes > 0 ? custoMaoDeObraEfetivo / quantidadeVendidaMes : 0}
         unidadeLabel="camisa"
       />
 
