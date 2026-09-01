@@ -36,7 +36,7 @@ export default function ContasAPagar({
   const [dataIniJanela, setDataIniJanela] = useState(hojeISO());
   const [dataFimJanela, setDataFimJanela] = useState(somarDias(hojeISO(), 14));
   const [formDespesa, setFormDespesa] = useState(false);
-  const [nova, setNova] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "" });
+  const [nova, setNova] = useState({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "", parcelas: "1" });
   const [formPrevisao, setFormPrevisao] = useState(false);
   const [novaPrevisao, setNovaPrevisao] = useState({ descricao: "", valor: "", dataEsperada: hojeISO() });
   const [formNota, setFormNota] = useState(false);
@@ -322,13 +322,47 @@ export default function ContasAPagar({
     return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
   })();
 
+  // Divide um valor em N parcelas sem perder centavo no arredondamento —
+  // sobra de centavo (se houver) fica nas primeiras parcelas.
+  function dividirEmCentavos(valor, n) {
+    const totalCentavos = Math.round((parseFloat(valor) || 0) * 100);
+    const base = Math.floor(totalCentavos / n);
+    const resto = totalCentavos - base * n;
+    return Array.from({ length: n }, (_, i) => (base + (i < resto ? 1 : 0)) / 100);
+  }
+
+  function somarMeses(dataISO, meses) {
+    const d = new Date(dataISO + "T00:00:00");
+    d.setMonth(d.getMonth() + meses);
+    return d.toISOString().slice(0, 10);
+  }
+
   async function salvarDespesa(e) {
     e.preventDefault();
     if (!nova.descricao.trim() || !nova.valor) return;
     setErro(null);
+    const n = Math.max(1, parseInt(nova.parcelas, 10) || 1);
     try {
-      await onCriarDespesa(nova);
-      setNova({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "" });
+      if (n === 1) {
+        await onCriarDespesa(nova);
+      } else {
+        // Boleto parcelado — não é recorrente (não repete sozinho depois
+        // que acaba), então cada parcela já nasce lançada de uma vez, com
+        // vencimento um mês depois da anterior.
+        const parcelasValor = dividirEmCentavos(nova.valor, n);
+        const parcelasFrete = dividirEmCentavos(nova.frete || 0, n);
+        for (let i = 0; i < n; i++) {
+          await onCriarDespesa({
+            ...nova,
+            descricao: `${nova.descricao} (${i + 1}/${n})`,
+            valor: parcelasValor[i],
+            frete: parcelasFrete[i],
+            vencimento: somarMeses(nova.vencimento, i),
+            recorrente: false,
+          });
+        }
+      }
+      setNova({ descricao: "", categoria: "", fornecedor: "", valor: "", frete: "", vencimento: hojeISO(), recorrente: false, linha: "", parcelas: "1" });
       setFormDespesa(false);
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + ").");
@@ -647,16 +681,34 @@ export default function ContasAPagar({
                     <option value="Alfaiataria">Alfaiataria</option>
                   </select>
                 </Field>
+                <Field label="Parcelas (boleto em Nx)">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    style={inputStyle}
+                    value={nova.parcelas}
+                    onChange={(e) => setNova({ ...nova, parcelas: e.target.value, recorrente: parseInt(e.target.value, 10) > 1 ? false : nova.recorrente })}
+                  />
+                </Field>
               </div>
-              <label className="flex items-center gap-2 mb-2" style={{ cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={nova.recorrente}
-                  onChange={(e) => setNova({ ...nova, recorrente: e.target.checked })}
-                  style={{ width: 15, height: 15, accentColor: BRASS }}
-                />
-                <span style={{ fontSize: 12, fontWeight: 600 }}>Recorrente — ao marcar como paga, já lança a do mês seguinte</span>
-              </label>
+              {parseInt(nova.parcelas, 10) > 1 && (
+                <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+                  Lança {parseInt(nova.parcelas, 10)} despesas de {brl((parseFloat(nova.valor) || 0) / parseInt(nova.parcelas, 10))} cada, uma por mês a partir do
+                  vencimento acima — o valor total ({brl(parseFloat(nova.valor) || 0)}) fica dividido, não repetido.
+                </div>
+              )}
+              {parseInt(nova.parcelas, 10) <= 1 && (
+                <label className="flex items-center gap-2 mb-2" style={{ cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={nova.recorrente}
+                    onChange={(e) => setNova({ ...nova, recorrente: e.target.checked })}
+                    style={{ width: 15, height: 15, accentColor: BRASS }}
+                  />
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>Recorrente — ao marcar como paga, já lança a do mês seguinte</span>
+                </label>
+              )}
               <button type="submit" style={{ background: INK, color: "#FFF", padding: "7px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
                 Salvar
               </button>
