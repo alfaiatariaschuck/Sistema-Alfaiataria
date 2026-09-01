@@ -90,7 +90,13 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
     [equipeComCusto]
   );
   const custoEquipeTotal = custoMensalistas + custoDiaristas;
-  const custoEstrutura = aluguel + luz + custosFixosPJ + planoSaudePJ;
+  // Estrutura do PRÓPRIO ateliê — aluguel e luz já são os campos
+  // específicos de produção (não os da loja/camisaria).
+  const custoEstrutura = aluguel + luz;
+  // Custos da EMPRESA como um todo, não só do ateliê — pró-labore,
+  // contador, sistemas, marketing, impostos, plano de saúde. Camisaria
+  // também se beneficia deles, então não é justo jogar 100% no ateliê.
+  const custoCompartilhado = prolabore + custosFixosPJ + planoSaudePJ;
 
   // Custo de produção (tecido) do mês — soma metragem × valor/metro de
   // cada item de tecido das peças de alfaiataria pedidas nesse mês,
@@ -128,7 +134,14 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
     [pecas, mesAtualStr, custoAviamentosPorPecaBase]
   );
 
-  const custoTotal = custoEquipeTotal + custoEstrutura + prolabore + custoProducaoTecido + custoAviamentos;
+  // Custo do ATELIÊ especificamente — só o que é dessa linha (mão de
+  // obra, aluguel/luz do ateliê, tecido e aviamentos das peças de
+  // alfaiataria). Pró-labore e custos fixos PJ NÃO entram aqui — são da
+  // empresa toda, camisaria também se beneficia deles.
+  const custoTotal = custoEquipeTotal + custoEstrutura + custoProducaoTecido + custoAviamentos;
+  // Visão consolidada (ateliê + custos compartilhados) — só informativa,
+  // já que a camisaria ainda não tem custo próprio calculado aqui.
+  const custoTotalComCompartilhado = custoTotal + custoCompartilhado;
 
   const receitaMes = useMemo(
     () =>
@@ -185,16 +198,49 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
       )}
 
       <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-        <StatCard label="Receita do mês (vendas)" value={brl(receitaMes)} icon={TrendingUp} />
-        <StatCard label="Custo total estimado do mês" value={brl(custoTotal)} icon={TrendingDown} />
+        <StatCard label="Receita do mês (vendas alfaiataria)" value={brl(receitaMes)} icon={TrendingUp} />
+        <StatCard label="Custo próprio do ateliê" value={brl(custoTotal)} icon={TrendingDown} />
         <StatCard
-          label="Resultado do mês"
+          label="Resultado do ateliê"
           value={brl(resultado)}
           icon={Wallet}
           accent={sePagando ? "#2C6E31" : "#9C4A1E"}
         />
-        <StatCard label="Ateliê se pagando?" value={sePagando ? "Sim" : "Não"} icon={sePagando ? TrendingUp : AlertTriangle} accent={sePagando ? "#2C6E31" : "#9C4A1E"} />
+        <StatCard label="Ateliê cobre seus custos próprios?" value={sePagando ? "Sim" : "Não"} icon={sePagando ? TrendingUp : AlertTriangle} accent={sePagando ? "#2C6E31" : "#9C4A1E"} />
       </div>
+
+      <Card style={{ padding: 20 }} className="mb-6">
+        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+          Custos compartilhados da empresa (fora do ateliê)
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+          Pró-labore, contador, sistemas, marketing, impostos e plano de saúde são da empresa como um todo — a
+          camisaria também se beneficia deles, então <strong>não entram no custo próprio do ateliê acima</strong>.
+          Enquanto não existir uma visão de custos da camisaria pra ratear, fica registrado à parte aqui.
+        </div>
+        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Pró-labore</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(prolabore)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Outros custos fixos PJ</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custosFixosPJ)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Plano de saúde empresarial</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(planoSaudePJ)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Total compartilhado</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: BRASS }}>{carregandoConfig ? "…" : brl(custoCompartilhado)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo total (ateliê + compartilhado)</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoTotalComCompartilhado)}</div>
+          </div>
+        </div>
+      </Card>
 
       {semCadastro.length > 0 && (
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: -12, marginBottom: 20 }}>
@@ -204,11 +250,11 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-          Composição do custo mensal estimado
+          Composição do custo próprio do ateliê
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Mão de obra (equipe) + custo fixo da empresa (aluguel + luz) + custo fixo pessoal (seu pró-labore) + produção
-          (tecido, pelo valor/metro cadastrado em Compras) — os três últimos configurados em Configurações.
+          Só o que é específico da linha de alfaiataria: mão de obra (equipe) + aluguel/luz do ateliê + tecido e
+          aviamentos das peças pedidas esse mês. Não inclui os custos compartilhados da empresa (acima).
         </div>
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
@@ -220,12 +266,8 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoDiaristas)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo fixo da empresa (aluguel + luz do ateliê + plano de saúde + outros PJ)</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Aluguel + luz do ateliê</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoEstrutura)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo fixo pessoal (pró-labore)</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(prolabore)}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — tecido do mês</div>
@@ -291,7 +333,7 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
           A receita de cada mês é real (vendas daquele mês). O custo usa o patamar estimado de <strong>hoje</strong>{" "}
-          (equipe, estrutura, pró-labore e tecido atuais) como régua fixa — não é o custo exato que valia em cada mês,
+          (equipe, estrutura, tecido e aviamentos do ateliê — sem os custos compartilhados da empresa) como régua fixa — não é o custo exato que valia em cada mês,
           é uma referência pra ver quantos meses recentes cobririam o custo de agora.{" "}
           {mesesQueSePagaram} de {historicoMensal.length} meses se pagariam com esse patamar.
         </div>
