@@ -15,6 +15,19 @@ function totalDespesa(d) {
   return (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
 }
 
+// Até quando os presets de período (7/14/30 dias) podem enxergar — não
+// mostra conta do mês que vem antes da hora. Só relaxa esse teto quando
+// já está na última semana do mês atual (aí olhar pro mês seguinte é
+// natural, faz parte do planejamento da semana). "Ver tudo" e o De/Até
+// manual continuam livres, sem esse teto.
+function limiteMesAtual(hojeISOStr) {
+  const d = new Date(hojeISOStr + "T00:00:00");
+  const ultimoDiaMes = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  const estaNaUltimaSemana = d.getDate() > ultimoDiaMes - 7;
+  if (estaNaUltimaSemana) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(ultimoDiaMes).padStart(2, "0")}`;
+}
+
 function novaDespesaVazia() {
   return {
     descricao: "",
@@ -44,6 +57,7 @@ export default function ContasAPagar({
   onAtualizarDespesa,
   onRemoverDespesa,
   onCriarPrevisao,
+  onAtualizarPrevisao,
   onRemoverPrevisao,
   onCriarNota,
   onRemoverNota,
@@ -51,7 +65,11 @@ export default function ContasAPagar({
   irParaPeca,
 }) {
   const [dataIniJanela, setDataIniJanela] = useState(hojeISO());
-  const [dataFimJanela, setDataFimJanela] = useState(somarDias(hojeISO(), 14));
+  const [dataFimJanela, setDataFimJanela] = useState(() => {
+    const limite = limiteMesAtual(hojeISO());
+    const candidata = somarDias(hojeISO(), 14);
+    return limite && candidata > limite ? limite : candidata;
+  });
   const [formDespesa, setFormDespesa] = useState(false);
   const [nova, setNova] = useState(novaDespesaVazia());
   // Vencimento de cada parcela, editável uma a uma — parcelado nem sempre
@@ -60,6 +78,8 @@ export default function ContasAPagar({
   const [vencimentosParcelas, setVencimentosParcelas] = useState([]);
   const [formPrevisao, setFormPrevisao] = useState(false);
   const [novaPrevisao, setNovaPrevisao] = useState({ descricao: "", valor: "", dataEsperada: hojeISO() });
+  const [editandoPrevisao, setEditandoPrevisao] = useState(null);
+  const [edicaoPrevisao, setEdicaoPrevisao] = useState({ descricao: "", valor: "", dataEsperada: "" });
   const [formNota, setFormNota] = useState(false);
   const [novaNota, setNovaNota] = useState({ descricao: "", valor: "", dataEsperada: "" });
   const [editandoDespesa, setEditandoDespesa] = useState(null);
@@ -109,8 +129,10 @@ export default function ContasAPagar({
     return true;
   };
   function definirPeriodo(dias) {
+    const limite = limiteMesAtual(hoje);
+    const candidata = somarDias(hoje, dias);
     setDataIniJanela(hoje);
-    setDataFimJanela(somarDias(hoje, dias));
+    setDataFimJanela(limite && candidata > limite ? limite : candidata);
   }
   function limparPeriodo() {
     setDataIniJanela("");
@@ -537,6 +559,27 @@ export default function ContasAPagar({
     else irParaPeca(item.id);
   }
 
+  // Remarca uma previsão que não se confirmou — cliente só adiou, então
+  // em vez de apagar e perder o registro, ajusta descrição/valor/data.
+  function abrirEdicaoPrevisao(p) {
+    if (editandoPrevisao === p.id) {
+      setEditandoPrevisao(null);
+      return;
+    }
+    setEditandoPrevisao(p.id);
+    setEdicaoPrevisao({ descricao: p.descricao || "", valor: String(p.valor ?? ""), dataEsperada: p.dataEsperada });
+  }
+
+  async function salvarEdicaoPrevisao(id) {
+    setErro(null);
+    try {
+      await onAtualizarPrevisao(id, edicaoPrevisao);
+      setEditandoPrevisao(null);
+    } catch (e) {
+      setErro("Não consegui salvar (" + e.message + ").");
+    }
+  }
+
   return (
     <div>
       <PageTitle eyebrow="Financeiro" title="Contas a Pagar" />
@@ -603,7 +646,10 @@ export default function ContasAPagar({
           { rotulo: "14 dias", dias: 14 },
           { rotulo: "30 dias", dias: 30 },
         ].map(({ rotulo, dias }) => {
-          const ativo = dataIniJanela === hoje && dataFimJanela === somarDias(hoje, dias);
+          const limite = limiteMesAtual(hoje);
+          const candidata = somarDias(hoje, dias);
+          const esperado = limite && candidata > limite ? limite : candidata;
+          const ativo = dataIniJanela === hoje && dataFimJanela === esperado;
           return (
             <button
               key={rotulo}
@@ -636,6 +682,12 @@ export default function ContasAPagar({
           style={{ ...inputStyle, padding: "6px 10px", fontSize: 12, width: 145 }}
         />
       </div>
+      {limiteMesAtual(hoje) && (
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: -12, marginBottom: 20 }}>
+          Os presets de dias não mostram conta do mês que vem antes da última semana deste mês — use "Ver tudo" ou o
+          De/Até acima se quiser ver antes disso.
+        </div>
+      )}
 
       <Card style={{ padding: 18, background: saldo >= 0 ? "#DCEBDD" : "#F6E3D9" }} className="mb-6">
         <div style={{ fontSize: 14, lineHeight: 1.6, color: saldo >= 0 ? "#1F4D22" : "#7A3315" }}>
@@ -1151,19 +1203,53 @@ export default function ContasAPagar({
             <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, marginBottom: 6 }}>PREVISÕES (AINDA NÃO SÃO PEDIDO)</div>
               {previsoesJanela.map((p) => (
-                <div key={p.id} className="flex items-center justify-between py-1.5">
-                  <div>
-                    <div style={{ fontSize: 12 }}>{p.descricao || "Previsão de venda"}</div>
-                    <div style={{ fontSize: 11, color: TEXT_MUTED }}>esperado {fmtData(p.dataEsperada)}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="fx-mono" style={{ fontSize: 12, fontWeight: 600, color: "#5B3E96" }}>
-                      {brl(p.valor)}
-                    </span>
-                    <button onClick={() => onRemoverPrevisao(p.id)} title="Remover">
-                      <Trash2 size={13} color={VERMELHO} />
+                <div key={p.id} className="py-1.5">
+                  <div className="flex items-center justify-between">
+                    <button onClick={() => abrirEdicaoPrevisao(p)} style={{ textAlign: "left" }} title="Remarcar previsão">
+                      <div style={{ fontSize: 12 }}>{p.descricao || "Previsão de venda"}</div>
+                      <div style={{ fontSize: 11, color: TEXT_MUTED }}>esperado {fmtData(p.dataEsperada)}</div>
                     </button>
+                    <div className="flex items-center gap-2">
+                      <span className="fx-mono" style={{ fontSize: 12, fontWeight: 600, color: "#5B3E96" }}>
+                        {brl(p.valor)}
+                      </span>
+                      <button onClick={() => abrirEdicaoPrevisao(p)} title="Remarcar previsão">
+                        <Pencil size={13} color={TEXT_MUTED} />
+                      </button>
+                      <button onClick={() => onRemoverPrevisao(p.id)} title="Remover">
+                        <Trash2 size={13} color={VERMELHO} />
+                      </button>
+                    </div>
                   </div>
+                  {editandoPrevisao === p.id && (
+                    <div className="flex items-center gap-2 mt-2 p-2 flex-wrap" style={{ background: "#F3EEDF", borderRadius: 6 }}>
+                      <input
+                        style={{ ...inputStyle, padding: "5px 8px", fontSize: 12, flex: "1 1 160px" }}
+                        placeholder="Descrição"
+                        value={edicaoPrevisao.descricao}
+                        onChange={(e) => setEdicaoPrevisao({ ...edicaoPrevisao, descricao: e.target.value })}
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        style={{ ...inputStyle, padding: "5px 8px", fontSize: 12, width: 100 }}
+                        value={edicaoPrevisao.valor}
+                        onChange={(e) => setEdicaoPrevisao({ ...edicaoPrevisao, valor: e.target.value })}
+                      />
+                      <input
+                        type="date"
+                        style={{ ...inputStyle, padding: "5px 8px", fontSize: 12 }}
+                        value={edicaoPrevisao.dataEsperada}
+                        onChange={(e) => setEdicaoPrevisao({ ...edicaoPrevisao, dataEsperada: e.target.value })}
+                      />
+                      <button
+                        onClick={() => salvarEdicaoPrevisao(p.id)}
+                        style={{ background: INK, color: "#FFF", padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                      >
+                        Salvar
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

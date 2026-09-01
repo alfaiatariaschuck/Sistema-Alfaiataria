@@ -166,7 +166,7 @@ export default function Shell() {
   const { equipe, loading: loadingEquipe, adicionarMembro, atualizarMembro, removerMembro } = useEquipeProducao();
   const { fornecedores, loading: loadingFornecedores, adicionarFornecedor, atualizarFornecedor, removerFornecedor } = useFornecedores();
   const { itens: aviamentos, loading: loadingAviamentos, adicionarItem: adicionarAviamento, atualizarItem: atualizarAviamento, removerItem: removerAviamento, custoPorPecaBase } = useAviamentos();
-  const { previsoes, criarPrevisao, removerPrevisao } = usePrevisoesVenda();
+  const { previsoes, criarPrevisao, atualizarPrevisao, removerPrevisao } = usePrevisoesVenda();
   const { notas: notasVendaFutura, criarNota, removerNota } = useNotasVendaFutura();
 
   // Receita do mês de cada linha — usada só pra ratear os custos
@@ -614,6 +614,7 @@ export default function Shell() {
                   onAtualizarDespesa={atualizarDespesa}
                   onRemoverDespesa={removerDespesa}
                   onCriarPrevisao={criarPrevisao}
+                  onAtualizarPrevisao={atualizarPrevisao}
                   onRemoverPrevisao={removerPrevisao}
                   onCriarNota={criarNota}
                   onRemoverNota={removerNota}

@@ -53,6 +53,19 @@ export function usePrevisoesVenda() {
     });
   }
 
+  // Edita uma previsão (descrição, valor, data esperada) — útil quando o
+  // cliente só adiou a compra: em vez de apagar e recriar, remarca a data.
+  async function atualizarPrevisao(id, { descricao, valor, dataEsperada }) {
+    return comIndicador(async () => {
+      const { error } = await supabase
+        .from("previsoes_venda")
+        .update({ descricao: descricao || null, valor: Number(valor) || 0, data_esperada: dataEsperada })
+        .eq("id", id);
+      if (error) throw error;
+      await recarregar();
+    });
+  }
+
   async function removerPrevisao(id) {
     return comIndicador(async () => {
       const { error } = await supabase.from("previsoes_venda").delete().eq("id", id);
@@ -69,6 +82,7 @@ export function usePrevisoesVenda() {
     saving: emAndamento > 0,
     recarregar,
     criarPrevisao,
+    atualizarPrevisao,
     removerPrevisao,
   };
 }
