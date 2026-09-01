@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, LayoutGrid, Megaphone, Plus, Search, Table2, TrendingUp, UserPlus } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Download, LayoutGrid, Megaphone, Plus, Search, Table2, TrendingUp, UserPlus } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill } from "../components/ui";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
@@ -7,7 +7,7 @@ import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import RecompraPorAno from "../components/RecompraPorAno";
 import VendasPorAno from "../components/VendasPorAno";
 import { BRASS, BRASS_SOFT, INK, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { brl, fmtData, mesesDesde, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, fmtData, hojeISO, mesesDesde, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_SUMIDO = "cliente_sumido_meses";
@@ -61,6 +61,7 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
   // Otimista: some no toque antes de esperar o servidor confirmar. Guarda
   // só as mudanças feitas nesta sessão (undefined = usa o valor do servidor).
   const [contatadosLocais, setContatadosLocais] = useState({});
+  const [exportando, setExportando] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -155,6 +156,68 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
     setContatadosLocais((prev) => ({ ...prev, [c.id]: novoValor }));
     const { error } = await supabase.from("clientes").update({ campanha_contatado_em: novoValor }).eq("id", c.id);
     if (error) console.error("Não consegui salvar o contato:", error);
+  }
+
+  function csvEscape(v) {
+    const s = v === null || v === undefined ? "" : String(v);
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+
+  // Exporta a lista JÁ FILTRADA/ORDENADA na tela (mesmos filtros que você
+  // ajustou acima) pra CSV — pra cruzar com outra base (ex: contatos do
+  // celular) e passar pra campanha de vendas. Telefone/e-mail só entra
+  // aqui, nunca fica junto do resto (LGPD) — busca em lote só na hora do
+  // export, pros clientes que estão na lista.
+  async function exportarCSV() {
+    setExportando(true);
+    try {
+      const ids = listados.map((c) => c.id).filter(Boolean);
+      const dadosPessoais = new Map();
+      if (ids.length) {
+        const { data } = await supabase.from("clientes_dados_pessoais").select("cliente_id, telefone, email").in("cliente_id", ids);
+        (data || []).forEach((d) => dadosPessoais.set(d.cliente_id, d));
+      }
+      const cabecalho = [
+        "Nome",
+        "Telefone",
+        "Email",
+        "Total comprado",
+        "Camisas",
+        "Alfaiataria",
+        "Última compra (ano)",
+        "Inativo há (meses)",
+        "Sumido",
+        "Já recomprou",
+        "Já contatei",
+      ];
+      const linhas = listados.map((c) => {
+        const dp = dadosPessoais.get(c.id);
+        const totalCamisas = c.pedidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
+        return [
+          c.nome,
+          dp?.telefone || "",
+          dp?.email || "",
+          c.totalComprado,
+          totalCamisas,
+          (c.pecas || []).length,
+          c.anoUltimaCompra || "",
+          c.mesesSemComprar ?? "",
+          c.sumido ? "Sim" : "Não",
+          c.recompra ? "Sim" : "Não",
+          c.contatado ? "Sim" : "Não",
+        ];
+      });
+      const csv = [cabecalho, ...linhas].map((linha) => linha.map(csvEscape).join(",")).join("\r\n");
+      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `clientes-${hojeISO()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportando(false);
+    }
   }
 
   function aplicarTopN(n) {
@@ -319,6 +382,23 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
           }}
         >
           <Megaphone size={15} /> Campanha
+        </button>
+        <button
+          onClick={exportarCSV}
+          disabled={exportando || listados.length === 0}
+          className="flex items-center gap-2"
+          style={{
+            background: "#EDEAE0",
+            color: INK,
+            padding: "8px 14px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+            opacity: exportando || listados.length === 0 ? 0.6 : 1,
+          }}
+          title="Exporta a lista filtrada abaixo (nome, telefone, e-mail, histórico) em CSV"
+        >
+          <Download size={15} /> {exportando ? "Gerando…" : `Exportar (${listados.length})`}
         </button>
         <button
           onClick={() => setMostrarForm((v) => !v)}
