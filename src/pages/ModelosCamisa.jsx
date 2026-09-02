@@ -6,6 +6,13 @@ import { brl, hojeISO } from "../lib/helpers";
 
 const SEM_MODELO = "Sem modelo definido";
 
+// Rótulo mostrado nas sugestões do pedido — código + nomenclatura
+// quando o modelo tem código (ex: "M58 - 1001 — Tecido Nacional Fio 80
+// CATA."), só a nomenclatura quando não tem.
+export function rotuloModelo(m) {
+  return m.codigo ? `${m.codigo} — ${m.nome}` : m.nome;
+}
+
 // Junta os pedidos (excluindo Doação) por modelo — quantidade e
 // faturamento, pra saber quais modelos mais vendem. Pedidos sem modelo
 // preenchido caem no balde "Sem modelo definido", que serve de lembrete
@@ -27,12 +34,14 @@ function montarMix(pedidos, desde) {
 }
 
 export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, onCampo, onRemover }) {
+  const [codigoNovo, setCodigoNovo] = useState("");
   const [nomeNovo, setNomeNovo] = useState("");
   const [periodo, setPeriodo] = useState("mes");
 
   function adicionar() {
     if (!nomeNovo.trim()) return;
-    onAdicionar(nomeNovo);
+    onAdicionar(nomeNovo, codigoNovo);
+    setCodigoNovo("");
     setNomeNovo("");
   }
 
@@ -44,10 +53,17 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
       <PageTitle eyebrow="Camisaria — o que você vende" title="Modelos de Camisa" />
 
       <Card style={{ padding: 16 }} className="mb-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input
-            style={inputStyle}
-            placeholder="Novo modelo (ex: Social Slim, Oxford, Casual)"
+            style={{ ...inputStyle, width: 140 }}
+            placeholder="Código (ex: M58 - 1001)"
+            value={codigoNovo}
+            onChange={(e) => setCodigoNovo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && adicionar()}
+          />
+          <input
+            style={{ ...inputStyle, flex: 1, minWidth: 180 }}
+            placeholder="Nomenclatura (ex: Tecido Nacional Fio 80 CATA.)"
             value={nomeNovo}
             onChange={(e) => setNomeNovo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && adicionar()}
@@ -59,6 +75,10 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
           >
             <Plus size={15} /> Adicionar
           </button>
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8 }}>
+          Código é opcional — dá pra categorizar do seu jeito, igual você já está fazendo na Planilha Consolidada
+          (aba Camisaria). Fica só de uso interno seu, nunca aparece pra Fabi nem no que vai pro contador.
         </div>
       </Card>
 
@@ -75,10 +95,20 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
           {modelos.map((m, i) => (
             <div
               key={m.id}
-              className="flex items-center gap-3 px-4 py-3"
+              className="flex items-center gap-2 px-4 py-3 flex-wrap"
               style={{ borderBottom: i < modelos.length - 1 ? `1px solid ${LINE}` : "none", opacity: m.ativo ? 1 : 0.5 }}
             >
-              <div style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{m.nome}</div>
+              <input
+                style={{ ...inputStyle, padding: "6px 10px", fontSize: 12, width: 130 }}
+                placeholder="Código"
+                value={m.codigo}
+                onChange={(e) => onCampo(m.id, "codigo", e.target.value)}
+              />
+              <input
+                style={{ ...inputStyle, padding: "6px 10px", fontSize: 13, fontWeight: 600, flex: 1, minWidth: 160 }}
+                value={m.nome}
+                onChange={(e) => onCampo(m.id, "nome", e.target.value)}
+              />
               <label className="flex items-center gap-1.5" style={{ cursor: "pointer", fontSize: 12, color: TEXT_MUTED }}>
                 <input
                   type="checkbox"

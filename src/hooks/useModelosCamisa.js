@@ -4,13 +4,15 @@ import { supabase } from "../supabaseClient";
 function rowParaModelo(row) {
   return {
     id: row.id,
+    codigo: row.codigo || "",
     nome: row.nome,
     ativo: row.ativo ?? true,
   };
 }
 
-// Catálogo de modelos de camisa (Social Slim, Casual, Oxford...) — igual
-// já existe pra Fornecedores, alimenta o campo "Modelo" do pedido (texto
+// Catálogo de modelos de camisa, categorizado por código + nomenclatura
+// (mesmo padrão da Planilha Consolidada, aba Camisaria) — igual já
+// existe pra Fornecedores, alimenta o campo "Modelo" do pedido (texto
 // livre com sugestão, não FK) e o relatório de mix de vendas.
 export function useModelosCamisa() {
   const [modelos, setModelos] = useState([]);
@@ -27,10 +29,14 @@ export function useModelosCamisa() {
     recarregar();
   }, [recarregar]);
 
-  async function adicionarModelo(nome) {
+  async function adicionarModelo(nome, codigo) {
     const limpo = nome.trim();
     if (!limpo) return;
-    const { data, error } = await supabase.from("modelos_camisa").insert({ nome: limpo }).select().single();
+    const { data, error } = await supabase
+      .from("modelos_camisa")
+      .insert({ nome: limpo, codigo: (codigo || "").trim() || null })
+      .select()
+      .single();
     if (!error) setModelos((prev) => [...prev, rowParaModelo(data)].sort((a, b) => a.nome.localeCompare(b.nome)));
   }
 

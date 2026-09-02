@@ -72,7 +72,7 @@ import CustosAtelie from "./pages/CustosAtelie";
 import CustosCamisaria from "./pages/CustosCamisaria";
 import ComparativoMensal from "./pages/ComparativoMensal";
 import ResultadoMensal from "./pages/ResultadoMensal";
-import ModelosCamisa from "./pages/ModelosCamisa";
+import ModelosCamisa, { rotuloModelo } from "./pages/ModelosCamisa";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
@@ -176,7 +176,7 @@ export default function Shell() {
   const { previsoes, criarPrevisao, atualizarPrevisao, removerPrevisao } = usePrevisoesVenda();
   const { notas: notasVendaFutura, criarNota, removerNota } = useNotasVendaFutura();
   const { modelos: modelosCamisa, loading: loadingModelosCamisa, adicionarModelo, atualizarModelo, removerModelo } = useModelosCamisa();
-  const nomesModelosCamisaAtivos = useMemo(() => modelosCamisa.filter((m) => m.ativo).map((m) => m.nome), [modelosCamisa]);
+  const nomesModelosCamisaAtivos = useMemo(() => modelosCamisa.filter((m) => m.ativo).map(rotuloModelo), [modelosCamisa]);
 
   // Receita do mês de cada linha — usada só pra ratear os custos
   // compartilhados da empresa entre Custos do Ateliê e Custos da
