@@ -104,6 +104,7 @@ function rowParaPeca(row) {
         metragem: t.metragem || "",
         valorMetro: t.valor_metro ?? "",
         comprado: !!t.comprado,
+        metrosBaixados: t.metros_baixados ?? null,
       })),
     medidasNovas: !!row.medidas_novas,
   };

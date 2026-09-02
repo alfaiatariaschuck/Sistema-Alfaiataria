@@ -53,7 +53,7 @@ export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido
 
   return (
     <div>
-      <PageTitle eyebrow="Camisaria — controle de rolos comprados antecipado" title="Estoque de Tecido" />
+      <PageTitle eyebrow="Camisaria + Alfaiataria — controle de rolos comprados antecipado" title="Estoque de Tecido" />
 
       <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
         <StatCard label="Tecidos rastreados" value={estoque.length} icon={Package} />

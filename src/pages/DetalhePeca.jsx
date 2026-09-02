@@ -8,6 +8,7 @@ import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import LinkAcompanhamento from "../components/LinkAcompanhamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
+import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import {
   BRASS,
   BRASS_SOFT,
@@ -57,6 +58,8 @@ export default function DetalhePeca({
   onTecido,
   modelosCamisa = [],
   onCriarModeloCamisa,
+  estoqueTecidos,
+  onDarBaixaEstoque,
 }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -552,6 +555,16 @@ export default function DetalhePeca({
                 }}
               />
             </div>
+            {estoqueTecidos && (
+              <BaixaEstoqueTecido
+                codigo={t.codigo}
+                estoque={estoqueTecidos}
+                onDarBaixa={onDarBaixaEstoque}
+                motivo={`Pedido de ${p.cliente} (alfaiataria)`}
+                metrosBaixados={t.metrosBaixados}
+                onRegistrarMetrosBaixados={(valor) => onTecido(p.id, t.id, "metros_baixados", valor)}
+              />
+            )}
           </div>
         ))}
       </Card>

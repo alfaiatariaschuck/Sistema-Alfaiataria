@@ -25,7 +25,7 @@ import { brl, mediaDiasProducaoPorTipo, previsaoParaNovaPeca, statusDividido, to
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
-export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe, custoAviamentosPorPecaBase = {}, modelosCamisa = [], onCriarModeloCamisa }) {
+export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe, custoAviamentosPorPecaBase = {}, modelosCamisa = [], onCriarModeloCamisa, estoqueTecidos }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -384,6 +384,11 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
                   }}
                 />
               </div>
+              {estoqueTecidos && estoqueTecidos.some((e) => e.codigo.trim().toLowerCase() === (t.codigo || "").trim().toLowerCase()) && (
+                <div className="mt-2 p-2" style={{ background: "#F3EEDF", borderRadius: 6, fontSize: 11, color: TEXT_MUTED }}>
+                  Esse código tem estoque cadastrado — depois de salvar, abra o detalhe da peça pra dar baixa nos metros usados.
+                </div>
+              )}
             </div>
           ))}
         </Card>

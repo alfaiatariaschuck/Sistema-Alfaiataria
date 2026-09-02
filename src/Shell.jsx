@@ -84,7 +84,6 @@ const NAV = [
   { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true, grupo: "Camisaria" },
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true, grupo: "Camisaria" },
   { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true, grupo: "Camisaria" },
-  { id: "estoque-camisaria", label: "Estoque Camisaria", icon: PackageCheck, primary: false, grupo: "Camisaria" },
   { id: "modelos-camisa", label: "Tecidos de Camisa", icon: Shirt, primary: false, grupo: "Camisaria" },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false, grupo: "Camisaria" },
   { id: "custos-camisaria", label: "Custos da Camisaria", icon: PiggyBank, primary: false, grupo: "Camisaria" },
@@ -99,6 +98,7 @@ const NAV = [
   { id: "relatorio-alfaiataria", label: "Relatório Alfaiataria", icon: FileText, primary: false, grupo: "Alfaiataria" },
 
   { id: "compras", label: "Compras", icon: ShoppingCart, primary: true, grupo: "Geral" },
+  { id: "estoque-camisaria", label: "Estoque de Tecido", icon: PackageCheck, primary: false, grupo: "Geral" },
   { id: "entregues", label: "Entregues", icon: Archive, primary: false, grupo: "Geral" },
   { id: "clientes", label: "Clientes", icon: Users, primary: false, grupo: "Geral" },
   { id: "consolidado", label: "Consolidado", icon: Layers, primary: false, grupo: "Geral" },
@@ -414,6 +414,8 @@ export default function Shell() {
     onTecido: atualizarTecidoPeca,
     modelosCamisa,
     onCriarModeloCamisa: adicionarModelo,
+    estoqueTecidos,
+    onDarBaixaEstoque: darBaixaEstoque,
   };
 
   return (
@@ -667,6 +669,7 @@ export default function Shell() {
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                   modelosCamisa={modelosCamisa}
                   onCriarModeloCamisa={adicionarModelo}
+                  estoqueTecidos={estoqueTecidos}
                 />
               )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
