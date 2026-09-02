@@ -477,6 +477,12 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
         />
       </Card>
 
+      <Card style={{ padding: 20 }} className="mt-6">
+        <Field label="Observações">
+          <textarea style={{ ...inputStyle, minHeight: 70 }} value={p.observacoes || ""} onChange={(e) => set("observacoes", e.target.value)} />
+        </Field>
+      </Card>
+
       <div className="flex items-center gap-3 mt-6">
         <button
           onClick={salvar}
