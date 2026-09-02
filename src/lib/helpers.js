@@ -128,13 +128,19 @@ export function custoAviamentoComposicao(tipoPeca, custoAviamentosPorPecaBase) {
 // com dado suficiente (medida+valor reais, ou nomenclatura com valor de
 // referência); se nenhuma linha tiver isso, volta "sem dados" (não
 // mostra zero, que enganaria).
-export function estimativaCustoPedidoCamisa(tecidos, modelosCamisa, { metragemPadrao, maoDeObraPadrao, custoAviamentoCamisa }) {
+// margemPadrao (%) é usada como fallback pra sugerir preço quando o
+// tecido daquela linha ainda não tem "Preço de venda" próprio cadastrado
+// em Tecidos de Camisa — sugestão = custo da linha × (1 + margem/100).
+// Sem isso, pedido com tecido novo/ainda não precificado ficava sem
+// nenhuma sugestão de preço.
+export function estimativaCustoPedidoCamisa(tecidos, modelosCamisa, { metragemPadrao, maoDeObraPadrao, margemPadrao, custoAviamentoCamisa }) {
   const metragemPadraoNum = parseFloat(String(metragemPadrao).replace(",", ".")) || 0;
   const maoDeObraNum = parseFloat(maoDeObraPadrao) || 0;
+  const margemNum = parseFloat(margemPadrao) || 0;
   let custoEstimado = 0;
   let precoSugerido = 0;
-  let temPrecoSugerido = true;
   let temDados = false;
+  let usouMargemPadrao = false;
   (tecidos || []).forEach((t) => {
     const qtd = parseFloat(t.qtd) || 0;
     if (qtd <= 0) return;
@@ -153,14 +159,16 @@ export function estimativaCustoPedidoCamisa(tecidos, modelosCamisa, { metragemPa
       custoTecidoLinha = valorRef * metragemPadraoNum * qtd;
     }
     temDados = true;
-    custoEstimado += custoTecidoLinha + ((custoAviamentoCamisa || 0) + maoDeObraNum) * qtd;
+    const custoLinhaTotal = custoTecidoLinha + ((custoAviamentoCamisa || 0) + maoDeObraNum) * qtd;
+    custoEstimado += custoLinhaTotal;
     if (modelo && modelo.precoVenda !== "" && modelo.precoVenda != null) {
       precoSugerido += parseFloat(modelo.precoVenda) * qtd;
     } else {
-      temPrecoSugerido = false;
+      precoSugerido += custoLinhaTotal * (1 + margemNum / 100);
+      usouMargemPadrao = true;
     }
   });
-  return { custoEstimado, precoSugerido: temPrecoSugerido && temDados ? precoSugerido : null, temDados };
+  return { custoEstimado, precoSugerido: temDados ? precoSugerido : null, temDados, usouMargemPadrao };
 }
 
 export function totalDividido(valorEntrada, valorRestante) {

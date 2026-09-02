@@ -16,7 +16,7 @@ import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
 export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana }) {
-  const { metragemPadrao, maoDeObraPadrao } = useConfigPrecoCamisa();
+  const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [convertendo, setConvertendo] = useState(false);
@@ -450,6 +450,7 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
           custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
           metragemPadrao={metragemPadrao}
           maoDeObraPadrao={maoDeObraPadrao}
+          margemPadrao={margemPadrao}
           valorVenda={p.aReceber.valor}
           onUsarSugestao={(valor) => setSub("aReceber", "valor", valor)}
         />

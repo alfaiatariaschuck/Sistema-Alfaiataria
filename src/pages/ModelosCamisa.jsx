@@ -8,6 +8,7 @@ import { supabase } from "../supabaseClient";
 const SEM_MODELO = "Sem tecido definido";
 const CHAVE_METRAGEM_PADRAO = "metragem_padrao_camisa";
 const CHAVE_MAO_DE_OBRA_PADRAO = "mao_de_obra_padrao_camisa";
+const CHAVE_MARGEM_PADRAO = "margem_padrao_camisa";
 
 // Rótulo mostrado nas sugestões do pedido — código + nomenclatura
 // quando o modelo tem código (ex: "M58 - 1001 — Tecido Nacional Fio 80
@@ -59,14 +60,19 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
   const [periodo, setPeriodo] = useState("mes");
   const [metragemPadrao, setMetragemPadrao] = useState("1,5");
   const [maoDeObraPadrao, setMaoDeObraPadrao] = useState("");
+  const [margemPadrao, setMargemPadrao] = useState("40");
   const [carregandoConfig, setCarregandoConfig] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_METRAGEM_PADRAO, CHAVE_MAO_DE_OBRA_PADRAO]);
+      const { data } = await supabase
+        .from("config")
+        .select("chave, valor")
+        .in("chave", [CHAVE_METRAGEM_PADRAO, CHAVE_MAO_DE_OBRA_PADRAO, CHAVE_MARGEM_PADRAO]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_METRAGEM_PADRAO) setMetragemPadrao(row.valor || "1,5");
         if (row.chave === CHAVE_MAO_DE_OBRA_PADRAO) setMaoDeObraPadrao(row.valor || "");
+        if (row.chave === CHAVE_MARGEM_PADRAO) setMargemPadrao(row.valor || "40");
       });
       setCarregandoConfig(false);
     })();
@@ -95,6 +101,7 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
   // praticar — a margem obtida compara os dois.
   const metragemNum = parseFloat(String(metragemPadrao).replace(",", ".")) || 0;
   const maoDeObraNum = parseFloat(maoDeObraPadrao) || 0;
+  const margemNum = parseFloat(margemPadrao) || 0;
   const custoAviamentoCamisa = custoAviamentosPorPecaBase["Camisa"] || 0;
   const tabelaPreco = useMemo(
     () =>
@@ -103,13 +110,13 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
         .map((m) => {
           const custoTecido = (parseFloat(m.valorReferenciaMetro) || 0) * metragemNum;
           const custoTotal = custoTecido + custoAviamentoCamisa + maoDeObraNum;
-          const precoVenda = parseFloat(m.precoVenda) || 0;
           const temPreco = m.precoVenda !== "" && m.precoVenda != null;
-          const margem = temPreco ? precoVenda - custoTotal : null;
-          const margemPercentual = temPreco && precoVenda > 0 ? (margem / precoVenda) * 100 : null;
-          return { ...m, custoTecido, custoTotal, margem, margemPercentual };
+          const precoVenda = temPreco ? parseFloat(m.precoVenda) : custoTotal * (1 + margemNum / 100);
+          const margem = precoVenda - custoTotal;
+          const margemPercentual = precoVenda > 0 ? (margem / precoVenda) * 100 : null;
+          return { ...m, custoTecido, custoTotal, temPreco, precoSugerido: precoVenda, margem, margemPercentual };
         }),
-    [modelos, metragemNum, custoAviamentoCamisa, maoDeObraNum]
+    [modelos, metragemNum, custoAviamentoCamisa, maoDeObraNum, margemNum]
   );
 
   return (
@@ -217,8 +224,9 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Custo total = valor de referência × metragem padrão + aviamento da camisa (Aviamentos, peça-base "Camisa"
-          — {brl(custoAviamentoCamisa)}) + mão de obra padrão. Preencha o preço de venda em cada tecido pra ver a
-          margem. Só aparece aqui tecido com valor de referência preenchido.
+          — {brl(custoAviamentoCamisa)}) + mão de obra padrão. Preencha o preço de venda em cada tecido pra fixar um
+          preço próprio — sem preencher, o pedido sugere custo × (1 + margem padrão). Só aparece aqui tecido com
+          valor de referência preenchido.
         </div>
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
@@ -242,6 +250,19 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
               onChange={(e) => setMaoDeObraPadrao(e.target.value)}
               onBlur={(e) => salvarParametro(CHAVE_MAO_DE_OBRA_PADRAO, e.target.value)}
               placeholder="ex: 120"
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Margem padrão (%, quando não tem preço fixo)</div>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              style={inputStyle}
+              value={margemPadrao}
+              onChange={(e) => setMargemPadrao(e.target.value)}
+              onBlur={(e) => salvarParametro(CHAVE_MARGEM_PADRAO, e.target.value)}
+              placeholder="ex: 40"
             />
           </div>
         </div>
@@ -270,10 +291,13 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
                         min="0"
                         step="0.01"
                         style={{ ...inputStyle, padding: "5px 8px", fontSize: 12, width: 110 }}
-                        placeholder="preencher"
+                        placeholder={brl(m.precoSugerido)}
                         value={m.precoVenda}
                         onChange={(e) => onCampo(m.id, "precoVenda", e.target.value)}
                       />
+                      {!m.temPreco && (
+                        <div style={{ fontSize: 9, color: TEXT_MUTED, marginTop: 2 }}>sugestão (margem padrão)</div>
+                      )}
                     </td>
                     <td className="fx-mono" style={{ padding: "6px 10px", fontWeight: 700, color: m.margemPercentual == null ? TEXT_MUTED : m.margemPercentual >= 0 ? "#2C6E31" : "#9C4A1E" }}>
                       {m.margemPercentual == null ? "—" : `${m.margemPercentual.toFixed(0)}%`}

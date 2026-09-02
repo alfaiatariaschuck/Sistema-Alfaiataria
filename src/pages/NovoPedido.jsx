@@ -12,7 +12,7 @@ import { pedidoVazio } from "../hooks/usePedidos";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 
 export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {} }) {
-  const { metragemPadrao, maoDeObraPadrao } = useConfigPrecoCamisa();
+  const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const [p, setP] = useState(pedidoVazio());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -451,6 +451,7 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
             custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
             metragemPadrao={metragemPadrao}
             maoDeObraPadrao={maoDeObraPadrao}
+            margemPadrao={margemPadrao}
             valorVenda={p.aReceber.valor}
             onUsarSugestao={(valor) => set("aReceber", { ...p.aReceber, valor })}
           />

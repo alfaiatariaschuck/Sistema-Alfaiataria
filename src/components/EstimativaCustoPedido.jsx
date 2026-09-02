@@ -7,11 +7,12 @@ import { brl, estimativaCustoPedidoCamisa } from "../lib/helpers";
 // Camisa) — e, se já tiver um valor de venda digitado, a margem daquela
 // venda. Uso interno só (nunca aparece na ficha da Fabi). Some sozinho
 // quando não há tecido/valor de referência suficiente pra estimar.
-export default function EstimativaCustoPedido({ tecidos, modelosCamisa, custoAviamentosPorPecaBase = {}, metragemPadrao, maoDeObraPadrao, valorVenda, onUsarSugestao }) {
+export default function EstimativaCustoPedido({ tecidos, modelosCamisa, custoAviamentosPorPecaBase = {}, metragemPadrao, maoDeObraPadrao, margemPadrao, valorVenda, onUsarSugestao }) {
   const custoAviamentoCamisa = custoAviamentosPorPecaBase["Camisa"] || 0;
-  const { custoEstimado, precoSugerido, temDados } = estimativaCustoPedidoCamisa(tecidos, modelosCamisa, {
+  const { custoEstimado, precoSugerido, temDados, usouMargemPadrao } = estimativaCustoPedidoCamisa(tecidos, modelosCamisa, {
     metragemPadrao,
     maoDeObraPadrao,
+    margemPadrao,
     custoAviamentoCamisa,
   });
 
@@ -31,7 +32,7 @@ export default function EstimativaCustoPedido({ tecidos, modelosCamisa, custoAvi
         </span>
         {precoSugerido != null && (
           <span>
-            <span style={{ color: TEXT_MUTED }}>Preço sugerido: </span>
+            <span style={{ color: TEXT_MUTED }}>Preço sugerido{usouMargemPadrao ? " (margem padrão)" : ""}: </span>
             <strong className="fx-mono" style={{ color: BRASS }}>{brl(precoSugerido)}</strong>
             {onUsarSugestao && (
               <button
