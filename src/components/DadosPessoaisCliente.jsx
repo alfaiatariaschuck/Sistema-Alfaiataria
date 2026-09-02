@@ -10,6 +10,7 @@ function vazio(clienteId) {
     cliente_id: clienteId,
     tipo_pessoa: "PF",
     endereco: "",
+    cep: "",
     data_nascimento: "",
     telefone: "",
     email: "",
@@ -53,6 +54,7 @@ export default function DadosPessoaisCliente({ clienteId }) {
       cliente_id: clienteId,
       tipo_pessoa: dados.tipo_pessoa || "PF",
       endereco: dados.endereco || null,
+      cep: dados.cep || null,
       data_nascimento: dados.data_nascimento || null,
       telefone: dados.telefone || null,
       email: dados.email || null,
@@ -155,6 +157,9 @@ export default function DadosPessoaisCliente({ clienteId }) {
         )}
         <Field label="Endereço">
           <input style={inputStyle} value={dados.endereco || ""} onChange={(e) => set("endereco", e.target.value)} placeholder="Rua, número, bairro, cidade" />
+        </Field>
+        <Field label="CEP">
+          <input style={inputStyle} value={dados.cep || ""} onChange={(e) => set("cep", e.target.value)} placeholder="00000-000" />
         </Field>
       </div>
       <Field label="Observações">

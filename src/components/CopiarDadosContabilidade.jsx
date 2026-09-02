@@ -25,7 +25,7 @@ export default function CopiarDadosContabilidade({ clienteId, nomeCliente, produ
       const linhas = [
         `Cliente: ${pj && data?.razao_social ? data.razao_social : nomeCliente}`,
         `${pj ? "CNPJ" : "CPF"}: ${documento || "não informado"}`,
-        `Endereço: ${data?.endereco || "não informado"}`,
+        `Endereço: ${data?.endereco || "não informado"}${data?.cep ? ` — CEP ${data.cep}` : ""}`,
         `Produto: ${produto}`,
         `Data da venda: ${fmtData(dataVenda)}`,
         `Valor da venda: ${brl(parseFloat(valorVenda) || 0)}`,

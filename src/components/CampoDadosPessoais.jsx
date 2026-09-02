@@ -10,6 +10,7 @@ export function dadosPessoaisVazio() {
     email: "",
     dataNascimento: "",
     endereco: "",
+    cep: "",
     cpf: "",
     cnpj: "",
     razaoSocial: "",
@@ -107,6 +108,9 @@ export default function CampoDadosPessoais({
         )}
         <Field label="Endereço">
           <input style={inputStyle} value={value.endereco} onChange={(e) => set("endereco", e.target.value)} placeholder="Rua, número, bairro, cidade" />
+        </Field>
+        <Field label="CEP">
+          <input style={inputStyle} value={value.cep} onChange={(e) => set("cep", e.target.value)} placeholder="00000-000" />
         </Field>
       </div>
       <Field label="Observações">

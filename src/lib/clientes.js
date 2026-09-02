@@ -17,8 +17,8 @@ export async function encontrarOuCriarCliente(nome) {
 // na tabela toda vez que um pedido é lançado sem dado pessoal nenhum.
 export async function salvarDadosPessoaisCliente(clienteId, dados) {
   if (!clienteId || !dados) return;
-  const temAlgo = [dados.telefone, dados.email, dados.dataNascimento, dados.endereco, dados.cpf, dados.cnpj, dados.razaoSocial, dados.observacoes].some((v) =>
-    (v || "").trim()
+  const temAlgo = [dados.telefone, dados.email, dados.dataNascimento, dados.endereco, dados.cep, dados.cpf, dados.cnpj, dados.razaoSocial, dados.observacoes].some(
+    (v) => (v || "").trim()
   );
   if (!temAlgo) return;
 
@@ -29,6 +29,7 @@ export async function salvarDadosPessoaisCliente(clienteId, dados) {
     email: dados.email || null,
     data_nascimento: dados.dataNascimento || null,
     endereco: dados.endereco || null,
+    cep: dados.cep || null,
     cpf: dados.cpf || null,
     cnpj: dados.cnpj || null,
     razao_social: dados.razaoSocial || null,
