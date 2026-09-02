@@ -46,13 +46,21 @@ export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBa
   const faturamentoTotal = faturamentoCamisaria + faturamentoAlfaiataria;
   const custoTotal = custoCamisaria + custoAlfaiataria;
   const margemTotal = faturamentoTotal - custoTotal;
+  const margemCamisaria = faturamentoCamisaria - custoCamisaria;
+  const margemAlfaiataria = faturamentoAlfaiataria - custoAlfaiataria;
 
   return {
     chaveMes,
     faturamentoCamisaria,
+    custoCamisaria,
+    margemCamisaria,
+    margemPercentualCamisaria: faturamentoCamisaria > 0 ? (margemCamisaria / faturamentoCamisaria) * 100 : null,
     qtdCamisas,
     ticketCamisaria,
     faturamentoAlfaiataria,
+    custoAlfaiataria,
+    margemAlfaiataria,
+    margemPercentualAlfaiataria: faturamentoAlfaiataria > 0 ? (margemAlfaiataria / faturamentoAlfaiataria) * 100 : null,
     qtdPecas,
     ticketAlfaiataria,
     faturamentoTotal,

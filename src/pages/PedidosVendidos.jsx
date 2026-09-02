@@ -1,17 +1,42 @@
 import React, { useMemo, useState } from "react";
-import { ChevronRight, DollarSign, Percent, ShoppingBag, TrendingDown } from "lucide-react";
+import { ChevronRight, DollarSign, Percent, Scissors, Shirt, ShoppingBag, TrendingDown } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
-import { LINE, PAG_STYLE, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
+import { BRASS, LINE, PAG_STYLE, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, fmtData, hojeISO } from "../lib/helpers";
 import { itensDoMes, labelDoMes, metricasDoMes } from "../lib/vendasMensais";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 
 const MESES_HISTORICO = 24;
+const LINHAS = ["Todos", "Camisaria", "Alfaiataria"];
+
+function BlocoLinha({ titulo, icon: Icon, faturamento, custo, margem, margemPercentual }) {
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Icon size={14} color={BRASS} />
+        <span className="fx-serif" style={{ fontSize: 14, fontWeight: 600 }}>
+          {titulo}
+        </span>
+      </div>
+      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+        <StatCard label="Faturamento" value={brl(faturamento)} icon={ShoppingBag} />
+        <StatCard label="Custo" value={brl(custo)} icon={TrendingDown} accent={TEXT_MUTED} />
+        <StatCard label="Margem" value={brl(margem)} icon={DollarSign} accent={margem >= 0 ? "#2C6E31" : "#9C4A1E"} />
+        <StatCard
+          label="Margem %"
+          value={margemPercentual == null ? "—" : `${margemPercentual.toFixed(0)}%`}
+          icon={Percent}
+          accent={margemPercentual == null ? TEXT_MUTED : margemPercentual >= 0 ? "#2C6E31" : "#9C4A1E"}
+        />
+      </div>
+    </div>
+  );
+}
 
 // Cada camisa e cada peça vendida, mês a mês, com o custo real (tecido +
-// aviamento + mão de obra já lançados no pedido) e a margem — é o
-// histórico que alimenta "quanto preciso vender pra ter tal lucro" mais
-// pra frente. Complementa o Comparativo Mensal (que só compara totais).
+// aviamento + mão de obra já lançados no pedido) e a margem — separado
+// por linha (Camisaria x Alfaiataria) pra comparar o desempenho de
+// cada uma. Complementa o Comparativo Mensal (que só compara totais).
 export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPecaBase = {}, irPara, irParaPeca }) {
   const { maoDeObraPadrao } = useConfigPrecoCamisa();
   const hoje = new Date(hojeISO() + "T00:00:00");
@@ -27,6 +52,7 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
   }, []);
 
   const [chaveMes, setChaveMes] = useState(meses[0]);
+  const [linhaFiltro, setLinhaFiltro] = useState("Todos");
 
   const resumo = useMemo(
     () => metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao),
@@ -36,6 +62,7 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
     () => itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao),
     [pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao]
   );
+  const itensFiltrados = linhaFiltro === "Todos" ? itens : itens.filter((i) => i.linha === linhaFiltro);
 
   function abrirItem(item) {
     if (item.linha === "Camisaria" && irPara) irPara(item.origemId);
@@ -59,34 +86,54 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
         </span>
       </div>
 
-      <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-        <StatCard label="Faturamento" value={brl(resumo.faturamentoTotal)} icon={ShoppingBag} />
-        <StatCard label="Custo total" value={brl(resumo.custoTotal)} icon={TrendingDown} accent={TEXT_MUTED} />
-        <StatCard
-          label="Margem"
-          value={brl(resumo.margemTotal)}
-          icon={DollarSign}
-          accent={resumo.margemTotal >= 0 ? "#2C6E31" : "#9C4A1E"}
-        />
-        <StatCard
-          label="Margem %"
-          value={resumo.margemPercentual == null ? "—" : `${resumo.margemPercentual.toFixed(0)}%`}
-          icon={Percent}
-          accent={resumo.margemPercentual == null ? TEXT_MUTED : resumo.margemPercentual >= 0 ? "#2C6E31" : "#9C4A1E"}
-        />
-      </div>
+      <BlocoLinha
+        titulo="Camisaria"
+        icon={Shirt}
+        faturamento={resumo.faturamentoCamisaria}
+        custo={resumo.custoCamisaria}
+        margem={resumo.margemCamisaria}
+        margemPercentual={resumo.margemPercentualCamisaria}
+      />
+      <BlocoLinha
+        titulo="Alfaiataria"
+        icon={Scissors}
+        faturamento={resumo.faturamentoAlfaiataria}
+        custo={resumo.custoAlfaiataria}
+        margem={resumo.margemAlfaiataria}
+        margemPercentual={resumo.margemPercentualAlfaiataria}
+      />
 
       <Card style={{ padding: 20 }}>
-        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-          {labelDoMes(chaveMes)} — pedido a pedido
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+            {labelDoMes(chaveMes)} — pedido a pedido
+          </div>
+          <div className="flex gap-1">
+            {LINHAS.map((l) => (
+              <button
+                key={l}
+                onClick={() => setLinhaFiltro(l)}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: linhaFiltro === l ? BRASS : "#EDEAE0",
+                  color: linhaFiltro === l ? "#FFF" : TEXT_MUTED,
+                }}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Toque num item pra abrir o pedido/peça. {resumo.qtdCamisas} camisa(s) e {resumo.qtdPecas} peça(s) nesse mês.
         </div>
-        {itens.length === 0 && <Empty texto="Nenhum pedido vendido nesse mês." />}
-        {itens.length > 0 && (
+        {itensFiltrados.length === 0 && <Empty texto="Nenhum pedido vendido nesse mês (com esse filtro)." />}
+        {itensFiltrados.length > 0 && (
           <div>
-            {itens.map((item, i) => {
+            {itensFiltrados.map((item, i) => {
               const margemPercentual = item.valor > 0 ? (item.margem / item.valor) * 100 : null;
               const clicavel = !!(item.linha === "Camisaria" ? irPara : irParaPeca);
               return (
@@ -95,7 +142,7 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
                   onClick={() => clicavel && abrirItem(item)}
                   className="w-full flex items-center justify-between py-3"
                   style={{
-                    borderBottom: i < itens.length - 1 ? `1px solid ${LINE}` : "none",
+                    borderBottom: i < itensFiltrados.length - 1 ? `1px solid ${LINE}` : "none",
                     cursor: clicavel ? "pointer" : "default",
                   }}
                 >
