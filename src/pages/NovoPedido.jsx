@@ -8,7 +8,7 @@ import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, 
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
-export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos }) {
+export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos, modelosCamisa = [] }) {
   const [p, setP] = useState(pedidoVazio());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -190,6 +190,20 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
             </Field>
             <Field label="Vendedor">
               <input style={inputStyle} value={p.vendedor} onChange={(e) => set("vendedor", e.target.value)} />
+            </Field>
+            <Field label="Modelo">
+              <input
+                style={inputStyle}
+                list="lista-modelos-camisa"
+                value={p.modelo}
+                onChange={(e) => set("modelo", e.target.value)}
+                placeholder="ex: Social Slim"
+              />
+              <datalist id="lista-modelos-camisa">
+                {modelosCamisa.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
             </Field>
             <Field label="Data do pedido">
               <input type="date" style={inputStyle} value={p.dataPedido} onChange={(e) => set("dataPedido", e.target.value)} />

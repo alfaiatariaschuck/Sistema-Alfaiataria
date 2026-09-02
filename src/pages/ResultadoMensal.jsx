@@ -105,7 +105,7 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
   const custoTecidoCamisaria = useMemo(() => custoTecidoDe(pedidosDoMes), [pedidosDoMes]);
   const custoTecidoAlfaiataria = useMemo(() => custoTecidoDe(pecasDoMes), [pecasDoMes]);
 
-  const custoAviamentos = useMemo(
+  const custoAviamentosAlfaiataria = useMemo(
     () =>
       pecasDoMes.reduce((soma, p) => {
         const composicao = COMPOSICAO_AVIAMENTOS[p.tipoPeca] || [];
@@ -114,6 +114,11 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
       }, 0),
     [pecasDoMes, custoAviamentosPorPecaBase]
   );
+  // Aviamento da camisa (botões, entretela, embalagem) — peça-base
+  // "Camisa" em Aviamentos, custo fixo por unidade × quantidade vendida.
+  const quantidadeVendidaCamisaria = useMemo(() => pedidosDoMes.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0), [pedidosDoMes]);
+  const custoAviamentosCamisaria = (custoAviamentosPorPecaBase["Camisa"] || 0) * quantidadeVendidaCamisaria;
+  const custoAviamentos = custoAviamentosAlfaiataria + custoAviamentosCamisaria;
 
   const custoProducao = custoMaoDeObraFabiana + custoEquipeAtelie + custoTecidoCamisaria + custoTecidoAlfaiataria + custoAviamentos;
   const custoEstrutura = aluguel + luz + aluguelLoja + luzLoja;

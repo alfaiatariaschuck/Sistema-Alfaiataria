@@ -12,7 +12,7 @@ import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, 
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque }) {
+export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [] }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [convertendo, setConvertendo] = useState(false);
@@ -166,6 +166,20 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
                   +1
                 </button>
               </div>
+            </Field>
+            <Field label="Modelo">
+              <input
+                style={inputStyle}
+                list="lista-modelos-camisa-detalhe"
+                value={p.modelo || ""}
+                onChange={(e) => set("modelo", e.target.value)}
+                placeholder="ex: Social Slim"
+              />
+              <datalist id="lista-modelos-camisa-detalhe">
+                {modelosCamisa.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
             </Field>
           </div>
           <label className="flex items-center gap-2 mt-3" style={{ cursor: "pointer" }}>

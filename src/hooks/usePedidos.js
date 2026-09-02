@@ -15,6 +15,7 @@ export function pedidoVazio() {
   return {
     cliente: "",
     vendedor: "",
+    modelo: "",
     dataPedido: new Date().toISOString().slice(0, 10),
     previsaoEntrega: "",
     dataEntrega: "",
@@ -53,6 +54,7 @@ function rowParaPedido(row) {
     clienteId: row.cliente_id,
     cliente: row.clientes?.nome || "",
     vendedor: row.vendedor || "",
+    modelo: row.modelo || "",
     dataPedido: row.data_pedido,
     previsaoEntrega: row.previsao_entrega || "",
     dataEntrega: row.data_entrega || "",
@@ -102,6 +104,7 @@ const SELECT = "*, clientes(nome), tecidos(*)";
 
 const CAMPO_PARA_COLUNA = {
   vendedor: "vendedor",
+  modelo: "modelo",
   dataPedido: "data_pedido",
   previsaoEntrega: "previsao_entrega",
   dataEntrega: "data_entrega",
@@ -169,6 +172,7 @@ export function usePedidos() {
         .insert({
           cliente_id: clienteId,
           vendedor: p.vendedor || null,
+          modelo: p.modelo || null,
           data_pedido: p.dataPedido,
           previsao_entrega: p.previsaoEntrega || null,
           quantidade: Number(p.quantidade) || 1,

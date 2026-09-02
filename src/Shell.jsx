@@ -21,6 +21,7 @@ import {
   Receipt,
   Ruler,
   Scale,
+  Shirt,
   Target,
   Scissors,
   Settings,
@@ -44,6 +45,7 @@ import { useFornecedores } from "./hooks/useFornecedores";
 import { useAviamentos } from "./hooks/useAviamentos";
 import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
 import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
+import { useModelosCamisa } from "./hooks/useModelosCamisa";
 import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
 import { hojeISO, mediaDiasProducaoComFallback, mediaDiasProducaoPorTipo, projetarPrevisoesFilaPorEquipe } from "./lib/helpers";
@@ -70,6 +72,7 @@ import CustosAtelie from "./pages/CustosAtelie";
 import CustosCamisaria from "./pages/CustosCamisaria";
 import ComparativoMensal from "./pages/ComparativoMensal";
 import ResultadoMensal from "./pages/ResultadoMensal";
+import ModelosCamisa from "./pages/ModelosCamisa";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
@@ -82,6 +85,7 @@ const NAV = [
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true, grupo: "Camisaria" },
   { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true, grupo: "Camisaria" },
   { id: "estoque-camisaria", label: "Estoque Camisaria", icon: PackageCheck, primary: false, grupo: "Camisaria" },
+  { id: "modelos-camisa", label: "Modelos de Camisa", icon: Shirt, primary: false, grupo: "Camisaria" },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false, grupo: "Camisaria" },
   { id: "custos-camisaria", label: "Custos da Camisaria", icon: PiggyBank, primary: false, grupo: "Camisaria" },
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false, grupo: "Camisaria" },
@@ -171,6 +175,8 @@ export default function Shell() {
   const { itens: aviamentos, loading: loadingAviamentos, adicionarItem: adicionarAviamento, atualizarItem: atualizarAviamento, removerItem: removerAviamento, custoPorPecaBase } = useAviamentos();
   const { previsoes, criarPrevisao, atualizarPrevisao, removerPrevisao } = usePrevisoesVenda();
   const { notas: notasVendaFutura, criarNota, removerNota } = useNotasVendaFutura();
+  const { modelos: modelosCamisa, loading: loadingModelosCamisa, adicionarModelo, atualizarModelo, removerModelo } = useModelosCamisa();
+  const nomesModelosCamisaAtivos = useMemo(() => modelosCamisa.filter((m) => m.ativo).map((m) => m.nome), [modelosCamisa]);
 
   // Receita do mês de cada linha — usada só pra ratear os custos
   // compartilhados da empresa entre Custos do Ateliê e Custos da
@@ -357,6 +363,7 @@ export default function Shell() {
     onConverterPlano: converterPedidoEmPlano,
     estoqueTecidos,
     onDarBaixaEstoque: darBaixaEstoque,
+    modelosCamisa: nomesModelosCamisaAtivos,
   };
 
   function atualizarMedidaPeca(pecaId, secKey, label, valor) {
@@ -586,6 +593,7 @@ export default function Shell() {
                   nomesClientes={nomesClientes}
                   pedidos={pedidos}
                   estoqueTecidos={estoqueTecidos}
+                  modelosCamisa={nomesModelosCamisaAtivos}
                 />
               )}
               {tab === "estoque-camisaria" && (
@@ -599,6 +607,16 @@ export default function Shell() {
                 />
               )}
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
+              {tab === "modelos-camisa" && (
+                <ModelosCamisa
+                  modelos={modelosCamisa}
+                  loading={loadingModelosCamisa}
+                  pedidos={pedidos}
+                  onAdicionar={adicionarModelo}
+                  onCampo={atualizarModelo}
+                  onRemover={removerModelo}
+                />
+              )}
               {tab === "entregues" && !loadingPecas && <Entregues pedidos={pedidos} pecas={pecas} irPara={irPara} irParaPeca={irParaPeca} />}
               {tab === "clientes" && (
                 <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} onCadastrar={cadastrarClienteManual} />
@@ -669,7 +687,9 @@ export default function Shell() {
               {tab === "custos-atelie" && !loadingPecas && (
                 <CustosAtelie pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} receitaMesOutraLinha={receitaMesCamisaria} />
               )}
-              {tab === "custos-camisaria" && !loading && <CustosCamisaria pedidos={pedidos} receitaMesOutraLinha={receitaMesAlfaiataria} />}
+              {tab === "custos-camisaria" && !loading && (
+                <CustosCamisaria pedidos={pedidos} receitaMesOutraLinha={receitaMesAlfaiataria} custoAviamentosPorPecaBase={custoPorPecaBase} />
+              )}
               {tab === "fornecedores" && (
                 <Fornecedores
                   fornecedores={fornecedores}

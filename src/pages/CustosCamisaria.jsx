@@ -23,7 +23,7 @@ function brlCompacto(v) {
 // Fabiana é por pedido (não tem salário fixo aqui), aluguel/luz são os
 // da loja, e os custos compartilhados da empresa (pró-labore, PJ, plano
 // de saúde) são rateados por receita com a linha de alfaiataria.
-export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
+export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, custoAviamentosPorPecaBase = {} }) {
   const [aluguelLoja, setAluguelLoja] = useState(0);
   const [luzLoja, setLuzLoja] = useState(0);
   const [prolabore, setProlabore] = useState(0);
@@ -120,8 +120,6 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
     [pedidosDoMes]
   );
 
-  const custoTotal = custoMaoDeObraEfetivo + custoEstrutura + custoProducaoTecido;
-
   const receitaMes = useMemo(
     () => pedidosVendidosDoMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0),
     [pedidosVendidosDoMes]
@@ -130,6 +128,14 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
     () => pedidosVendidosDoMes.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0),
     [pedidosVendidosDoMes]
   );
+
+  // Aviamento da camisa (botões, entretela, embalagem) — cadastrado por
+  // peça-base "Camisa" em Aviamentos, custo fixo por unidade (não varia
+  // por pedido como o tecido). Multiplica pela quantidade vendida no mês.
+  const custoAviamentoPorCamisa = custoAviamentosPorPecaBase["Camisa"] || 0;
+  const custoAviamentosMes = custoAviamentoPorCamisa * quantidadeVendidaMes;
+
+  const custoTotal = custoMaoDeObraEfetivo + custoEstrutura + custoProducaoTecido + custoAviamentosMes;
 
   const resultado = receitaMes - custoTotal;
   const sePagando = resultado >= 0;
@@ -265,8 +271,8 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Só o que é específico da linha de camisaria: valor pago à Fabiana pelos pedidos do mês + aluguel/luz da loja
-          + tecido dos pedidos (pelo valor/metro cadastrado em Compras). Não inclui os custos compartilhados da
-          empresa (acima).
+          + tecido dos pedidos (pelo valor/metro cadastrado em Compras) + aviamentos (botões, entretela, embalagem —
+          cadastrados em Aviamentos, peça-base "Camisa"). Não inclui os custos compartilhados da empresa (acima).
         </div>
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
@@ -280,6 +286,10 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — tecido do mês</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoProducaoTecido)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — aviamentos do mês</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoAviamentosMes)}</div>
           </div>
         </div>
 
@@ -309,7 +319,7 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0 }) {
       <CalculadoraMarkup
         custoFixoMes={custoEstrutura + custoCompartilhadoRateado}
         qtdPadrao={quantidadeVendidaMes || 1}
-        custoVariavelPadrao={quantidadeVendidaMes > 0 ? custoMaoDeObraEfetivo / quantidadeVendidaMes : 0}
+        custoVariavelPadrao={quantidadeVendidaMes > 0 ? (custoMaoDeObraEfetivo + custoAviamentosMes) / quantidadeVendidaMes : 0}
         unidadeLabel="camisa"
       />
 
