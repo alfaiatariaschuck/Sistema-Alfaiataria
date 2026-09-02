@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, Package, PackageCheck, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
 import { BRASS, BRASS_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
@@ -81,7 +81,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
               className="w-full flex items-center justify-between px-5 py-3.5 text-left"
               style={{
                 borderBottom: i < filtradas.length - 1 ? `1px solid ${LINE}` : "none",
-                background: naoEnviado ? "#FFF9E8" : "transparent",
+                background: p.tecidoChegou ? "#EAF3EA" : naoEnviado ? "#FFF9E8" : "transparent",
               }}
             >
               <div>
@@ -108,6 +108,25 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
                   text={`${diasAberto}d em produção`}
                   style={{ bg: atrasada ? "#F6E3D9" : "#EDEAE0", fg: atrasada ? VERMELHO : TEXT_MUTED }}
                 />
+                <span
+                  role="button"
+                  title={p.tecidoChegou ? "Tecido já chegou — toque pra desmarcar" : "Tecido ainda não chegou — toque quando chegar"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    acoes.onCampo(p.id, "tecidoChegou", !p.tecidoChegou);
+                  }}
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 6,
+                    background: p.tecidoChegou ? "#DCEBDD" : "#EDEAE0",
+                    color: p.tecidoChegou ? "#2C6E31" : TEXT_MUTED,
+                    flexShrink: 0,
+                  }}
+                >
+                  {p.tecidoChegou ? <PackageCheck size={14} /> : <Package size={14} />}
+                </span>
                 <Pill text={p.status} style={STATUS_STYLE[p.status]} />
                 <ChevronRight size={16} color={TEXT_MUTED} />
               </div>

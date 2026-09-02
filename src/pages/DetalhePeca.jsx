@@ -142,6 +142,22 @@ export default function DetalhePeca({
         >
           {p.enviadoIcaro ? "↺ Marcar como não enviado" : "✓ Marcar como enviado pro Icaro"}
         </button>
+        <button
+          type="button"
+          onClick={() => set("tecidoChegou", !p.tecidoChegou)}
+          className="flex items-center gap-2"
+          style={{
+            background: p.tecidoChegou ? "#DCEBDD" : "transparent",
+            border: `1px solid ${p.tecidoChegou ? "#2C6E31" : LINE}`,
+            color: p.tecidoChegou ? "#2C6E31" : TEXT_MUTED,
+            padding: "9px 14px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          {p.tecidoChegou ? "📦 Tecido chegou" : "Marcar tecido como chegado"}
+        </button>
         <CopiarDadosContabilidade
           clienteId={p.clienteId}
           nomeCliente={p.cliente}
