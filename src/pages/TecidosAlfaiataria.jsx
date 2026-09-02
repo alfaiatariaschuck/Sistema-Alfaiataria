@@ -9,15 +9,50 @@ export function rotuloModeloAlfaiataria(m) {
   return m.codigo ? `${m.codigo} — ${m.nome}` : m.nome;
 }
 
+// "89,90" ou "1.234,56" (formato BR) vira número — "" quando não dá
+// pra entender o valor.
+function parseValorPtBr(txt) {
+  if (!txt) return "";
+  const limpo = String(txt)
+    .replace(/[R$\s]/g, "")
+    .replace(/\.(?=\d{3}(\D|$))/g, "")
+    .replace(",", ".");
+  const num = parseFloat(limpo);
+  return isNaN(num) ? "" : String(num);
+}
+
+// Cada linha colada vira { codigo, nome, valorReferenciaMetro } — separa
+// por TAB (padrão de quando você copia células do Excel e cola aqui) ou,
+// sem tab, por 2+ espaços seguidos (comum ao colar de PDF). 3 colunas =
+// Código/Nomenclatura/Valor; 2 colunas = Nomenclatura/Valor (sem código).
+function parseLinhasColadas(texto) {
+  return texto
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((linha) => {
+      const partes = (linha.includes("\t") ? linha.split("\t") : linha.split(/\s{2,}/)).map((c) => c.trim());
+      if (partes.length >= 3) return { codigo: partes[0], nome: partes[1], valorReferenciaMetro: parseValorPtBr(partes[2]) };
+      if (partes.length === 2) return { codigo: "", nome: partes[0], valorReferenciaMetro: parseValorPtBr(partes[1]) };
+      return { codigo: "", nome: partes[0] || "", valorReferenciaMetro: "" };
+    })
+    .filter((it) => it.nome);
+}
+
 // Catálogo de tecidos de alfaiataria — separado do catálogo de tecidos
-// de camisa (nomenclaturas diferentes: lãs, linhos etc.). Só cadastro
-// (código + nomenclatura + valor de referência opcional) — sem tabela
-// de preço de venda, que não faz sentido aqui (cada peça é sob medida,
-// a margem já é calculada direto na peça).
-export default function TecidosAlfaiataria({ modelos, loading, onAdicionar, onCampo, onRemover }) {
+// de camisa (nomenclaturas diferentes: lãs, linhos etc.). Cadastro
+// manual (código + nomenclatura + valor de referência opcional) ou em
+// massa, colando direto de uma planilha (ex: lista mensal de
+// fornecedor) — sem tabela de preço de venda, que não faz sentido
+// aqui (cada peça é sob medida, a margem já é calculada direto nela).
+export default function TecidosAlfaiataria({ modelos, loading, onAdicionar, onCampo, onRemover, onImportar }) {
   const [codigoNovo, setCodigoNovo] = useState("");
   const [nomeNovo, setNomeNovo] = useState("");
   const [valorRefNovo, setValorRefNovo] = useState("");
+  const [textoImportar, setTextoImportar] = useState("");
+  const [importando, setImportando] = useState(false);
+  const [resultadoImportar, setResultadoImportar] = useState(null);
+  const [erroImportar, setErroImportar] = useState(null);
 
   function adicionar() {
     if (!nomeNovo.trim()) return;
@@ -25,6 +60,23 @@ export default function TecidosAlfaiataria({ modelos, loading, onAdicionar, onCa
     setCodigoNovo("");
     setNomeNovo("");
     setValorRefNovo("");
+  }
+
+  async function importar() {
+    const itens = parseLinhasColadas(textoImportar);
+    if (itens.length === 0) return;
+    setImportando(true);
+    setErroImportar(null);
+    setResultadoImportar(null);
+    try {
+      const { total } = await onImportar(itens);
+      setResultadoImportar(`${total} tecido(s) importado(s)/atualizado(s).`);
+      setTextoImportar("");
+    } catch (e) {
+      setErroImportar("Não consegui importar (" + e.message + ").");
+    } finally {
+      setImportando(false);
+    }
   }
 
   return (
@@ -68,6 +120,44 @@ export default function TecidosAlfaiataria({ modelos, loading, onAdicionar, onCa
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8 }}>
           Código e valor de referência são opcionais — deixe o valor em branco pra tecidos que variam muito de rolo
           pra rolo. Uso interno seu, nunca aparece pro Icaro.
+        </div>
+      </Card>
+
+      <Card style={{ padding: 16 }} className="mb-4">
+        <div className="fx-serif mb-1" style={{ fontSize: 14, fontWeight: 600 }}>
+          Importar de planilha
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
+          Selecione as células no Excel (Código, Nomenclatura, Valor por metro — ou só Nomenclatura e Valor, sem
+          código), copie (Ctrl+C) e cole aqui embaixo (Ctrl+V), uma linha por tecido. Quem já existe (mesma
+          nomenclatura) tem código e valor atualizados; quem não existe é cadastrado. Não apaga quem não estiver na
+          lista colada — dá pra usar todo mês só com os que mudaram.
+        </div>
+        <textarea
+          style={{ ...inputStyle, minHeight: 100, fontFamily: "monospace", fontSize: 12 }}
+          placeholder={"M58 - 1001\tLã Fresco 150 Cinza\t189,90"}
+          value={textoImportar}
+          onChange={(e) => setTextoImportar(e.target.value)}
+        />
+        <div className="flex items-center gap-3 mt-2">
+          <button
+            type="button"
+            onClick={importar}
+            disabled={importando || !textoImportar.trim()}
+            style={{
+              background: BRASS,
+              color: "#FFF",
+              padding: "8px 16px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              opacity: importando || !textoImportar.trim() ? 0.6 : 1,
+            }}
+          >
+            {importando ? "Importando…" : "Importar"}
+          </button>
+          {resultadoImportar && <span style={{ fontSize: 12, color: "#2C6E31", fontWeight: 600 }}>{resultadoImportar}</span>}
+          {erroImportar && <span style={{ fontSize: 12, color: "#9C4A1E" }}>{erroImportar}</span>}
         </div>
       </Card>
 

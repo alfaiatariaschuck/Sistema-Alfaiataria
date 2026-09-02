@@ -188,6 +188,7 @@ export default function Shell() {
     adicionarModelo: adicionarModeloAlfaiataria,
     atualizarModelo: atualizarModeloAlfaiataria,
     removerModelo: removerModeloAlfaiataria,
+    importarModelos: importarModelosAlfaiataria,
   } = useModelosAlfaiataria();
 
   // Receita do mês de cada linha — usada só pra ratear os custos
@@ -854,6 +855,7 @@ export default function Shell() {
                   onAdicionar={adicionarModeloAlfaiataria}
                   onCampo={atualizarModeloAlfaiataria}
                   onRemover={removerModeloAlfaiataria}
+                  onImportar={importarModelosAlfaiataria}
                 />
               )}
               {tab === "custos-camisaria" && !loading && (

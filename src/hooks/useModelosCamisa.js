@@ -67,7 +67,26 @@ function useModelosTecido(tabela) {
     await supabase.from(tabela).delete().eq("id", id);
   }
 
-  return { modelos, loading, adicionarModelo, atualizarModelo, removerModelo, recarregar };
+  // Importa/atualiza em massa, colado direto de uma planilha (ex: lista
+  // mensal de fornecedor) — cada item é { nome, codigo, valorReferenciaMetro }.
+  // "nome" é único: quem já existe é atualizado (código/valor novos),
+  // quem não existe é criado. Não mexe em quem não está na lista colada.
+  async function importarModelos(itens) {
+    const payload = (itens || [])
+      .filter((it) => it.nome && it.nome.trim())
+      .map((it) => ({
+        nome: it.nome.trim(),
+        codigo: (it.codigo || "").trim() || null,
+        valor_referencia_metro: it.valorReferenciaMetro === "" || it.valorReferenciaMetro == null ? null : Number(it.valorReferenciaMetro),
+      }));
+    if (payload.length === 0) return { total: 0 };
+    const { error } = await supabase.from(tabela).upsert(payload, { onConflict: "nome" });
+    if (error) throw error;
+    await recarregar();
+    return { total: payload.length };
+  }
+
+  return { modelos, loading, adicionarModelo, atualizarModelo, removerModelo, importarModelos, recarregar };
 }
 
 export function useModelosCamisa() {
