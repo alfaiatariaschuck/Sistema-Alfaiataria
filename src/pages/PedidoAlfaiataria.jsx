@@ -384,6 +384,23 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
                   }}
                 />
               </div>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  style={{ ...inputStyle, maxWidth: 110 }}
+                  placeholder="Medida (ex: 3,5m)"
+                  value={t.metragem || ""}
+                  onChange={(e) => setTecido(i, "metragem", e.target.value)}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  style={{ ...inputStyle, maxWidth: 110 }}
+                  placeholder="R$/metro"
+                  value={t.valorMetro || ""}
+                  onChange={(e) => setTecido(i, "valorMetro", e.target.value)}
+                />
+              </div>
               {estoqueTecidos && estoqueTecidos.some((e) => e.codigo.trim().toLowerCase() === (t.codigo || "").trim().toLowerCase()) && (
                 <div className="mt-2 p-2" style={{ background: "#F3EEDF", borderRadius: 6, fontSize: 11, color: TEXT_MUTED }}>
                   Esse código tem estoque cadastrado — depois de salvar, abra o detalhe da peça pra dar baixa nos metros usados.

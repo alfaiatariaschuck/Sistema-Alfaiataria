@@ -118,15 +118,18 @@ export function custoAviamentoComposicao(tipoPeca, custoAviamentosPorPecaBase) {
 }
 
 // Estimativa de custo/preço sugerido de um pedido de camisa, pra mostrar
-// já na hora de lançar — usa os mesmos parâmetros da Tabela de preço de
-// venda (Tecidos de Camisa): valor de referência do tecido (ou, se ainda
-// não tiver, o valor/metro já digitado na linha) × metragem padrão +
-// aviamento da camisa + mão de obra padrão, por camisa daquele tecido.
-// Só entra no cálculo linha com nomenclatura escolhida e valor conhecido;
-// se nenhuma linha tiver dado suficiente, volta "sem dados" (não mostra
-// nada em vez de mostrar zero, que enganaria).
+// já na hora de lançar. Prioriza o dado REAL já digitado na linha
+// (Medida + R$/metro, os mesmos campos que antes só existiam em
+// Compras) — isso vira o custo de tecido exato daquela linha. Quando a
+// medida ainda não foi digitada, cai pra uma estimativa: valor de
+// referência do tecido (da Tabela de preço de venda) × metragem padrão
+// configurada, por camisa. Em qualquer um dos casos soma aviamento da
+// camisa + mão de obra padrão, por camisa. Só entra no cálculo linha
+// com dado suficiente (medida+valor reais, ou nomenclatura com valor de
+// referência); se nenhuma linha tiver isso, volta "sem dados" (não
+// mostra zero, que enganaria).
 export function estimativaCustoPedidoCamisa(tecidos, modelosCamisa, { metragemPadrao, maoDeObraPadrao, custoAviamentoCamisa }) {
-  const metragemNum = parseFloat(String(metragemPadrao).replace(",", ".")) || 0;
+  const metragemPadraoNum = parseFloat(String(metragemPadrao).replace(",", ".")) || 0;
   const maoDeObraNum = parseFloat(maoDeObraPadrao) || 0;
   let custoEstimado = 0;
   let precoSugerido = 0;
@@ -134,14 +137,23 @@ export function estimativaCustoPedidoCamisa(tecidos, modelosCamisa, { metragemPa
   let temDados = false;
   (tecidos || []).forEach((t) => {
     const qtd = parseFloat(t.qtd) || 0;
-    if (!t.nomenclatura || qtd <= 0) return;
+    if (qtd <= 0) return;
     const modelo = (modelosCamisa || []).find((m) => m.nome === t.nomenclatura);
-    const temRef = modelo && modelo.valorReferenciaMetro !== "" && modelo.valorReferenciaMetro != null;
-    const valorRef = temRef ? parseFloat(modelo.valorReferenciaMetro) : parseFloat(t.valorMetro) || 0;
-    if (!valorRef) return;
+    const metrosReais = metragemParaNumero(t.metragem);
+    const valorMetroLinha = parseFloat(t.valorMetro) || 0;
+
+    let custoTecidoLinha;
+    if (metrosReais !== null && valorMetroLinha > 0) {
+      // dado real já lançado nessa linha do pedido — mais preciso que a estimativa
+      custoTecidoLinha = metrosReais * valorMetroLinha;
+    } else {
+      const temRef = modelo && modelo.valorReferenciaMetro !== "" && modelo.valorReferenciaMetro != null;
+      const valorRef = temRef ? parseFloat(modelo.valorReferenciaMetro) : valorMetroLinha;
+      if (!valorRef) return;
+      custoTecidoLinha = valorRef * metragemPadraoNum * qtd;
+    }
     temDados = true;
-    const custoUnitario = valorRef * metragemNum + (custoAviamentoCamisa || 0) + maoDeObraNum;
-    custoEstimado += custoUnitario * qtd;
+    custoEstimado += custoTecidoLinha + ((custoAviamentoCamisa || 0) + maoDeObraNum) * qtd;
     if (modelo && modelo.precoVenda !== "" && modelo.precoVenda != null) {
       precoSugerido += parseFloat(modelo.precoVenda) * qtd;
     } else {

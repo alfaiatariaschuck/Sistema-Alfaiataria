@@ -215,7 +215,7 @@ export function usePedidosAlfaiataria() {
       if (error) throw error;
 
       const tecidosParaInserir = (p.tecidos || [])
-        .filter((t) => t.codigo || t.fornecedor || t.numero)
+        .filter((t) => t.codigo || t.fornecedor || t.numero || t.nomenclatura || t.metragem || t.valorMetro)
         .map((t, i) => ({
           pedido_alfaiataria_id: pecaRow.id,
           codigo: t.codigo || null,
@@ -223,6 +223,8 @@ export function usePedidosAlfaiataria() {
           qtd: Number(t.qtd) || 1,
           numero: t.numero || null,
           fornecedor: t.fornecedor || null,
+          metragem: t.metragem || null,
+          valor_metro: t.valorMetro === "" || t.valorMetro == null ? null : Number(t.valorMetro),
           comprado: !!t.comprado,
           ordem: i,
         }));

@@ -555,6 +555,23 @@ export default function DetalhePeca({
                 }}
               />
             </div>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                style={{ ...inputStyle, maxWidth: 110 }}
+                placeholder="Medida (ex: 3,5m)"
+                value={t.metragem || ""}
+                onChange={(e) => onTecido(p.id, t.id, "metragem", e.target.value)}
+              />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                style={{ ...inputStyle, maxWidth: 110 }}
+                placeholder="R$/metro"
+                value={t.valorMetro || ""}
+                onChange={(e) => onTecido(p.id, t.id, "valorMetro", e.target.value)}
+              />
+            </div>
             {estoqueTecidos && (
               <BaixaEstoqueTecido
                 codigo={t.codigo}
