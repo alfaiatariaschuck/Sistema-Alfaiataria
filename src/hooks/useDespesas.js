@@ -30,6 +30,7 @@ function rowParaDespesa(row) {
     linha: row.linha || "",
     valorCamisaria: row.valor_camisaria ?? "",
     valorAlfaiataria: row.valor_alfaiataria ?? "",
+    pedidoId: row.pedido_id || null,
   };
 }
 
@@ -64,7 +65,7 @@ export function useDespesas() {
     recarregar();
   }, [recarregar]);
 
-  async function criarDespesa({ descricao, categoria, fornecedor, valor, frete, vencimento, recorrente, linha, valorCamisaria, valorAlfaiataria }) {
+  async function criarDespesa({ descricao, categoria, fornecedor, valor, frete, vencimento, recorrente, linha, valorCamisaria, valorAlfaiataria, pedidoId }) {
     return comIndicador(async () => {
       const { error } = await supabase.from("despesas").insert({
         descricao,
@@ -79,6 +80,7 @@ export function useDespesas() {
         linha: linha || null,
         valor_camisaria: valorCamisaria === "" || valorCamisaria == null ? null : Number(valorCamisaria),
         valor_alfaiataria: valorAlfaiataria === "" || valorAlfaiataria == null ? null : Number(valorAlfaiataria),
+        pedido_id: pedidoId || null,
       });
       if (error) throw error;
       await recarregar();

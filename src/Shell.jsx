@@ -350,8 +350,44 @@ export default function Shell() {
     irPara(id);
   }
 
+  // Lança sozinho a conta a pagar da Fabiana em Contas a Pagar quando o
+  // pedido entra em produção — usa o valor já preenchido em "Valor a
+  // pagar à Fabiana" no próprio pedido, sem precisar digitar de novo.
+  // Vencimento = dia em que entrou em produção (ajustável depois, como
+  // qualquer despesa). Só cria uma vez por pedido (pedidoId trava
+  // duplicata mesmo se o status for alternado depois) e só se já
+  // tiver um valor definido — pedido sem "Valor Fabiana" preenchido
+  // ainda não gera despesa.
+  async function criarDespesaFabianaSeNecessario(pedido) {
+    const valor = parseFloat(pedido?.pagoFabiana?.valor) || 0;
+    if (valor <= 0) return;
+    const jaExiste = despesas.some((d) => d.pedidoId === pedido.id);
+    if (jaExiste) return;
+    await criarDespesa({
+      descricao: `Mão de obra Fabiana — ${pedido.cliente}`,
+      categoria: "Salários",
+      fornecedor: "Fabi",
+      valor,
+      frete: 0,
+      vencimento: hojeISO(),
+      recorrente: false,
+      linha: "Camisaria",
+      valorCamisaria: "",
+      valorAlfaiataria: "",
+      pedidoId: pedido.id,
+    });
+  }
+
+  async function atualizarCampoPedido(pedidoId, campo, valor) {
+    await atualizarCampo(pedidoId, campo, valor);
+    if (campo === "status" && valor === "Em Produção") {
+      const pedido = pedidos.find((p) => p.id === pedidoId);
+      if (pedido) await criarDespesaFabianaSeNecessario(pedido);
+    }
+  }
+
   const acoesPedido = {
-    onCampo: atualizarCampo,
+    onCampo: atualizarCampoPedido,
     onSub: atualizarSubcampo,
     onRemover: (id) => {
       removerPedido(id);
