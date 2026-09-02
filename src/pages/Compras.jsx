@@ -14,12 +14,13 @@ function normalizarFornecedor(nome) {
   return canonico || limpo;
 }
 
+// A Observação (ex: "colarinho windsor") é uma nota interna pro corte/
+// costura — não deve ir pro fornecedor junto do pedido de tecido.
 function textoParaFornecedor(fornecedor, lista) {
   const linhas = [`*Pedido de tecido — ${fornecedor}*`, ""];
   lista.forEach((item) => {
     const partes = [`Código ${item.codigo || "—"}`, `Qtd ${item.qtd}`];
     if (item.metragem) partes.push(`Medida ${item.metragem}`);
-    if (item.numero) partes.push(`Obs: ${item.numero}`);
     linhas.push(`• ${item.cliente} — ${partes.join(" · ")}`);
   });
   return linhas.join("\n");
