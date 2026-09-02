@@ -31,11 +31,7 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
   // pra ficha destacar isso pra Fabi (senão ela pode usar a medida antiga
   // sem saber que mudou).
   function marcarMedidasNovas() {
-    setP((prev) =>
-      prev.medidasNovas
-        ? { ...prev, medidasNovas: false }
-        : { ...prev, medidasNovas: true, medidas: Object.fromEntries(Object.keys(prev.medidas).map((l) => [l, ""])) }
-    );
+    setP((prev) => ({ ...prev, medidasNovas: !prev.medidasNovas }));
   }
   function setDesc(label, valor) {
     setP((prev) => ({ ...prev, descricao: { ...prev.descricao, [label]: valor } }));
@@ -338,8 +334,8 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
           </div>
           {p.medidasNovas && (
             <div className="mb-3 px-3 py-2" style={{ background: "#F6E3D9", color: "#9C4A1E", borderRadius: 6, fontSize: 12 }}>
-              Limpei as medidas do pedido anterior — digite as novas medidas do cliente abaixo. Isso vai aparecer em
-              destaque na ficha da Fabi.
+              As medidas do pedido anterior continuam preenchidas — corrija abaixo só o que mudou. Isso vai aparecer
+              em destaque na ficha da Fabi.
             </div>
           )}
           <ControleVozMedidas onMedida={setMedida} />

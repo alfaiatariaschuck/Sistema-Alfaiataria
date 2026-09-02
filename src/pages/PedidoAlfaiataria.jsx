@@ -86,17 +86,12 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
       medidas: { ...prev.medidas, [secKey]: { ...prev.medidas[secKey], [label]: valor } },
     }));
   }
-  // Recompra, mas o cliente mudou de corpo — limpa as medidas
-  // pré-preenchidas do pedido anterior e marca, pra ficha destacar isso
-  // pro Icaro (senão ele pode usar a medida antiga sem saber que mudou).
+  // Recompra, mas o cliente mudou de corpo — marca pra ficha destacar
+  // isso pro Icaro (senão ele pode usar a medida antiga sem saber que
+  // mudou). Mantém as medidas pré-preenchidas do pedido anterior — o
+  // dono corrige à mão só o que mudou, não precisa redigitar tudo.
   function marcarMedidasNovas() {
-    setNovaPeca((prev) => {
-      if (prev.medidasNovas) return { ...prev, medidasNovas: false };
-      const medidasLimpas = Object.fromEntries(
-        Object.entries(prev.medidas).map(([secKey, campos]) => [secKey, Object.fromEntries(Object.keys(campos || {}).map((l) => [l, ""]))])
-      );
-      return { ...prev, medidasNovas: true, medidas: medidasLimpas };
-    });
+    setNovaPeca((prev) => ({ ...prev, medidasNovas: !prev.medidasNovas }));
   }
   function setCaracteristica(label, valor) {
     setNovaPeca((prev) => ({ ...prev, caracteristicas: { ...prev.caracteristicas, [label]: valor } }));
@@ -295,7 +290,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
           )}
           {novaPeca.medidasNovas && (
             <div className="mb-3 px-3 py-2" style={{ background: "#F6E3D9", color: "#9C4A1E", borderRadius: 6, fontSize: 12 }}>
-              Limpei as medidas da peça anterior — digite as novas medidas do cliente abaixo. Isso vai aparecer em
+              As medidas da peça anterior continuam preenchidas — corrija abaixo só o que mudou. Isso vai aparecer em
               destaque na ficha do Icaro.
             </div>
           )}
