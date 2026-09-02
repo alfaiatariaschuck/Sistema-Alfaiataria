@@ -7,6 +7,7 @@ import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import LinkAcompanhamento from "../components/LinkAcompanhamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
+import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import {
   BRASS,
   BRASS_SOFT,
@@ -54,6 +55,8 @@ export default function DetalhePeca({
   onRemover,
   onAddTecido,
   onTecido,
+  modelosCamisa = [],
+  onCriarModeloCamisa,
 }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -502,40 +505,53 @@ export default function DetalhePeca({
         </datalist>
         {p.tecidos.length === 0 && <div style={{ fontSize: 12, color: TEXT_MUTED }}>Nenhum tecido lançado ainda.</div>}
         {p.tecidos.map((t) => (
-          <div key={t.id} className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2 pb-2 items-center" style={{ borderBottom: `1px solid ${LINE}` }}>
-            <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(p.id, t.id, "codigo", e.target.value)} />
-            <input
-              style={{ ...inputStyle, background: BRASS_SOFT }}
-              list="lista-fornecedores"
-              placeholder="Fornecedor (interno)"
-              value={t.fornecedor || ""}
-              onChange={(e) => onTecido(p.id, t.id, "fornecedor", e.target.value)}
-            />
-            <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => onTecido(p.id, t.id, "qtd", e.target.value)} />
-            <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => onTecido(p.id, t.id, "numero", e.target.value)} />
-            <button
-              type="button"
-              onClick={() => onTecido(p.id, t.id, "comprado", !t.comprado)}
-              className="flex items-center justify-center gap-1"
-              style={{
-                background: t.comprado ? "#DCEBDD" : "#F6E3D9",
-                color: t.comprado ? "#2C6E31" : "#9C4A1E",
-                padding: "8px 10px",
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {t.comprado ? (
-                <>
-                  <CheckCircle2 size={13} /> Comprado
-                </>
-              ) : (
-                <>
-                  <Clock size={13} /> Comprar
-                </>
-              )}
-            </button>
+          <div key={t.id} className="mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-center">
+              <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(p.id, t.id, "codigo", e.target.value)} />
+              <input
+                style={{ ...inputStyle, background: BRASS_SOFT }}
+                list="lista-fornecedores"
+                placeholder="Fornecedor (interno)"
+                value={t.fornecedor || ""}
+                onChange={(e) => onTecido(p.id, t.id, "fornecedor", e.target.value)}
+              />
+              <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => onTecido(p.id, t.id, "qtd", e.target.value)} />
+              <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => onTecido(p.id, t.id, "numero", e.target.value)} />
+              <button
+                type="button"
+                onClick={() => onTecido(p.id, t.id, "comprado", !t.comprado)}
+                className="flex items-center justify-center gap-1"
+                style={{
+                  background: t.comprado ? "#DCEBDD" : "#F6E3D9",
+                  color: t.comprado ? "#2C6E31" : "#9C4A1E",
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {t.comprado ? (
+                  <>
+                    <CheckCircle2 size={13} /> Comprado
+                  </>
+                ) : (
+                  <>
+                    <Clock size={13} /> Comprar
+                  </>
+                )}
+              </button>
+            </div>
+            <div className="mt-2">
+              <SeletorNomenclaturaTecido
+                value={t.nomenclatura}
+                onChange={(nome) => onTecido(p.id, t.id, "nomenclatura", nome)}
+                modelosCamisa={modelosCamisa}
+                onCriarModelo={onCriarModeloCamisa}
+                onValorReferencia={(valor) => {
+                  if (t.valorMetro === "" || t.valorMetro == null) onTecido(p.id, t.id, "valorMetro", valor);
+                }}
+              />
+            </div>
           </div>
         ))}
       </Card>

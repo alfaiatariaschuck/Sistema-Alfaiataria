@@ -4,11 +4,12 @@ import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
+import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
-export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos, modelosCamisa = [] }) {
+export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos, modelosCamisa = [], onCriarModeloCamisa }) {
   const [p, setP] = useState(pedidoVazio());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -44,7 +45,7 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
     });
   }
   function addTecido() {
-    setP((prev) => ({ ...prev, tecidos: [...prev.tecidos, { codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }));
+    setP((prev) => ({ ...prev, tecidos: [...prev.tecidos, { codigo: "", nomenclatura: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }));
   }
   function setPagamento(patch) {
     setP((prev) => {
@@ -190,15 +191,6 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
             </Field>
             <Field label="Vendedor">
               <input style={inputStyle} value={p.vendedor} onChange={(e) => set("vendedor", e.target.value)} />
-            </Field>
-            <Field label="Tecido">
-              <select style={inputStyle} value={p.modelo} onChange={(e) => set("modelo", e.target.value)}>
-                <option value="">Selecione…</option>
-                {p.modelo && !modelosCamisa.includes(p.modelo) && <option value={p.modelo}>{p.modelo} (não cadastrado)</option>}
-                {modelosCamisa.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
             </Field>
             <Field label="Data do pedido">
               <input type="date" style={inputStyle} value={p.dataPedido} onChange={(e) => set("dataPedido", e.target.value)} />
@@ -397,6 +389,17 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
                   placeholder="Observação (ex: colarinho windsor)"
                   value={t.numero}
                   onChange={(e) => setTecido(i, "numero", e.target.value)}
+                />
+              </div>
+              <div className="mt-2">
+                <SeletorNomenclaturaTecido
+                  value={t.nomenclatura}
+                  onChange={(nome) => setTecido(i, "nomenclatura", nome)}
+                  modelosCamisa={modelosCamisa}
+                  onCriarModelo={onCriarModeloCamisa}
+                  onValorReferencia={(valor) => {
+                    if (t.valorMetro === "" || t.valorMetro == null) setTecido(i, "valorMetro", valor);
+                  }}
                 />
               </div>
               {estoqueTecidos && estoqueTecidos.some((e) => e.codigo.trim().toLowerCase() === (t.codigo || "").trim().toLowerCase()) && (

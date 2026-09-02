@@ -72,7 +72,7 @@ import CustosAtelie from "./pages/CustosAtelie";
 import CustosCamisaria from "./pages/CustosCamisaria";
 import ComparativoMensal from "./pages/ComparativoMensal";
 import ResultadoMensal from "./pages/ResultadoMensal";
-import ModelosCamisa, { rotuloModelo } from "./pages/ModelosCamisa";
+import ModelosCamisa from "./pages/ModelosCamisa";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
@@ -176,7 +176,6 @@ export default function Shell() {
   const { previsoes, criarPrevisao, atualizarPrevisao, removerPrevisao } = usePrevisoesVenda();
   const { notas: notasVendaFutura, criarNota, removerNota } = useNotasVendaFutura();
   const { modelos: modelosCamisa, loading: loadingModelosCamisa, adicionarModelo, atualizarModelo, removerModelo } = useModelosCamisa();
-  const nomesModelosCamisaAtivos = useMemo(() => modelosCamisa.filter((m) => m.ativo).map(rotuloModelo), [modelosCamisa]);
 
   // Receita do mês de cada linha — usada só pra ratear os custos
   // compartilhados da empresa entre Custos do Ateliê e Custos da
@@ -363,7 +362,8 @@ export default function Shell() {
     onConverterPlano: converterPedidoEmPlano,
     estoqueTecidos,
     onDarBaixaEstoque: darBaixaEstoque,
-    modelosCamisa: nomesModelosCamisaAtivos,
+    modelosCamisa,
+    onCriarModeloCamisa: adicionarModelo,
   };
 
   function atualizarMedidaPeca(pecaId, secKey, label, valor) {
@@ -412,6 +412,8 @@ export default function Shell() {
     },
     onAddTecido: adicionarTecidoPeca,
     onTecido: atualizarTecidoPeca,
+    modelosCamisa,
+    onCriarModeloCamisa: adicionarModelo,
   };
 
   return (
@@ -593,7 +595,8 @@ export default function Shell() {
                   nomesClientes={nomesClientes}
                   pedidos={pedidos}
                   estoqueTecidos={estoqueTecidos}
-                  modelosCamisa={nomesModelosCamisaAtivos}
+                  modelosCamisa={modelosCamisa}
+                  onCriarModeloCamisa={adicionarModelo}
                 />
               )}
               {tab === "estoque-camisaria" && (
@@ -661,6 +664,8 @@ export default function Shell() {
                   pecas={pecas}
                   equipe={equipe}
                   custoAviamentosPorPecaBase={custoPorPecaBase}
+                  modelosCamisa={modelosCamisa}
+                  onCriarModeloCamisa={adicionarModelo}
                 />
               )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
@@ -680,7 +685,9 @@ export default function Shell() {
                   irParaPeca={irParaPeca}
                 />
               )}
-              {tab === "historico-producao" && !loadingPecas && <HistoricoProducao pecas={pecas} mostrarMargem />}
+              {tab === "historico-producao" && !loadingPecas && (
+                <HistoricoProducao pecas={pecas} mostrarMargem custoAviamentosPorPecaBase={custoPorPecaBase} />
+              )}
               {tab === "equipe" && (
                 <Equipe equipe={equipe} loading={loadingEquipe} onAdicionar={adicionarMembro} onCampo={atualizarMembro} onRemover={removerMembro} />
               )}
@@ -724,7 +731,14 @@ export default function Shell() {
               {tab === "relatorio" && <Relatorio pedidos={pedidos} planos={planos} />}
               {tab === "relatorio-alfaiataria" && !loadingPecas && <RelatorioAlfaiataria pecas={pecas} />}
               {tab === "consolidado" && !loadingPecas && !loadingPlanos && (
-                <Consolidado pedidos={pedidos} pecas={pecas} planos={planos} irPara={irPara} irParaPeca={irParaPeca} />
+                <Consolidado
+                  pedidos={pedidos}
+                  pecas={pecas}
+                  planos={planos}
+                  irPara={irPara}
+                  irParaPeca={irParaPeca}
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
+                />
               )}
               {tab === "comparativo-mensal" && !loadingPecas && !loading && <ComparativoMensal pedidos={pedidos} pecas={pecas} />}
               {tab === "resultado-mensal" && !loadingPecas && !loading && (

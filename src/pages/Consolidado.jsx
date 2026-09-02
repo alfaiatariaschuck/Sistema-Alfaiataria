@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ChevronRight, Download, Package, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { FORMAS_PAGAMENTO, LINE, LINHA_STYLE, PAG_STYLE, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
-import { brl, fmtData, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, fmtData, valorRecebidoEfetivo } from "../lib/helpers";
 
 // statusPagamento aqui já reflete pagamento dividido (entrada recebida +
 // restante pendente vira "Parcial", não "Pendente" com o valor inteiro).
@@ -20,12 +20,20 @@ function statusEValorPendente(p, valor, statusTotal) {
   return { pendente, status: pendente === 0 ? statusTotal : recebido > 0 ? "Parcial" : statusTotal };
 }
 
-function montarLinhas(pedidos, pecas, planos) {
+function montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase) {
   const camisas = pedidos
     .filter((p) => p.status !== "Doação" && !p.origemPlanoId)
     .map((p) => {
       const valor = parseFloat(p.aReceber.valor) || 0;
       const { pendente, status } = statusEValorPendente(p, valor, p.aReceber.statusPagamento || "Pendente");
+      // Custo real do pedido — tecido (metragem × valor/metro) + aviamento
+      // da camisa (botão/entretela/embalagem) × quantidade + mão de obra
+      // paga à Fabiana. Antes só contava a mão de obra, subestimando o
+      // custo (e superestimando a margem).
+      const custo =
+        custoTecidoDe(p.tecidos) +
+        (custoAviamentosPorPecaBase["Camisa"] || 0) * (parseFloat(p.quantidade) || 0) +
+        (parseFloat(p.pagoFabiana.valor) || 0);
       return {
         id: "pedido-" + p.id,
         linha: "Camisaria",
@@ -34,7 +42,7 @@ function montarLinhas(pedidos, pecas, planos) {
         dataPedido: p.dataPedido,
         quantidade: parseFloat(p.quantidade) || 0,
         valor,
-        custo: parseFloat(p.pagoFabiana.valor) || 0,
+        custo,
         statusPagamento: status,
         pendente,
         formaPagamento: p.formaPagamento,
@@ -70,6 +78,10 @@ function montarLinhas(pedidos, pecas, planos) {
     .map((p) => {
       const valor = parseFloat(p.valorVenda) || 0;
       const { pendente, status } = statusEValorPendente(p, valor, p.statusPagamentoVenda || "Pendente");
+      // Custo real da peça — tecido + aviamentos (pela composição do tipo
+      // de peça, ex: Traje = Paletó+Calça+Colete) + valor devido ao
+      // Ícaro. Antes só contava o valor devido ao Ícaro.
+      const custo = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + (parseFloat(p.valorTotal) || 0);
       return {
         id: "peca-" + p.id,
         linha: "Alfaiataria",
@@ -78,7 +90,7 @@ function montarLinhas(pedidos, pecas, planos) {
         dataPedido: p.dataPedido,
         quantidade: 1,
         valor,
-        custo: parseFloat(p.valorTotal) || 0,
+        custo,
         statusPagamento: status,
         pendente,
         formaPagamento: p.formaPagamento,
@@ -90,7 +102,7 @@ function montarLinhas(pedidos, pecas, planos) {
   return [...camisas, ...vendasPlano, ...trajes];
 }
 
-export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca }) {
+export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca, custoAviamentosPorPecaBase = {} }) {
   const [busca, setBusca] = useState("");
   const [dataIni, setDataIni] = useState("");
   const [dataFim, setDataFim] = useState("");
@@ -98,7 +110,7 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
   const [forma, setForma] = useState("Todas");
   const [status, setStatus] = useState(null);
 
-  const todas = montarLinhas(pedidos, pecas, planos);
+  const todas = montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase);
 
   const filtrados = todas
     .filter((l) => {
@@ -249,6 +261,8 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
         )}
         {filtrados.map((l, i) => {
           const clicavel = !!l.origemId;
+          const margem = l.valor - l.custo;
+          const margemPercentual = l.valor > 0 ? (margem / l.valor) * 100 : null;
           return (
             <div
               key={l.id}
@@ -269,6 +283,15 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                {margemPercentual !== null && (
+                  <span
+                    className="fx-mono"
+                    title={`Margem: ${brl(margem)} (custo ${brl(l.custo)})`}
+                    style={{ fontSize: 11, fontWeight: 700, color: margem >= 0 ? "#2C6E31" : "#9C4A1E" }}
+                  >
+                    {margemPercentual.toFixed(0)}%
+                  </span>
+                )}
                 <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
                   {brl(l.valor)}
                 </span>

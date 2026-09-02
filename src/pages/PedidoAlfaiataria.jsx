@@ -4,6 +4,7 @@ import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
+import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import {
   BRASS,
   BRASS_SOFT,
@@ -24,7 +25,7 @@ import { brl, mediaDiasProducaoPorTipo, previsaoParaNovaPeca, statusDividido, to
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
-export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe, custoAviamentosPorPecaBase = {} }) {
+export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe, custoAviamentosPorPecaBase = {}, modelosCamisa = [], onCriarModeloCamisa }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -118,7 +119,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
     });
   }
   function addTecido() {
-    setNovaPeca((prev) => ({ ...prev, tecidos: [...prev.tecidos, { codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }));
+    setNovaPeca((prev) => ({ ...prev, tecidos: [...prev.tecidos, { codigo: "", nomenclatura: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }));
   }
 
   async function submeter(e) {
@@ -359,17 +360,30 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
             ))}
           </datalist>
           {novaPeca.tecidos.map((t, i) => (
-            <div key={i} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
-              <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => setTecido(i, "codigo", e.target.value)} />
-              <input
-                style={{ ...inputStyle, background: BRASS_SOFT }}
-                list="lista-fornecedores"
-                placeholder="Fornecedor (interno)"
-                value={t.fornecedor}
-                onChange={(e) => setTecido(i, "fornecedor", e.target.value)}
-              />
-              <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => setTecido(i, "qtd", e.target.value)} />
-              <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => setTecido(i, "numero", e.target.value)} />
+            <div key={i} className="mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => setTecido(i, "codigo", e.target.value)} />
+                <input
+                  style={{ ...inputStyle, background: BRASS_SOFT }}
+                  list="lista-fornecedores"
+                  placeholder="Fornecedor (interno)"
+                  value={t.fornecedor}
+                  onChange={(e) => setTecido(i, "fornecedor", e.target.value)}
+                />
+                <input type="number" style={inputStyle} placeholder="Qtd" value={t.qtd} onChange={(e) => setTecido(i, "qtd", e.target.value)} />
+                <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => setTecido(i, "numero", e.target.value)} />
+              </div>
+              <div className="mt-2">
+                <SeletorNomenclaturaTecido
+                  value={t.nomenclatura}
+                  onChange={(nome) => setTecido(i, "nomenclatura", nome)}
+                  modelosCamisa={modelosCamisa}
+                  onCriarModelo={onCriarModeloCamisa}
+                  onValorReferencia={(valor) => {
+                    if (t.valorMetro === "" || t.valorMetro == null) setTecido(i, "valorMetro", valor);
+                  }}
+                />
+              </div>
             </div>
           ))}
         </Card>

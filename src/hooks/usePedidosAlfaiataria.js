@@ -41,7 +41,7 @@ export function pecaVazia() {
     // medidas fica agrupada por seção — { corpo: { label: valor }, calca: {...}, colete: {...} }
     medidas: {},
     caracteristicas: {},
-    tecidos: [{ codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
+    tecidos: [{ codigo: "", nomenclatura: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
     medidasNovas: false,
   };
 }
@@ -97,6 +97,7 @@ function rowParaPeca(row) {
       .map((t) => ({
         id: t.id,
         codigo: t.codigo || "",
+        nomenclatura: t.nomenclatura || "",
         qtd: t.qtd ?? 1,
         numero: t.numero || "",
         fornecedor: t.fornecedor || "",
@@ -217,6 +218,7 @@ export function usePedidosAlfaiataria() {
         .map((t, i) => ({
           pedido_alfaiataria_id: pecaRow.id,
           codigo: t.codigo || null,
+          nomenclatura: t.nomenclatura || null,
           qtd: Number(t.qtd) || 1,
           numero: t.numero || null,
           fornecedor: t.fornecedor || null,
@@ -370,7 +372,7 @@ export function usePedidosAlfaiataria() {
       setPecas((prev) =>
         prev.map((p) =>
           p.id === pecaId
-            ? { ...p, tecidos: [...p.tecidos, { id: data.id, codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }
+            ? { ...p, tecidos: [...p.tecidos, { id: data.id, codigo: "", nomenclatura: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }
             : p
         )
       );

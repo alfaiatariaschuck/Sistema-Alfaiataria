@@ -3,7 +3,7 @@ import { AlertTriangle, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, PageTitle, StatCard } from "../components/ui";
 import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
 import { BRASS, COR_REAL, COR_REFERENCIA, TEXT_MUTED } from "../lib/constants";
-import { brl, hojeISO, metragemParaNumero } from "../lib/helpers";
+import { brl, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_ALUGUEL_LOJA = "custo_aluguel_loja_mensal";
@@ -106,19 +106,7 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
 
   // Tecido dos pedidos de camisaria pedidos esse mês — mesmo padrão do
   // Ateliê: metragem × valor/metro cadastrado em Compras.
-  const custoProducaoTecido = useMemo(
-    () =>
-      pedidosDoMes.reduce((soma, p) => {
-        const doTecido = (p.tecidos || []).reduce((s, t) => {
-          const metros = metragemParaNumero(t.metragem);
-          const valorMetro = parseFloat(t.valorMetro);
-          if (metros === null || !valorMetro) return s;
-          return s + metros * valorMetro;
-        }, 0);
-        return soma + doTecido;
-      }, 0),
-    [pedidosDoMes]
-  );
+  const custoProducaoTecido = useMemo(() => pedidosDoMes.reduce((soma, p) => soma + custoTecidoDe(p.tecidos), 0), [pedidosDoMes]);
 
   const receitaMes = useMemo(
     () => pedidosVendidosDoMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0),

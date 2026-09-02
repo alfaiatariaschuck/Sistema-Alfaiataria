@@ -11,7 +11,7 @@ import {
   LINE,
   TEXT_MUTED,
 } from "../lib/constants";
-import { brl, diasEsperaCliente, diasProducaoReal, fmtData } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, diasEsperaCliente, diasProducaoReal, fmtData } from "../lib/helpers";
 
 // Dias de produção pura (máquina/trabalho manual), sem prova nem
 // espera — vem das horas de desenvolvimento da planilha de parâmetros
@@ -71,7 +71,7 @@ function BarraVendasEntregas({ dados }) {
 // Histórico de produção da alfaiataria: médias reais (início -> entrega,
 // já sem pausas) por tipo de peça e por responsável, com gráficos —
 // pensado pra apresentação/reunião de equipe, não pra edição de nada.
-export default function HistoricoProducao({ pecas, mostrarMargem = false }) {
+export default function HistoricoProducao({ pecas, mostrarMargem = false, custoAviamentosPorPecaBase = {} }) {
   const entregues = useMemo(
     () => pecas.filter((p) => p.status === "Entregue" && p.dataInicioProducao && p.dataEntrega),
     [pecas]
@@ -252,23 +252,22 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false }) {
     [entregues]
   );
 
-  // Margem por peça: venda menos o valor devido ao Ícaro (custo de mão
-  // de obra) — não desconta tecido porque isso não é rastreado por
-  // peça no sistema, então é uma margem bruta aproximada, não líquida.
-  // Só entra quem tem valor de venda lançado. Só calculado quando
-  // mostrarMargem=true (tela do Ícaro não recebe valor_venda/valor_total
-  // do banco, então nem teria como calcular isso direito).
+  // Margem por peça: venda menos o custo real (tecido + aviamentos pela
+  // composição do tipo de peça + valor devido ao Ícaro). Só entra quem
+  // tem valor de venda lançado. Só calculado quando mostrarMargem=true
+  // (tela do Ícaro não recebe valor_venda/valor_total do banco, então
+  // nem teria como calcular isso direito).
   const comMargem = useMemo(() => {
     if (!mostrarMargem) return [];
     return entregues
       .filter((p) => p.valorVenda !== "" && p.valorVenda != null)
       .map((p) => {
         const venda = parseFloat(p.valorVenda) || 0;
-        const custo = parseFloat(p.valorTotal) || 0;
+        const custo = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + (parseFloat(p.valorTotal) || 0);
         const dias = diasProducaoReal(p);
         return { ...p, margem: venda - custo, margemPorDia: dias ? (venda - custo) / dias : null };
       });
-  }, [entregues, mostrarMargem]);
+  }, [entregues, mostrarMargem, custoAviamentosPorPecaBase]);
 
   const margemPorTipo = useMemo(() => {
     const mapa = new Map();

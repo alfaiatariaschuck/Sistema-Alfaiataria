@@ -1,4 +1,5 @@
 import {
+  COMPOSICAO_AVIAMENTOS,
   DIAS_ALERTA_EVENTO,
   DIAS_REFERENCIA_TIPO_PECA,
   ETAPAS_ACOMPANHAMENTO_ALFAIATARIA,
@@ -91,6 +92,29 @@ export function brl(v) {
 export function metragemParaNumero(str) {
   const match = (str || "").replace(",", ".").match(/[\d.]+/);
   return match ? parseFloat(match[0]) : null;
+}
+
+// Custo de tecido de um pedido/peça — soma metragem × valor/metro de
+// cada item de tecido lançado (pelo valor cadastrado em Compras). Só
+// entra quando os dois campos estão preenchidos. Usado em Custos do
+// Ateliê, Custos da Camisaria, Resultado do Mês e Consolidado — todos
+// calculavam isso do mesmo jeito, então ficou centralizado aqui.
+export function custoTecidoDe(tecidos) {
+  return (tecidos || []).reduce((s, t) => {
+    const metros = metragemParaNumero(t.metragem);
+    const valorMetro = parseFloat(t.valorMetro);
+    if (metros === null || !valorMetro) return s;
+    return s + metros * valorMetro;
+  }, 0);
+}
+
+// Custo de aviamentos de uma peça de alfaiataria — soma as peças-base
+// que compõem o tipo vendido (ex: Traje = Paletó+Calça+Colete), pelo
+// mapeamento em COMPOSICAO_AVIAMENTOS. "Outro" não tem composição
+// conhecida e o custo fica 0.
+export function custoAviamentoComposicao(tipoPeca, custoAviamentosPorPecaBase) {
+  const composicao = COMPOSICAO_AVIAMENTOS[tipoPeca] || [];
+  return composicao.reduce((s, base) => s + ((custoAviamentosPorPecaBase || {})[base] || 0), 0);
 }
 
 export function totalDividido(valorEntrada, valorRestante) {

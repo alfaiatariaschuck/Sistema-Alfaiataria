@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarClock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, Empty, PageTitle, StatCard } from "../components/ui";
 import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
-import { BRASS, COMPOSICAO_AVIAMENTOS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
-import { brl, hojeISO, metragemParaNumero } from "../lib/helpers";
+import { BRASS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
+import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_ALUGUEL = "custo_aluguel_mensal";
@@ -107,15 +107,7 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
     () =>
       (pecas || [])
         .filter((p) => p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
-        .reduce((soma, p) => {
-          const doTecido = (p.tecidos || []).reduce((s, t) => {
-            const metros = metragemParaNumero(t.metragem);
-            const valorMetro = parseFloat(t.valorMetro);
-            if (metros === null || !valorMetro) return s;
-            return s + metros * valorMetro;
-          }, 0);
-          return soma + doTecido;
-        }, 0),
+        .reduce((soma, p) => soma + custoTecidoDe(p.tecidos), 0),
     [pecas, mesAtualStr]
   );
 
@@ -127,11 +119,7 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
     () =>
       (pecas || [])
         .filter((p) => p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
-        .reduce((soma, p) => {
-          const composicao = COMPOSICAO_AVIAMENTOS[p.tipoPeca] || [];
-          const custoPeca = composicao.reduce((s, base) => s + (custoAviamentosPorPecaBase[base] || 0), 0);
-          return soma + custoPeca;
-        }, 0),
+        .reduce((soma, p) => soma + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase), 0),
     [pecas, mesAtualStr, custoAviamentosPorPecaBase]
   );
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Info, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, PageTitle, StatCard } from "../components/ui";
-import { BRASS, COMPOSICAO_AVIAMENTOS, COR_REAL, COR_REFERENCIA, TEXT_MUTED } from "../lib/constants";
-import { brl, hojeISO, metragemParaNumero } from "../lib/helpers";
+import { BRASS, COR_REAL, COR_REFERENCIA, TEXT_MUTED } from "../lib/constants";
+import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_ALUGUEL = "custo_aluguel_mensal";
@@ -91,27 +91,14 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
 
   const custoMaoDeObraFabiana = useMemo(() => pedidosDoMes.reduce((s, p) => s + (parseFloat(p.pagoFabiana?.valor) || 0), 0), [pedidosDoMes]);
 
-  function custoTecidoDe(lista) {
-    return lista.reduce((soma, item) => {
-      const doTecido = (item.tecidos || []).reduce((s, t) => {
-        const metros = metragemParaNumero(t.metragem);
-        const valorMetro = parseFloat(t.valorMetro);
-        if (metros === null || !valorMetro) return s;
-        return s + metros * valorMetro;
-      }, 0);
-      return soma + doTecido;
-    }, 0);
+  function custoTecidoTotalDe(lista) {
+    return lista.reduce((soma, item) => soma + custoTecidoDe(item.tecidos), 0);
   }
-  const custoTecidoCamisaria = useMemo(() => custoTecidoDe(pedidosDoMes), [pedidosDoMes]);
-  const custoTecidoAlfaiataria = useMemo(() => custoTecidoDe(pecasDoMes), [pecasDoMes]);
+  const custoTecidoCamisaria = useMemo(() => custoTecidoTotalDe(pedidosDoMes), [pedidosDoMes]);
+  const custoTecidoAlfaiataria = useMemo(() => custoTecidoTotalDe(pecasDoMes), [pecasDoMes]);
 
   const custoAviamentosAlfaiataria = useMemo(
-    () =>
-      pecasDoMes.reduce((soma, p) => {
-        const composicao = COMPOSICAO_AVIAMENTOS[p.tipoPeca] || [];
-        const custoPeca = composicao.reduce((s, base) => s + (custoAviamentosPorPecaBase[base] || 0), 0);
-        return soma + custoPeca;
-      }, 0),
+    () => pecasDoMes.reduce((soma, p) => soma + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase), 0),
     [pecasDoMes, custoAviamentosPorPecaBase]
   );
   // Aviamento da camisa (botões, entretela, embalagem) — peça-base

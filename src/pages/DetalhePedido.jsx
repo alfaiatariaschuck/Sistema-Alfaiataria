@@ -8,11 +8,12 @@ import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import LinkAcompanhamento from "../components/LinkAcompanhamento";
+import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [] }) {
+export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [convertendo, setConvertendo] = useState(false);
@@ -166,15 +167,6 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
                   +1
                 </button>
               </div>
-            </Field>
-            <Field label="Tecido">
-              <select style={inputStyle} value={p.modelo || ""} onChange={(e) => set("modelo", e.target.value)}>
-                <option value="">Selecione…</option>
-                {p.modelo && !modelosCamisa.includes(p.modelo) && <option value={p.modelo}>{p.modelo} (não cadastrado)</option>}
-                {modelosCamisa.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
             </Field>
           </div>
           <label className="flex items-center gap-2 mt-3" style={{ cursor: "pointer" }}>
@@ -384,6 +376,17 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
                   </>
                 )}
               </button>
+            </div>
+            <div className="mt-2">
+              <SeletorNomenclaturaTecido
+                value={t.nomenclatura}
+                onChange={(nome) => onTecido(p.id, t.id, "nomenclatura", nome)}
+                modelosCamisa={modelosCamisa}
+                onCriarModelo={onCriarModeloCamisa}
+                onValorReferencia={(valor) => {
+                  if (t.valorMetro === "" || t.valorMetro == null) onTecido(p.id, t.id, "valorMetro", valor);
+                }}
+              />
             </div>
             {estoqueTecidos && (
               <BaixaEstoqueTecido

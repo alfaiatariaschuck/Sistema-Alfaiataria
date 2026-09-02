@@ -14,19 +14,35 @@ export function rotuloModelo(m) {
 }
 
 // Junta os pedidos (excluindo Doação) por tecido — quantidade e
-// faturamento, pra saber quais tecidos/camisas mais vendem. Pedidos sem
-// tecido preenchido caem no balde "Sem tecido definido", que serve de
-// lembrete pra voltar e classificar.
+// faturamento, pra saber quais tecidos/camisas mais vendem. A fonte é a
+// nomenclatura marcada em cada item de tecido do pedido (não um campo à
+// parte) — evita ter duas informações pra manter em dia. Quando o
+// pedido tem mais de um tecido, o faturamento é rateado pela quantidade
+// de camisas de cada um; pedidos sem nenhum tecido classificado caem no
+// balde "Sem tecido definido", que serve de lembrete pra voltar e
+// classificar.
 function montarMix(pedidos, desde) {
   const mapa = new Map();
+  function somar(nome, quantidade, faturamento) {
+    const atual = mapa.get(nome) || { nome, quantidade: 0, faturamento: 0 };
+    atual.quantidade += quantidade;
+    atual.faturamento += faturamento;
+    mapa.set(nome, atual);
+  }
   (pedidos || [])
     .filter((p) => p.status !== "Doação" && p.dataPedido && (!desde || p.dataPedido >= desde))
     .forEach((p) => {
-      const nome = (p.modelo || "").trim() || SEM_MODELO;
-      const atual = mapa.get(nome) || { nome, quantidade: 0, faturamento: 0 };
-      atual.quantidade += parseFloat(p.quantidade) || 0;
-      atual.faturamento += parseFloat(p.aReceber?.valor) || 0;
-      mapa.set(nome, atual);
+      const valorTotal = parseFloat(p.aReceber?.valor) || 0;
+      const linhasComNome = (p.tecidos || []).filter((t) => (t.nomenclatura || "").trim());
+      const totalQtdTecidos = linhasComNome.reduce((s, t) => s + (parseFloat(t.qtd) || 0), 0);
+      if (linhasComNome.length === 0 || totalQtdTecidos <= 0) {
+        somar(SEM_MODELO, parseFloat(p.quantidade) || 0, valorTotal);
+        return;
+      }
+      linhasComNome.forEach((t) => {
+        const qtd = parseFloat(t.qtd) || 0;
+        somar(t.nomenclatura.trim(), qtd, valorTotal * (qtd / totalQtdTecidos));
+      });
     });
   const linhas = [...mapa.values()].sort((a, b) => b.faturamento - a.faturamento);
   const totalFaturamento = linhas.reduce((s, l) => s + l.faturamento, 0);

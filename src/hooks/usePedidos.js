@@ -15,7 +15,6 @@ export function pedidoVazio() {
   return {
     cliente: "",
     vendedor: "",
-    modelo: "",
     dataPedido: new Date().toISOString().slice(0, 10),
     previsaoEntrega: "",
     dataEntrega: "",
@@ -41,7 +40,7 @@ export function pedidoVazio() {
     statusRestanteFabiana: "Pendente",
     medidas: medidasVazias(),
     descricao: descricaoVazia(),
-    tecidos: [{ codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
+    tecidos: [{ codigo: "", nomenclatura: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
     observacoes: "",
     enviadoFabi: false,
     medidasNovas: false,
@@ -54,7 +53,6 @@ function rowParaPedido(row) {
     clienteId: row.cliente_id,
     cliente: row.clientes?.nome || "",
     vendedor: row.vendedor || "",
-    modelo: row.modelo || "",
     dataPedido: row.data_pedido,
     previsaoEntrega: row.previsao_entrega || "",
     dataEntrega: row.data_entrega || "",
@@ -86,6 +84,7 @@ function rowParaPedido(row) {
       .map((t) => ({
         id: t.id,
         codigo: t.codigo || "",
+        nomenclatura: t.nomenclatura || "",
         qtd: t.qtd ?? 1,
         numero: t.numero || "",
         fornecedor: t.fornecedor || "",
@@ -104,7 +103,6 @@ const SELECT = "*, clientes(nome), tecidos(*)";
 
 const CAMPO_PARA_COLUNA = {
   vendedor: "vendedor",
-  modelo: "modelo",
   dataPedido: "data_pedido",
   previsaoEntrega: "previsao_entrega",
   dataEntrega: "data_entrega",
@@ -172,7 +170,6 @@ export function usePedidos() {
         .insert({
           cliente_id: clienteId,
           vendedor: p.vendedor || null,
-          modelo: p.modelo || null,
           data_pedido: p.dataPedido,
           previsao_entrega: p.previsaoEntrega || null,
           quantidade: Number(p.quantidade) || 1,
@@ -213,6 +210,7 @@ export function usePedidos() {
         .map((t, i) => ({
           pedido_id: pedidoRow.id,
           codigo: t.codigo || null,
+          nomenclatura: t.nomenclatura || null,
           qtd: Number(t.qtd) || 1,
           numero: t.numero || null,
           fornecedor: t.fornecedor || null,
@@ -287,7 +285,7 @@ export function usePedidos() {
       setPedidos((prev) =>
         prev.map((p) =>
           p.id === pedidoId
-            ? { ...p, tecidos: [...p.tecidos, { id: data.id, codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false, metrosBaixados: null }] }
+            ? { ...p, tecidos: [...p.tecidos, { id: data.id, codigo: "", nomenclatura: "", qtd: 1, numero: "", fornecedor: "", comprado: false, metrosBaixados: null }] }
             : p
         )
       );
