@@ -252,7 +252,12 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               <div className="fx-serif mb-2" style={{ fontSize: 13, fontWeight: 600 }}>
                 Valor a pagar à Fabiana
               </div>
-              <Field label={`Qtd. camisas p/ Fabiana (se diferente das ${p.quantidade || 1} do pedido — ex: só a da prova)`}>
+              <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
+                Valor total do pedido inteiro (todas as {p.quantidade || 1} camisas). Se só parte for pra produção
+                agora (ex: 1 pra prova), preencha "Qtd. camisas já em produção" — o Contas a Pagar recebe só a
+                fração proporcional; o resto entra sozinho quando você aumentar essa quantidade.
+              </div>
+              <Field label="Qtd. camisas já em produção (deixe em branco = todas)">
                 <input
                   type="number"
                   min="0"

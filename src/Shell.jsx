@@ -360,23 +360,29 @@ export default function Shell() {
   // tiver um valor definido — pedido sem "Valor Fabiana" preenchido
   // ainda não gera despesa.
   async function criarDespesaFabianaSeNecessario(pedido) {
-    const valor = parseFloat(pedido?.pagoFabiana?.valor) || 0;
-    if (valor <= 0) return;
-    // Quantidade de camisas que esse valor cobre — se o dono não
-    // preencher (caso comum, pedido inteiro vai junto pra produção),
-    // cai pra quantidade total do pedido. Só diverge quando ele
-    // preenche à mão (ex: só 1 das 3 camisas foi pra prova agora).
-    const qtdCamisas = parseInt(pedido?.pagoFabiana?.qtdCamisas, 10) || parseInt(pedido?.quantidade, 10) || null;
+    const valorTotal = parseFloat(pedido?.pagoFabiana?.valor) || 0;
+    if (valorTotal <= 0) return;
+    // "Valor a pagar à Fabiana" é o total do pedido inteiro (todas as
+    // camisas). Quantidade de camisas que já foi pra produção — se o
+    // dono não preencher (caso comum, pedido inteiro vai junto), cai
+    // pra quantidade total do pedido. Só diverge quando ele preenche à
+    // mão (ex: só 1 das 3 camisas foi pra prova agora) — nesse caso a
+    // despesa recebe só a fração proporcional do valor total, e o
+    // resto só entra quando a quantidade aumentar (prova aprovada,
+    // mais camisas replicadas).
+    const quantidadePedido = parseInt(pedido?.quantidade, 10) || 1;
+    const qtdCamisas = parseInt(pedido?.pagoFabiana?.qtdCamisas, 10) || quantidadePedido;
+    const valorParaDespesa = qtdCamisas < quantidadePedido ? (valorTotal / quantidadePedido) * qtdCamisas : valorTotal;
     const existente = despesas.find((d) => d.pedidoId === pedido.id);
     if (existente) {
       // Já existe despesa lançada pra esse pedido — não duplica, só
       // atualiza o total (sem mexer no que já foi pago) quando o valor
       // ou a quantidade de camisas mudou depois (ex: prova aprovada,
       // mais camisas entraram em produção e o saldo cresceu).
-      const mudouValor = Math.abs((parseFloat(existente.valor) || 0) - valor) > 0.001;
+      const mudouValor = Math.abs((parseFloat(existente.valor) || 0) - valorParaDespesa) > 0.005;
       const mudouQtd = (existente.quantidadeCamisas || null) !== qtdCamisas;
       if (mudouValor || mudouQtd) {
-        const resultado = await atualizarValorTotalDespesa(existente.id, valor, qtdCamisas);
+        const resultado = await atualizarValorTotalDespesa(existente.id, valorParaDespesa, qtdCamisas);
         await sincronizarPagamentoFabiana(resultado);
       }
       return;
@@ -385,7 +391,7 @@ export default function Shell() {
       descricao: `Mão de obra Fabiana — ${pedido.cliente}`,
       categoria: "Salários",
       fornecedor: "Fabi",
-      valor,
+      valor: valorParaDespesa,
       frete: 0,
       vencimento: hojeISO(),
       recorrente: false,
