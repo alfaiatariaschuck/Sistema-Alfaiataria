@@ -7,7 +7,6 @@ import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import LinkAcompanhamento from "../components/LinkAcompanhamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
-import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import {
@@ -57,8 +56,6 @@ export default function DetalhePeca({
   onRemover,
   onAddTecido,
   onTecido,
-  modelosCamisa = [],
-  onCriarModeloCamisa,
   estoqueTecidos,
   onDarBaixaEstoque,
   custoAviamentosPorPecaBase = {},
@@ -568,14 +565,11 @@ export default function DetalhePeca({
               </button>
             </div>
             <div className="mt-2">
-              <SeletorNomenclaturaTecido
-                value={t.nomenclatura}
-                onChange={(nome) => onTecido(p.id, t.id, "nomenclatura", nome)}
-                modelosCamisa={modelosCamisa}
-                onCriarModelo={onCriarModeloCamisa}
-                onValorReferencia={(valor) => {
-                  if (t.valorMetro === "" || t.valorMetro == null) onTecido(p.id, t.id, "valorMetro", valor);
-                }}
+              <input
+                style={inputStyle}
+                placeholder="Nomenclatura do tecido (ex: Lã Fresco 150 Cinza)"
+                value={t.nomenclatura || ""}
+                onChange={(e) => onTecido(p.id, t.id, "nomenclatura", e.target.value)}
               />
             </div>
             <div className="mt-2 flex items-center gap-2">

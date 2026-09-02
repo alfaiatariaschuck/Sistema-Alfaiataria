@@ -807,8 +807,6 @@ export default function Shell() {
                   pecas={pecas}
                   equipe={equipe}
                   custoAviamentosPorPecaBase={custoPorPecaBase}
-                  modelosCamisa={modelosCamisa}
-                  onCriarModeloCamisa={adicionarModelo}
                   estoqueTecidos={estoqueTecidos}
                 />
               )}
