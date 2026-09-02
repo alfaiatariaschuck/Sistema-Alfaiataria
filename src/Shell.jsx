@@ -27,6 +27,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  TrendingUp,
   Users,
   Users2,
   Wallet,
@@ -71,6 +72,7 @@ import HistoricoProducao from "./pages/HistoricoProducao";
 import CustosAtelie from "./pages/CustosAtelie";
 import CustosCamisaria from "./pages/CustosCamisaria";
 import ComparativoMensal from "./pages/ComparativoMensal";
+import PedidosVendidos from "./pages/PedidosVendidos";
 import ResultadoMensal from "./pages/ResultadoMensal";
 import ModelosCamisa from "./pages/ModelosCamisa";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
@@ -102,6 +104,7 @@ const NAV = [
   { id: "entregues", label: "Entregues", icon: Archive, primary: false, grupo: "Geral" },
   { id: "clientes", label: "Clientes", icon: Users, primary: false, grupo: "Geral" },
   { id: "consolidado", label: "Consolidado", icon: Layers, primary: false, grupo: "Geral" },
+  { id: "pedidos-vendidos", label: "Pedidos Vendidos", icon: TrendingUp, primary: false, grupo: "Geral" },
   { id: "comparativo-mensal", label: "Comparativo Mensal", icon: GitCompare, primary: false, grupo: "Geral" },
   { id: "resultado-mensal", label: "Resultado do Mês", icon: Scale, primary: false, grupo: "Geral" },
   { id: "metas", label: "Metas", icon: Target, primary: false, grupo: "Geral" },
@@ -880,14 +883,17 @@ export default function Shell() {
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                 />
               )}
-              {tab === "comparativo-mensal" && !loadingPecas && !loading && (
-                <ComparativoMensal
+              {tab === "pedidos-vendidos" && !loadingPecas && !loading && (
+                <PedidosVendidos
                   pedidos={pedidos}
                   pecas={pecas}
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                   irPara={irPara}
                   irParaPeca={irParaPeca}
                 />
+              )}
+              {tab === "comparativo-mensal" && !loadingPecas && !loading && (
+                <ComparativoMensal pedidos={pedidos} pecas={pecas} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
               {tab === "resultado-mensal" && !loadingPecas && !loading && (
                 <ResultadoMensal pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
