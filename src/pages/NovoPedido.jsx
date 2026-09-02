@@ -18,6 +18,7 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
   const [previsaoAuto, setPrevisaoAuto] = useState(null);
+  const [valorFabianaAuto, setValorFabianaAuto] = useState(null);
   const temposMedios = useMemo(() => temposMediosProducao(pedidos || []), [pedidos]);
 
   function set(campo, valor) {
@@ -108,6 +109,24 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
     });
     // eslint-disable-next-line
   }, [p.cliente]);
+
+  // Sugere o "Valor a pagar à Fabiana" sozinho (mão de obra padrão ×
+  // quantidade) — só mexe se o campo ainda estiver vazio ou com o valor
+  // que a própria sugestão colocou; se você já digitou um valor na mão,
+  // a sugestão não sobrescreve mais.
+  useEffect(() => {
+    const maoDeObraNum = parseFloat(maoDeObraPadrao) || 0;
+    const qtd = parseFloat(p.quantidade) || 0;
+    const sugestao = maoDeObraNum > 0 && qtd > 0 ? (maoDeObraNum * qtd).toFixed(2) : null;
+    if (!sugestao) return;
+    setP((prev) => {
+      const aindaEhSugestao = prev.pagoFabiana.valor === "" || prev.pagoFabiana.valor === valorFabianaAuto;
+      if (!aindaEhSugestao) return prev;
+      return { ...prev, pagoFabiana: { ...prev.pagoFabiana, valor: sugestao } };
+    });
+    setValorFabianaAuto(sugestao);
+    // eslint-disable-next-line
+  }, [p.quantidade, maoDeObraPadrao]);
 
   async function submeter(e) {
     e.preventDefault();
@@ -218,9 +237,11 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
               Valor a pagar à Fabiana
             </div>
             <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
-              Coloque aqui o valor total do pedido inteiro (todas as {p.quantidade || 1} camisas). Se só parte for
-              pra produção agora (ex: 1 pra prova), preencha "Qtd. camisas já em produção" abaixo — o Contas a
-              Pagar recebe só a fração proporcional; o resto entra sozinho quando você aumentar essa quantidade.
+              Coloque aqui o valor total do pedido inteiro (todas as {p.quantidade || 1} camisas) — já vem
+              preenchido sozinho (mão de obra padrão × quantidade); edite se o combinado com a Fabi for diferente.
+              Se só parte for pra produção agora (ex: 1 pra prova), preencha "Qtd. camisas já em produção" abaixo —
+              o Contas a Pagar recebe só a fração proporcional; o resto entra sozinho quando você aumentar essa
+              quantidade.
             </div>
             <Field label="Qtd. camisas já em produção (deixe em branco = todas)">
               <input
