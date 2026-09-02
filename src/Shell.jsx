@@ -170,7 +170,7 @@ export default function Shell() {
   const { historicoVendas } = useHistoricoVendas();
   const { clientesComTelefone } = useTelefonesClientes();
   const { estoque: estoqueTecidos, movimentos: movimentosEstoque, consumoPorTecido, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
-  const { despesas, criarDespesa, marcarPaga, atualizarValorPago, atualizarDespesa, removerDespesa } = useDespesas();
+  const { despesas, criarDespesa, marcarPaga, atualizarValorPago, atualizarValorTotalDespesa, atualizarDespesa, removerDespesa } = useDespesas();
   const { equipe, loading: loadingEquipe, adicionarMembro, atualizarMembro, removerMembro } = useEquipeProducao();
   const { fornecedores, loading: loadingFornecedores, adicionarFornecedor, atualizarFornecedor, removerFornecedor } = useFornecedores();
   const { itens: aviamentos, loading: loadingAviamentos, adicionarItem: adicionarAviamento, atualizarItem: atualizarAviamento, removerItem: removerAviamento, custoPorPecaBase } = useAviamentos();
@@ -362,8 +362,25 @@ export default function Shell() {
   async function criarDespesaFabianaSeNecessario(pedido) {
     const valor = parseFloat(pedido?.pagoFabiana?.valor) || 0;
     if (valor <= 0) return;
-    const jaExiste = despesas.some((d) => d.pedidoId === pedido.id);
-    if (jaExiste) return;
+    // Quantidade de camisas que esse valor cobre — se o dono não
+    // preencher (caso comum, pedido inteiro vai junto pra produção),
+    // cai pra quantidade total do pedido. Só diverge quando ele
+    // preenche à mão (ex: só 1 das 3 camisas foi pra prova agora).
+    const qtdCamisas = parseInt(pedido?.pagoFabiana?.qtdCamisas, 10) || parseInt(pedido?.quantidade, 10) || null;
+    const existente = despesas.find((d) => d.pedidoId === pedido.id);
+    if (existente) {
+      // Já existe despesa lançada pra esse pedido — não duplica, só
+      // atualiza o total (sem mexer no que já foi pago) quando o valor
+      // ou a quantidade de camisas mudou depois (ex: prova aprovada,
+      // mais camisas entraram em produção e o saldo cresceu).
+      const mudouValor = Math.abs((parseFloat(existente.valor) || 0) - valor) > 0.001;
+      const mudouQtd = (existente.quantidadeCamisas || null) !== qtdCamisas;
+      if (mudouValor || mudouQtd) {
+        const resultado = await atualizarValorTotalDespesa(existente.id, valor, qtdCamisas);
+        await sincronizarPagamentoFabiana(resultado);
+      }
+      return;
+    }
     await criarDespesa({
       descricao: `Mão de obra Fabiana — ${pedido.cliente}`,
       categoria: "Salários",
@@ -376,6 +393,7 @@ export default function Shell() {
       valorCamisaria: "",
       valorAlfaiataria: "",
       pedidoId: pedido.id,
+      quantidadeCamisas: qtdCamisas,
     });
   }
 
@@ -428,10 +446,10 @@ export default function Shell() {
   // tiver despesa lançada, tenta lançar agora.
   async function atualizarSubcampoPedido(pedidoId, grupo, sub, valor) {
     await atualizarSubcampo(pedidoId, grupo, sub, valor);
-    if (grupo === "pagoFabiana" && sub === "valor") {
+    if (grupo === "pagoFabiana" && (sub === "valor" || sub === "qtdCamisas")) {
       const pedido = pedidos.find((p) => p.id === pedidoId);
       if (pedido && pedido.status === "Em Produção") {
-        await tentarCriarDespesaFabiana({ ...pedido, pagoFabiana: { ...pedido.pagoFabiana, valor } });
+        await tentarCriarDespesaFabiana({ ...pedido, pagoFabiana: { ...pedido.pagoFabiana, [sub]: valor } });
       }
     }
   }

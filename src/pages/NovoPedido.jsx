@@ -221,6 +221,16 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
             <div className="fx-serif mb-2" style={{ fontSize: 14, fontWeight: 600 }}>
               Valor a pagar à Fabiana
             </div>
+            <Field label={`Qtd. camisas p/ Fabiana (se diferente das ${p.quantidade || 1} do pedido — ex: só a da prova)`}>
+              <input
+                type="number"
+                min="0"
+                style={{ ...inputStyle, maxWidth: 160 }}
+                placeholder={String(p.quantidade || 1)}
+                value={p.pagoFabiana.qtdCamisas}
+                onChange={(e) => set("pagoFabiana", { ...p.pagoFabiana, qtdCamisas: e.target.value })}
+              />
+            </Field>
             <CampoPagamento
               labelValor="Valor Fabiana (R$)"
               labelPago="Pago"

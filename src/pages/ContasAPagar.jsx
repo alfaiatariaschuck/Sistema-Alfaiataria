@@ -157,14 +157,18 @@ function EditorDespesa({ edicaoDespesa, setEdicaoDespesa, valorPagoEdit, setValo
 }
 
 // Dar baixa por quantidade de camisas em vez de digitar um valor em R$
-// — só aparece em despesas ligadas a um pedido (ex: a da Fabiana,
-// lançada sozinha quando o pedido entra em produção) cujo pedido tem
-// mais de uma camisa. Cada "camisa paga" vale valor total ÷ quantidade
-// de camisas do pedido; o valor pago da despesa é recalculado a partir
-// da contagem, então continua sendo a mesma informação de sempre (não
-// duplica nada, só dá outro jeito de editar).
+// — mostra quantas camisas o valor DESSA despesa específica cobre (não
+// necessariamente a quantidade total do pedido — ex: pedido de 3
+// camisas onde só 1 foi pra prova até agora). Cada "camisa paga" vale
+// valor total ÷ quantidade; o valor pago da despesa é recalculado a
+// partir da contagem, então continua sendo a mesma informação de
+// sempre (não duplica nada, só dá outro jeito de editar).
+function quantidadeCamisasDe(despesa, pedido) {
+  return parseInt(despesa.quantidadeCamisas, 10) || parseInt(pedido?.quantidade, 10) || 1;
+}
+
 function ControleBaixaPorCamisa({ despesa, pedido, onAtualizarValorPago }) {
-  const totalCamisas = parseInt(pedido.quantidade, 10) || 1;
+  const totalCamisas = quantidadeCamisasDe(despesa, pedido);
   const valorPorCamisa = totalCamisas > 0 ? totalDespesa(despesa) / totalCamisas : 0;
   const camisasPagas = valorPorCamisa > 0 ? Math.round((parseFloat(despesa.valorPago) || 0) / valorPorCamisa) : 0;
 
@@ -194,6 +198,87 @@ function ControleBaixaPorCamisa({ despesa, pedido, onAtualizarValorPago }) {
         +
       </button>
       <span>· {brl(valorPorCamisa)}/camisa</span>
+    </div>
+  );
+}
+
+// Conta única da Fabi — junta todas as despesas de mão de obra lançadas
+// automaticamente (uma por pedido que entrou em produção) numa única
+// visão: total de camisas e valor pendente, sem listar cliente por
+// cliente. "Dar baixa" aqui reparte o pagamento pelas despesas mais
+// antigas primeiro — quem entrou em produção primeiro é pago primeiro —
+// e cada despesa individual continua acessível em "ver detalhes" pra
+// quando precisar editar ou conferir um pedido específico.
+function ContaFabiAgrupada({ despesas, pedidos, onAtualizarValorPago, renderLinha }) {
+  const [aberto, setAberto] = useState(false);
+  const ordenadas = [...despesas].sort((a, b) => (a.vencimento || "").localeCompare(b.vencimento || ""));
+  const infos = ordenadas.map((d) => {
+    const pedido = pedidos.find((p) => p.id === d.pedidoId);
+    const qtd = quantidadeCamisasDe(d, pedido);
+    const unit = qtd > 0 ? totalDespesa(d) / qtd : 0;
+    const pagas = unit > 0 ? Math.round((parseFloat(d.valorPago) || 0) / unit) : 0;
+    return { despesa: d, qtd, unit, pagas };
+  });
+  const totalCamisas = infos.reduce((s, i) => s + i.qtd, 0);
+  const totalPagas = infos.reduce((s, i) => s + i.pagas, 0);
+  const totalPendente = infos.reduce((s, i) => s + Math.max(0, totalDespesa(i.despesa) - (parseFloat(i.despesa.valorPago) || 0)), 0);
+  const atrasada = ordenadas.some((d) => d.vencimento < hojeISO());
+
+  function definir(n) {
+    let restante = Math.max(0, Math.min(totalCamisas, n));
+    infos.forEach((info) => {
+      const pagasAqui = Math.min(info.qtd, restante);
+      restante -= pagasAqui;
+      const novoValorPago = pagasAqui * info.unit;
+      if (Math.abs(novoValorPago - (parseFloat(info.despesa.valorPago) || 0)) > 0.005) {
+        onAtualizarValorPago(info.despesa.id, novoValorPago);
+      }
+    });
+  }
+
+  return (
+    <div className="mb-3 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>Fabi — mão de obra</div>
+          <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
+            {despesas.length} pedido{despesas.length > 1 ? "s" : ""} em aberto{atrasada ? " · tem vencimento atrasado" : ""}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => definir(totalPagas - 1)}
+            disabled={totalPagas <= 0}
+            style={{ background: "#EDEAE0", color: INK, width: 24, height: 24, borderRadius: 4, fontWeight: 700, opacity: totalPagas <= 0 ? 0.4 : 1 }}
+          >
+            −
+          </button>
+          <span className="fx-mono" style={{ fontWeight: 700, color: INK, fontSize: 13 }}>
+            {totalPagas} de {totalCamisas} camisas
+          </span>
+          <button
+            onClick={() => definir(totalPagas + 1)}
+            disabled={totalPagas >= totalCamisas}
+            style={{ background: "#EDEAE0", color: INK, width: 24, height: 24, borderRadius: 4, fontWeight: 700, opacity: totalPagas >= totalCamisas ? 0.4 : 1 }}
+          >
+            +
+          </button>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>
+            {brl(totalPendente)}
+          </div>
+          <div style={{ fontSize: 10, color: TEXT_MUTED }}>pendente</div>
+        </div>
+        <button type="button" onClick={() => setAberto((v) => !v)} style={{ fontSize: 11, color: BRASS, fontWeight: 600 }}>
+          {aberto ? "ocultar detalhes ▲" : "ver detalhes ▼"}
+        </button>
+      </div>
+      {aberto && (
+        <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
+          {ordenadas.map((d) => renderLinha(d))}
+        </div>
+      )}
     </div>
   );
 }
@@ -352,6 +437,11 @@ export default function ContasAPagar({
     .sort((a, b) => (b.vencimento || "").localeCompare(a.vencimento || ""))
     .slice(0, 15);
   const despesasJanela = despesasPendentes.filter((d) => dentroDaJanela(d.vencimento)).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+  // Despesas geradas sozinhas a partir de um pedido (a mão de obra da
+  // Fabiana) ficam agrupadas numa conta só — o dono não quer ver uma
+  // linha por cliente, só "Fabi — N camisas a pagar" no total.
+  const despesasFabiJanela = despesasJanela.filter((d) => d.pedidoId);
+  const despesasJanelaSemFabi = despesasJanela.filter((d) => !d.pedidoId);
   const receberJanela = receberComPrevisao.filter((p) => dentroDaJanela(p.dataRef));
   const previsoesJanela = previsoes.filter((p) => dentroDaJanela(p.dataEsperada));
 
@@ -679,6 +769,74 @@ export default function ContasAPagar({
       valorCamisaria: String(d.valorCamisaria || ""),
       valorAlfaiataria: String(d.valorAlfaiataria || ""),
     });
+  }
+
+  // Linha de uma despesa pendente — usada tanto na lista principal
+  // quanto dentro de "ver detalhes" da conta agrupada da Fabi.
+  function renderDespesaRow(d) {
+    const atrasada = d.vencimento < hoje;
+    const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
+    const editando = editandoDespesa === d.id;
+    const pedidoVinculado = d.pedidoId ? pedidos.find((p) => p.id === d.pedidoId) : null;
+    return (
+      <div key={d.id} className="py-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+        <div className="flex items-center justify-between">
+          <button onClick={() => abrirEdicaoValorPago(d)} style={{ textAlign: "left" }} title="Editar despesa">
+            <div className="flex items-center gap-1.5">
+              <span style={{ fontSize: 13, fontWeight: 600 }}>
+                {d.descricao} {d.recorrente && "↻"}
+              </span>
+              {(parseFloat(d.valorCamisaria) > 0 || parseFloat(d.valorAlfaiataria) > 0) ? (
+                <>
+                  {parseFloat(d.valorCamisaria) > 0 && <Pill text={`Camisaria ${brl(d.valorCamisaria)}`} style={LINHA_STYLE.Camisaria} />}
+                  {parseFloat(d.valorAlfaiataria) > 0 && <Pill text={`Alfaiataria ${brl(d.valorAlfaiataria)}`} style={LINHA_STYLE.Alfaiataria} />}
+                </>
+              ) : (
+                d.linha && <Pill text={d.linha} style={LINHA_STYLE[d.linha]} />
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
+              {d.fornecedor ? `${d.fornecedor} · ` : d.categoria ? `${d.categoria} · ` : ""}vence {fmtData(d.vencimento)}
+              {atrasada ? " — atrasada" : ""}
+              {parseFloat(d.frete) > 0 && ` · frete ${brl(d.frete)}`}
+            </div>
+          </button>
+          <div className="flex items-center gap-2">
+            <div style={{ textAlign: "right" }}>
+              <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
+                {brl(pendente)}
+              </span>
+              {d.status === "Parcial" && (
+                <div style={{ fontSize: 10, color: TEXT_MUTED }}>
+                  {brl(d.valorPago)} de {brl(totalDespesa(d))} pago
+                </div>
+              )}
+            </div>
+            <button onClick={() => abrirEdicaoValorPago(d)} title="Editar despesa">
+              <Pencil size={14} color={TEXT_MUTED} />
+            </button>
+            <button onClick={() => handleMarcarPaga(d)} title="Marcar como totalmente paga">
+              <CheckCircle2 size={16} color={VERDE} />
+            </button>
+            <button onClick={() => onRemoverDespesa(d.id)} title="Remover">
+              <Trash2 size={14} color={VERMELHO} />
+            </button>
+          </div>
+        </div>
+        {pedidoVinculado && quantidadeCamisasDe(d, pedidoVinculado) > 1 && (
+          <ControleBaixaPorCamisa despesa={d} pedido={pedidoVinculado} onAtualizarValorPago={onAtualizarValorPago} />
+        )}
+        {editando && (
+          <EditorDespesa
+            edicaoDespesa={edicaoDespesa}
+            setEdicaoDespesa={setEdicaoDespesa}
+            valorPagoEdit={valorPagoEdit}
+            setValorPagoEdit={setValorPagoEdit}
+            onSalvar={() => salvarEdicaoDespesa(d.id)}
+          />
+        )}
+      </div>
+    );
   }
 
   async function salvarNota(e) {
@@ -1059,71 +1217,17 @@ export default function ContasAPagar({
           )}
 
           {despesasJanela.length === 0 && <Empty texto={verTudo ? "Nenhuma despesa pendente." : "Nada vencendo no período selecionado."} />}
-          {despesasJanela.map((d) => {
-            const atrasada = d.vencimento < hoje;
-            const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
-            const editando = editandoDespesa === d.id;
-            const pedidoVinculado = d.pedidoId ? pedidos.find((p) => p.id === d.pedidoId) : null;
-            return (
-              <div key={d.id} className="py-2" style={{ borderBottom: `1px solid ${LINE}` }}>
-                <div className="flex items-center justify-between">
-                  <button onClick={() => abrirEdicaoValorPago(d)} style={{ textAlign: "left" }} title="Editar despesa">
-                    <div className="flex items-center gap-1.5">
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>
-                        {d.descricao} {d.recorrente && "↻"}
-                      </span>
-                      {(parseFloat(d.valorCamisaria) > 0 || parseFloat(d.valorAlfaiataria) > 0) ? (
-                        <>
-                          {parseFloat(d.valorCamisaria) > 0 && <Pill text={`Camisaria ${brl(d.valorCamisaria)}`} style={LINHA_STYLE.Camisaria} />}
-                          {parseFloat(d.valorAlfaiataria) > 0 && <Pill text={`Alfaiataria ${brl(d.valorAlfaiataria)}`} style={LINHA_STYLE.Alfaiataria} />}
-                        </>
-                      ) : (
-                        d.linha && <Pill text={d.linha} style={LINHA_STYLE[d.linha]} />
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
-                      {d.fornecedor ? `${d.fornecedor} · ` : d.categoria ? `${d.categoria} · ` : ""}vence {fmtData(d.vencimento)}
-                      {atrasada ? " — atrasada" : ""}
-                      {parseFloat(d.frete) > 0 && ` · frete ${brl(d.frete)}`}
-                    </div>
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <div style={{ textAlign: "right" }}>
-                      <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
-                        {brl(pendente)}
-                      </span>
-                      {d.status === "Parcial" && (
-                        <div style={{ fontSize: 10, color: TEXT_MUTED }}>
-                          {brl(d.valorPago)} de {brl(totalDespesa(d))} pago
-                        </div>
-                      )}
-                    </div>
-                    <button onClick={() => abrirEdicaoValorPago(d)} title="Editar despesa">
-                      <Pencil size={14} color={TEXT_MUTED} />
-                    </button>
-                    <button onClick={() => handleMarcarPaga(d)} title="Marcar como totalmente paga">
-                      <CheckCircle2 size={16} color={VERDE} />
-                    </button>
-                    <button onClick={() => onRemoverDespesa(d.id)} title="Remover">
-                      <Trash2 size={14} color={VERMELHO} />
-                    </button>
-                  </div>
-                </div>
-                {pedidoVinculado && parseInt(pedidoVinculado.quantidade, 10) > 1 && (
-                  <ControleBaixaPorCamisa despesa={d} pedido={pedidoVinculado} onAtualizarValorPago={onAtualizarValorPago} />
-                )}
-                {editando && (
-                  <EditorDespesa
-                    edicaoDespesa={edicaoDespesa}
-                    setEdicaoDespesa={setEdicaoDespesa}
-                    valorPagoEdit={valorPagoEdit}
-                    setValorPagoEdit={setValorPagoEdit}
-                    onSalvar={() => salvarEdicaoDespesa(d.id)}
-                  />
-                )}
-              </div>
-            );
-          })}
+
+          {despesasFabiJanela.length > 0 && (
+            <ContaFabiAgrupada
+              despesas={despesasFabiJanela}
+              pedidos={pedidos}
+              onAtualizarValorPago={onAtualizarValorPago}
+              renderLinha={renderDespesaRow}
+            />
+          )}
+
+          {despesasJanelaSemFabi.map((d) => renderDespesaRow(d))}
 
           {porFornecedor.length > 0 && (
             <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>

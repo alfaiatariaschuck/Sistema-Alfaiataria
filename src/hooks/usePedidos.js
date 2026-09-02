@@ -32,7 +32,7 @@ export function pedidoVazio() {
     formaPagamentoRestante: "",
     recompra: false,
     assinatura: false,
-    pagoFabiana: { valor: "", statusPagamento: "Pendente" },
+    pagoFabiana: { valor: "", statusPagamento: "Pendente", qtdCamisas: "" },
     pagamentoFabianaDividido: false,
     valorEntradaFabiana: "",
     statusEntradaFabiana: "Pendente",
@@ -70,7 +70,7 @@ function rowParaPedido(row) {
     formaPagamentoRestante: row.forma_pagamento_restante || "",
     recompra: row.recompra,
     assinatura: row.plano_assinatura,
-    pagoFabiana: { valor: row.valor_pago_fabiana ?? "", statusPagamento: row.status_pagamento_fabiana },
+    pagoFabiana: { valor: row.valor_pago_fabiana ?? "", statusPagamento: row.status_pagamento_fabiana, qtdCamisas: row.qtd_camisas_fabiana ?? "" },
     pagamentoFabianaDividido: !!row.pagamento_fabiana_dividido,
     valorEntradaFabiana: row.valor_entrada_fabiana ?? "",
     statusEntradaFabiana: row.status_entrada_fabiana || "Pendente",
@@ -190,6 +190,7 @@ export function usePedidos() {
           origem_plano_id: p.origemPlanoId || null,
           valor_pago_fabiana: p.pagoFabiana.valor === "" ? null : Number(p.pagoFabiana.valor),
           status_pagamento_fabiana: p.pagoFabiana.statusPagamento,
+          qtd_camisas_fabiana: p.pagoFabiana.qtdCamisas === "" || p.pagoFabiana.qtdCamisas == null ? null : Number(p.pagoFabiana.qtdCamisas),
           pagamento_fabiana_dividido: !!p.pagamentoFabianaDividido,
           valor_entrada_fabiana: p.valorEntradaFabiana === "" ? null : Number(p.valorEntradaFabiana),
           status_entrada_fabiana: p.statusEntradaFabiana || null,
@@ -246,16 +247,15 @@ export function usePedidos() {
 
   async function atualizarSubcampo(pedidoId, grupo, sub, valor) {
     setPedidos((prev) => prev.map((p) => (p.id === pedidoId ? { ...p, [grupo]: { ...p[grupo], [sub]: valor } } : p)));
-    const coluna =
-      grupo === "aReceber"
-        ? sub === "valor"
-          ? "valor_receber"
-          : "status_pagamento_receber"
-        : sub === "valor"
-        ? "valor_pago_fabiana"
-        : "status_pagamento_fabiana";
-    const valorFinal = sub === "valor" ? (valor === "" ? null : Number(valor)) : valor;
+    const MAPA_COLUNA = {
+      aReceber: { valor: "valor_receber", statusPagamento: "status_pagamento_receber" },
+      pagoFabiana: { valor: "valor_pago_fabiana", statusPagamento: "status_pagamento_fabiana", qtdCamisas: "qtd_camisas_fabiana" },
+    };
+    const coluna = MAPA_COLUNA[grupo]?.[sub];
+    const ehNumerico = sub === "valor" || sub === "qtdCamisas";
+    const valorFinal = ehNumerico ? (valor === "" ? null : Number(valor)) : valor;
     await comIndicador(async () => {
+      if (!coluna) return;
       const { error } = await supabase.from("pedidos").update({ [coluna]: valorFinal }).eq("id", pedidoId);
       if (error) setErro(error.message);
     });

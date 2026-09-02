@@ -31,6 +31,7 @@ function rowParaDespesa(row) {
     valorCamisaria: row.valor_camisaria ?? "",
     valorAlfaiataria: row.valor_alfaiataria ?? "",
     pedidoId: row.pedido_id || null,
+    quantidadeCamisas: row.quantidade_camisas ?? null,
   };
 }
 
@@ -65,7 +66,7 @@ export function useDespesas() {
     recarregar();
   }, [recarregar]);
 
-  async function criarDespesa({ descricao, categoria, fornecedor, valor, frete, vencimento, recorrente, linha, valorCamisaria, valorAlfaiataria, pedidoId }) {
+  async function criarDespesa({ descricao, categoria, fornecedor, valor, frete, vencimento, recorrente, linha, valorCamisaria, valorAlfaiataria, pedidoId, quantidadeCamisas }) {
     return comIndicador(async () => {
       const { error } = await supabase.from("despesas").insert({
         descricao,
@@ -81,9 +82,32 @@ export function useDespesas() {
         valor_camisaria: valorCamisaria === "" || valorCamisaria == null ? null : Number(valorCamisaria),
         valor_alfaiataria: valorAlfaiataria === "" || valorAlfaiataria == null ? null : Number(valorAlfaiataria),
         pedido_id: pedidoId || null,
+        quantidade_camisas: quantidadeCamisas || null,
       });
       if (error) throw error;
       await recarregar();
+    });
+  }
+
+  // Atualiza o valor total (e a quantidade de camisas) de uma despesa já
+  // existente, sem mexer no que já foi pago — usado quando o pedido de
+  // origem aumenta o "valor a pagar à Fabiana" depois de criada a conta
+  // (ex: prova aprovada, mais camisas entraram em produção). O status é
+  // recalculado porque o total mudou: se a dívida cresceu depois de já
+  // ter sido quitada, volta pra "Parcial".
+  async function atualizarValorTotalDespesa(id, novoValor, novaQtdCamisas) {
+    const despesa = despesas.find((d) => d.id === id);
+    return comIndicador(async () => {
+      const pago = parseFloat(despesa?.valorPago) || 0;
+      const total = (Number(novoValor) || 0) + (parseFloat(despesa?.frete) || 0);
+      const status = pago <= 0 ? "Pendente" : pago >= total ? "Pago" : "Parcial";
+      const { error } = await supabase
+        .from("despesas")
+        .update({ valor: Number(novoValor) || 0, quantidade_camisas: novaQtdCamisas || null, status })
+        .eq("id", id);
+      if (error) throw error;
+      await recarregar();
+      return { status, pedidoId: despesa?.pedidoId || null };
     });
   }
 
@@ -170,6 +194,7 @@ export function useDespesas() {
     criarDespesa,
     marcarPaga,
     atualizarValorPago,
+    atualizarValorTotalDespesa,
     atualizarDespesa,
     removerDespesa,
   };
