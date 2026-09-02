@@ -429,7 +429,7 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               <SeletorNomenclaturaTecido
                 value={t.nomenclatura}
                 onChange={(nome) => onTecido(p.id, t.id, "nomenclatura", nome)}
-                modelosCamisa={modelosCamisa}
+                modelos={modelosCamisa}
                 onCriarModelo={onCriarModeloCamisa}
                 onValorReferencia={(valor) => {
                   if (t.valorMetro === "" || t.valorMetro == null) onTecido(p.id, t.id, "valorMetro", valor);

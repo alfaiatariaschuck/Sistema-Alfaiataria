@@ -18,22 +18,23 @@ const CAMPO_PARA_COLUNA = {
 };
 const CAMPOS_NUMERICOS = ["valorReferenciaMetro", "precoVenda"];
 
-// Catálogo de tecidos de camisa, categorizado por código + nomenclatura
-// (mesmo padrão da Planilha Consolidada, aba Camisaria), com um valor de
-// referência por metro opcional (fica em branco pros que variam muito de
-// rolo pra rolo) e um preço de venda tabelado — igual já existe pra
-// Fornecedores, alimenta a nomenclatura do item de tecido do pedido, o
-// relatório de mix de vendas e a tabela de preço de venda.
-export function useModelosCamisa() {
+// Catálogo de tecidos (camisa OU alfaiataria, conforme a tabela passada),
+// categorizado por código + nomenclatura, com um valor de referência por
+// metro opcional (fica em branco pros que variam muito de rolo pra rolo)
+// e — só na tabela de camisa — um preço de venda tabelado. Alimenta a
+// nomenclatura do item de tecido do pedido e, na camisaria, o relatório
+// de mix de vendas e a tabela de preço de venda.
+function useModelosTecido(tabela) {
   const [modelos, setModelos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const recarregar = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("modelos_camisa").select("*").order("nome");
+    const { data, error } = await supabase.from(tabela).select("*").order("nome");
     if (!error) setModelos((data || []).map(rowParaModelo));
     setLoading(false);
-  }, []);
+    // eslint-disable-next-line
+  }, [tabela]);
 
   useEffect(() => {
     recarregar();
@@ -43,7 +44,7 @@ export function useModelosCamisa() {
     const limpo = nome.trim();
     if (!limpo) return;
     const { data, error } = await supabase
-      .from("modelos_camisa")
+      .from(tabela)
       .insert({
         nome: limpo,
         codigo: (codigo || "").trim() || null,
@@ -58,13 +59,21 @@ export function useModelosCamisa() {
     setModelos((prev) => prev.map((m) => (m.id === id ? { ...m, [campo]: valor } : m)));
     const coluna = CAMPO_PARA_COLUNA[campo] || campo;
     const valorFinal = CAMPOS_NUMERICOS.includes(campo) ? (valor === "" ? null : Number(valor)) : valor;
-    await supabase.from("modelos_camisa").update({ [coluna]: valorFinal }).eq("id", id);
+    await supabase.from(tabela).update({ [coluna]: valorFinal }).eq("id", id);
   }
 
   async function removerModelo(id) {
     setModelos((prev) => prev.filter((m) => m.id !== id));
-    await supabase.from("modelos_camisa").delete().eq("id", id);
+    await supabase.from(tabela).delete().eq("id", id);
   }
 
   return { modelos, loading, adicionarModelo, atualizarModelo, removerModelo, recarregar };
+}
+
+export function useModelosCamisa() {
+  return useModelosTecido("modelos_camisa");
+}
+
+export function useModelosAlfaiataria() {
+  return useModelosTecido("modelos_alfaiataria");
 }

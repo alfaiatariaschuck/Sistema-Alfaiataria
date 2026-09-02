@@ -4,6 +4,7 @@ import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
+import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
 import {
   BRASS,
@@ -24,7 +25,7 @@ import { brl, mediaDiasProducaoPorTipo, previsaoParaNovaPeca, statusDividido, to
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 
-export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe, custoAviamentosPorPecaBase = {}, estoqueTecidos }) {
+export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe, custoAviamentosPorPecaBase = {}, estoqueTecidos, modelosAlfaiataria = [], onCriarModeloAlfaiataria }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -362,11 +363,14 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
                 <input style={inputStyle} placeholder="Observação" value={t.numero} onChange={(e) => setTecido(i, "numero", e.target.value)} />
               </div>
               <div className="mt-2">
-                <input
-                  style={inputStyle}
-                  placeholder="Nomenclatura do tecido (ex: Lã Fresco 150 Cinza)"
-                  value={t.nomenclatura || ""}
-                  onChange={(e) => setTecido(i, "nomenclatura", e.target.value)}
+                <SeletorNomenclaturaTecido
+                  value={t.nomenclatura}
+                  onChange={(nome) => setTecido(i, "nomenclatura", nome)}
+                  modelos={modelosAlfaiataria}
+                  onCriarModelo={onCriarModeloAlfaiataria}
+                  onValorReferencia={(valor) => {
+                    if (t.valorMetro === "" || t.valorMetro == null) setTecido(i, "valorMetro", valor);
+                  }}
                 />
               </div>
               <div className="mt-2 flex items-center gap-2">

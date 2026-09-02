@@ -435,7 +435,7 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
                 <SeletorNomenclaturaTecido
                   value={t.nomenclatura}
                   onChange={(nome) => setTecido(i, "nomenclatura", nome)}
-                  modelosCamisa={modelosCamisa}
+                  modelos={modelosCamisa}
                   onCriarModelo={onCriarModeloCamisa}
                   onValorReferencia={(valor) => {
                     if (t.valorMetro === "" || t.valorMetro == null) setTecido(i, "valorMetro", valor);

@@ -4,23 +4,24 @@ import { rotuloModelo } from "../pages/ModelosCamisa";
 import { BRASS, TEXT_MUTED, inputStyle } from "../lib/constants";
 
 // Seletor de nomenclatura de tecido pro item de tecido de um pedido —
-// puxa do catálogo Tecidos de Camisa (código + nomenclatura), separado
-// do código do rolo/compra que já existe na linha (uso interno,
-// estoque). Se a nomenclatura escolhida tiver valor de referência/metro
-// cadastrado, sugere preencher o valor/metro daquele item automaticamente
-// (só quando ainda está vazio — nunca sobrescreve um valor já digitado).
+// puxa de um catálogo (Tecidos de Camisa ou Tecidos Alfaiataria,
+// conforme o que for passado em `modelos`), separado do código do
+// rolo/compra que já existe na linha (uso interno, estoque). Se a
+// nomenclatura escolhida tiver valor de referência/metro cadastrado,
+// sugere preencher o valor/metro daquele item automaticamente (só
+// quando ainda está vazio — nunca sobrescreve um valor já digitado).
 // Tem um "+" pra cadastrar uma nomenclatura nova sem sair do pedido.
-export default function SeletorNomenclaturaTecido({ value, onChange, modelosCamisa = [], onCriarModelo, onValorReferencia }) {
+export default function SeletorNomenclaturaTecido({ value, onChange, modelos = [], onCriarModelo, onValorReferencia }) {
   const [criandoNovo, setCriandoNovo] = useState(false);
   const [novoNome, setNovoNome] = useState("");
   const [novoCodigo, setNovoCodigo] = useState("");
   const [novoValorRef, setNovoValorRef] = useState("");
 
-  const ativos = modelosCamisa.filter((m) => m.ativo);
+  const ativos = modelos.filter((m) => m.ativo);
 
   function selecionar(nome) {
     onChange(nome);
-    const encontrado = modelosCamisa.find((m) => m.nome === nome);
+    const encontrado = modelos.find((m) => m.nome === nome);
     if (encontrado && encontrado.valorReferenciaMetro !== "" && encontrado.valorReferenciaMetro != null && onValorReferencia) {
       onValorReferencia(encontrado.valorReferenciaMetro);
     }

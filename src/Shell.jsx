@@ -46,7 +46,7 @@ import { useFornecedores } from "./hooks/useFornecedores";
 import { useAviamentos } from "./hooks/useAviamentos";
 import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
 import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
-import { useModelosCamisa } from "./hooks/useModelosCamisa";
+import { useModelosCamisa, useModelosAlfaiataria } from "./hooks/useModelosCamisa";
 import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
 import { hojeISO, mediaDiasProducaoComFallback, mediaDiasProducaoPorTipo, projetarPrevisoesFilaPorEquipe } from "./lib/helpers";
@@ -75,6 +75,7 @@ import ComparativoMensal from "./pages/ComparativoMensal";
 import PedidosVendidos from "./pages/PedidosVendidos";
 import ResultadoMensal from "./pages/ResultadoMensal";
 import ModelosCamisa from "./pages/ModelosCamisa";
+import TecidosAlfaiataria from "./pages/TecidosAlfaiataria";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
@@ -97,6 +98,7 @@ const NAV = [
   { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true, grupo: "Alfaiataria" },
   { id: "historico-producao", label: "Histórico de Produção", icon: BarChart3, primary: false, grupo: "Alfaiataria" },
   { id: "custos-atelie", label: "Custos do Ateliê", icon: PiggyBank, primary: false, grupo: "Alfaiataria" },
+  { id: "tecidos-alfaiataria", label: "Tecidos Alfaiataria", icon: Ruler, primary: false, grupo: "Alfaiataria" },
   { id: "relatorio-alfaiataria", label: "Relatório Alfaiataria", icon: FileText, primary: false, grupo: "Alfaiataria" },
 
   { id: "compras", label: "Compras", icon: ShoppingCart, primary: true, grupo: "Geral" },
@@ -180,6 +182,13 @@ export default function Shell() {
   const { previsoes, criarPrevisao, atualizarPrevisao, removerPrevisao } = usePrevisoesVenda();
   const { notas: notasVendaFutura, criarNota, removerNota } = useNotasVendaFutura();
   const { modelos: modelosCamisa, loading: loadingModelosCamisa, adicionarModelo, atualizarModelo, removerModelo } = useModelosCamisa();
+  const {
+    modelos: modelosAlfaiataria,
+    loading: loadingModelosAlfaiataria,
+    adicionarModelo: adicionarModeloAlfaiataria,
+    atualizarModelo: atualizarModeloAlfaiataria,
+    removerModelo: removerModeloAlfaiataria,
+  } = useModelosAlfaiataria();
 
   // Receita do mês de cada linha — usada só pra ratear os custos
   // compartilhados da empresa entre Custos do Ateliê e Custos da
@@ -540,8 +549,8 @@ export default function Shell() {
     },
     onAddTecido: adicionarTecidoPeca,
     onTecido: atualizarTecidoPeca,
-    modelosCamisa,
-    onCriarModeloCamisa: adicionarModelo,
+    modelosAlfaiataria,
+    onCriarModeloAlfaiataria: adicionarModeloAlfaiataria,
     estoqueTecidos,
     onDarBaixaEstoque: darBaixaEstoque,
     custoAviamentosPorPecaBase: custoPorPecaBase,
@@ -808,6 +817,8 @@ export default function Shell() {
                   equipe={equipe}
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                   estoqueTecidos={estoqueTecidos}
+                  modelosAlfaiataria={modelosAlfaiataria}
+                  onCriarModeloAlfaiataria={adicionarModeloAlfaiataria}
                 />
               )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
@@ -835,6 +846,15 @@ export default function Shell() {
               )}
               {tab === "custos-atelie" && !loadingPecas && (
                 <CustosAtelie pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} receitaMesOutraLinha={receitaMesCamisaria} />
+              )}
+              {tab === "tecidos-alfaiataria" && (
+                <TecidosAlfaiataria
+                  modelos={modelosAlfaiataria}
+                  loading={loadingModelosAlfaiataria}
+                  onAdicionar={adicionarModeloAlfaiataria}
+                  onCampo={atualizarModeloAlfaiataria}
+                  onRemover={removerModeloAlfaiataria}
+                />
               )}
               {tab === "custos-camisaria" && !loading && (
                 <CustosCamisaria pedidos={pedidos} receitaMesOutraLinha={receitaMesAlfaiataria} custoAviamentosPorPecaBase={custoPorPecaBase} />
