@@ -117,6 +117,40 @@ export function custoAviamentoComposicao(tipoPeca, custoAviamentosPorPecaBase) {
   return composicao.reduce((s, base) => s + ((custoAviamentosPorPecaBase || {})[base] || 0), 0);
 }
 
+// Estimativa de custo/preço sugerido de um pedido de camisa, pra mostrar
+// já na hora de lançar — usa os mesmos parâmetros da Tabela de preço de
+// venda (Tecidos de Camisa): valor de referência do tecido (ou, se ainda
+// não tiver, o valor/metro já digitado na linha) × metragem padrão +
+// aviamento da camisa + mão de obra padrão, por camisa daquele tecido.
+// Só entra no cálculo linha com nomenclatura escolhida e valor conhecido;
+// se nenhuma linha tiver dado suficiente, volta "sem dados" (não mostra
+// nada em vez de mostrar zero, que enganaria).
+export function estimativaCustoPedidoCamisa(tecidos, modelosCamisa, { metragemPadrao, maoDeObraPadrao, custoAviamentoCamisa }) {
+  const metragemNum = parseFloat(String(metragemPadrao).replace(",", ".")) || 0;
+  const maoDeObraNum = parseFloat(maoDeObraPadrao) || 0;
+  let custoEstimado = 0;
+  let precoSugerido = 0;
+  let temPrecoSugerido = true;
+  let temDados = false;
+  (tecidos || []).forEach((t) => {
+    const qtd = parseFloat(t.qtd) || 0;
+    if (!t.nomenclatura || qtd <= 0) return;
+    const modelo = (modelosCamisa || []).find((m) => m.nome === t.nomenclatura);
+    const temRef = modelo && modelo.valorReferenciaMetro !== "" && modelo.valorReferenciaMetro != null;
+    const valorRef = temRef ? parseFloat(modelo.valorReferenciaMetro) : parseFloat(t.valorMetro) || 0;
+    if (!valorRef) return;
+    temDados = true;
+    const custoUnitario = valorRef * metragemNum + (custoAviamentoCamisa || 0) + maoDeObraNum;
+    custoEstimado += custoUnitario * qtd;
+    if (modelo && modelo.precoVenda !== "" && modelo.precoVenda != null) {
+      precoSugerido += parseFloat(modelo.precoVenda) * qtd;
+    } else {
+      temPrecoSugerido = false;
+    }
+  });
+  return { custoEstimado, precoSugerido: temPrecoSugerido && temDados ? precoSugerido : null, temDados };
+}
+
 export function totalDividido(valorEntrada, valorRestante) {
   return (parseFloat(valorEntrada) || 0) + (parseFloat(valorRestante) || 0);
 }

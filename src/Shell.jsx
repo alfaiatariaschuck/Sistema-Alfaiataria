@@ -450,6 +450,7 @@ export default function Shell() {
     onDarBaixaEstoque: darBaixaEstoque,
     modelosCamisa,
     onCriarModeloCamisa: adicionarModelo,
+    custoAviamentosPorPecaBase: custoPorPecaBase,
   };
 
   function atualizarMedidaPeca(pecaId, secKey, label, valor) {
@@ -695,6 +696,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   modelosCamisa={modelosCamisa}
                   onCriarModeloCamisa={adicionarModelo}
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
                 />
               )}
               {tab === "estoque-camisaria" && (
@@ -840,7 +842,15 @@ export default function Shell() {
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                 />
               )}
-              {tab === "comparativo-mensal" && !loadingPecas && !loading && <ComparativoMensal pedidos={pedidos} pecas={pecas} />}
+              {tab === "comparativo-mensal" && !loadingPecas && !loading && (
+                <ComparativoMensal
+                  pedidos={pedidos}
+                  pecas={pecas}
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
+                  irPara={irPara}
+                  irParaPeca={irParaPeca}
+                />
+              )}
               {tab === "resultado-mensal" && !loadingPecas && !loading && (
                 <ResultadoMensal pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}

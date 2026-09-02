@@ -5,11 +5,14 @@ import { CampoPagamento } from "../components/CampoPagamento";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
+import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
+import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 
-export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos, modelosCamisa = [], onCriarModeloCamisa }) {
+export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {} }) {
+  const { metragemPadrao, maoDeObraPadrao } = useConfigPrecoCamisa();
   const [p, setP] = useState(pedidoVazio());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -409,6 +412,15 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
               )}
             </div>
           ))}
+          <EstimativaCustoPedido
+            tecidos={p.tecidos}
+            modelosCamisa={modelosCamisa}
+            custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
+            metragemPadrao={metragemPadrao}
+            maoDeObraPadrao={maoDeObraPadrao}
+            valorVenda={p.aReceber.valor}
+            onUsarSugestao={(valor) => set("aReceber", { ...p.aReceber, valor })}
+          />
         </Card>
 
         <Card style={{ padding: 20 }} className="mb-5">

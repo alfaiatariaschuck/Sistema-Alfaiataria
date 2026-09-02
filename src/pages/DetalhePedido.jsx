@@ -9,11 +9,14 @@ import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import LinkAcompanhamento from "../components/LinkAcompanhamento";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
+import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
+import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa }) {
+export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {} }) {
+  const { metragemPadrao, maoDeObraPadrao } = useConfigPrecoCamisa();
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [convertendo, setConvertendo] = useState(false);
@@ -400,6 +403,15 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             )}
           </div>
         ))}
+        <EstimativaCustoPedido
+          tecidos={p.tecidos}
+          modelosCamisa={modelosCamisa}
+          custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
+          metragemPadrao={metragemPadrao}
+          maoDeObraPadrao={maoDeObraPadrao}
+          valorVenda={p.aReceber.valor}
+          onUsarSugestao={(valor) => setSub("aReceber", "valor", valor)}
+        />
       </Card>
 
       <div className="flex items-center gap-3 mt-6">
