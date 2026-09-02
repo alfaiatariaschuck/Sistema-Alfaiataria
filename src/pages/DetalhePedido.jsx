@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CheckCircle2, Clock, Printer, RefreshCw, Save, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
@@ -15,11 +15,20 @@ import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {} }) {
+export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana }) {
   const { metragemPadrao, maoDeObraPadrao } = useConfigPrecoCamisa();
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [convertendo, setConvertendo] = useState(false);
+
+  // Reconfere a despesa da Fabiana sozinho toda vez que esse pedido é
+  // aberto — corrige na hora qualquer despesa que tenha ficado
+  // desatualizada (valor ou quantidade de camisas), sem precisar
+  // reeditar um campo à toa só pra forçar o recálculo.
+  useEffect(() => {
+    if (onVerificarDespesaFabiana) onVerificarDespesaFabiana(p.id);
+    // eslint-disable-next-line
+  }, [p.id]);
 
   function set(campo, valor) {
     onCampo(p.id, campo, valor);

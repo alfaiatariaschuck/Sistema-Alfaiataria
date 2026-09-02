@@ -437,6 +437,19 @@ export default function Shell() {
     await sincronizarPagamentoFabiana(resultado);
   }
 
+  // Reconfere a despesa da Fabiana desse pedido sem esperar o dono
+  // editar nada — chamado sempre que o detalhe de um pedido é aberto,
+  // pra corrigir sozinho qualquer despesa que tenha ficado com valor
+  // ou quantidade desatualizados (ex: uma despesa criada antes de um
+  // ajuste de cálculo, ou uma edição que não disparou o gatilho a
+  // tempo). Não faz nada se o pedido não estiver em produção.
+  async function verificarDespesaFabianaDoPedido(pedidoId) {
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    if (pedido && pedido.status === "Em Produção") {
+      await tentarCriarDespesaFabiana(pedido);
+    }
+  }
+
   async function atualizarCampoPedido(pedidoId, campo, valor) {
     await atualizarCampo(pedidoId, campo, valor);
     if (campo === "status" && valor === "Em Produção") {
@@ -475,6 +488,7 @@ export default function Shell() {
     modelosCamisa,
     onCriarModeloCamisa: adicionarModelo,
     custoAviamentosPorPecaBase: custoPorPecaBase,
+    onVerificarDespesaFabiana: verificarDespesaFabianaDoPedido,
   };
 
   function atualizarMedidaPeca(pecaId, secKey, label, valor) {
