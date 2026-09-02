@@ -167,19 +167,14 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
                 </button>
               </div>
             </Field>
-            <Field label="Modelo">
-              <input
-                style={inputStyle}
-                list="lista-modelos-camisa-detalhe"
-                value={p.modelo || ""}
-                onChange={(e) => set("modelo", e.target.value)}
-                placeholder="ex: Social Slim"
-              />
-              <datalist id="lista-modelos-camisa-detalhe">
+            <Field label="Tecido">
+              <select style={inputStyle} value={p.modelo || ""} onChange={(e) => set("modelo", e.target.value)}>
+                <option value="">Selecione…</option>
+                {p.modelo && !modelosCamisa.includes(p.modelo) && <option value={p.modelo}>{p.modelo} (não cadastrado)</option>}
                 {modelosCamisa.map((m) => (
-                  <option key={m} value={m} />
+                  <option key={m} value={m}>{m}</option>
                 ))}
-              </datalist>
+              </select>
             </Field>
           </div>
           <label className="flex items-center gap-2 mt-3" style={{ cursor: "pointer" }}>

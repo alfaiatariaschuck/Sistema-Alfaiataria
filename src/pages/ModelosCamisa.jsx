@@ -4,7 +4,7 @@ import { Card, Empty, PageTitle } from "../components/ui";
 import { BRASS, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, hojeISO } from "../lib/helpers";
 
-const SEM_MODELO = "Sem modelo definido";
+const SEM_MODELO = "Sem tecido definido";
 
 // Rótulo mostrado nas sugestões do pedido — código + nomenclatura
 // quando o modelo tem código (ex: "M58 - 1001 — Tecido Nacional Fio 80
@@ -13,10 +13,10 @@ export function rotuloModelo(m) {
   return m.codigo ? `${m.codigo} — ${m.nome}` : m.nome;
 }
 
-// Junta os pedidos (excluindo Doação) por modelo — quantidade e
-// faturamento, pra saber quais modelos mais vendem. Pedidos sem modelo
-// preenchido caem no balde "Sem modelo definido", que serve de lembrete
-// pra voltar e classificar.
+// Junta os pedidos (excluindo Doação) por tecido — quantidade e
+// faturamento, pra saber quais tecidos/camisas mais vendem. Pedidos sem
+// tecido preenchido caem no balde "Sem tecido definido", que serve de
+// lembrete pra voltar e classificar.
 function montarMix(pedidos, desde) {
   const mapa = new Map();
   (pedidos || [])
@@ -36,13 +36,15 @@ function montarMix(pedidos, desde) {
 export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, onCampo, onRemover }) {
   const [codigoNovo, setCodigoNovo] = useState("");
   const [nomeNovo, setNomeNovo] = useState("");
+  const [valorRefNovo, setValorRefNovo] = useState("");
   const [periodo, setPeriodo] = useState("mes");
 
   function adicionar() {
     if (!nomeNovo.trim()) return;
-    onAdicionar(nomeNovo, codigoNovo);
+    onAdicionar(nomeNovo, codigoNovo, valorRefNovo);
     setCodigoNovo("");
     setNomeNovo("");
+    setValorRefNovo("");
   }
 
   const desde = periodo === "mes" ? hojeISO().slice(0, 7) + "-01" : periodo === "ano" ? hojeISO().slice(0, 4) + "-01-01" : null;
@@ -50,7 +52,7 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
 
   return (
     <div>
-      <PageTitle eyebrow="Camisaria — o que você vende" title="Modelos de Camisa" />
+      <PageTitle eyebrow="Camisaria — cadastro de tecidos" title="Tecidos de Camisa" />
 
       <Card style={{ padding: 16 }} className="mb-4">
         <div className="flex items-center gap-2 flex-wrap">
@@ -63,9 +65,19 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
           />
           <input
             style={{ ...inputStyle, flex: 1, minWidth: 180 }}
-            placeholder="Nomenclatura (ex: Tecido Nacional Fio 80 CATA.)"
+            placeholder="Nomenclatura (ex: Italiana Frotta e Zanone Fio 120)"
             value={nomeNovo}
             onChange={(e) => setNomeNovo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && adicionar()}
+          />
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            style={{ ...inputStyle, width: 150 }}
+            placeholder="Valor ref./m (R$)"
+            value={valorRefNovo}
+            onChange={(e) => setValorRefNovo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && adicionar()}
           />
           <button
@@ -77,8 +89,9 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
           </button>
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8 }}>
-          Código é opcional — dá pra categorizar do seu jeito, igual você já está fazendo na Planilha Consolidada
-          (aba Camisaria). Fica só de uso interno seu, nunca aparece pra Fabi nem no que vai pro contador.
+          Código e valor de referência são opcionais — deixe o valor em branco pra tecidos que variam muito de rolo
+          pra rolo (ex: Cavalli); pra esses, continue lançando o valor real na hora da compra, em Compras. Tudo isso
+          fica só de uso interno seu, nunca aparece pra Fabi nem no que vai pro contador.
         </div>
       </Card>
 
@@ -86,7 +99,7 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
 
       {!loading && modelos.length === 0 && (
         <Card style={{ padding: 20 }} className="mb-6">
-          <Empty texto="Nenhum modelo cadastrado ainda." />
+          <Empty texto="Nenhum tecido cadastrado ainda." />
         </Card>
       )}
 
@@ -109,6 +122,16 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
                 value={m.nome}
                 onChange={(e) => onCampo(m.id, "nome", e.target.value)}
               />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                style={{ ...inputStyle, padding: "6px 10px", fontSize: 12, width: 120 }}
+                placeholder="Varia"
+                title="Valor de referência por metro — deixe em branco se varia muito"
+                value={m.valorReferenciaMetro}
+                onChange={(e) => onCampo(m.id, "valorReferenciaMetro", e.target.value)}
+              />
               <label className="flex items-center gap-1.5" style={{ cursor: "pointer", fontSize: 12, color: TEXT_MUTED }}>
                 <input
                   type="checkbox"
@@ -129,7 +152,7 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
       <Card style={{ padding: 20 }}>
         <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
           <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
-            Mix de vendas por modelo
+            Mix de vendas por tecido
           </div>
           <div className="flex gap-1">
             {[
@@ -155,8 +178,8 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
           </div>
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Quantidade e faturamento de camisas vendidas (exclui Doação), agrupado pelo modelo marcado no pedido —
-          quanto mais pedidos tiverem modelo preenchido, mais preciso fica.
+          Quantidade e faturamento de camisas vendidas (exclui Doação), agrupado pelo tecido marcado no pedido —
+          quanto mais pedidos tiverem tecido preenchido, mais preciso fica.
         </div>
         {mix.length === 0 && <Empty texto="Nenhuma venda no período." />}
         {mix.length > 0 && (
@@ -164,7 +187,7 @@ export default function ModelosCamisa({ modelos, loading, pedidos, onAdicionar, 
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${LINE}` }}>
-                  {["Modelo", "Qtd", "Faturamento", "% do total"].map((h) => (
+                  {["Tecido", "Qtd", "Faturamento", "% do total"].map((h) => (
                     <th key={h} style={{ textAlign: "left", padding: "6px 10px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase" }}>
                       {h}
                     </th>

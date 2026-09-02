@@ -191,19 +191,14 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
             <Field label="Vendedor">
               <input style={inputStyle} value={p.vendedor} onChange={(e) => set("vendedor", e.target.value)} />
             </Field>
-            <Field label="Modelo">
-              <input
-                style={inputStyle}
-                list="lista-modelos-camisa"
-                value={p.modelo}
-                onChange={(e) => set("modelo", e.target.value)}
-                placeholder="ex: Social Slim"
-              />
-              <datalist id="lista-modelos-camisa">
+            <Field label="Tecido">
+              <select style={inputStyle} value={p.modelo} onChange={(e) => set("modelo", e.target.value)}>
+                <option value="">Selecione…</option>
+                {p.modelo && !modelosCamisa.includes(p.modelo) && <option value={p.modelo}>{p.modelo} (não cadastrado)</option>}
                 {modelosCamisa.map((m) => (
-                  <option key={m} value={m} />
+                  <option key={m} value={m}>{m}</option>
                 ))}
-              </datalist>
+              </select>
             </Field>
             <Field label="Data do pedido">
               <input type="date" style={inputStyle} value={p.dataPedido} onChange={(e) => set("dataPedido", e.target.value)} />

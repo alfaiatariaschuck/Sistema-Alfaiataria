@@ -85,7 +85,7 @@ const NAV = [
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true, grupo: "Camisaria" },
   { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true, grupo: "Camisaria" },
   { id: "estoque-camisaria", label: "Estoque Camisaria", icon: PackageCheck, primary: false, grupo: "Camisaria" },
-  { id: "modelos-camisa", label: "Modelos de Camisa", icon: Shirt, primary: false, grupo: "Camisaria" },
+  { id: "modelos-camisa", label: "Tecidos de Camisa", icon: Shirt, primary: false, grupo: "Camisaria" },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false, grupo: "Camisaria" },
   { id: "custos-camisaria", label: "Custos da Camisaria", icon: PiggyBank, primary: false, grupo: "Camisaria" },
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false, grupo: "Camisaria" },
