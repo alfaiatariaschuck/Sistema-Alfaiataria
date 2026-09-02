@@ -1,30 +1,45 @@
 import { custoAviamentoComposicao, custoTecidoDe } from "./helpers";
 
-// Custo real de uma camisa/pedido — tecido (metragem × valor/metro já
+// Mão de obra da camisa — usa o valor real "a pagar à Fabiana" quando já
+// preenchido; sem isso, cai pra mão de obra padrão × quantidade (mesma
+// reserva usada no cartão de estimativa do pedido), pra não fingir custo
+// zero só porque o campo ainda não foi preenchido. `estimado` avisa qual
+// dos dois foi usado.
+function maoDeObraCamisa(p, maoDeObraPadrao) {
+  const real = parseFloat(p.pagoFabiana?.valor) || 0;
+  if (real > 0) return { valor: real, estimado: false };
+  const padrao = (parseFloat(maoDeObraPadrao) || 0) * (parseFloat(p.quantidade) || 0);
+  return { valor: padrao, estimado: padrao > 0 };
+}
+
+// Custo de uma camisa/pedido — tecido (metragem × valor/metro já
 // lançados) + aviamento da camisa (peça-base "Camisa") + mão de obra
-// (valor efetivamente pago/a pagar à Fabiana). Não é estimativa: usa
-// só dado já gravado no pedido.
-export function custoCamisa(p, custoAviamentosPorPecaBase) {
-  return custoTecidoDe(p.tecidos) + (custoAviamentosPorPecaBase["Camisa"] || 0) * (parseFloat(p.quantidade) || 0) + (parseFloat(p.pagoFabiana?.valor) || 0);
+// (real quando preenchida, senão estimada pela mão de obra padrão).
+export function custoCamisa(p, custoAviamentosPorPecaBase, maoDeObraPadrao) {
+  const mao = maoDeObraCamisa(p, maoDeObraPadrao);
+  return {
+    custo: custoTecidoDe(p.tecidos) + (custoAviamentosPorPecaBase["Camisa"] || 0) * (parseFloat(p.quantidade) || 0) + mao.valor,
+    estimado: mao.estimado,
+  };
 }
 
 // Custo real de uma peça de alfaiataria — tecido + aviamento da
 // composição do tipo de peça + mão de obra (valor devido ao Ícaro).
 export function custoPeca(p, custoAviamentosPorPecaBase) {
-  return custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + (parseFloat(p.valorTotal) || 0);
+  return { custo: custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + (parseFloat(p.valorTotal) || 0), estimado: false };
 }
 
 // Faturamento/custo/margem agregados de um mês (camisaria + alfaiataria).
-export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase) {
+export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao) {
   const pedidosMes = (pedidos || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
   const faturamentoCamisaria = pedidosMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
-  const custoCamisaria = pedidosMes.reduce((s, p) => s + custoCamisa(p, custoAviamentosPorPecaBase), 0);
+  const custoCamisaria = pedidosMes.reduce((s, p) => s + custoCamisa(p, custoAviamentosPorPecaBase, maoDeObraPadrao).custo, 0);
   const qtdCamisas = pedidosMes.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0);
   const ticketCamisaria = qtdCamisas > 0 ? faturamentoCamisaria / qtdCamisas : 0;
 
   const pecasMes = (pecas || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
   const faturamentoAlfaiataria = pecasMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
-  const custoAlfaiataria = pecasMes.reduce((s, p) => s + custoPeca(p, custoAviamentosPorPecaBase), 0);
+  const custoAlfaiataria = pecasMes.reduce((s, p) => s + custoPeca(p, custoAviamentosPorPecaBase).custo, 0);
   const qtdPecas = pecasMes.length;
   const ticketAlfaiataria = qtdPecas > 0 ? faturamentoAlfaiataria / qtdPecas : 0;
 
@@ -48,13 +63,15 @@ export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBa
 }
 
 // Lista, pedido a pedido, tudo que foi vendido num mês — camisas e
-// peças de alfaiataria juntas, com custo real e margem de cada um.
-export function itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase) {
+// peças de alfaiataria juntas, com custo e margem de cada um. `custoEstimado`
+// marca quando a mão de obra da camisa ainda não foi preenchida de
+// verdade (usou a padrão como reserva) — o custo ali é uma aproximação.
+export function itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao) {
   const camisas = (pedidos || [])
     .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
     .map((p) => {
       const valor = parseFloat(p.aReceber?.valor) || 0;
-      const custo = custoCamisa(p, custoAviamentosPorPecaBase);
+      const { custo, estimado } = custoCamisa(p, custoAviamentosPorPecaBase, maoDeObraPadrao);
       return {
         id: "pedido-" + p.id,
         linha: "Camisaria",
@@ -64,6 +81,7 @@ export function itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase)
         quantidade: parseFloat(p.quantidade) || 0,
         valor,
         custo,
+        custoEstimado: estimado,
         margem: valor - custo,
         statusPagamento: p.aReceber?.statusPagamento || "Pendente",
         status: p.status,
@@ -75,7 +93,7 @@ export function itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase)
     .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
     .map((p) => {
       const valor = parseFloat(p.valorVenda) || 0;
-      const custo = custoPeca(p, custoAviamentosPorPecaBase);
+      const { custo, estimado } = custoPeca(p, custoAviamentosPorPecaBase);
       return {
         id: "peca-" + p.id,
         linha: "Alfaiataria",
@@ -85,6 +103,7 @@ export function itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase)
         quantidade: 1,
         valor,
         custo,
+        custoEstimado: estimado,
         margem: valor - custo,
         statusPagamento: p.statusPagamentoVenda || "Pendente",
         status: p.status,

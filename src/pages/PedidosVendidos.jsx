@@ -4,6 +4,7 @@ import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { LINE, PAG_STYLE, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, fmtData, hojeISO } from "../lib/helpers";
 import { itensDoMes, labelDoMes, metricasDoMes } from "../lib/vendasMensais";
+import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 
 const MESES_HISTORICO = 24;
 
@@ -12,6 +13,7 @@ const MESES_HISTORICO = 24;
 // histórico que alimenta "quanto preciso vender pra ter tal lucro" mais
 // pra frente. Complementa o Comparativo Mensal (que só compara totais).
 export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPecaBase = {}, irPara, irParaPeca }) {
+  const { maoDeObraPadrao } = useConfigPrecoCamisa();
   const hoje = new Date(hojeISO() + "T00:00:00");
 
   const meses = useMemo(() => {
@@ -26,8 +28,14 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
 
   const [chaveMes, setChaveMes] = useState(meses[0]);
 
-  const resumo = useMemo(() => metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase), [pedidos, pecas, chaveMes, custoAviamentosPorPecaBase]);
-  const itens = useMemo(() => itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase), [pedidos, pecas, chaveMes, custoAviamentosPorPecaBase]);
+  const resumo = useMemo(
+    () => metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao),
+    [pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao]
+  );
+  const itens = useMemo(
+    () => itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao),
+    [pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao]
+  );
 
   function abrirItem(item) {
     if (item.linha === "Camisaria" && irPara) irPara(item.origemId);
@@ -98,6 +106,9 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
                     </div>
                     <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                       {item.tipo} · {fmtData(item.dataPedido)} · {item.quantidade} un · custo {brl(item.custo)}
+                      {item.custoEstimado && (
+                        <span title='Mão de obra ainda não preenchida nesse pedido — usando a mão de obra padrão como reserva.'> (estimado)</span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
