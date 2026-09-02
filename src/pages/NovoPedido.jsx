@@ -288,6 +288,11 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
               onFormaPagamentoEntrada={(v) => setPagamento({ formaPagamentoEntrada: v })}
               formaPagamentoRestante={p.formaPagamentoRestante}
               onFormaPagamentoRestante={(v) => setPagamento({ formaPagamentoRestante: v })}
+              labelDividido="Pagamento em duas formas (ex: parte Pix, parte cartão — mesmo dia ou não)"
+              labelEntrada="1ª forma — valor (R$)"
+              labelFormaEntrada="1ª forma de pagamento"
+              labelRestante="2ª forma — valor (R$)"
+              labelFormaRestante="2ª forma de pagamento"
             />
           </div>
 

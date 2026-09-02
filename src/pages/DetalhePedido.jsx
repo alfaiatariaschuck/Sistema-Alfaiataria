@@ -247,6 +247,11 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             onFormaPagamentoEntrada={(v) => setPagamento({ formaPagamentoEntrada: v })}
             formaPagamentoRestante={p.formaPagamentoRestante}
             onFormaPagamentoRestante={(v) => setPagamento({ formaPagamentoRestante: v })}
+            labelDividido="Pagamento em duas formas (ex: parte Pix, parte cartão — mesmo dia ou não)"
+            labelEntrada="1ª forma — valor (R$)"
+            labelFormaEntrada="1ª forma de pagamento"
+            labelRestante="2ª forma — valor (R$)"
+            labelFormaRestante="2ª forma de pagamento"
           />
           <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
             <Field label="Forma de pagamento">

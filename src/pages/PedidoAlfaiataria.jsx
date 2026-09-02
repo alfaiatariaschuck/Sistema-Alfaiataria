@@ -266,6 +266,11 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
               onFormaPagamentoEntrada={(v) => setPagamento({ formaPagamentoEntrada: v })}
               formaPagamentoRestante={novaPeca.formaPagamentoRestante}
               onFormaPagamentoRestante={(v) => setPagamento({ formaPagamentoRestante: v })}
+              labelDividido="Pagamento em duas formas (ex: parte Pix, parte cartão — mesmo dia ou não)"
+              labelEntrada="1ª forma — valor (R$)"
+              labelFormaEntrada="1ª forma de pagamento"
+              labelRestante="2ª forma — valor (R$)"
+              labelFormaRestante="2ª forma de pagamento"
             />
           </div>
 
