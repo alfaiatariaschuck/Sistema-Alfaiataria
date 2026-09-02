@@ -544,6 +544,7 @@ export default function Shell() {
     onCriarModeloCamisa: adicionarModelo,
     estoqueTecidos,
     onDarBaixaEstoque: darBaixaEstoque,
+    custoAviamentosPorPecaBase: custoPorPecaBase,
   };
 
   return (

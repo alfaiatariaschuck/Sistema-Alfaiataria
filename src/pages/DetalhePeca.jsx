@@ -8,6 +8,7 @@ import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import LinkAcompanhamento from "../components/LinkAcompanhamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
+import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import {
   BRASS,
@@ -60,6 +61,7 @@ export default function DetalhePeca({
   onCriarModeloCamisa,
   estoqueTecidos,
   onDarBaixaEstoque,
+  custoAviamentosPorPecaBase = {},
 }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -605,6 +607,13 @@ export default function DetalhePeca({
             )}
           </div>
         ))}
+        <EstimativaCustoPeca
+          tecidos={p.tecidos}
+          tipoPeca={p.tipoPeca}
+          custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
+          valorTotal={p.valorTotal}
+          valorVenda={p.valorVenda}
+        />
       </Card>
 
       <Card style={{ padding: 20 }} className="mt-6">
