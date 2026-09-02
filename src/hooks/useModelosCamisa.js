@@ -7,19 +7,23 @@ function rowParaModelo(row) {
     codigo: row.codigo || "",
     nome: row.nome,
     valorReferenciaMetro: row.valor_referencia_metro ?? "",
+    precoVenda: row.preco_venda ?? "",
     ativo: row.ativo ?? true,
   };
 }
 
 const CAMPO_PARA_COLUNA = {
   valorReferenciaMetro: "valor_referencia_metro",
+  precoVenda: "preco_venda",
 };
+const CAMPOS_NUMERICOS = ["valorReferenciaMetro", "precoVenda"];
 
 // Catálogo de tecidos de camisa, categorizado por código + nomenclatura
 // (mesmo padrão da Planilha Consolidada, aba Camisaria), com um valor de
 // referência por metro opcional (fica em branco pros que variam muito de
-// rolo pra rolo) — igual já existe pra Fornecedores, alimenta o campo
-// "Modelo" do pedido e o relatório de mix de vendas.
+// rolo pra rolo) e um preço de venda tabelado — igual já existe pra
+// Fornecedores, alimenta a nomenclatura do item de tecido do pedido, o
+// relatório de mix de vendas e a tabela de preço de venda.
 export function useModelosCamisa() {
   const [modelos, setModelos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +57,7 @@ export function useModelosCamisa() {
   async function atualizarModelo(id, campo, valor) {
     setModelos((prev) => prev.map((m) => (m.id === id ? { ...m, [campo]: valor } : m)));
     const coluna = CAMPO_PARA_COLUNA[campo] || campo;
-    const valorFinal = campo === "valorReferenciaMetro" ? (valor === "" ? null : Number(valor)) : valor;
+    const valorFinal = CAMPOS_NUMERICOS.includes(campo) ? (valor === "" ? null : Number(valor)) : valor;
     await supabase.from("modelos_camisa").update({ [coluna]: valorFinal }).eq("id", id);
   }
 

@@ -618,6 +618,7 @@ export default function Shell() {
                   onAdicionar={adicionarModelo}
                   onCampo={atualizarModelo}
                   onRemover={removerModelo}
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
                 />
               )}
               {tab === "entregues" && !loadingPecas && <Entregues pedidos={pedidos} pecas={pecas} irPara={irPara} irParaPeca={irParaPeca} />}
