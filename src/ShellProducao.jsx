@@ -1,12 +1,24 @@
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, FileText, LayoutGrid, LogOut, Ruler, Search, Table2 } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, FileText, Gauge, LayoutGrid, LogOut, Ruler, Search, Table2 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePecasProducao } from "./hooks/usePecasProducao";
 import { useEquipeProducao } from "./hooks/useEquipeProducao";
 import { BRASS, CANVAS, INK, INK_SOFT, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_ALFAIATARIA, TEXT_MUTED, inputStyle } from "./lib/constants";
-import { diasProducaoReal, fmtData, hojeISO, mediaDiasProducaoPorTipo, previsaoEfetivaDe, previsaoEstimada, projetarPrevisoesFilaPorEquipe, statusEvento, statusParaEtapa } from "./lib/helpers";
+import {
+  diasProducaoReal,
+  fmtData,
+  hojeISO,
+  mediaDiasProducaoComFallback,
+  mediaDiasProducaoPorTipo,
+  previsaoEfetivaDe,
+  previsaoEstimada,
+  projetarPrevisoesFilaPorEquipe,
+  statusEvento,
+  statusParaEtapa,
+} from "./lib/helpers";
 import { Card, Empty } from "./components/ui";
 import TabelaControleProducao from "./components/TabelaControleProducao";
+import PainelProducaoResumo from "./components/PainelProducaoResumo";
 import HistoricoProducao from "./pages/HistoricoProducao";
 import FichaImprimivelAlfaiataria from "./pages/FichaImprimivelAlfaiataria";
 
@@ -83,6 +95,8 @@ export default function ShellProducao() {
     [todasAbertas, mediaDiasPorTipo, equipe]
   );
 
+  const mediaDiasProducao = useMemo(() => mediaDiasProducaoComFallback(pecas), [pecas]);
+
   // Contagem de atrasadas pra mostrar logo no topo — o Ícaro precisa ver
   // isso de cara, sem precisar procurar linha por linha na tabela.
   const hoje = hojeISO();
@@ -136,6 +150,20 @@ export default function ShellProducao() {
           <Ruler size={14} /> Produção
         </button>
         <button
+          onClick={() => setPagina("painel")}
+          className="flex items-center gap-1.5"
+          style={{
+            background: pagina === "painel" ? CANVAS : "transparent",
+            color: pagina === "painel" ? INK : "#A9B4C0",
+            padding: "8px 14px",
+            borderRadius: "8px 8px 0 0",
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          <Gauge size={14} /> Painel
+        </button>
+        <button
           onClick={() => setPagina("historico")}
           className="flex items-center gap-1.5"
           style={{
@@ -154,6 +182,12 @@ export default function ShellProducao() {
       {pagina === "historico" && (
         <div className="max-w-3xl mx-auto px-5 py-6">
           <HistoricoProducao pecas={pecas} />
+        </div>
+      )}
+
+      {pagina === "painel" && (
+        <div className="max-w-3xl mx-auto px-5 py-6">
+          <PainelProducaoResumo pecas={pecas} equipe={equipe} mediaDiasProducao={mediaDiasProducao} mediaDiasPorTipo={mediaDiasPorTipo} previsoesFila={previsoesFila} />
         </div>
       )}
 
