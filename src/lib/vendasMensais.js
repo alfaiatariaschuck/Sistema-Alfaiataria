@@ -1,4 +1,5 @@
 import { custoAviamentoComposicao, custoTecidoDe } from "./helpers";
+import { custoEquipeMensal } from "./custoEquipe";
 
 // Mão de obra da camisa — usa o valor real "a pagar à Fabiana" quando já
 // preenchido; sem isso, cai pra mão de obra padrão × quantidade (mesma
@@ -23,14 +24,24 @@ export function custoCamisa(p, custoAviamentosPorPecaBase, maoDeObraPadrao) {
   };
 }
 
-// Custo real de uma peça de alfaiataria — tecido + aviamento da
-// composição do tipo de peça + mão de obra (valor devido ao Ícaro).
-export function custoPeca(p, custoAviamentosPorPecaBase) {
-  return { custo: custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + (parseFloat(p.valorTotal) || 0), estimado: false };
+// Custo de uma peça de alfaiataria — tecido + aviamento da composição
+// do tipo de peça + mão de obra. A mão de obra NÃO usa mais um campo
+// por peça (hoje o Ícaro e os freelancers da alfaiataria são pagos por
+// mês/diária, não por peça pronta) — usa o rateio: custo mensal de
+// toda a equipe (Equipe) dividido pela quantidade de peças daquele mês
+// (`maoDeObraPorPeca`, já calculado em metricasDoMes/itensDoMes).
+// `estimado` vem sempre true porque é uma média do mês, não o custo
+// exato daquela peça específica.
+export function custoPeca(p, custoAviamentosPorPecaBase, maoDeObraPorPeca) {
+  const maoDeObra = parseFloat(maoDeObraPorPeca) || 0;
+  return {
+    custo: custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + maoDeObra,
+    estimado: maoDeObra > 0,
+  };
 }
 
 // Faturamento/custo/margem agregados de um mês (camisaria + alfaiataria).
-export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao) {
+export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe) {
   const pedidosMes = (pedidos || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
   const faturamentoCamisaria = pedidosMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
   const custoCamisaria = pedidosMes.reduce((s, p) => s + custoCamisa(p, custoAviamentosPorPecaBase, maoDeObraPadrao).custo, 0);
@@ -38,9 +49,10 @@ export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBa
   const ticketCamisaria = qtdCamisas > 0 ? faturamentoCamisaria / qtdCamisas : 0;
 
   const pecasMes = (pecas || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
-  const faturamentoAlfaiataria = pecasMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
-  const custoAlfaiataria = pecasMes.reduce((s, p) => s + custoPeca(p, custoAviamentosPorPecaBase).custo, 0);
   const qtdPecas = pecasMes.length;
+  const maoDeObraPorPeca = qtdPecas > 0 ? custoEquipeMensal(equipe) / qtdPecas : 0;
+  const faturamentoAlfaiataria = pecasMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+  const custoAlfaiataria = pecasMes.reduce((s, p) => s + custoPeca(p, custoAviamentosPorPecaBase, maoDeObraPorPeca).custo, 0);
   const ticketAlfaiataria = qtdPecas > 0 ? faturamentoAlfaiataria / qtdPecas : 0;
 
   const faturamentoTotal = faturamentoCamisaria + faturamentoAlfaiataria;
@@ -71,10 +83,13 @@ export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBa
 }
 
 // Lista, pedido a pedido, tudo que foi vendido num mês — camisas e
-// peças de alfaiataria juntas, com custo e margem de cada um. `custoEstimado`
-// marca quando a mão de obra da camisa ainda não foi preenchida de
-// verdade (usou a padrão como reserva) — o custo ali é uma aproximação.
-export function itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao) {
+// peças de alfaiataria juntas, com custo e margem de cada um.
+// `custoEstimado` marca quando o custo usou uma média/reserva em vez do
+// valor exato daquele pedido: na camisa, quando a mão de obra da Fabi
+// ainda não foi preenchida (usa a padrão); na peça de alfaiataria,
+// sempre — a mão de obra ali é o rateio da equipe do mês, não um valor
+// exato por peça.
+export function itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe) {
   const camisas = (pedidos || [])
     .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
     .map((p) => {
@@ -97,27 +112,27 @@ export function itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase,
       };
     });
 
-  const pecasDoMes = (pecas || [])
-    .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
-    .map((p) => {
-      const valor = parseFloat(p.valorVenda) || 0;
-      const { custo, estimado } = custoPeca(p, custoAviamentosPorPecaBase);
-      return {
-        id: "peca-" + p.id,
-        linha: "Alfaiataria",
-        tipo: p.tipoPeca,
-        cliente: p.cliente,
-        dataPedido: p.dataPedido,
-        quantidade: 1,
-        valor,
-        custo,
-        custoEstimado: estimado,
-        margem: valor - custo,
-        statusPagamento: p.statusPagamentoVenda || "Pendente",
-        status: p.status,
-        origemId: p.id,
-      };
-    });
+  const pecasMes = (pecas || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
+  const maoDeObraPorPeca = pecasMes.length > 0 ? custoEquipeMensal(equipe) / pecasMes.length : 0;
+  const pecasDoMes = pecasMes.map((p) => {
+    const valor = parseFloat(p.valorVenda) || 0;
+    const { custo, estimado } = custoPeca(p, custoAviamentosPorPecaBase, maoDeObraPorPeca);
+    return {
+      id: "peca-" + p.id,
+      linha: "Alfaiataria",
+      tipo: p.tipoPeca,
+      cliente: p.cliente,
+      dataPedido: p.dataPedido,
+      quantidade: 1,
+      valor,
+      custo,
+      custoEstimado: estimado,
+      margem: valor - custo,
+      statusPagamento: p.statusPagamentoVenda || "Pendente",
+      status: p.status,
+      origemId: p.id,
+    };
+  });
 
   return [...camisas, ...pecasDoMes].sort((a, b) => b.dataPedido.localeCompare(a.dataPedido));
 }

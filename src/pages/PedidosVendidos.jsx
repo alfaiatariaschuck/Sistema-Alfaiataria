@@ -37,7 +37,7 @@ function BlocoLinha({ titulo, icon: Icon, faturamento, custo, margem, margemPerc
 // aviamento + mão de obra já lançados no pedido) e a margem — separado
 // por linha (Camisaria x Alfaiataria) pra comparar o desempenho de
 // cada uma. Complementa o Comparativo Mensal (que só compara totais).
-export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPecaBase = {}, irPara, irParaPeca }) {
+export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPecaBase = {}, equipe = [], irPara, irParaPeca }) {
   const { maoDeObraPadrao } = useConfigPrecoCamisa();
   const hoje = new Date(hojeISO() + "T00:00:00");
 
@@ -55,12 +55,12 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
   const [linhaFiltro, setLinhaFiltro] = useState("Todos");
 
   const resumo = useMemo(
-    () => metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao),
-    [pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao]
+    () => metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe),
+    [pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe]
   );
   const itens = useMemo(
-    () => itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao),
-    [pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao]
+    () => itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe),
+    [pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe]
   );
   const itensFiltrados = linhaFiltro === "Todos" ? itens : itens.filter((i) => i.linha === linhaFiltro);
 
@@ -82,7 +82,9 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
           ))}
         </select>
         <span style={{ fontSize: 11, color: TEXT_MUTED }}>
-          Custo e margem usam o tecido, aviamento e mão de obra já lançados em cada pedido/peça — não é estimativa à parte.
+          Custo e margem usam o tecido e aviamento já lançados em cada pedido/peça. Mão de obra: na camisaria é o
+          valor a pagar à Fabiana; na alfaiataria é o rateio do custo mensal da equipe (Equipe) pela quantidade de
+          peças do mês, já que Ícaro e freelancers são pagos por mês/diária, não por peça pronta.
         </span>
       </div>
 
@@ -154,7 +156,16 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
                     <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                       {item.tipo} · {fmtData(item.dataPedido)} · {item.quantidade} un · custo {brl(item.custo)}
                       {item.custoEstimado && (
-                        <span title='Mão de obra ainda não preenchida nesse pedido — usando a mão de obra padrão como reserva.'> (estimado)</span>
+                        <span
+                          title={
+                            item.linha === "Camisaria"
+                              ? "Mão de obra ainda não preenchida nesse pedido — usando a mão de obra padrão como reserva."
+                              : "Mão de obra é o rateio do custo mensal da equipe (Equipe) dividido pelas peças desse mês — não é um valor exato dessa peça."
+                          }
+                        >
+                          {" "}
+                          (estimado)
+                        </span>
                       )}
                     </div>
                   </div>

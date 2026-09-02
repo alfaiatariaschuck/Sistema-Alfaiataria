@@ -30,7 +30,7 @@ function Variacao({ valor }) {
 // cada pedido (mesma lógica do Consolidado), não é estimativa à parte.
 // Pra ver pedido a pedido com a margem de cada venda, vai em "Pedidos
 // Vendidos" — aqui é só o total comparado mês a mês.
-export default function ComparativoMensal({ pedidos, pecas, custoAviamentosPorPecaBase = {} }) {
+export default function ComparativoMensal({ pedidos, pecas, custoAviamentosPorPecaBase = {}, equipe = [] }) {
   const { maoDeObraPadrao } = useConfigPrecoCamisa();
   const hoje = new Date(hojeISO() + "T00:00:00");
 
@@ -40,15 +40,15 @@ export default function ComparativoMensal({ pedidos, pecas, custoAviamentosPorPe
       const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
       chaves.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
     }
-    return chaves.map((chaveMes) => metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao));
+    return chaves.map((chaveMes) => metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe));
     // eslint-disable-next-line
-  }, [pedidos, pecas, custoAviamentosPorPecaBase, maoDeObraPadrao]);
+  }, [pedidos, pecas, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe]);
 
   const [mesA, setMesA] = useState(meses[0]?.chaveMes || "");
   const [mesB, setMesB] = useState(meses[1]?.chaveMes || "");
 
-  const dadosA = meses.find((m) => m.chaveMes === mesA) || metricasDoMes(pedidos, pecas, mesA, custoAviamentosPorPecaBase, maoDeObraPadrao);
-  const dadosB = meses.find((m) => m.chaveMes === mesB) || metricasDoMes(pedidos, pecas, mesB, custoAviamentosPorPecaBase, maoDeObraPadrao);
+  const dadosA = meses.find((m) => m.chaveMes === mesA) || metricasDoMes(pedidos, pecas, mesA, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe);
+  const dadosB = meses.find((m) => m.chaveMes === mesB) || metricasDoMes(pedidos, pecas, mesB, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe);
 
   const linhasComparativo = [
     { label: "Faturamento total", campo: "faturamentoTotal", formato: brl },

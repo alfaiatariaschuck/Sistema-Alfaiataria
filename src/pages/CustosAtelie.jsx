@@ -4,6 +4,7 @@ import { BarraDuasSeries, Card, Empty, PageTitle, StatCard } from "../components
 import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
 import { BRASS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
+import { custoMensalDe } from "../lib/custoEquipe";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_ALUGUEL = "custo_aluguel_mensal";
@@ -11,9 +12,6 @@ const CHAVE_LUZ = "custo_luz_mensal";
 const CHAVE_PROLABORE = "custo_prolabore_mensal";
 const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
 const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
-// Semanas por mês na média (365,25/7/12) — usado pra estimar o custo
-// mensal de quem recebe por diária (ex: freelancer 3x/semana).
-const SEMANAS_POR_MES = 4.345;
 const MESES_HISTORICO = 6;
 
 // Rótulo compacto pra caber no gráfico de barras (ex: R$4,5k) — o valor
@@ -22,12 +20,6 @@ function brlCompacto(v) {
   const num = parseFloat(v) || 0;
   if (Math.abs(num) >= 1000) return `R$${(num / 1000).toFixed(1).replace(".", ",")}k`;
   return brl(num);
-}
-
-function custoMensalDe(m) {
-  if (m.tipoRemuneracao === "mensal") return parseFloat(m.valorRemuneracao) || 0;
-  if (m.tipoRemuneracao === "diaria") return (parseFloat(m.valorRemuneracao) || 0) * (m.diasPorSemana || 0) * SEMANAS_POR_MES;
-  return 0;
 }
 
 // Quantas sextas-feiras tem no mês/ano dados — importante porque quem
