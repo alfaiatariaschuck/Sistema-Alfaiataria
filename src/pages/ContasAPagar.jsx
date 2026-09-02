@@ -45,6 +45,117 @@ function novaDespesaVazia() {
   };
 }
 
+// Painel de edição de uma despesa — usado tanto na lista de pendentes
+// quanto na lista de "últimas pagas" (uma despesa paga por engano, ou
+// com valor/data errado, também precisa poder ser editada, não só
+// reaberta). Extraído pra não duplicar esse formulário grande nos dois
+// lugares.
+function EditorDespesa({ edicaoDespesa, setEdicaoDespesa, valorPagoEdit, setValorPagoEdit, onSalvar }) {
+  return (
+    <div className="mt-2 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
+      <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: "2fr 1fr 1fr" }}>
+        <Field label="Descrição">
+          <input
+            style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+            value={edicaoDespesa.descricao}
+            onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, descricao: e.target.value })}
+          />
+        </Field>
+        <Field label="Valor (R$)">
+          <input
+            type="number"
+            step="0.01"
+            style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+            value={edicaoDespesa.valor}
+            onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, valor: e.target.value })}
+          />
+        </Field>
+        <Field label="Frete (R$)">
+          <input
+            type="number"
+            step="0.01"
+            style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+            value={edicaoDespesa.frete}
+            onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, frete: e.target.value })}
+          />
+        </Field>
+        <Field label="Vencimento">
+          <input
+            type="date"
+            style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+            value={edicaoDespesa.vencimento}
+            onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, vencimento: e.target.value })}
+          />
+        </Field>
+        <Field label="Categoria">
+          <input
+            style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+            list="lista-categorias-despesa"
+            value={edicaoDespesa.categoria}
+            onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, categoria: e.target.value })}
+          />
+        </Field>
+        <Field label="Fornecedor">
+          <input
+            style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+            list="lista-fornecedores-despesa"
+            value={edicaoDespesa.fornecedor}
+            onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, fornecedor: e.target.value })}
+          />
+        </Field>
+        <Field label="Linha">
+          <select
+            style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+            value={edicaoDespesa.linha}
+            onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, linha: e.target.value })}
+          >
+            <option value="">Compartilhado</option>
+            <option value="Camisaria">Camisaria</option>
+            <option value="Alfaiataria">Alfaiataria</option>
+          </select>
+        </Field>
+        <Field label="Tecido Camisaria (R$)">
+          <input
+            type="number"
+            step="0.01"
+            style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+            value={edicaoDespesa.valorCamisaria}
+            onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, valorCamisaria: e.target.value })}
+            placeholder="0,00"
+          />
+        </Field>
+        <Field label="Tecido Alfaiataria (R$)">
+          <input
+            type="number"
+            step="0.01"
+            style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
+            value={edicaoDespesa.valorAlfaiataria}
+            onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, valorAlfaiataria: e.target.value })}
+            placeholder="0,00"
+          />
+        </Field>
+      </div>
+      <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 8 }}>
+        Preenchendo Camisaria/Alfaiataria acima, lembre de ajustar o "Valor" pra a soma das duas + o que for compartilhado (o campo Valor não
+        se recalcula sozinho).
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span style={{ fontSize: 11, color: TEXT_MUTED }}>Valor pago até agora:</span>
+        <input
+          type="number"
+          step="0.01"
+          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, width: 100 }}
+          value={valorPagoEdit}
+          onChange={(e) => setValorPagoEdit(e.target.value)}
+        />
+        <button onClick={onSalvar} style={{ background: INK, color: "#FFF", padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+          Salvar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ContasAPagar({
   pedidos,
   pecas,
@@ -956,110 +1067,13 @@ export default function ContasAPagar({
                   </div>
                 </div>
                 {editando && (
-                  <div className="mt-2 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
-                    <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: "2fr 1fr 1fr" }}>
-                      <Field label="Descrição">
-                        <input
-                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
-                          value={edicaoDespesa.descricao}
-                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, descricao: e.target.value })}
-                        />
-                      </Field>
-                      <Field label="Valor (R$)">
-                        <input
-                          type="number"
-                          step="0.01"
-                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
-                          value={edicaoDespesa.valor}
-                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, valor: e.target.value })}
-                        />
-                      </Field>
-                      <Field label="Frete (R$)">
-                        <input
-                          type="number"
-                          step="0.01"
-                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
-                          value={edicaoDespesa.frete}
-                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, frete: e.target.value })}
-                        />
-                      </Field>
-                      <Field label="Vencimento">
-                        <input
-                          type="date"
-                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
-                          value={edicaoDespesa.vencimento}
-                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, vencimento: e.target.value })}
-                        />
-                      </Field>
-                      <Field label="Categoria">
-                        <input
-                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
-                          list="lista-categorias-despesa"
-                          value={edicaoDespesa.categoria}
-                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, categoria: e.target.value })}
-                        />
-                      </Field>
-                      <Field label="Fornecedor">
-                        <input
-                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
-                          list="lista-fornecedores-despesa"
-                          value={edicaoDespesa.fornecedor}
-                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, fornecedor: e.target.value })}
-                        />
-                      </Field>
-                      <Field label="Linha">
-                        <select
-                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
-                          value={edicaoDespesa.linha}
-                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, linha: e.target.value })}
-                        >
-                          <option value="">Compartilhado</option>
-                          <option value="Camisaria">Camisaria</option>
-                          <option value="Alfaiataria">Alfaiataria</option>
-                        </select>
-                      </Field>
-                      <Field label="Tecido Camisaria (R$)">
-                        <input
-                          type="number"
-                          step="0.01"
-                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
-                          value={edicaoDespesa.valorCamisaria}
-                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, valorCamisaria: e.target.value })}
-                          placeholder="0,00"
-                        />
-                      </Field>
-                      <Field label="Tecido Alfaiataria (R$)">
-                        <input
-                          type="number"
-                          step="0.01"
-                          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
-                          value={edicaoDespesa.valorAlfaiataria}
-                          onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, valorAlfaiataria: e.target.value })}
-                          placeholder="0,00"
-                        />
-                      </Field>
-                    </div>
-                    <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 8 }}>
-                      Preenchendo Camisaria/Alfaiataria acima, lembre de ajustar o "Valor" pra a soma das duas + o que for compartilhado (o campo Valor não
-                      se recalcula sozinho).
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span style={{ fontSize: 11, color: TEXT_MUTED }}>Valor pago até agora:</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, width: 100 }}
-                        value={valorPagoEdit}
-                        onChange={(e) => setValorPagoEdit(e.target.value)}
-                      />
-                      <button
-                        onClick={() => salvarEdicaoDespesa(d.id)}
-                        style={{ background: INK, color: "#FFF", padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
-                      >
-                        Salvar
-                      </button>
-                    </div>
-                  </div>
+                  <EditorDespesa
+                    edicaoDespesa={edicaoDespesa}
+                    setEdicaoDespesa={setEdicaoDespesa}
+                    valorPagoEdit={valorPagoEdit}
+                    setValorPagoEdit={setValorPagoEdit}
+                    onSalvar={() => salvarEdicaoDespesa(d.id)}
+                  />
                 )}
               </div>
             );
@@ -1112,21 +1126,40 @@ export default function ContasAPagar({
                 <span>{mostrarPagas ? "ocultar" : "ver"}</span>
               </button>
               {mostrarPagas &&
-                despesasPagas.map((d) => (
-                  <div key={d.id} className="flex items-center justify-between py-1.5">
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 600 }}>{d.descricao}</div>
-                      <div style={{ fontSize: 10, color: TEXT_MUTED }}>vencia {fmtData(d.vencimento)} · pago {brl(totalDespesa(d))}</div>
+                despesasPagas.map((d) => {
+                  const editandoPaga = editandoDespesa === d.id;
+                  return (
+                    <div key={d.id} className="py-1.5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600 }}>{d.descricao}</div>
+                          <div style={{ fontSize: 10, color: TEXT_MUTED }}>vencia {fmtData(d.vencimento)} · pago {brl(totalDespesa(d))}</div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button onClick={() => abrirEdicaoValorPago(d)} title="Editar despesa">
+                            <Pencil size={13} color={TEXT_MUTED} />
+                          </button>
+                          <button
+                            onClick={() => reabrirDespesa(d.id)}
+                            className="flex items-center gap-1"
+                            style={{ color: BRASS, fontSize: 11, fontWeight: 600 }}
+                          >
+                            <Undo2 size={12} /> Reabrir
+                          </button>
+                        </div>
+                      </div>
+                      {editandoPaga && (
+                        <EditorDespesa
+                          edicaoDespesa={edicaoDespesa}
+                          setEdicaoDespesa={setEdicaoDespesa}
+                          valorPagoEdit={valorPagoEdit}
+                          setValorPagoEdit={setValorPagoEdit}
+                          onSalvar={() => salvarEdicaoDespesa(d.id)}
+                        />
+                      )}
                     </div>
-                    <button
-                      onClick={() => reabrirDespesa(d.id)}
-                      className="flex items-center gap-1"
-                      style={{ color: BRASS, fontSize: 11, fontWeight: 600, flexShrink: 0 }}
-                    >
-                      <Undo2 size={12} /> Reabrir
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           )}
         </Card>
@@ -1293,9 +1326,28 @@ export default function ContasAPagar({
                 <span className="fx-mono" style={{ fontSize: 12, fontWeight: 700 }}>{brl(faixa.total)}</span>
               </div>
               {faixa.itens.map((d) => (
-                <div key={d.id} className="flex items-center justify-between py-1" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  <span>{d.descricao} {d.fornecedor ? `— ${d.fornecedor}` : ""}</span>
-                  <span className="fx-mono">{brl(Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)))}</span>
+                <div key={d.id} className="py-1">
+                  <div className="flex items-center justify-between" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                    <span>{d.descricao} {d.fornecedor ? `— ${d.fornecedor}` : ""}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="fx-mono">{brl(Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)))}</span>
+                      <button onClick={() => abrirEdicaoValorPago(d)} title="Editar despesa">
+                        <Pencil size={12} color={TEXT_MUTED} />
+                      </button>
+                      <button onClick={() => handleMarcarPaga(d)} title="Marcar como totalmente paga">
+                        <CheckCircle2 size={14} color={VERDE} />
+                      </button>
+                    </div>
+                  </div>
+                  {editandoDespesa === d.id && (
+                    <EditorDespesa
+                      edicaoDespesa={edicaoDespesa}
+                      setEdicaoDespesa={setEdicaoDespesa}
+                      valorPagoEdit={valorPagoEdit}
+                      setValorPagoEdit={setValorPagoEdit}
+                      onSalvar={() => salvarEdicaoDespesa(d.id)}
+                    />
+                  )}
                 </div>
               ))}
             </div>
