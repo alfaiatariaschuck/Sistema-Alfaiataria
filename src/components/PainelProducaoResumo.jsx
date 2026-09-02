@@ -23,6 +23,9 @@ export default function PainelProducaoResumo({ pecas, equipe, mediaDiasProducao,
   const urgentes = abertas.filter((p) => p.prioridade === "Alta").length;
   const emProva = abertas.filter((p) => ETAPAS_PROVA.includes(p.status)).length;
   const entreguesMes = pecas.filter((p) => p.status === "Entregue" && p.dataEntrega && p.dataEntrega.slice(0, 7) === mesAtual).length;
+  // Carinha ao lado de "Entregues (mês)" — motivacional, sem valor
+  // nenhum: triste até 3, boa a partir de 4, festa a partir de 8.
+  const carinhaEntregues = entreguesMes >= 8 ? "🥳" : entreguesMes >= 4 ? "😊" : "😢";
   const profissionaisAtuando = (equipe || []).filter((m) => m.ativo && m.trabalhandoHoje).length;
 
   // Previsão "efetiva" de cada peça aberta: a manual, se existir, senão a
@@ -75,7 +78,7 @@ export default function PainelProducaoResumo({ pecas, equipe, mediaDiasProducao,
         <StatCard label="Pausados" value={pausados} icon={Clock} />
         <StatCard label="Em prova agora" value={emProva} icon={Eye} />
         <StatCard label="Urgentes (Alta)" value={urgentes} icon={Flame} accent={urgentes > 0 ? VERMELHO : undefined} />
-        <StatCard label="Entregues (mês)" value={entreguesMes} icon={PackageCheck} />
+        <StatCard label="Entregues (mês)" value={entreguesMes} icon={PackageCheck} suffix={carinhaEntregues} />
         <StatCard label="Profissionais atuando" value={profissionaisAtuando} icon={UserCheck} />
         <StatCard label="Tempo médio de produção" value={mediaDiasProducao !== null && mediaDiasProducao !== undefined ? `${mediaDiasProducao}d` : "—"} icon={Timer} />
         <StatCard

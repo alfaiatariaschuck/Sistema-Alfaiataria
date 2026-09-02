@@ -215,7 +215,7 @@ export function Field({ label, children }) {
   );
 }
 
-export function StatCard({ label, value, icon: Icon, accent }) {
+export function StatCard({ label, value, icon: Icon, accent, suffix }) {
   const cor = accent || BRASS;
   return (
     <Card style={{ padding: 16 }}>
@@ -223,8 +223,11 @@ export function StatCard({ label, value, icon: Icon, accent }) {
         <span style={{ fontSize: 12, color: TEXT_MUTED, fontWeight: 600 }}>{label}</span>
         <Icon size={15} color={cor} />
       </div>
-      <div className="fx-serif" style={{ fontSize: 22, fontWeight: 600, color: accent || INK }}>
-        {value}
+      <div className="flex items-baseline gap-2">
+        <div className="fx-serif" style={{ fontSize: 22, fontWeight: 600, color: accent || INK }}>
+          {value}
+        </div>
+        {suffix && <span style={{ fontSize: 20, lineHeight: 1 }}>{suffix}</span>}
       </div>
     </Card>
   );
