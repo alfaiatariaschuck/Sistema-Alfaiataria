@@ -142,6 +142,7 @@ export function useDespesas() {
         if (errProx) throw errProx;
       }
       await recarregar();
+      return { status, pedidoId: despesa?.pedidoId || null };
     });
   }
 

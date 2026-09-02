@@ -156,6 +156,48 @@ function EditorDespesa({ edicaoDespesa, setEdicaoDespesa, valorPagoEdit, setValo
   );
 }
 
+// Dar baixa por quantidade de camisas em vez de digitar um valor em R$
+// — só aparece em despesas ligadas a um pedido (ex: a da Fabiana,
+// lançada sozinha quando o pedido entra em produção) cujo pedido tem
+// mais de uma camisa. Cada "camisa paga" vale valor total ÷ quantidade
+// de camisas do pedido; o valor pago da despesa é recalculado a partir
+// da contagem, então continua sendo a mesma informação de sempre (não
+// duplica nada, só dá outro jeito de editar).
+function ControleBaixaPorCamisa({ despesa, pedido, onAtualizarValorPago }) {
+  const totalCamisas = parseInt(pedido.quantidade, 10) || 1;
+  const valorPorCamisa = totalCamisas > 0 ? totalDespesa(despesa) / totalCamisas : 0;
+  const camisasPagas = valorPorCamisa > 0 ? Math.round((parseFloat(despesa.valorPago) || 0) / valorPorCamisa) : 0;
+
+  function definir(n) {
+    const seguro = Math.max(0, Math.min(totalCamisas, n));
+    onAtualizarValorPago(despesa.id, seguro * valorPorCamisa);
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-1" style={{ fontSize: 11, color: TEXT_MUTED }}>
+      <span>Camisas pagas:</span>
+      <button
+        onClick={() => definir(camisasPagas - 1)}
+        disabled={camisasPagas <= 0}
+        style={{ background: "#EDEAE0", color: INK, width: 20, height: 20, borderRadius: 4, fontWeight: 700, opacity: camisasPagas <= 0 ? 0.4 : 1 }}
+      >
+        −
+      </button>
+      <span className="fx-mono" style={{ fontWeight: 700, color: INK }}>
+        {camisasPagas} de {totalCamisas}
+      </span>
+      <button
+        onClick={() => definir(camisasPagas + 1)}
+        disabled={camisasPagas >= totalCamisas}
+        style={{ background: "#EDEAE0", color: INK, width: 20, height: 20, borderRadius: 4, fontWeight: 700, opacity: camisasPagas >= totalCamisas ? 0.4 : 1 }}
+      >
+        +
+      </button>
+      <span>· {brl(valorPorCamisa)}/camisa</span>
+    </div>
+  );
+}
+
 export default function ContasAPagar({
   pedidos,
   pecas,
@@ -1021,6 +1063,7 @@ export default function ContasAPagar({
             const atrasada = d.vencimento < hoje;
             const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
             const editando = editandoDespesa === d.id;
+            const pedidoVinculado = d.pedidoId ? pedidos.find((p) => p.id === d.pedidoId) : null;
             return (
               <div key={d.id} className="py-2" style={{ borderBottom: `1px solid ${LINE}` }}>
                 <div className="flex items-center justify-between">
@@ -1066,6 +1109,9 @@ export default function ContasAPagar({
                     </button>
                   </div>
                 </div>
+                {pedidoVinculado && parseInt(pedidoVinculado.quantidade, 10) > 1 && (
+                  <ControleBaixaPorCamisa despesa={d} pedido={pedidoVinculado} onAtualizarValorPago={onAtualizarValorPago} />
+                )}
                 {editando && (
                   <EditorDespesa
                     edicaoDespesa={edicaoDespesa}

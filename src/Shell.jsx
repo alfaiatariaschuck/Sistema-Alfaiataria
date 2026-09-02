@@ -378,6 +378,29 @@ export default function Shell() {
     });
   }
 
+  // Sincroniza o status de pagamento da Fabiana no pedido com a despesa
+  // vinculada em Contas a Pagar — só na direção despesa→pedido, e só no
+  // resultado final: pagamento parcial em Contas a Pagar não mexe no
+  // pedido, só quando a despesa fica totalmente paga (aí marca "Pago"
+  // no pedido) ou volta a não estar mais totalmente paga (reabriu — aí
+  // volta pra "Pendente"). Assim o dono só precisa dar baixa uma vez,
+  // em Contas a Pagar, e não precisa mais espelhar isso no pedido.
+  async function sincronizarPagamentoFabiana(resultado) {
+    if (!resultado?.pedidoId) return;
+    const novoStatus = resultado.status === "Pago" ? "Pago" : "Pendente";
+    await atualizarSubcampo(resultado.pedidoId, "pagoFabiana", "statusPagamento", novoStatus);
+  }
+
+  async function marcarPagaDespesa(id) {
+    const resultado = await marcarPaga(id);
+    await sincronizarPagamentoFabiana(resultado);
+  }
+
+  async function atualizarValorPagoDespesa(id, novoValorPago) {
+    const resultado = await atualizarValorPago(id, novoValorPago);
+    await sincronizarPagamentoFabiana(resultado);
+  }
+
   async function atualizarCampoPedido(pedidoId, campo, valor) {
     await atualizarCampo(pedidoId, campo, valor);
     if (campo === "status" && valor === "Em Produção") {
@@ -672,8 +695,8 @@ export default function Shell() {
                   previsoes={previsoes}
                   notas={notasVendaFutura}
                   onCriarDespesa={criarDespesa}
-                  onMarcarPaga={marcarPaga}
-                  onAtualizarValorPago={atualizarValorPago}
+                  onMarcarPaga={marcarPagaDespesa}
+                  onAtualizarValorPago={atualizarValorPagoDespesa}
                   onAtualizarDespesa={atualizarDespesa}
                   onRemoverDespesa={removerDespesa}
                   onCriarPrevisao={criarPrevisao}
