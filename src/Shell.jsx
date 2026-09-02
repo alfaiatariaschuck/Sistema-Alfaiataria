@@ -122,6 +122,7 @@ export default function Shell() {
   const { sair } = useAuth();
   const [tab, setTab] = useState("dashboard");
   const [selecionado, setSelecionado] = useState(null);
+  const [erroAutomacao, setErroAutomacao] = useState(null);
   const [selecionadaPeca, setSelecionadaPeca] = useState(null);
   const [mostrarMais, setMostrarMais] = useState(false);
   // Só o grupo da aba atual começa aberto — os outros ficam recolhidos pra
@@ -378,6 +379,17 @@ export default function Shell() {
     });
   }
 
+  // Tenta lançar a despesa da Fabiana e, se der errado (ex: SQL da
+  // migração ainda não rodado no banco), avisa em vez de falhar calado
+  // — antes um erro aqui sumia sem deixar rastro nenhum.
+  async function tentarCriarDespesaFabiana(pedido) {
+    try {
+      await criarDespesaFabianaSeNecessario(pedido);
+    } catch (e) {
+      setErroAutomacao(`Não consegui lançar a despesa da Fabiana automaticamente (${e.message}). Lance manualmente em Contas a Pagar dessa vez.`);
+    }
+  }
+
   // Sincroniza o status de pagamento da Fabiana no pedido com a despesa
   // vinculada em Contas a Pagar — só na direção despesa→pedido, e só no
   // resultado final: pagamento parcial em Contas a Pagar não mexe no
@@ -405,13 +417,28 @@ export default function Shell() {
     await atualizarCampo(pedidoId, campo, valor);
     if (campo === "status" && valor === "Em Produção") {
       const pedido = pedidos.find((p) => p.id === pedidoId);
-      if (pedido) await criarDespesaFabianaSeNecessario(pedido);
+      if (pedido) await tentarCriarDespesaFabiana(pedido);
+    }
+  }
+
+  // Cobre o caso de preencher/corrigir "Valor a pagar à Fabiana" DEPOIS
+  // que o pedido já estava em produção (na hora da mudança de status
+  // esse valor ainda estava vazio, então não tinha o que lançar) — ao
+  // editar o valor, se o pedido já estiver em produção e ainda não
+  // tiver despesa lançada, tenta lançar agora.
+  async function atualizarSubcampoPedido(pedidoId, grupo, sub, valor) {
+    await atualizarSubcampo(pedidoId, grupo, sub, valor);
+    if (grupo === "pagoFabiana" && sub === "valor") {
+      const pedido = pedidos.find((p) => p.id === pedidoId);
+      if (pedido && pedido.status === "Em Produção") {
+        await tentarCriarDespesaFabiana({ ...pedido, pagoFabiana: { ...pedido.pagoFabiana, valor } });
+      }
     }
   }
 
   const acoesPedido = {
     onCampo: atualizarCampoPedido,
-    onSub: atualizarSubcampo,
+    onSub: atualizarSubcampoPedido,
     onRemover: (id) => {
       removerPedido(id);
       setSelecionado(null);
@@ -618,6 +645,16 @@ export default function Shell() {
           <div className="mb-5">
             <BuscaGlobal pedidos={pedidos} pecas={pecas} irPara={irPara} irParaPeca={irParaPeca} />
           </div>
+          {erroAutomacao && (
+            <div className="mb-4 px-4 py-3 rounded flex items-start justify-between gap-3" style={{ background: "#F6E3D9", color: "#9C4A1E" }}>
+              <div className="flex items-start gap-2">
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} /> <span>{erroAutomacao}</span>
+              </div>
+              <button onClick={() => setErroAutomacao(null)} style={{ fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+                fechar
+              </button>
+            </div>
+          )}
           {(erro || erroPecas || erroPlanos) && (
             <div className="mb-4 px-4 py-3 rounded" style={{ background: "#F6E3D9", color: "#9C4A1E" }}>
               <div className="flex items-start gap-2">
