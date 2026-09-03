@@ -925,7 +925,7 @@ export default function Shell() {
                 <ResultadoMensal pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
               {tab === "metas" && !loadingPecas && (
-                <Metas pedidos={pedidos} pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
+                <Metas pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
               {tab === "vendedor" && !loading && (
                 <VendedorGestao pedidos={pedidos} irParaPedido={irPara} custoAviamentosPorPecaBase={custoPorPecaBase} />

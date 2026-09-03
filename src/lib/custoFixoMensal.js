@@ -55,6 +55,45 @@ export function custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaude
   return prolaboreMetade + rateavel * fatia;
 }
 
+// Categorias de despesa que já entram no custo do mês por outro caminho
+// (direto da config de Custos do Ateliê/Camisaria) — contar de novo aqui
+// a partir da despesa lançada em Contas a Pagar duplicaria o valor.
+const CATEGORIAS_JA_CONTADAS = ["Pró-labore", "Aluguel", "Água/Luz/Internet", "Plano de Saúde"];
+
+// Quanto de TODAS as outras despesas lançadas em Contas a Pagar (frete,
+// fornecedor avulso, manutenção, o que for) cai em cada linha nesse mês —
+// pra elas passarem a contar de verdade no custo real usado na Meta e no
+// Ponto de Equilíbrio, não só ficarem só no Contas a Pagar. Usa o
+// vencimento pra decidir o mês (a despesa já é um gasto assumido, esteja
+// paga ou não) e o mesmo critério de rateio já usado em Contas a Pagar:
+// Camisaria/Alfaiataria discriminados quando a despesa tem os dois
+// campos preenchidos, senão a "Linha" marcada inteira, senão cai como
+// Compartilhado (rateado por receita, igual ao resto do compartilhado).
+// Despesas com "pedidoId" são as da mão de obra da Fabiana, geradas
+// sozinhas a partir do pedido — já contam via custoMaoDeObraFabianaEfetivo,
+// então ficam de fora daqui pra não duplicar.
+export function outrasDespesasDoMes(despesas, chaveMes) {
+  const totais = { Camisaria: 0, Alfaiataria: 0, Compartilhado: 0 };
+  (despesas || [])
+    .filter((d) => d.vencimento && d.vencimento.slice(0, 7) === chaveMes && !d.pedidoId && !CATEGORIAS_JA_CONTADAS.includes(d.categoria))
+    .forEach((d) => {
+      const total = (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
+      const cam = parseFloat(d.valorCamisaria) || 0;
+      const alf = parseFloat(d.valorAlfaiataria) || 0;
+      if (cam > 0 || alf > 0) {
+        totais.Camisaria += cam;
+        totais.Alfaiataria += alf;
+        const resto = total - cam - alf;
+        if (resto > 0) totais.Compartilhado += resto;
+      } else if (d.linha === "Camisaria" || d.linha === "Alfaiataria") {
+        totais[d.linha] += total;
+      } else {
+        totais.Compartilhado += total;
+      }
+    });
+  return totais;
+}
+
 // Meta de faturamento com margem — custo total ÷ (1 − margem/100), a
 // mesma conta da Calculadora de preço mínimo. Margem 0 = ponto de
 // equilíbrio (só cobre o custo, sem sobrar nada); acima disso já embute o

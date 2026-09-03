@@ -12,6 +12,7 @@ import {
   custoCompartilhadoRateado,
   custoMaoDeObraFabianaEfetivo,
   metaComMargem,
+  outrasDespesasDoMes,
 } from "../lib/custoFixoMensal";
 import { supabase } from "../supabaseClient";
 
@@ -131,7 +132,7 @@ function BlocoMetaLinha({ titulo, Icone, vendido, meta, calculada, metaCalculada
   );
 }
 
-export default function Metas({ pedidos, pecas, equipe = [], custoAviamentosPorPecaBase = {} }) {
+export default function Metas({ pedidos, pecas, despesas = [], equipe = [], custoAviamentosPorPecaBase = {} }) {
   const [metaCamisaria, setMetaCamisaria] = useState(null);
   const [metaAlfaiataria, setMetaAlfaiataria] = useState(null);
   const [margemDesejada, setMargemDesejada] = useState(MARGEM_DESEJADA_PADRAO);
@@ -174,7 +175,8 @@ export default function Metas({ pedidos, pecas, equipe = [], custoAviamentosPorP
   // corrente (mês passado já fechou). Uma meta manual (Configurações),
   // se estiver preenchida, continua tendo prioridade sobre a calculada.
   const metaCalculada = useMemo(() => {
-    if (!ehMesAtual || custosFixos.loading) return { camisaria: 0, alfaiataria: 0, pontoEquilibrioCamisaria: 0, pontoEquilibrioAlfaiataria: 0 };
+    if (!ehMesAtual || custosFixos.loading)
+      return { camisaria: 0, alfaiataria: 0, pontoEquilibrioCamisaria: 0, pontoEquilibrioAlfaiataria: 0, outrasDespesas: 0 };
     const pedidosMes = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesRealAtual);
     const pecasMes = (pecas || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesRealAtual);
     const mesAnteriorReal = mesAnteriorDe(mesRealAtual);
@@ -207,19 +209,28 @@ export default function Metas({ pedidos, pecas, equipe = [], custoAviamentosPorP
       receitaLinha: vendidoAtual.alfaiataria,
       receitaOutraLinha: vendidoAtual.camisaria,
     });
+    // Outras despesas lançadas em Contas a Pagar esse mês (fornecedor
+    // avulso, manutenção, o que não seja aluguel/luz/pró-labore/plano de
+    // saúde, que já entram acima) — rateia o "Compartilhado" delas do
+    // mesmo jeito que o resto do compartilhado, por receita.
+    const outras = outrasDespesasDoMes(despesas, mesRealAtual);
+    const fatiaCamisaria = vendidoAtual.total > 0 ? vendidoAtual.camisaria / vendidoAtual.total : 0.5;
+    const outrasCamisaria = outras.Camisaria + outras.Compartilhado * fatiaCamisaria;
+    const outrasAlfaiataria = outras.Alfaiataria + outras.Compartilhado * (1 - fatiaCamisaria);
     // Ponto de equilíbrio = o mesmo custo total com rateio, mas sem
     // margem nenhuma (0%) — é o mínimo pra não ficar no vermelho, sem
     // sobrar lucro nenhum. A meta acima já é esse número + a margem.
-    const pontoEquilibrioCamisaria = custoCamisaria + rateioCamisaria;
-    const pontoEquilibrioAlfaiataria = custoAtelie + rateioAlfaiataria;
+    const pontoEquilibrioCamisaria = custoCamisaria + rateioCamisaria + outrasCamisaria;
+    const pontoEquilibrioAlfaiataria = custoAtelie + rateioAlfaiataria + outrasAlfaiataria;
     return {
       camisaria: metaComMargem(pontoEquilibrioCamisaria, margemDesejada),
       alfaiataria: metaComMargem(pontoEquilibrioAlfaiataria, margemDesejada),
       pontoEquilibrioCamisaria,
       pontoEquilibrioAlfaiataria,
+      outrasDespesas: outras.Camisaria + outras.Alfaiataria + outras.Compartilhado,
     };
     // eslint-disable-next-line
-  }, [ehMesAtual, custosFixos.loading, pedidos, pecas, equipe, custoAviamentosPorPecaBase, margemDesejada, vendidoAtual.camisaria, vendidoAtual.alfaiataria]);
+  }, [ehMesAtual, custosFixos.loading, pedidos, pecas, despesas, equipe, custoAviamentosPorPecaBase, margemDesejada, vendidoAtual.camisaria, vendidoAtual.alfaiataria]);
 
   const metaCamisariaFinal = metaCamisaria > 0 ? metaCamisaria : metaCalculada.camisaria;
   const metaAlfaiatariaFinal = metaAlfaiataria > 0 ? metaAlfaiataria : metaCalculada.alfaiataria;
@@ -312,10 +323,17 @@ export default function Metas({ pedidos, pecas, equipe = [], custoAviamentosPorP
             </div>
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-            Meta = custo real do mês de cada linha (mão de obra, estrutura, tecido/aviamentos e a fatia rateada do
-            compartilhado) ÷ margem desejada acima — a mesma conta da Calculadora de preço mínimo, aplicada ao
-            faturamento do mês inteiro. Uma meta definida manualmente em Configurações continua tendo prioridade
-            sobre essa calculada.
+            Meta = custo real do mês de cada linha (mão de obra, estrutura, tecido/aviamentos, a fatia rateada do
+            compartilhado e as outras despesas lançadas em Contas a Pagar) ÷ margem desejada acima — a mesma conta da
+            Calculadora de preço mínimo, aplicada ao faturamento do mês inteiro. Uma meta definida manualmente em
+            Configurações continua tendo prioridade sobre essa calculada.
+            {metaCalculada.outrasDespesas > 0 && (
+              <>
+                {" "}
+                Nesse mês, <strong>{brl(metaCalculada.outrasDespesas)}</strong> de outras despesas do Contas a Pagar já
+                estão contados aqui.
+              </>
+            )}
           </div>
           <BlocoMetaLinha
             titulo="Camisaria"
