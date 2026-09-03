@@ -50,7 +50,7 @@ function novaDespesaVazia() {
 // com valor/data errado, também precisa poder ser editada, não só
 // reaberta). Extraído pra não duplicar esse formulário grande nos dois
 // lugares.
-function EditorDespesa({ edicaoDespesa, setEdicaoDespesa, valorPagoEdit, setValorPagoEdit, onSalvar }) {
+function EditorDespesa({ edicaoDespesa, setEdicaoDespesa, valorPagoEdit, setValorPagoEdit, dataPagamentoEdit, setDataPagamentoEdit, onSalvar }) {
   return (
     <div className="mt-2 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
       <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: "2fr 1fr 1fr" }}>
@@ -148,6 +148,18 @@ function EditorDespesa({ edicaoDespesa, setEdicaoDespesa, valorPagoEdit, setValo
           value={valorPagoEdit}
           onChange={(e) => setValorPagoEdit(e.target.value)}
         />
+        {(parseFloat(valorPagoEdit) || 0) > 0 && (
+          <>
+            <span style={{ fontSize: 11, color: TEXT_MUTED }}>Pago em:</span>
+            <input
+              type="date"
+              style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, width: 135 }}
+              value={dataPagamentoEdit}
+              onChange={(e) => setDataPagamentoEdit(e.target.value)}
+              title="Data que o pagamento de fato aconteceu — importante ajustar em lançamento retroativo, pra cair no mês certo na conferência com o extrato"
+            />
+          </>
+        )}
         <button onClick={onSalvar} style={{ background: INK, color: "#FFF", padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
           Salvar
         </button>
@@ -342,6 +354,7 @@ export default function ContasAPagar({
   const [novaNota, setNovaNota] = useState({ descricao: "", valor: "", dataEsperada: "" });
   const [editandoDespesa, setEditandoDespesa] = useState(null);
   const [valorPagoEdit, setValorPagoEdit] = useState("");
+  const [dataPagamentoEdit, setDataPagamentoEdit] = useState(hojeISO());
   const [edicaoDespesa, setEdicaoDespesa] = useState({
     descricao: "",
     categoria: "",
@@ -742,7 +755,7 @@ export default function ContasAPagar({
     setErro(null);
     try {
       await onAtualizarDespesa(id, edicaoDespesa);
-      await onAtualizarValorPago(id, valorPagoEdit);
+      await onAtualizarValorPago(id, valorPagoEdit, dataPagamentoEdit);
       setEditandoDespesa(null);
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + ").");
@@ -783,6 +796,7 @@ export default function ContasAPagar({
     }
     setEditandoDespesa(d.id);
     setValorPagoEdit(String(d.valorPago || ""));
+    setDataPagamentoEdit(d.dataPagamento || hojeISO());
     setEdicaoDespesa({
       descricao: d.descricao,
       categoria: d.categoria,
@@ -868,6 +882,8 @@ export default function ContasAPagar({
             setEdicaoDespesa={setEdicaoDespesa}
             valorPagoEdit={valorPagoEdit}
             setValorPagoEdit={setValorPagoEdit}
+            dataPagamentoEdit={dataPagamentoEdit}
+            setDataPagamentoEdit={setDataPagamentoEdit}
             onSalvar={() => salvarEdicaoDespesa(d.id)}
           />
         )}
@@ -1341,6 +1357,8 @@ export default function ContasAPagar({
                           setEdicaoDespesa={setEdicaoDespesa}
                           valorPagoEdit={valorPagoEdit}
                           setValorPagoEdit={setValorPagoEdit}
+                          dataPagamentoEdit={dataPagamentoEdit}
+                          setDataPagamentoEdit={setDataPagamentoEdit}
                           onSalvar={() => salvarEdicaoDespesa(d.id)}
                         />
                       )}
@@ -1532,6 +1550,8 @@ export default function ContasAPagar({
                       setEdicaoDespesa={setEdicaoDespesa}
                       valorPagoEdit={valorPagoEdit}
                       setValorPagoEdit={setValorPagoEdit}
+                      dataPagamentoEdit={dataPagamentoEdit}
+                      setDataPagamentoEdit={setDataPagamentoEdit}
                       onSalvar={() => salvarEdicaoDespesa(d.id)}
                     />
                   )}

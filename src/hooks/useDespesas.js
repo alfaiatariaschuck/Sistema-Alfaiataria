@@ -154,19 +154,23 @@ export function useDespesas() {
   // Ao registrar um pagamento (total ou parcial), atualiza o status conforme
   // o quanto já foi pago do total (valor + frete) — e, se a despesa é
   // recorrente e ficou totalmente paga, já lança a próxima ocorrência
-  // (mesmo dia, um mês depois) pendente. Também grava a data de HOJE como
-  // "data_pagamento" — é o que usamos depois pra saber quanto saiu de
+  // (mesmo dia, um mês depois) pendente. Também grava a data do pagamento
+  // ("data_pagamento") — é o que usamos depois pra saber quanto saiu de
   // verdade da conta em cada mês (bate com o extrato bancário), separado
-  // do vencimento (que é só quando a conta era pra vencer). Zerar o valor
-  // pago (reabrir) limpa essa data de novo, já que não foi paga.
-  async function atualizarValorPago(id, novoValorPago) {
+  // do vencimento (que é só quando a conta era pra vencer). Por padrão é
+  // hoje, mas dá pra informar outra data (ex: lançamento retroativo de
+  // algo pago ontem ou antes) — importante principalmente perto da
+  // virada do mês, senão o pagamento cai no mês errado na conferência.
+  // Zerar o valor pago (reabrir) limpa essa data de novo, já que não foi
+  // paga.
+  async function atualizarValorPago(id, novoValorPago, dataPagamento) {
     const despesa = despesas.find((d) => d.id === id);
     return comIndicador(async () => {
       const pago = Math.max(0, Number(novoValorPago) || 0);
       const total = (parseFloat(despesa?.valor) || 0) + (parseFloat(despesa?.frete) || 0);
       const status = pago <= 0 ? "Pendente" : pago >= total ? "Pago" : "Parcial";
-      const dataPagamento = pago > 0 ? hojeISO() : null;
-      const { error } = await supabase.from("despesas").update({ valor_pago: pago, status, data_pagamento: dataPagamento }).eq("id", id);
+      const dataPagamentoFinal = pago > 0 ? dataPagamento || hojeISO() : null;
+      const { error } = await supabase.from("despesas").update({ valor_pago: pago, status, data_pagamento: dataPagamentoFinal }).eq("id", id);
       if (error) throw error;
       if (despesa && despesa.recorrente && status === "Pago") {
         const { error: errProx } = await supabase.from("despesas").insert({
