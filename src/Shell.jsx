@@ -927,7 +927,9 @@ export default function Shell() {
               {tab === "metas" && !loadingPecas && (
                 <Metas pedidos={pedidos} pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
-              {tab === "vendedor" && !loading && <VendedorGestao pedidos={pedidos} irParaPedido={irPara} />}
+              {tab === "vendedor" && !loading && (
+                <VendedorGestao pedidos={pedidos} irParaPedido={irPara} custoAviamentosPorPecaBase={custoPorPecaBase} />
+              )}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
               {tab === "config" && <Configuracoes despesas={despesas} onCriarDespesa={criarDespesa} />}
             </>
