@@ -57,8 +57,25 @@ export function custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaude
 
 // Categorias de despesa que já entram no custo do mês por outro caminho
 // (direto da config de Custos do Ateliê/Camisaria) — contar de novo aqui
-// a partir da despesa lançada em Contas a Pagar duplicaria o valor.
+// a partir da despesa lançada em Contas a Pagar duplicaria o valor. Fica
+// só como rede de segurança extra — o filtro que realmente evita a
+// duplicação é o de descrição exata, abaixo.
 const CATEGORIAS_JA_CONTADAS = ["Pró-labore", "Aluguel", "Água/Luz/Internet", "Plano de Saúde"];
+
+// Descrições EXATAS que o botão "Lançar custos fixos deste mês"
+// (Configurações) usa pra criar a despesa de cada custo fixo — inclusive
+// "Outros custos fixos PJ", que vai pra Contas a Pagar com categoria
+// "Outros" (não cai nas categorias acima) e sem esse filtro contaria em
+// dobro: uma vez pelo valor configurado, outra pela despesa lançada.
+const DESCRICOES_CUSTOS_FIXOS_AUTO = [
+  "Pró-labore",
+  "Aluguel — Ateliê",
+  "Luz — Ateliê",
+  "Aluguel — Loja",
+  "Luz — Loja",
+  "Plano de saúde empresarial",
+  "Outros custos fixos PJ",
+];
 
 // Quanto de TODAS as outras despesas lançadas em Contas a Pagar (frete,
 // fornecedor avulso, manutenção, o que for) cai em cada linha nesse mês —
@@ -75,7 +92,14 @@ const CATEGORIAS_JA_CONTADAS = ["Pró-labore", "Aluguel", "Água/Luz/Internet", 
 export function outrasDespesasDoMes(despesas, chaveMes) {
   const totais = { Camisaria: 0, Alfaiataria: 0, Compartilhado: 0 };
   (despesas || [])
-    .filter((d) => d.vencimento && d.vencimento.slice(0, 7) === chaveMes && !d.pedidoId && !CATEGORIAS_JA_CONTADAS.includes(d.categoria))
+    .filter(
+      (d) =>
+        d.vencimento &&
+        d.vencimento.slice(0, 7) === chaveMes &&
+        !d.pedidoId &&
+        !CATEGORIAS_JA_CONTADAS.includes(d.categoria) &&
+        !DESCRICOES_CUSTOS_FIXOS_AUTO.includes(d.descricao)
+    )
     .forEach((d) => {
       const total = (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
       const cam = parseFloat(d.valorCamisaria) || 0;
