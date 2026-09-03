@@ -10,6 +10,7 @@ import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
+import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import {
   BRASS,
   BRASS_SOFT,
@@ -631,6 +632,10 @@ export default function DetalhePeca({
             <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{p.observacoesProducao}</div>
           </div>
         )}
+      </Card>
+
+      <Card style={{ padding: 20 }} className="mt-6">
+        <DadosPessoaisCliente clienteId={p.clienteId} />
       </Card>
 
       <div className="flex items-center gap-3 mt-6">

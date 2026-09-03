@@ -111,6 +111,19 @@ export function useDespesas() {
     });
   }
 
+  // Só empurra a data de vencimento pra frente (ou pra qualquer outra
+  // data) sem mexer em mais nada da despesa — usado nos atalhos rápidos
+  // de "jogar vencimento pra frente" (não usa atualizarDespesa porque
+  // aquela função reescreve todos os campos de uma vez, e aqui só a
+  // data deve mudar).
+  async function atualizarVencimentoDespesa(id, novoVencimento) {
+    return comIndicador(async () => {
+      const { error } = await supabase.from("despesas").update({ vencimento: novoVencimento }).eq("id", id);
+      if (error) throw error;
+      await recarregar();
+    });
+  }
+
   // Edita os dados de uma despesa (descrição, categoria, fornecedor, valor,
   // frete, vencimento, linha, valor por linha) — útil pra lançar um valor
   // estimado agora e corrigir depois quando a nota fiscal/valor exato
@@ -195,6 +208,7 @@ export function useDespesas() {
     marcarPaga,
     atualizarValorPago,
     atualizarValorTotalDespesa,
+    atualizarVencimentoDespesa,
     atualizarDespesa,
     removerDespesa,
   };

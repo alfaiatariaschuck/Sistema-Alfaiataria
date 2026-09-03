@@ -209,9 +209,19 @@ function ControleBaixaPorCamisa({ despesa, pedido, onAtualizarValorPago }) {
 // antigas primeiro — quem entrou em produção primeiro é pago primeiro —
 // e cada despesa individual continua acessível em "ver detalhes" pra
 // quando precisar editar ou conferir um pedido específico.
-function ContaFabiAgrupada({ despesas, pedidos, onAtualizarValorPago, renderLinha }) {
+function ContaFabiAgrupada({ despesas, pedidos, onAtualizarValorPago, onAtualizarVencimentoDespesa, renderLinha }) {
   const [aberto, setAberto] = useState(false);
   const ordenadas = [...despesas].sort((a, b) => (a.vencimento || "").localeCompare(b.vencimento || ""));
+  // Vencimento único pra conta inteira — em vez de mudar pedido por
+  // pedido, mudar aqui empurra o vencimento de todas as despesas do
+  // grupo pra mesma data nova de uma vez.
+  const vencimentoGeral = ordenadas[0]?.vencimento || "";
+  function mudarVencimentoGeral(novaData) {
+    if (!novaData) return;
+    despesas.forEach((d) => {
+      if (d.vencimento !== novaData) onAtualizarVencimentoDespesa(d.id, novaData);
+    });
+  }
   const infos = ordenadas.map((d) => {
     const pedido = pedidos.find((p) => p.id === d.pedidoId);
     const qtd = quantidadeCamisasDe(d, pedido);
@@ -243,6 +253,15 @@ function ContaFabiAgrupada({ despesas, pedidos, onAtualizarValorPago, renderLinh
           <div style={{ fontSize: 13, fontWeight: 700 }}>Fabi — mão de obra</div>
           <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
             {despesas.length} pedido{despesas.length > 1 ? "s" : ""} em aberto{atrasada ? " · tem vencimento atrasado" : ""}
+          </div>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span style={{ fontSize: 11, color: TEXT_MUTED }}>Vencimento (todos):</span>
+            <input
+              type="date"
+              value={vencimentoGeral}
+              onChange={(e) => mudarVencimentoGeral(e.target.value)}
+              style={{ ...inputStyle, padding: "4px 8px", fontSize: 12, width: 135 }}
+            />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -293,6 +312,7 @@ export default function ContasAPagar({
   onMarcarPaga,
   onAtualizarValorPago,
   onAtualizarDespesa,
+  onAtualizarVencimentoDespesa,
   onRemoverDespesa,
   onCriarPrevisao,
   onAtualizarPrevisao,
@@ -436,7 +456,12 @@ export default function ContasAPagar({
     .filter((d) => d.status === "Pago")
     .sort((a, b) => (b.vencimento || "").localeCompare(a.vencimento || ""))
     .slice(0, 15);
-  const despesasJanela = despesasPendentes.filter((d) => dentroDaJanela(d.vencimento)).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+  // Atrasada entra na projeção sempre, não importa o período escolhido —
+  // senão some da tela assim que passa da data e vira fácil de esquecer
+  // que ainda precisa pagar.
+  const despesasJanela = despesasPendentes
+    .filter((d) => d.vencimento < hoje || dentroDaJanela(d.vencimento))
+    .sort((a, b) => a.vencimento.localeCompare(b.vencimento));
   // Despesas geradas sozinhas a partir de um pedido (a mão de obra da
   // Fabiana) ficam agrupadas numa conta só — o dono não quer ver uma
   // linha por cliente, só "Fabi — N camisas a pagar" no total.
@@ -825,6 +850,17 @@ export default function ContasAPagar({
         </div>
         {pedidoVinculado && quantidadeCamisasDe(d, pedidoVinculado) > 1 && (
           <ControleBaixaPorCamisa despesa={d} pedido={pedidoVinculado} onAtualizarValorPago={onAtualizarValorPago} />
+        )}
+        {atrasada && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <span style={{ fontSize: 11, color: TEXT_MUTED }}>Jogar vencimento pra frente:</span>
+            <input
+              type="date"
+              value={d.vencimento}
+              onChange={(e) => e.target.value && onAtualizarVencimentoDespesa(d.id, e.target.value)}
+              style={{ ...inputStyle, padding: "4px 8px", fontSize: 12, width: 135 }}
+            />
+          </div>
         )}
         {editando && (
           <EditorDespesa
@@ -1223,6 +1259,7 @@ export default function ContasAPagar({
               despesas={despesasFabiJanela}
               pedidos={pedidos}
               onAtualizarValorPago={onAtualizarValorPago}
+              onAtualizarVencimentoDespesa={onAtualizarVencimentoDespesa}
               renderLinha={renderDespesaRow}
             />
           )}

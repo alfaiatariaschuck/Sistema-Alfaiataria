@@ -175,7 +175,7 @@ export default function Shell() {
   const { historicoVendas } = useHistoricoVendas();
   const { clientesComTelefone } = useTelefonesClientes();
   const { estoque: estoqueTecidos, movimentos: movimentosEstoque, consumoPorTecido, cadastrarTecido, registrarCompra, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
-  const { despesas, criarDespesa, marcarPaga, atualizarValorPago, atualizarValorTotalDespesa, atualizarDespesa, removerDespesa } = useDespesas();
+  const { despesas, criarDespesa, marcarPaga, atualizarValorPago, atualizarValorTotalDespesa, atualizarVencimentoDespesa, atualizarDespesa, removerDespesa } = useDespesas();
   const { equipe, loading: loadingEquipe, adicionarMembro, atualizarMembro, removerMembro } = useEquipeProducao();
   const { fornecedores, loading: loadingFornecedores, adicionarFornecedor, atualizarFornecedor, removerFornecedor } = useFornecedores();
   const { itens: aviamentos, loading: loadingAviamentos, adicionarItem: adicionarAviamento, atualizarItem: atualizarAviamento, removerItem: removerAviamento, custoPorPecaBase } = useAviamentos();
@@ -789,6 +789,7 @@ export default function Shell() {
                   onMarcarPaga={marcarPagaDespesa}
                   onAtualizarValorPago={atualizarValorPagoDespesa}
                   onAtualizarDespesa={atualizarDespesa}
+                  onAtualizarVencimentoDespesa={atualizarVencimentoDespesa}
                   onRemoverDespesa={removerDespesa}
                   onCriarPrevisao={criarPrevisao}
                   onAtualizarPrevisao={atualizarPrevisao}

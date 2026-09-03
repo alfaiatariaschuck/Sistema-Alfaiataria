@@ -10,6 +10,7 @@ import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import LinkAcompanhamento from "../components/LinkAcompanhamento";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
+import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
@@ -481,6 +482,10 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
         <Field label="Observações">
           <textarea style={{ ...inputStyle, minHeight: 70 }} value={p.observacoes || ""} onChange={(e) => set("observacoes", e.target.value)} />
         </Field>
+      </Card>
+
+      <Card style={{ padding: 20 }} className="mt-6">
+        <DadosPessoaisCliente clienteId={p.clienteId} />
       </Card>
 
       <div className="flex items-center gap-3 mt-6">
