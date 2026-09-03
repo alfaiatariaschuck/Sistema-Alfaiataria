@@ -174,7 +174,7 @@ export default function Metas({ pedidos, pecas, equipe = [], custoAviamentosPorP
   // corrente (mês passado já fechou). Uma meta manual (Configurações),
   // se estiver preenchida, continua tendo prioridade sobre a calculada.
   const metaCalculada = useMemo(() => {
-    if (!ehMesAtual || custosFixos.loading) return { camisaria: 0, alfaiataria: 0 };
+    if (!ehMesAtual || custosFixos.loading) return { camisaria: 0, alfaiataria: 0, pontoEquilibrioCamisaria: 0, pontoEquilibrioAlfaiataria: 0 };
     const pedidosMes = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesRealAtual);
     const pecasMes = (pecas || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesRealAtual);
     const mesAnteriorReal = mesAnteriorDe(mesRealAtual);
@@ -207,9 +207,16 @@ export default function Metas({ pedidos, pecas, equipe = [], custoAviamentosPorP
       receitaLinha: vendidoAtual.alfaiataria,
       receitaOutraLinha: vendidoAtual.camisaria,
     });
+    // Ponto de equilíbrio = o mesmo custo total com rateio, mas sem
+    // margem nenhuma (0%) — é o mínimo pra não ficar no vermelho, sem
+    // sobrar lucro nenhum. A meta acima já é esse número + a margem.
+    const pontoEquilibrioCamisaria = custoCamisaria + rateioCamisaria;
+    const pontoEquilibrioAlfaiataria = custoAtelie + rateioAlfaiataria;
     return {
-      camisaria: metaComMargem(custoCamisaria + rateioCamisaria, margemDesejada),
-      alfaiataria: metaComMargem(custoAtelie + rateioAlfaiataria, margemDesejada),
+      camisaria: metaComMargem(pontoEquilibrioCamisaria, margemDesejada),
+      alfaiataria: metaComMargem(pontoEquilibrioAlfaiataria, margemDesejada),
+      pontoEquilibrioCamisaria,
+      pontoEquilibrioAlfaiataria,
     };
     // eslint-disable-next-line
   }, [ehMesAtual, custosFixos.loading, pedidos, pecas, equipe, custoAviamentosPorPecaBase, margemDesejada, vendidoAtual.camisaria, vendidoAtual.alfaiataria]);
@@ -217,6 +224,7 @@ export default function Metas({ pedidos, pecas, equipe = [], custoAviamentosPorP
   const metaCamisariaFinal = metaCamisaria > 0 ? metaCamisaria : metaCalculada.camisaria;
   const metaAlfaiatariaFinal = metaAlfaiataria > 0 ? metaAlfaiataria : metaCalculada.alfaiataria;
   const metaTotal = (metaCamisariaFinal || 0) + (metaAlfaiatariaFinal || 0) || null;
+  const pontoEquilibrioGeral = (metaCalculada.pontoEquilibrioCamisaria || 0) + (metaCalculada.pontoEquilibrioAlfaiataria || 0);
 
   // Projeção simples: pega o ritmo diário até agora e estica pro mês inteiro
   // — só faz sentido pro mês corrente (mês passado já fechou).
@@ -333,6 +341,42 @@ export default function Metas({ pedidos, pecas, equipe = [], custoAviamentosPorP
               {vendidoAtual.total >= metaTotal ? "meta batida! 🎉" : `faltam ${brl(metaTotal - vendidoAtual.total)}`}
             </div>
           )}
+        </Card>
+      )}
+
+      {ehMesAtual && pontoEquilibrioGeral > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 16, fontWeight: 600 }}>
+            Ponto de equilíbrio esse mês
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+            O mínimo que precisa entrar pra cobrir o custo do mês, sem margem nenhuma — abaixo disso é prejuízo, em
+            cima disso (até a meta) já começa a sobrar alguma coisa, mas só a partir da meta é que sobra a margem
+            desejada inteira.
+          </div>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Camisaria</div>
+              <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(metaCalculada.pontoEquilibrioCamisaria)}</div>
+              <div style={{ fontSize: 10, color: vendidoAtual.camisaria >= metaCalculada.pontoEquilibrioCamisaria ? VERDE : VERMELHO }}>
+                {vendidoAtual.camisaria >= metaCalculada.pontoEquilibrioCamisaria ? "já cobre o custo" : `faltam ${brl(metaCalculada.pontoEquilibrioCamisaria - vendidoAtual.camisaria)} pra cobrir`}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Alfaiataria</div>
+              <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(metaCalculada.pontoEquilibrioAlfaiataria)}</div>
+              <div style={{ fontSize: 10, color: vendidoAtual.alfaiataria >= metaCalculada.pontoEquilibrioAlfaiataria ? VERDE : VERMELHO }}>
+                {vendidoAtual.alfaiataria >= metaCalculada.pontoEquilibrioAlfaiataria ? "já cobre o custo" : `faltam ${brl(metaCalculada.pontoEquilibrioAlfaiataria - vendidoAtual.alfaiataria)} pra cobrir`}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Geral (as duas juntas)</div>
+              <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: BRASS }}>{brl(pontoEquilibrioGeral)}</div>
+              <div style={{ fontSize: 10, color: vendidoAtual.total >= pontoEquilibrioGeral ? VERDE : VERMELHO }}>
+                {vendidoAtual.total >= pontoEquilibrioGeral ? "já cobre o custo" : `faltam ${brl(pontoEquilibrioGeral - vendidoAtual.total)} pra cobrir`}
+              </div>
+            </div>
+          </div>
         </Card>
       )}
 

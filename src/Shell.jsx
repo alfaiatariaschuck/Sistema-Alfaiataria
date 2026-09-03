@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   TrendingUp,
+  UserCheck,
   Users,
   Users2,
   Wallet,
@@ -81,6 +82,7 @@ import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
 import ContasAPagar from "./pages/ContasAPagar";
 import Metas from "./pages/Metas";
+import VendedorGestao from "./pages/VendedorGestao";
 import BuscaGlobal from "./components/BuscaGlobal";
 
 const NAV = [
@@ -91,6 +93,7 @@ const NAV = [
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false, grupo: "Camisaria" },
   { id: "custos-camisaria", label: "Custos da Camisaria", icon: PiggyBank, primary: false, grupo: "Camisaria" },
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false, grupo: "Camisaria" },
+  { id: "vendedor", label: "Vendedor", icon: UserCheck, primary: false, grupo: "Camisaria" },
 
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false, grupo: "Alfaiataria" },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true, grupo: "Alfaiataria" },
@@ -924,6 +927,7 @@ export default function Shell() {
               {tab === "metas" && !loadingPecas && (
                 <Metas pedidos={pedidos} pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
+              {tab === "vendedor" && !loading && <VendedorGestao pedidos={pedidos} irParaPedido={irPara} />}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
               {tab === "config" && <Configuracoes despesas={despesas} onCriarDespesa={criarDespesa} />}
             </>
