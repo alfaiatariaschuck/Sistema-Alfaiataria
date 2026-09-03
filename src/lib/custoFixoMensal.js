@@ -118,6 +118,24 @@ export function outrasDespesasDoMes(despesas, chaveMes) {
   return totais;
 }
 
+// Quanto foi de fato PAGO (dinheiro que saiu de verdade) num mês — usa a
+// data do último pagamento registrado (data_pagamento), não o
+// vencimento. É a conta certa pra bater com o extrato bancário no fim do
+// mês; é DIFERENTE do "custo do mês" (esse usa vencimento e mede
+// compromisso assumido, não saída de caixa de fato — os dois são úteis,
+// só que pra perguntas diferentes). Conta tudo que foi pago, sem
+// exclusão nenhuma (inclusive Fabiana e os custos fixos lançados pelo
+// botão de Configurações) — aqui não tem risco de duplicar porque essa
+// conta não se mistura com o custo por vencimento em nenhum outro lugar.
+// Limitação: se uma despesa foi paga em partes em meses diferentes, o
+// valor pago acumulado fica todo atribuído ao mês do pagamento MAIS
+// RECENTE — não existe um histórico de cada parcela paga separada.
+export function pagoNoMes(despesas, chaveMes) {
+  return (despesas || [])
+    .filter((d) => d.dataPagamento && d.dataPagamento.slice(0, 7) === chaveMes && (parseFloat(d.valorPago) || 0) > 0)
+    .reduce((s, d) => s + (parseFloat(d.valorPago) || 0), 0);
+}
+
 // Meta de faturamento com margem — custo total ÷ (1 − margem/100), a
 // mesma conta da Calculadora de preço mínimo. Margem 0 = ponto de
 // equilíbrio (só cobre o custo, sem sobrar nada); acima disso já embute o

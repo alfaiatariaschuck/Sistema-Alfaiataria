@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { hojeISO } from "../lib/helpers";
 
 // Soma um mês mantendo o mesmo dia — quando o mês seguinte é mais curto
 // (ex: vencimento dia 31 e o mês seguinte só tem 28/29/30), usa o último
@@ -24,6 +25,7 @@ function rowParaDespesa(row) {
     valor: row.valor,
     frete: row.frete ?? 0,
     valorPago: row.valor_pago ?? 0,
+    dataPagamento: row.data_pagamento || null,
     vencimento: row.vencimento,
     status: row.status,
     recorrente: !!row.recorrente,
@@ -152,14 +154,19 @@ export function useDespesas() {
   // Ao registrar um pagamento (total ou parcial), atualiza o status conforme
   // o quanto já foi pago do total (valor + frete) — e, se a despesa é
   // recorrente e ficou totalmente paga, já lança a próxima ocorrência
-  // (mesmo dia, um mês depois) pendente.
+  // (mesmo dia, um mês depois) pendente. Também grava a data de HOJE como
+  // "data_pagamento" — é o que usamos depois pra saber quanto saiu de
+  // verdade da conta em cada mês (bate com o extrato bancário), separado
+  // do vencimento (que é só quando a conta era pra vencer). Zerar o valor
+  // pago (reabrir) limpa essa data de novo, já que não foi paga.
   async function atualizarValorPago(id, novoValorPago) {
     const despesa = despesas.find((d) => d.id === id);
     return comIndicador(async () => {
       const pago = Math.max(0, Number(novoValorPago) || 0);
       const total = (parseFloat(despesa?.valor) || 0) + (parseFloat(despesa?.frete) || 0);
       const status = pago <= 0 ? "Pendente" : pago >= total ? "Pago" : "Parcial";
-      const { error } = await supabase.from("despesas").update({ valor_pago: pago, status }).eq("id", id);
+      const dataPagamento = pago > 0 ? hojeISO() : null;
+      const { error } = await supabase.from("despesas").update({ valor_pago: pago, status, data_pagamento: dataPagamento }).eq("id", id);
       if (error) throw error;
       if (despesa && despesa.recorrente && status === "Pago") {
         const { error: errProx } = await supabase.from("despesas").insert({

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Layers, Scissors, Shirt, Target, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Landmark, Layers, Scissors, Shirt, Target, TrendingUp } from "lucide-react";
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
 import MetaPorMes from "../components/MetaPorMes";
 import QuantidadePorMes from "../components/QuantidadePorMes";
@@ -13,6 +13,7 @@ import {
   custoMaoDeObraFabianaEfetivo,
   metaComMargem,
   outrasDespesasDoMes,
+  pagoNoMes,
 } from "../lib/custoFixoMensal";
 import { supabase } from "../supabaseClient";
 
@@ -168,6 +169,11 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [], cust
   const vendidoAnterior = vendidoNoMes(pedidos, pecas, mesAnterior);
   const grade = gradePorTipo(pedidos, pecas, mesSelecionado);
 
+  // Quanto saiu de verdade da conta nesse mês (data do pagamento, não
+  // vencimento) — pra bater com o extrato bancário. Funciona pra
+  // qualquer mês, inclusive os já fechados (não só o mês corrente).
+  const pagoDoMes = pagoNoMes(despesas, mesSelecionado);
+
   // Meta calculada a partir do custo real do mês (equipe/Fabiana,
   // estrutura, tecido/aviamentos, fatia do compartilhado) ÷ margem
   // desejada — a mesma conta da Calculadora de preço mínimo, só que pro
@@ -295,6 +301,24 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [], cust
         />
         {ehMesAtual && <StatCard label="Projeção pro fim do mês" value={brl(projecaoFimDoMes)} icon={TrendingUp} />}
       </div>
+
+      <Card style={{ padding: 20 }} className="mb-8">
+        <div className="flex items-center gap-2 mb-1">
+          <Landmark size={16} color={BRASS} />
+          <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+            Pago no mês (bate com o extrato bancário)
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+          Diferente da Meta/Ponto de Equilíbrio abaixo (que usa o vencimento e mede o compromisso do mês, pago ou
+          não) — aqui é o dinheiro que <strong>de fato saiu da conta</strong> em {nomeDoMes(mesSelecionado)}, pela
+          data em que você registrou cada pagamento. Se uma despesa foi paga em partes em meses diferentes, o total
+          pago fica todo no mês do pagamento mais recente — não temos ainda um histórico parcela por parcela.
+        </div>
+        <div className="fx-mono" style={{ fontSize: 22, fontWeight: 700, color: BRASS }}>
+          {brl(pagoDoMes)}
+        </div>
+      </Card>
 
       {ehMesAtual && (
         <Card style={{ padding: 20 }} className="mb-6">
