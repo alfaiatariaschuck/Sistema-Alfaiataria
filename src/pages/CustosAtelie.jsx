@@ -1,17 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { AlertTriangle, CalendarClock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, Empty, PageTitle, StatCard } from "../components/ui";
 import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
 import { BRASS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { custoMensalDe } from "../lib/custoEquipe";
-import { supabase } from "../supabaseClient";
+import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
-const CHAVE_ALUGUEL = "custo_aluguel_mensal";
-const CHAVE_LUZ = "custo_luz_mensal";
-const CHAVE_PROLABORE = "custo_prolabore_mensal";
-const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
-const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
 const MESES_HISTORICO = 6;
 
 // Rótulo compacto pra caber no gráfico de barras (ex: R$4,5k) — o valor
@@ -37,29 +32,7 @@ function contarSextasNoMes(ano, mes) {
 }
 
 export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase = {}, receitaMesOutraLinha = 0 }) {
-  const [aluguel, setAluguel] = useState(0);
-  const [luz, setLuz] = useState(0);
-  const [prolabore, setProlabore] = useState(0);
-  const [custosFixosPJ, setCustosFixosPJ] = useState(0);
-  const [planoSaudePJ, setPlanoSaudePJ] = useState(0);
-  const [carregandoConfig, setCarregandoConfig] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("config")
-        .select("chave, valor")
-        .in("chave", [CHAVE_ALUGUEL, CHAVE_LUZ, CHAVE_PROLABORE, CHAVE_CUSTOS_FIXOS_PJ, CHAVE_PLANO_SAUDE_PJ]);
-      (data || []).forEach((row) => {
-        if (row.chave === CHAVE_ALUGUEL) setAluguel(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_LUZ) setLuz(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_PROLABORE) setProlabore(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_CUSTOS_FIXOS_PJ) setCustosFixosPJ(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_PLANO_SAUDE_PJ) setPlanoSaudePJ(parseFloat(row.valor) || 0);
-      });
-      setCarregandoConfig(false);
-    })();
-  }, []);
+  const { aluguelAtelie: aluguel, luzAtelie: luz, prolabore, custosFixosPJ, planoSaudePJ, loading: carregandoConfig } = useConfigCustosFixos();
 
   const hoje = new Date(hojeISO() + "T00:00:00");
   const anoAtual = hoje.getFullYear();

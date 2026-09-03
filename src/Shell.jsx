@@ -921,7 +921,9 @@ export default function Shell() {
               {tab === "resultado-mensal" && !loadingPecas && !loading && (
                 <ResultadoMensal pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
-              {tab === "metas" && !loadingPecas && <Metas pedidos={pedidos} pecas={pecas} />}
+              {tab === "metas" && !loadingPecas && (
+                <Metas pedidos={pedidos} pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
+              )}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
               {tab === "config" && <Configuracoes despesas={despesas} onCriarDespesa={criarDespesa} />}
             </>

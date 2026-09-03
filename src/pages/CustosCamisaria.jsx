@@ -4,13 +4,8 @@ import { BarraDuasSeries, Card, PageTitle, StatCard } from "../components/ui";
 import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
 import { BRASS, COR_REAL, COR_REFERENCIA, TEXT_MUTED } from "../lib/constants";
 import { brl, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
-import { supabase } from "../supabaseClient";
+import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
-const CHAVE_ALUGUEL_LOJA = "custo_aluguel_loja_mensal";
-const CHAVE_LUZ_LOJA = "custo_luz_loja_mensal";
-const CHAVE_PROLABORE = "custo_prolabore_mensal";
-const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
-const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
 const MESES_HISTORICO = 6;
 
 function brlCompacto(v) {
@@ -24,29 +19,7 @@ function brlCompacto(v) {
 // da loja, e os custos compartilhados da empresa (pró-labore, PJ, plano
 // de saúde) são rateados por receita com a linha de alfaiataria.
 export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, custoAviamentosPorPecaBase = {} }) {
-  const [aluguelLoja, setAluguelLoja] = useState(0);
-  const [luzLoja, setLuzLoja] = useState(0);
-  const [prolabore, setProlabore] = useState(0);
-  const [custosFixosPJ, setCustosFixosPJ] = useState(0);
-  const [planoSaudePJ, setPlanoSaudePJ] = useState(0);
-  const [carregandoConfig, setCarregandoConfig] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("config")
-        .select("chave, valor")
-        .in("chave", [CHAVE_ALUGUEL_LOJA, CHAVE_LUZ_LOJA, CHAVE_PROLABORE, CHAVE_CUSTOS_FIXOS_PJ, CHAVE_PLANO_SAUDE_PJ]);
-      (data || []).forEach((row) => {
-        if (row.chave === CHAVE_ALUGUEL_LOJA) setAluguelLoja(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_LUZ_LOJA) setLuzLoja(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_PROLABORE) setProlabore(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_CUSTOS_FIXOS_PJ) setCustosFixosPJ(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_PLANO_SAUDE_PJ) setPlanoSaudePJ(parseFloat(row.valor) || 0);
-      });
-      setCarregandoConfig(false);
-    })();
-  }, []);
+  const { aluguelLoja, luzLoja, prolabore, custosFixosPJ, planoSaudePJ, loading: carregandoConfig } = useConfigCustosFixos();
 
   const hoje = new Date(hojeISO() + "T00:00:00");
   const anoAtual = hoje.getFullYear();
