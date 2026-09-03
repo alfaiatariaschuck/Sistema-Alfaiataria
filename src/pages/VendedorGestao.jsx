@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ClipboardList, Repeat, ShoppingBag, TrendingUp, UserPlus } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, INK, LINE, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
@@ -8,9 +8,16 @@ import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { useVendedores } from "../hooks/useVendedores";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const MESES_CURTO = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const NOME_DONO = "Tales";
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
+const MESES_HISTORICO = 12;
+
+function rotuloMesCurto(chave) {
+  const [ano, mes] = chave.split("-");
+  return `${MESES_CURTO[parseInt(mes, 10) - 1]}/${ano.slice(2)}`;
+}
 
 function mesAnteriorDe(mesStr) {
   const [ano, mes] = mesStr.split("-").map(Number);
@@ -79,6 +86,22 @@ export default function VendedorGestao({ pedidos, irParaPedido, custoAviamentosP
   }
 
   const doMesTodos = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesSelecionado);
+
+  // Histórico dos últimos MESES_HISTORICO meses, mês mais recente primeiro
+  // — mesmo padrão de "últimos 12 meses" usado em Comparativo Mensal.
+  const mesesHistorico = useMemo(() => {
+    const hoje = new Date();
+    const chaves = [];
+    for (let i = 0; i < MESES_HISTORICO; i++) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      chaves.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    return chaves.map((chaveMes) => {
+      const doMes = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === chaveMes);
+      return { chaveMes, porPessoa: pessoas.map((pessoa) => ({ pessoa, stats: estatisticasDe(pedidosDaPessoa(pessoa.id, doMes), custoAviamentosPorPecaBase, maoDeObraPadrao) })) };
+    });
+    // eslint-disable-next-line
+  }, [pedidos, pessoas.length, custoAviamentosPorPecaBase, maoDeObraPadrao]);
 
   const listaOrdenada =
     pessoaFiltro === "ambos"
@@ -280,6 +303,59 @@ export default function VendedorGestao({ pedidos, irParaPedido, custoAviamentosP
             </button>
           );
         })}
+      </Card>
+
+      <Card style={{ padding: 20 }} className="mt-6">
+        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+          Histórico — últimos {MESES_HISTORICO} meses
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+          Camisas vendidas, valor e margem de cada mês, mês mais recente primeiro — exclui Doação.
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: pessoas.length > 1 ? 560 : 420 }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${LINE}` }}>
+                <th rowSpan={2} style={{ textAlign: "left", padding: "6px 10px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase", verticalAlign: "bottom" }}>
+                  Mês
+                </th>
+                {pessoas.map((pessoa) => (
+                  <th key={pessoa.id} colSpan={3} style={{ textAlign: "center", padding: "6px 10px", fontWeight: 700, fontSize: 12, color: INK, borderBottom: `1px solid ${LINE}` }}>
+                    {pessoa.nome}
+                  </th>
+                ))}
+              </tr>
+              <tr style={{ borderBottom: `1px solid ${LINE}` }}>
+                {pessoas.map((pessoa) => (
+                  <React.Fragment key={pessoa.id}>
+                    <th style={{ textAlign: "right", padding: "4px 8px", fontWeight: 600, fontSize: 10, color: TEXT_MUTED }}>Camisas</th>
+                    <th style={{ textAlign: "right", padding: "4px 8px", fontWeight: 600, fontSize: 10, color: TEXT_MUTED }}>Valor</th>
+                    <th style={{ textAlign: "right", padding: "4px 8px", fontWeight: 600, fontSize: 10, color: TEXT_MUTED }}>Margem</th>
+                  </React.Fragment>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {mesesHistorico.map((m) => (
+                <tr key={m.chaveMes} style={{ borderBottom: `1px solid ${LINE}` }}>
+                  <td style={{ padding: "6px 10px", fontWeight: 600, whiteSpace: "nowrap" }}>{rotuloMesCurto(m.chaveMes)}</td>
+                  {m.porPessoa.map(({ pessoa, stats }) => (
+                    <React.Fragment key={pessoa.id}>
+                      <td className="fx-mono" style={{ padding: "6px 8px", textAlign: "right" }}>{stats.camisas}</td>
+                      <td className="fx-mono" style={{ padding: "6px 8px", textAlign: "right" }}>{brl(stats.valor)}</td>
+                      <td
+                        className="fx-mono"
+                        style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: stats.valor > 0 ? (stats.margem >= 0 ? VERDE : VERMELHO) : TEXT_MUTED }}
+                      >
+                        {stats.valor > 0 ? brl(stats.margem) : "—"}
+                      </td>
+                    </React.Fragment>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </div>
   );
