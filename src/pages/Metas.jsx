@@ -79,7 +79,7 @@ function gradePorTipo(pedidos, pecas, mes) {
 // Bloco de meta de uma linha — vendido/meta, falta, quanto precisa
 // vender por dia no que resta do mês, e a barra de progresso. Usado duas
 // vezes (Camisaria, Alfaiataria), sempre nessa ordem.
-function BlocoMetaLinha({ titulo, Icone, vendido, meta, calculada, diasRestantes }) {
+function BlocoMetaLinha({ titulo, Icone, vendido, meta, calculada, metaCalculadaComparar, diasRestantes }) {
   if (!(meta > 0)) {
     return (
       <div className="mb-4" style={{ fontSize: 12, color: TEXT_MUTED }}>
@@ -93,6 +93,11 @@ function BlocoMetaLinha({ titulo, Icone, vendido, meta, calculada, diasRestantes
   const percentual = Math.min(100, (vendido / meta) * 100);
   const falta = Math.max(0, meta - vendido);
   const porDia = falta > 0 ? falta / diasRestantes : 0;
+  // Quando a meta em uso é a manual (Configurações), mostra do lado a
+  // calculada (custo ÷ margem) pra dar pra comparar as duas e ver se
+  // ainda fazem sentido uma com a outra.
+  const divergeMuito =
+    !calculada && metaCalculadaComparar > 0 && Math.abs(meta - metaCalculadaComparar) / metaCalculadaComparar > 0.15;
   return (
     <div className="mb-5">
       <div className="flex justify-between items-center mb-1 flex-wrap gap-1" style={{ fontSize: 13 }}>
@@ -107,6 +112,12 @@ function BlocoMetaLinha({ titulo, Icone, vendido, meta, calculada, diasRestantes
       <div style={{ background: LINE, borderRadius: 4, height: 8, marginBottom: 4 }}>
         <div style={{ width: `${percentual}%`, background: percentual >= 100 ? "#2C6E31" : BRASS, height: 8, borderRadius: 4 }} />
       </div>
+      {!calculada && metaCalculadaComparar > 0 && (
+        <div style={{ fontSize: 11, color: divergeMuito ? "#9C4A1E" : TEXT_MUTED, marginBottom: 4 }}>
+          meta calculada pelo custo real de hoje: <strong>{brl(metaCalculadaComparar)}</strong>
+          {divergeMuito ? " — bem diferente da que você definiu, vale conferir" : " — próxima da que você definiu"}
+        </div>
+      )}
       <div style={{ fontSize: 11, color: TEXT_MUTED }}>
         {falta > 0 ? (
           <>
@@ -304,6 +315,7 @@ export default function Metas({ pedidos, pecas, equipe = [], custoAviamentosPorP
             vendido={vendidoAtual.camisaria}
             meta={metaCamisariaFinal}
             calculada={!(metaCamisaria > 0)}
+            metaCalculadaComparar={metaCalculada.camisaria}
             diasRestantes={diasRestantes}
           />
           <BlocoMetaLinha
@@ -312,6 +324,7 @@ export default function Metas({ pedidos, pecas, equipe = [], custoAviamentosPorP
             vendido={vendidoAtual.alfaiataria}
             meta={metaAlfaiatariaFinal}
             calculada={!(metaAlfaiataria > 0)}
+            metaCalculadaComparar={metaCalculada.alfaiataria}
             diasRestantes={diasRestantes}
           />
           {metaTotal > 0 && (
