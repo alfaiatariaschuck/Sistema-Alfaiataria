@@ -1,17 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { AlertTriangle, Info, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, PageTitle, StatCard } from "../components/ui";
 import { BRASS, COR_REAL, COR_REFERENCIA, TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO } from "../lib/helpers";
-import { supabase } from "../supabaseClient";
+import { outrasDespesasDoMes } from "../lib/custoFixoMensal";
+import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
-const CHAVE_ALUGUEL = "custo_aluguel_mensal";
-const CHAVE_LUZ = "custo_luz_mensal";
-const CHAVE_ALUGUEL_LOJA = "custo_aluguel_loja_mensal";
-const CHAVE_LUZ_LOJA = "custo_luz_loja_mensal";
-const CHAVE_PROLABORE = "custo_prolabore_mensal";
-const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
-const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
 const MESES_HISTORICO = 6;
 // Categorias que a Configuração já lança como despesa quando aperta
 // "Lançar custos fixos deste mês" — servem só pra mostrar o status de
@@ -32,33 +26,16 @@ function brlCompacto(v) {
 // Compras, aviamentos, mão de obra) — não soma as despesas de
 // fornecedor de novo em cima disso, senão duplicaria o mesmo gasto.
 export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, custoAviamentosPorPecaBase = {} }) {
-  const [aluguel, setAluguel] = useState(0);
-  const [luz, setLuz] = useState(0);
-  const [aluguelLoja, setAluguelLoja] = useState(0);
-  const [luzLoja, setLuzLoja] = useState(0);
-  const [prolabore, setProlabore] = useState(0);
-  const [custosFixosPJ, setCustosFixosPJ] = useState(0);
-  const [planoSaudePJ, setPlanoSaudePJ] = useState(0);
-  const [carregandoConfig, setCarregandoConfig] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("config")
-        .select("chave, valor")
-        .in("chave", [CHAVE_ALUGUEL, CHAVE_LUZ, CHAVE_ALUGUEL_LOJA, CHAVE_LUZ_LOJA, CHAVE_PROLABORE, CHAVE_CUSTOS_FIXOS_PJ, CHAVE_PLANO_SAUDE_PJ]);
-      (data || []).forEach((row) => {
-        if (row.chave === CHAVE_ALUGUEL) setAluguel(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_LUZ) setLuz(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_ALUGUEL_LOJA) setAluguelLoja(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_LUZ_LOJA) setLuzLoja(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_PROLABORE) setProlabore(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_CUSTOS_FIXOS_PJ) setCustosFixosPJ(parseFloat(row.valor) || 0);
-        if (row.chave === CHAVE_PLANO_SAUDE_PJ) setPlanoSaudePJ(parseFloat(row.valor) || 0);
-      });
-      setCarregandoConfig(false);
-    })();
-  }, []);
+  const {
+    aluguelAtelie: aluguel,
+    luzAtelie: luz,
+    aluguelLoja,
+    luzLoja,
+    prolabore,
+    custosFixosPJ,
+    planoSaudePJ,
+    loading: carregandoConfig,
+  } = useConfigCustosFixos();
 
   const hoje = new Date(hojeISO() + "T00:00:00");
   const anoAtual = hoje.getFullYear();
@@ -110,7 +87,15 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
   const custoProducao = custoMaoDeObraFabiana + custoEquipeAtelie + custoTecidoCamisaria + custoTecidoAlfaiataria + custoAviamentos;
   const custoEstrutura = aluguel + luz + aluguelLoja + luzLoja;
   const custoCompartilhado = prolabore + custosFixosPJ + planoSaudePJ;
-  const custoTotal = custoProducao + custoEstrutura + custoCompartilhado;
+  // Outras despesas lançadas em Contas a Pagar (fornecedor avulso,
+  // manutenção, o que não seja uma das categorias fixas já contadas
+  // acima) — sem isso o lucro do mês ficava maior do que era de verdade,
+  // porque esse gasto não estava sendo descontado em lugar nenhum aqui.
+  const outrasDespesas = useMemo(() => {
+    const o = outrasDespesasDoMes(despesas, mesAtualStr);
+    return o.Camisaria + o.Alfaiataria + o.Compartilhado;
+  }, [despesas, mesAtualStr]);
+  const custoTotal = custoProducao + custoEstrutura + custoCompartilhado + outrasDespesas;
   const resultado = faturamento - custoTotal;
   const sePagando = resultado >= 0;
   const margemPercentual = faturamento > 0 ? (resultado / faturamento) * 100 : 0;
@@ -177,9 +162,10 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
         <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
           Este número usa o <strong>custo de produção</strong> (tecido pelo valor/metro cadastrado em Compras,
-          aviamentos, mão de obra e estrutura) — a mesma base do Custos do Ateliê e Custos da Camisaria, agora somadas.
-          Ele <strong>não soma as despesas de fornecedor lançadas em Contas a Pagar de novo</strong> em cima disso, para não
-          contar o mesmo gasto de tecido duas vezes. Abaixo, a seção de caixa mostra só se os custos fixos já foram
+          aviamentos, mão de obra e estrutura) — a mesma base do Custos do Ateliê e Custos da Camisaria, agora
+          somadas — <strong>mais qualquer outra despesa lançada em Contas a Pagar</strong> esse mês (fornecedor
+          avulso, manutenção, o que não for pró-labore/aluguel/luz/plano de saúde, que já entram pelo valor
+          configurado e não são somados de novo). Abaixo, a seção de caixa mostra só se os custos fixos já foram
           pagos — não altera esse resultado.
         </div>
       </div>
@@ -190,7 +176,8 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Produção (mão de obra + tecido + aviamentos das duas linhas) + estrutura (aluguel/luz do ateliê e da loja) +
-          custos compartilhados da empresa (pró-labore, PJ, plano de saúde).
+          custos compartilhados da empresa (pró-labore, PJ, plano de saúde) + outras despesas lançadas em Contas a
+          Pagar esse mês.
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
@@ -216,6 +203,10 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Outros PJ + plano de saúde</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custosFixosPJ + planoSaudePJ)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Outras despesas (Contas a Pagar)</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(outrasDespesas)}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo total do mês</div>
