@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { AlertTriangle, Info, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, PageTitle, StatCard } from "../components/ui";
 import { BRASS, COR_REAL, COR_REFERENCIA, TEXT_MUTED } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO } from "../lib/helpers";
+import { brl, hojeISO } from "../lib/helpers";
 import { outrasDespesasDoMes } from "../lib/custoFixoMensal";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
@@ -21,11 +21,12 @@ function brlCompacto(v) {
 
 // Resultado do mês consolidado (Camisaria + Alfaiataria juntas) — a
 // "linha de baixo" do financeiro: quanto entrou, quanto saiu de custo de
-// produção e estrutura, e o que sobrou. Usa a MESMA base de custo de
-// produção que Custos do Ateliê/Camisaria (tecido pelo valor/metro de
-// Compras, aviamentos, mão de obra) — não soma as despesas de
-// fornecedor de novo em cima disso, senão duplicaria o mesmo gasto.
-export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, custoAviamentosPorPecaBase = {} }) {
+// mão de obra/estrutura, e o que sobrou. Tecido e aviamento NÃO entram
+// por uma estimativa da peça aqui — isso já é usado só pra calcular a
+// margem no pedido. O custo real de material vem do que foi de fato
+// lançado em Contas a Pagar (outrasDespesasDoMes, abaixo), senão
+// duplicaria o mesmo gasto quando o fornecedor for pago de verdade.
+export default function ResultadoMensal({ pedidos, pecas, despesas, equipe }) {
   const {
     aluguelAtelie: aluguel,
     luzAtelie: luz,
@@ -68,23 +69,7 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
 
   const custoMaoDeObraFabiana = useMemo(() => pedidosDoMes.reduce((s, p) => s + (parseFloat(p.pagoFabiana?.valor) || 0), 0), [pedidosDoMes]);
 
-  function custoTecidoTotalDe(lista) {
-    return lista.reduce((soma, item) => soma + custoTecidoDe(item.tecidos), 0);
-  }
-  const custoTecidoCamisaria = useMemo(() => custoTecidoTotalDe(pedidosDoMes), [pedidosDoMes]);
-  const custoTecidoAlfaiataria = useMemo(() => custoTecidoTotalDe(pecasDoMes), [pecasDoMes]);
-
-  const custoAviamentosAlfaiataria = useMemo(
-    () => pecasDoMes.reduce((soma, p) => soma + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase), 0),
-    [pecasDoMes, custoAviamentosPorPecaBase]
-  );
-  // Aviamento da camisa (botões, entretela, embalagem) — peça-base
-  // "Camisa" em Aviamentos, custo fixo por unidade × quantidade vendida.
-  const quantidadeVendidaCamisaria = useMemo(() => pedidosDoMes.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0), [pedidosDoMes]);
-  const custoAviamentosCamisaria = (custoAviamentosPorPecaBase["Camisa"] || 0) * quantidadeVendidaCamisaria;
-  const custoAviamentos = custoAviamentosAlfaiataria + custoAviamentosCamisaria;
-
-  const custoProducao = custoMaoDeObraFabiana + custoEquipeAtelie + custoTecidoCamisaria + custoTecidoAlfaiataria + custoAviamentos;
+  const custoProducao = custoMaoDeObraFabiana + custoEquipeAtelie;
   const custoEstrutura = aluguel + luz + aluguelLoja + luzLoja;
   const custoCompartilhado = prolabore + custosFixosPJ + planoSaudePJ;
   // Outras despesas lançadas em Contas a Pagar (fornecedor avulso,
@@ -161,12 +146,13 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
       >
         <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
-          Este número usa o <strong>custo de produção</strong> (tecido pelo valor/metro cadastrado em Compras,
-          aviamentos, mão de obra e estrutura) — a mesma base do Custos do Ateliê e Custos da Camisaria, agora
-          somadas — <strong>mais qualquer outra despesa lançada em Contas a Pagar</strong> esse mês (fornecedor
-          avulso, manutenção, o que não for pró-labore/aluguel/luz/plano de saúde, que já entram pelo valor
-          configurado e não são somados de novo). Abaixo, a seção de caixa mostra só se os custos fixos já foram
-          pagos — não altera esse resultado.
+          Este número usa o <strong>custo de mão de obra + estrutura</strong> (equipe, Fabiana, aluguel/luz do ateliê
+          e da loja) <strong>mais qualquer despesa lançada em Contas a Pagar</strong> esse mês (material — tecido,
+          aviamento, o que for — fornecedor avulso, manutenção, o que não for pró-labore/aluguel/luz/plano de saúde,
+          que já entram pelo valor configurado e não são somados de novo). Tecido e aviamento não entram por uma
+          estimativa da peça — isso é só pra calcular a margem no pedido; aqui só conta o que você realmente lançou
+          como despesa. Abaixo, a seção de caixa mostra só se os custos fixos já foram pagos — não altera esse
+          resultado.
         </div>
       </div>
 
@@ -175,22 +161,14 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
           Composição do custo do mês
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Produção (mão de obra + tecido + aviamentos das duas linhas) + estrutura (aluguel/luz do ateliê e da loja) +
-          custos compartilhados da empresa (pró-labore, PJ, plano de saúde) + outras despesas lançadas em Contas a
-          Pagar esse mês.
+          Mão de obra das duas linhas + estrutura (aluguel/luz do ateliê e da loja) + custos compartilhados da
+          empresa (pró-labore, PJ, plano de saúde) + outras despesas lançadas em Contas a Pagar esse mês (é aqui que
+          entra o material — tecido/aviamento — pago de verdade).
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra (equipe + Fabiana)</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoEquipeAtelie + custoMaoDeObraFabiana)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Tecido (camisaria + alfaiataria)</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoTecidoCamisaria + custoTecidoAlfaiataria)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Aviamentos</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoAviamentos)}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Aluguel + luz (ateliê e loja)</div>

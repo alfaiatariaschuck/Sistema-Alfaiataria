@@ -3,8 +3,9 @@ import { AlertTriangle, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, PageTitle, StatCard } from "../components/ui";
 import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
 import { BRASS, COR_REAL, COR_REFERENCIA, TEXT_MUTED } from "../lib/constants";
-import { brl, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
+import { brl, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
+import { outrasDespesasDoMes } from "../lib/custoFixoMensal";
 
 const MESES_HISTORICO = 6;
 
@@ -18,7 +19,7 @@ function brlCompacto(v) {
 // Fabiana é por pedido (não tem salário fixo aqui), aluguel/luz são os
 // da loja, e os custos compartilhados da empresa (pró-labore, PJ, plano
 // de saúde) são rateados por receita com a linha de alfaiataria.
-export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, custoAviamentosPorPecaBase = {} }) {
+export default function CustosCamisaria({ pedidos, despesas = [], receitaMesOutraLinha = 0, custoAviamentosPorPecaBase = {} }) {
   const { aluguelLoja, luzLoja, prolabore, custosFixosPJ, planoSaudePJ, loading: carregandoConfig } = useConfigCustosFixos();
 
   const hoje = new Date(hojeISO() + "T00:00:00");
@@ -77,10 +78,6 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
   }, [mesAtualStr]);
   const custoMaoDeObraEfetivo = usarProjecaoFabiana ? custoMaoDeObraMesAnterior : custoMaoDeObra;
 
-  // Tecido dos pedidos de camisaria pedidos esse mês — mesmo padrão do
-  // Ateliê: metragem × valor/metro cadastrado em Compras.
-  const custoProducaoTecido = useMemo(() => pedidosDoMes.reduce((soma, p) => soma + custoTecidoDe(p.tecidos), 0), [pedidosDoMes]);
-
   const receitaMes = useMemo(
     () => pedidosVendidosDoMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0),
     [pedidosVendidosDoMes]
@@ -90,22 +87,26 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
     [pedidosVendidosDoMes]
   );
 
-  // Aviamento da camisa (botões, entretela, embalagem) — cadastrado por
-  // peça-base "Camisa" em Aviamentos, custo fixo por unidade (não varia
-  // por pedido como o tecido). Multiplica pela quantidade vendida no mês.
   const custoAviamentoPorCamisa = custoAviamentosPorPecaBase["Camisa"] || 0;
   const custoAviamentosMes = custoAviamentoPorCamisa * quantidadeVendidaMes;
-
-  const custoTotal = custoMaoDeObraEfetivo + custoEstrutura + custoProducaoTecido + custoAviamentosMes;
-
-  const resultado = receitaMes - custoTotal;
-  const sePagando = resultado >= 0;
 
   // Pró-labore é retirada pessoal do dono, dividida 50/50 entre as duas
   // linhas (independe de quem vendeu mais no mês). O resto do custo
   // compartilhado segue o rateio por receita.
   const receitaTotalAmbasLinhas = receitaMes + receitaMesOutraLinha;
   const fatiaCamisaria = receitaTotalAmbasLinhas > 0 ? receitaMes / receitaTotalAmbasLinhas : 0.5;
+
+  // Material pago no mês — o que de fato foi lançado em Contas a Pagar
+  // (tecido, aviamento, o que for), não uma estimativa por pedido. É
+  // esse valor que entra no custo da camisaria.
+  const outrasDespesas = useMemo(() => outrasDespesasDoMes(despesas, mesAtualStr), [despesas, mesAtualStr]);
+  const materialDoMes = outrasDespesas.Camisaria + outrasDespesas.Compartilhado * fatiaCamisaria;
+
+  const custoTotal = custoMaoDeObraEfetivo + custoEstrutura + materialDoMes;
+
+  const resultado = receitaMes - custoTotal;
+  const sePagando = resultado >= 0;
+
   const prolaboreMetade = prolabore * 0.5;
   const custoCompartilhadoRateavel = custosFixosPJ + planoSaudePJ;
   const custoCompartilhadoRateado = prolaboreMetade + custoCompartilhadoRateavel * fatiaCamisaria;
@@ -232,8 +233,8 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Só o que é específico da linha de camisaria: valor pago à Fabiana pelos pedidos do mês + aluguel/luz da loja
-          + tecido dos pedidos (pelo valor/metro cadastrado em Compras) + aviamentos (botões, entretela, embalagem —
-          cadastrados em Aviamentos, peça-base "Camisa"). Não inclui os custos compartilhados da empresa (acima).
+          + material pago no mês (tecido, aviamento, o que for lançado em Contas a Pagar — não uma estimativa por
+          pedido, pra não duplicar). Não inclui os custos compartilhados da empresa (acima).
         </div>
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
@@ -245,16 +246,12 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoEstrutura)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — tecido do mês</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoProducaoTecido)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — aviamentos do mês</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoAviamentosMes)}</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Material pago no mês (Contas a Pagar)</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(materialDoMes)}</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap p-3" style={{ background: "#F3EEDF", borderRadius: 8, marginBottom: pedidosSemValorTecido.length > 0 ? 12 : 0 }}>
+        <div className="flex items-center gap-2 flex-wrap p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
           <label className="flex items-center gap-2" style={{ cursor: "pointer" }}>
             <input
               type="checkbox"
@@ -269,12 +266,6 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
             {" — "}como você paga ao longo do mês, cedo no mês o valor real ainda está incompleto; a projeção usa o total do mês anterior como estimativa até fechar o mês.
           </span>
         </div>
-        {pedidosSemValorTecido.length > 0 && (
-          <div style={{ fontSize: 11, color: "#9C4A1E", marginTop: 12 }}>
-            Sem valor/metro cadastrado (custo de tecido fora da conta): {pedidosSemValorTecido.map((p) => p.cliente).join(", ")}{" "}
-            — preencha em Compras.
-          </div>
-        )}
       </Card>
 
       <CalculadoraMarkup
@@ -283,6 +274,12 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
         custoVariavelPadrao={quantidadeVendidaMes > 0 ? (custoMaoDeObraEfetivo + custoAviamentosMes) / quantidadeVendidaMes : 0}
         unidadeLabel="camisa"
       />
+      {pedidosSemValorTecido.length > 0 && (
+        <div style={{ fontSize: 11, color: "#9C4A1E", marginTop: -16, marginBottom: 16 }}>
+          Sem valor/metro cadastrado (fora da estimativa de custo variável acima): {pedidosSemValorTecido.map((p) => p.cliente).join(", ")}{" "}
+          — preencha em Compras.
+        </div>
+      )}
 
       <Card style={{ padding: 20 }}>
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
@@ -290,9 +287,9 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
           A receita de cada mês é real (vendas daquele mês). O custo usa o patamar estimado de <strong>hoje</strong>{" "}
-          (mão de obra, estrutura e tecido da loja atuais — sem os custos compartilhados da empresa) como régua fixa
-          — não é o custo exato que valia em cada mês, é uma referência pra ver quantos meses recentes cobririam o
-          custo de agora. {mesesQueSePagaram} de {historicoMensal.length} meses se pagariam com esse patamar.
+          (mão de obra, estrutura da loja e o material pago nesse mês — sem os custos compartilhados da empresa) como
+          régua fixa — não é o custo exato que valia em cada mês, é uma referência pra ver quantos meses recentes
+          cobririam o custo de agora. {mesesQueSePagaram} de {historicoMensal.length} meses se pagariam com esse patamar.
         </div>
         <BarraDuasSeries
           dados={historicoMensal}

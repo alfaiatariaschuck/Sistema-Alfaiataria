@@ -850,7 +850,7 @@ export default function Shell() {
                 <Equipe equipe={equipe} loading={loadingEquipe} onAdicionar={adicionarMembro} onCampo={atualizarMembro} onRemover={removerMembro} />
               )}
               {tab === "custos-atelie" && !loadingPecas && (
-                <CustosAtelie pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} receitaMesOutraLinha={receitaMesCamisaria} />
+                <CustosAtelie pecas={pecas} equipe={equipe} despesas={despesas} custoAviamentosPorPecaBase={custoPorPecaBase} receitaMesOutraLinha={receitaMesCamisaria} />
               )}
               {tab === "tecidos-alfaiataria" && (
                 <TecidosAlfaiataria
@@ -863,7 +863,7 @@ export default function Shell() {
                 />
               )}
               {tab === "custos-camisaria" && !loading && (
-                <CustosCamisaria pedidos={pedidos} receitaMesOutraLinha={receitaMesAlfaiataria} custoAviamentosPorPecaBase={custoPorPecaBase} />
+                <CustosCamisaria pedidos={pedidos} despesas={despesas} receitaMesOutraLinha={receitaMesAlfaiataria} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
               {tab === "fornecedores" && (
                 <Fornecedores
@@ -922,10 +922,10 @@ export default function Shell() {
                 <ComparativoMensal pedidos={pedidos} pecas={pecas} custoAviamentosPorPecaBase={custoPorPecaBase} equipe={equipe} />
               )}
               {tab === "resultado-mensal" && !loadingPecas && !loading && (
-                <ResultadoMensal pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
+                <ResultadoMensal pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} />
               )}
               {tab === "metas" && !loadingPecas && (
-                <Metas pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
+                <Metas pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} />
               )}
               {tab === "vendedor" && !loading && (
                 <VendedorGestao pedidos={pedidos} irParaPedido={irPara} custoAviamentosPorPecaBase={custoPorPecaBase} />
