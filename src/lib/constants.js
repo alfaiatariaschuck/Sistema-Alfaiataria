@@ -144,20 +144,26 @@ export const DIAS_REFERENCIA_TIPO_PECA = {
   Bomber: 28,
 };
 
-// Horas de desenvolvimento por tipo de peça (planilha de parâmetros do
-// Ícaro) — tempo de trabalho manual, sem contar espera de prova/agenda
-// do cliente. Convertido em dias corridos dividindo pela capacidade de
-// produção (HORAS_PRODUTIVAS_POR_DIA_PADRAO) — é isso que entra na
-// conta da previsão pros tipos que não têm um número direto de dias em
-// DIAS_REFERENCIA_TIPO_PECA acima.
+// Horas de desenvolvimento por tipo de peça (aba PARÂMETROS da planilha
+// "Controle de Produção" do Ícaro, seção "TIPO DE PEÇA" — Referência
+// Mercado, alfaiate médio-experiente ~3 anos) — tempo de trabalho
+// manual, sem contar espera de prova/agenda do cliente. Convertido em
+// dias corridos dividindo pela capacidade de produção
+// (HORAS_PRODUTIVAS_POR_DIA_PADRAO) — é isso que entra na conta da
+// previsão pros tipos que não têm um número direto de dias em
+// DIAS_REFERENCIA_TIPO_PECA acima. Atualizado em 04/09 com os valores
+// reais da planilha (antes todos os trajes/costumes/etc estavam
+// lumped em 23h genérico, e Colete/Calça bem superestimados).
+// Bomber não tem entrada própria na planilha — mantido como o Costume
+// até confirmar com o Tales.
 export const HORAS_REFERENCIA_TIPO_PECA = {
-  Traje: 23,
-  Costume: 23,
-  Blazer: 23,
-  Casaco: 23,
-  Bomber: 23,
-  Colete: 10,
-  Calça: 12,
+  Costume: 23.5,
+  Traje: 26.5,
+  Blazer: 16,
+  Casaco: 16,
+  Bomber: 23.5,
+  Colete: 3,
+  Calça: 5,
 };
 
 // Capacidade de produção padrão (horas produtivas por dia) usada pra
