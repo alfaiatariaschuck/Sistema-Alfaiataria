@@ -184,6 +184,15 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             <Field label="Previsão de entrega">
               <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
             </Field>
+            <Field label="Quantidade (total de camisas do pedido)">
+              <input
+                type="number"
+                min="1"
+                style={inputStyle}
+                value={p.quantidade}
+                onChange={(e) => set("quantidade", e.target.value === "" ? "" : Number(e.target.value))}
+              />
+            </Field>
             <Field label="Qtd entregue">
               <div className="flex gap-1">
                 <input type="number" style={inputStyle} value={p.qtEntregue} onChange={(e) => set("qtEntregue", e.target.value)} />
