@@ -118,6 +118,44 @@ export function outrasDespesasDoMes(despesas, chaveMes) {
   return totais;
 }
 
+// Ponto de equilíbrio completo de UM mês, por linha — junta mão de obra +
+// estrutura + tecido/aviamento (dessa linha) + fatia do compartilhado
+// rateada por receita + outras despesas do Contas a Pagar daquele mês.
+// Um "pacote" só com a mesma conta usada em Metas.jsx, extraída pra
+// poder rodar tanto pro mês corrente (ao vivo, ainda incompleto até
+// fechar) quanto pra tirar a média de meses já fechados (referência mais
+// estável, porque tem o dado completo).
+export function pontoEquilibrioDoMes({
+  chaveMes,
+  pedidosDoMes,
+  pecasDoMes,
+  despesas,
+  custoMaoDeObraFabiana,
+  equipe,
+  custoAviamentosPorPecaBase,
+  aluguelLoja,
+  luzLoja,
+  aluguelAtelie,
+  luzAtelie,
+  prolabore,
+  custosFixosPJ,
+  planoSaudePJ,
+  receitaCamisaria,
+  receitaAlfaiataria,
+}) {
+  const custoCamisaria = custoCamisariaDoMes({ pedidosDoMes, custoMaoDeObraFabiana, custoAviamentosPorPecaBase, aluguel: aluguelLoja, luz: luzLoja });
+  const custoAtelie = custoAtelieDoMes({ equipe, pecasDoMes, custoAviamentosPorPecaBase, aluguel: aluguelAtelie, luz: luzAtelie });
+  const rateioCamisaria = custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaudePJ, receitaLinha: receitaCamisaria, receitaOutraLinha: receitaAlfaiataria });
+  const rateioAlfaiataria = custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaudePJ, receitaLinha: receitaAlfaiataria, receitaOutraLinha: receitaCamisaria });
+  const outras = outrasDespesasDoMes(despesas, chaveMes);
+  const receitaTotal = (receitaCamisaria || 0) + (receitaAlfaiataria || 0);
+  const fatiaCamisaria = receitaTotal > 0 ? receitaCamisaria / receitaTotal : 0.5;
+  return {
+    camisaria: custoCamisaria + rateioCamisaria + outras.Camisaria + outras.Compartilhado * fatiaCamisaria,
+    alfaiataria: custoAtelie + rateioAlfaiataria + outras.Alfaiataria + outras.Compartilhado * (1 - fatiaCamisaria),
+  };
+}
+
 // Quanto foi de fato PAGO (dinheiro que saiu de verdade) num mês — usa a
 // data do último pagamento registrado (data_pagamento), não o
 // vencimento. É a conta certa pra bater com o extrato bancário no fim do

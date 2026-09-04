@@ -7,13 +7,11 @@ import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, hojeISO } from "../lib/helpers";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 import {
-  custoAtelieDoMes,
-  custoCamisariaDoMes,
-  custoCompartilhadoRateado,
   custoMaoDeObraFabianaEfetivo,
   metaComMargem,
   outrasDespesasDoMes,
   pagoNoMes,
+  pontoEquilibrioDoMes,
 } from "../lib/custoFixoMensal";
 import { supabase } from "../supabaseClient";
 
@@ -21,6 +19,7 @@ const CHAVE_META_CAMISARIA = "meta_vendas_camisaria";
 const CHAVE_META_ALFAIATARIA = "meta_vendas_alfaiataria";
 const CHAVE_MARGEM_DESEJADA = "margem_desejada_meta";
 const MARGEM_DESEJADA_PADRAO = 30;
+const MESES_HISTORICO_MEDIA = 3;
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -187,47 +186,25 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [], cust
     const pecasMes = (pecas || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesRealAtual);
     const mesAnteriorReal = mesAnteriorDe(mesRealAtual);
     const maoDeObraFabiana = custoMaoDeObraFabianaEfetivo(pedidos, mesRealAtual, mesAnteriorReal);
-    const custoCamisaria = custoCamisariaDoMes({
+    const { camisaria: pontoEquilibrioCamisaria, alfaiataria: pontoEquilibrioAlfaiataria } = pontoEquilibrioDoMes({
+      chaveMes: mesRealAtual,
       pedidosDoMes: pedidosMes,
-      custoMaoDeObraFabiana: maoDeObraFabiana,
-      custoAviamentosPorPecaBase,
-      aluguel: custosFixos.aluguelLoja,
-      luz: custosFixos.luzLoja,
-    });
-    const custoAtelie = custoAtelieDoMes({
-      equipe,
       pecasDoMes: pecasMes,
+      despesas,
+      custoMaoDeObraFabiana: maoDeObraFabiana,
+      equipe,
       custoAviamentosPorPecaBase,
-      aluguel: custosFixos.aluguelAtelie,
-      luz: custosFixos.luzAtelie,
-    });
-    const rateioCamisaria = custoCompartilhadoRateado({
+      aluguelLoja: custosFixos.aluguelLoja,
+      luzLoja: custosFixos.luzLoja,
+      aluguelAtelie: custosFixos.aluguelAtelie,
+      luzAtelie: custosFixos.luzAtelie,
       prolabore: custosFixos.prolabore,
       custosFixosPJ: custosFixos.custosFixosPJ,
       planoSaudePJ: custosFixos.planoSaudePJ,
-      receitaLinha: vendidoAtual.camisaria,
-      receitaOutraLinha: vendidoAtual.alfaiataria,
+      receitaCamisaria: vendidoAtual.camisaria,
+      receitaAlfaiataria: vendidoAtual.alfaiataria,
     });
-    const rateioAlfaiataria = custoCompartilhadoRateado({
-      prolabore: custosFixos.prolabore,
-      custosFixosPJ: custosFixos.custosFixosPJ,
-      planoSaudePJ: custosFixos.planoSaudePJ,
-      receitaLinha: vendidoAtual.alfaiataria,
-      receitaOutraLinha: vendidoAtual.camisaria,
-    });
-    // Outras despesas lançadas em Contas a Pagar esse mês (fornecedor
-    // avulso, manutenção, o que não seja aluguel/luz/pró-labore/plano de
-    // saúde, que já entram acima) — rateia o "Compartilhado" delas do
-    // mesmo jeito que o resto do compartilhado, por receita.
     const outras = outrasDespesasDoMes(despesas, mesRealAtual);
-    const fatiaCamisaria = vendidoAtual.total > 0 ? vendidoAtual.camisaria / vendidoAtual.total : 0.5;
-    const outrasCamisaria = outras.Camisaria + outras.Compartilhado * fatiaCamisaria;
-    const outrasAlfaiataria = outras.Alfaiataria + outras.Compartilhado * (1 - fatiaCamisaria);
-    // Ponto de equilíbrio = o mesmo custo total com rateio, mas sem
-    // margem nenhuma (0%) — é o mínimo pra não ficar no vermelho, sem
-    // sobrar lucro nenhum. A meta acima já é esse número + a margem.
-    const pontoEquilibrioCamisaria = custoCamisaria + rateioCamisaria + outrasCamisaria;
-    const pontoEquilibrioAlfaiataria = custoAtelie + rateioAlfaiataria + outrasAlfaiataria;
     return {
       camisaria: metaComMargem(pontoEquilibrioCamisaria, margemDesejada),
       alfaiataria: metaComMargem(pontoEquilibrioAlfaiataria, margemDesejada),
@@ -237,6 +214,53 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [], cust
     };
     // eslint-disable-next-line
   }, [ehMesAtual, custosFixos.loading, pedidos, pecas, despesas, equipe, custoAviamentosPorPecaBase, margemDesejada, vendidoAtual.camisaria, vendidoAtual.alfaiataria]);
+
+  // Referência mais estável: média do Ponto de Equilíbrio dos últimos
+  // MESES_HISTORICO_MEDIA meses JÁ FECHADOS (nunca o mês corrente, que
+  // está sempre incompleto até fechar — despesa variável só entra quando
+  // lançada, então o número ao vivo tende a ficar subestimado enquanto o
+  // mês não termina). Usa os valores de HOJE pra equipe/aluguel/etc (não
+  // temos histórico configurado mês a mês), mas os dados que variam de
+  // verdade por mês — pedidos, peças, despesas — são os reais daquele mês.
+  const pontoEquilibrioMedioHistorico = useMemo(() => {
+    if (custosFixos.loading)
+      return { camisaria: 0, alfaiataria: 0, meses: [] };
+    const chaves = [];
+    let cursor = mesRealAtual;
+    for (let i = 0; i < MESES_HISTORICO_MEDIA; i++) {
+      cursor = mesAnteriorDe(cursor);
+      chaves.push(cursor);
+    }
+    const porMes = chaves.map((chaveMes) => {
+      const pedidosMes = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === chaveMes);
+      const pecasMes = (pecas || []).filter((p) => (p.dataPedido || "").slice(0, 7) === chaveMes);
+      const mesAnteriorDaquele = mesAnteriorDe(chaveMes);
+      const maoDeObraFabiana = custoMaoDeObraFabianaEfetivo(pedidos, chaveMes, mesAnteriorDaquele);
+      const vendidoDaquele = vendidoNoMes(pedidos, pecas, chaveMes);
+      const ponto = pontoEquilibrioDoMes({
+        chaveMes,
+        pedidosDoMes: pedidosMes,
+        pecasDoMes: pecasMes,
+        despesas,
+        custoMaoDeObraFabiana: maoDeObraFabiana,
+        equipe,
+        custoAviamentosPorPecaBase,
+        aluguelLoja: custosFixos.aluguelLoja,
+        luzLoja: custosFixos.luzLoja,
+        aluguelAtelie: custosFixos.aluguelAtelie,
+        luzAtelie: custosFixos.luzAtelie,
+        prolabore: custosFixos.prolabore,
+        custosFixosPJ: custosFixos.custosFixosPJ,
+        planoSaudePJ: custosFixos.planoSaudePJ,
+        receitaCamisaria: vendidoDaquele.camisaria,
+        receitaAlfaiataria: vendidoDaquele.alfaiataria,
+      });
+      return { chaveMes, ...ponto };
+    });
+    const media = (campo) => porMes.reduce((s, m) => s + m[campo], 0) / (porMes.length || 1);
+    return { camisaria: media("camisaria"), alfaiataria: media("alfaiataria"), meses: porMes };
+    // eslint-disable-next-line
+  }, [custosFixos.loading, mesRealAtual, pedidos, pecas, despesas, equipe, custoAviamentosPorPecaBase]);
 
   const metaCamisariaFinal = metaCamisaria > 0 ? metaCamisaria : metaCalculada.camisaria;
   const metaAlfaiatariaFinal = metaAlfaiataria > 0 ? metaAlfaiataria : metaCalculada.alfaiataria;
@@ -389,12 +413,14 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [], cust
       {ehMesAtual && pontoEquilibrioGeral > 0 && (
         <Card style={{ padding: 20 }} className="mb-6">
           <div className="fx-serif mb-1" style={{ fontSize: 16, fontWeight: 600 }}>
-            Ponto de equilíbrio esse mês
+            Ponto de equilíbrio esse mês (ao vivo)
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
             O mínimo que precisa entrar pra cobrir o custo do mês, sem margem nenhuma — abaixo disso é prejuízo, em
             cima disso (até a meta) já começa a sobrar alguma coisa, mas só a partir da meta é que sobra a margem
-            desejada inteira.
+            desejada inteira. <strong>Esse número é parcial</strong> — só conta o que já foi lançado até agora; uma
+            despesa variável que ainda não chegou/foi lançada não está aqui, então ele tende a crescer até o mês
+            fechar. Pra uma referência mais estável, olha o card de baixo.
           </div>
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
             <div>
@@ -416,6 +442,36 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [], cust
               <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: BRASS }}>{brl(pontoEquilibrioGeral)}</div>
               <div style={{ fontSize: 10, color: vendidoAtual.total >= pontoEquilibrioGeral ? VERDE : VERMELHO }}>
                 {vendidoAtual.total >= pontoEquilibrioGeral ? "já cobre o custo" : `faltam ${brl(pontoEquilibrioGeral - vendidoAtual.total)} pra cobrir`}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {ehMesAtual && (pontoEquilibrioMedioHistorico.camisaria > 0 || pontoEquilibrioMedioHistorico.alfaiataria > 0) && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 16, fontWeight: 600 }}>
+            Ponto de equilíbrio médio — últimos {MESES_HISTORICO_MEDIA} meses fechados
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+            Referência mais estável que o card de cima: em vez do mês corrente (sempre incompleto até fechar), é a
+            média dos últimos {MESES_HISTORICO_MEDIA} meses que já terminaram — {pontoEquilibrioMedioHistorico.meses.map((m) => nomeDoMes(m.chaveMes)).join(", ")}. Usa o custo fixo de hoje (equipe, aluguel etc — não temos
+            histórico desses valores mês a mês), mas tecido, mão de obra da Fabi e despesas são os reais de cada mês,
+            já fechados e completos.
+          </div>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Camisaria</div>
+              <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(pontoEquilibrioMedioHistorico.camisaria)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Alfaiataria</div>
+              <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(pontoEquilibrioMedioHistorico.alfaiataria)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Geral (as duas juntas)</div>
+              <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: BRASS }}>
+                {brl(pontoEquilibrioMedioHistorico.camisaria + pontoEquilibrioMedioHistorico.alfaiataria)}
               </div>
             </div>
           </div>
