@@ -61,10 +61,13 @@ function estatisticasDe(lista, custoAviamentosPorPecaBase, maoDeObraPadrao) {
 // Separa por "criado_por" (quem de fato criou a linha pelo próprio
 // login), não pelo campo de texto "Vendedor" da ficha (esse é livre,
 // pode ser preenchido em qualquer pedido pra dar crédito de comissão, não
-// serve pra saber quem lançou de verdade). Os pedidos são os MESMOS da
-// aba Pedidos — nada é duplicado, essa aba é só um filtro/comparativo
-// sobre a mesma tabela.
-export default function VendedorGestao({ pedidos, irParaPedido, custoAviamentosPorPecaBase = {} }) {
+// serve pra saber quem lançou de verdade) — EXCETO quando o dono
+// reatribui manualmente (vendedorAtribuidoId, abaixo), pro caso de ele
+// lançar no próprio login um pedido cujo crédito é de outro vendedor
+// (ex: vendedor fechou a venda mas pediu pro dono lançar). Os pedidos
+// são os MESMOS da aba Pedidos — nada é duplicado, essa aba é só um
+// filtro/comparativo sobre a mesma tabela.
+export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAviamentosPorPecaBase = {} }) {
   const hojeStr = new Date().toISOString().slice(0, 10);
   const mesRealAtual = hojeStr.slice(0, 7);
   const [mesSelecionado, setMesSelecionado] = useState(mesRealAtual);
@@ -75,14 +78,16 @@ export default function VendedorGestao({ pedidos, irParaPedido, custoAviamentosP
 
   const pessoas = [{ id: "dono", nome: NOME_DONO }, ...vendedores.map((v) => ({ id: v.id, nome: v.nome }))];
 
-  function pedidosDaPessoa(pessoaId, lista) {
-    if (pessoaId === "dono") return lista.filter((p) => !p.criadoPor || !idsVendedores.has(p.criadoPor));
-    return lista.filter((p) => p.criadoPor === pessoaId);
+  // Quem "conta" pra esse pedido: a reatribuição manual do dono, se
+  // tiver uma; senão quem de fato criou a linha pelo próprio login.
+  function pessoaDe(p) {
+    if (p.vendedorAtribuidoId) return idsVendedores.has(p.vendedorAtribuidoId) ? p.vendedorAtribuidoId : "dono";
+    if (p.criadoPor && idsVendedores.has(p.criadoPor)) return p.criadoPor;
+    return "dono";
   }
 
-  function nomeDoCriador(p) {
-    if (p.criadoPor && idsVendedores.has(p.criadoPor)) return vendedores.find((v) => v.id === p.criadoPor)?.nome || p.vendedor || "—";
-    return NOME_DONO;
+  function pedidosDaPessoa(pessoaId, lista) {
+    return lista.filter((p) => pessoaDe(p) === pessoaId);
   }
 
   const doMesTodos = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesSelecionado);
@@ -276,31 +281,60 @@ export default function VendedorGestao({ pedidos, irParaPedido, custoAviamentosP
           const { custo } = custoCamisa(p, custoAviamentosPorPecaBase, maoDeObraPadrao);
           const valor = parseFloat(p.aReceber?.valor) || 0;
           const margem = valor - custo;
+          const pessoaAtualId = pessoaDe(p);
           return (
-            <button
+            <div
               key={p.id}
-              onClick={() => irParaPedido(p.id)}
-              className="w-full flex items-center justify-between px-5 py-3 text-left"
+              className="w-full flex items-center justify-between px-5 py-3"
               style={{ borderBottom: i < listaOrdenada.length - 1 ? `1px solid ${LINE}` : "none" }}
             >
-              <div>
+              <button onClick={() => irParaPedido(p.id)} className="flex-1 text-left">
                 <div className="flex items-center gap-1.5" style={{ fontWeight: 600, fontSize: 14 }}>
                   {p.cliente || "Sem nome"}
                   {p.recompra && <Pill text="↻ Recompra" style={{ bg: "#EFE6D6", fg: BRASS }} />}
                 </div>
                 <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-                  {nomeDoCriador(p)} · {fmtData(p.dataPedido)} · {p.quantidade} un
+                  {fmtData(p.dataPedido)} · {p.quantidade} un
                   {p.status !== "Doação" && <> · margem {brl(margem)}</>}
                 </div>
-              </div>
+              </button>
               <div className="flex items-center gap-3">
+                {vendedores.length > 0 && (
+                  <select
+                    value={pessoaAtualId}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      const novoId = e.target.value;
+                      onCampo(p.id, "vendedorAtribuidoId", novoId === "dono" ? null : novoId);
+                    }}
+                    title="Quem recebe o crédito dessa venda — muda aqui só se for diferente de quem lançou no sistema"
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      border: `1px solid ${LINE}`,
+                      borderRadius: 6,
+                      padding: "5px 6px",
+                      color: p.vendedorAtribuidoId ? BRASS : TEXT_MUTED,
+                      background: p.vendedorAtribuidoId ? "#FCEFC7" : "transparent",
+                    }}
+                  >
+                    <option value="dono">{NOME_DONO}</option>
+                    {vendedores.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.nome}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
                   {brl(valor)}
                 </span>
                 <Pill text={p.status} style={STATUS_STYLE[p.status]} />
-                <ChevronRight size={16} color={TEXT_MUTED} />
+                <button onClick={() => irParaPedido(p.id)}>
+                  <ChevronRight size={16} color={TEXT_MUTED} />
+                </button>
               </div>
-            </button>
+            </div>
           );
         })}
       </Card>

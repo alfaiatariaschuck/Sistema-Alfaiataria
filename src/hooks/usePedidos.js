@@ -53,6 +53,7 @@ function rowParaPedido(row) {
     id: row.id,
     clienteId: row.cliente_id,
     criadoPor: row.criado_por || null,
+    vendedorAtribuidoId: row.vendedor_atribuido_id || null,
     cliente: row.clientes?.nome || "",
     vendedor: row.vendedor || "",
     dataPedido: row.data_pedido,
@@ -106,6 +107,7 @@ const SELECT = "*, clientes(nome), tecidos(*)";
 
 const CAMPO_PARA_COLUNA = {
   vendedor: "vendedor",
+  vendedorAtribuidoId: "vendedor_atribuido_id",
   dataPedido: "data_pedido",
   previsaoEntrega: "previsao_entrega",
   dataEntrega: "data_entrega",
