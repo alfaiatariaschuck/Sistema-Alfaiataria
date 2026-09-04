@@ -1,18 +1,65 @@
-import React, { useMemo } from "react";
-import { AlertTriangle, CalendarDays, Clock, Eye, Flame, PackageCheck, Scissors, Timer, UserCheck } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { AlertTriangle, CalendarDays, CheckCircle2, Clock, Eye, Flame, PackageCheck, Scissors, Target, Timer, UserCheck } from "lucide-react";
 import { Card, StatCard } from "./ui";
-import { TEXT_MUTED } from "../lib/constants";
+import { BRASS, TEXT_MUTED } from "../lib/constants";
 import { fmtData, hojeISO, previsaoEfetivaDe, previsaoEstimada } from "../lib/helpers";
+import { usePontosMelhoriaProducao } from "../hooks/usePontosMelhoriaProducao";
 
 const VERMELHO = "#9C4A1E";
 const AMARELO = "#8A6A0C";
 const ETAPAS_PROVA = ["Prova na Tela", "Prova na Caixa", "Prova Final"];
+
+// Uma linha de "ponto de melhoria" — mostra a referência vs o real
+// medido, e deixa quem estiver usando o painel (Tales ou Ícaro) marcar
+// quando aquele gargalo foi resolvido, com uma nota opcional de como.
+function PontoMelhoriaLinha({ ponto, onBater, onDesfazer }) {
+  const [nota, setNota] = useState(ponto.notaIcaro || "");
+
+  return (
+    <div className="py-3" style={{ borderTop: "1px solid #E5E0D3" }}>
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{ponto.titulo}</span>
+        <span className="fx-mono" style={{ fontSize: 12, color: TEXT_MUTED }}>
+          referência <strong>{ponto.horasReferencia}h</strong> · real <strong style={{ color: VERMELHO }}>{ponto.horasRealAnterior}h</strong>
+        </span>
+      </div>
+      {ponto.descricao && (
+        <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 8 }}>{ponto.descricao}</div>
+      )}
+      {ponto.bateuMeta ? (
+        <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: "#2C6E31", fontWeight: 600 }}>
+          <CheckCircle2 size={14} /> Batido em {fmtData(ponto.dataBateu)}
+          {ponto.notaIcaro && <span style={{ color: TEXT_MUTED, fontWeight: 400 }}> — {ponto.notaIcaro}</span>}
+          <button onClick={() => onDesfazer(ponto.id)} style={{ color: TEXT_MUTED, fontSize: 11, textDecoration: "underline", marginLeft: 4 }}>
+            desfazer
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            placeholder="Como resolveu? (opcional)"
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            style={{ border: "1px solid #E5E0D3", borderRadius: 6, padding: "6px 10px", fontSize: 12, flex: "1 1 200px", background: "#FBF9F3" }}
+          />
+          <button
+            onClick={() => onBater(ponto.id, nota)}
+            style={{ background: "#EDEAE0", color: BRASS, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            Bati essa meta
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Indicadores da fila de produção (StatCards + composição do portfólio +
 // projeção de prazos) — extraído de Controle de Produção pra ser
 // reaproveitado também no painel enxuto do Ícaro (ShellProducao), sem
 // duplicar a lógica dos cálculos.
 export default function PainelProducaoResumo({ pecas, equipe, mediaDiasProducao, mediaDiasPorTipo, previsoesFila }) {
+  const { pontos, marcarComoBatido, desfazerBatido } = usePontosMelhoriaProducao();
   const abertas = useMemo(() => pecas.filter((p) => p.status !== "Entregue"), [pecas]);
   const hoje = hojeISO();
   const mesAtual = hoje.slice(0, 7);
@@ -124,6 +171,21 @@ export default function PainelProducaoResumo({ pecas, equipe, mediaDiasProducao,
           </div>
         </Card>
       </div>
+
+      {pontos.length > 0 && (
+        <Card style={{ padding: 16 }} className="mb-6">
+          <div className="flex items-center gap-1.5" style={{ marginBottom: 4 }}>
+            <Target size={14} color={BRASS} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, textTransform: "uppercase" }}>Pontos de melhoria na produção</span>
+          </div>
+          <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>
+            Meta: voltar de ~32h pra ~23,5h por peça (Costume/Traje). Marca aqui quando resolver um desses gargalos.
+          </div>
+          {pontos.map((ponto) => (
+            <PontoMelhoriaLinha key={ponto.id} ponto={ponto} onBater={marcarComoBatido} onDesfazer={desfazerBatido} />
+          ))}
+        </Card>
+      )}
     </>
   );
 }
