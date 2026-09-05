@@ -1,11 +1,24 @@
 import React, { useMemo } from "react";
-import { ChevronLeft, ChevronRight, Info, Layers, Scissors, Shirt, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Info, Layers, Scale, Scissors, Shirt, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Card, PageTitle, StatCard } from "../components/ui";
 import { BRASS, INK, LINE, TEXT_MUTED } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { custoEquipeMensal } from "../lib/custoEquipe";
 import { custoCompartilhadoRateado } from "../lib/custoFixoMensal";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
+
+const CATEGORIA_TECIDO = "Material/Tecido avulso";
+
+// Quanto foi realmente lançado no Contas a Pagar como compra de tecido
+// nesse mês (categoria "Material/Tecido avulso", pelo vencimento) — pra
+// comparar com o tecido ESTIMADO do DRE (metro cadastrado × valor/metro) e
+// ver se a estimativa está próxima da realidade ou se o preço cadastrado
+// já está desatualizado.
+function tecidoRealDoMes(despesas, chaveMes) {
+  return (despesas || [])
+    .filter((d) => d.categoria === CATEGORIA_TECIDO && d.vencimento && d.vencimento.slice(0, 7) === chaveMes)
+    .reduce((s, d) => s + (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0), 0);
+}
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
@@ -87,7 +100,7 @@ function LinhaDRE({ titulo, Icone, receita, maoDeObra, tecido, aviamentos, estru
 // fechar); pra meses passados, usa os pedidos/peças reais daquele mês mas
 // o custo fixo de hoje (equipe, aluguel etc — não existe histórico
 // configurado desses valores mês a mês).
-export default function DRE({ pedidos, pecas, equipe = [], custoAviamentosPorPecaBase = {} }) {
+export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoAviamentosPorPecaBase = {} }) {
   const mesRealAtual = hojeISO().slice(0, 7);
   const [mesSelecionado, setMesSelecionado] = React.useState(mesRealAtual);
   const ehMesAtual = mesSelecionado === mesRealAtual;
@@ -130,7 +143,19 @@ export default function DRE({ pedidos, pecas, equipe = [], custoAviamentosPorPec
     const rateioCamisaria = custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaudePJ, receitaLinha: receitaCamisaria, receitaOutraLinha: receitaAlfaiataria });
     const rateioAlfaiataria = custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaudePJ, receitaLinha: receitaAlfaiataria, receitaOutraLinha: receitaCamisaria });
 
+    // Pedidos/peças com tecido lançado mas sem valor/metro cadastrado — o
+    // custo deles entra como R$0 sem avisar, então lista quem é (mesmo
+    // aviso que já existe em Custos do Ateliê/Custos da Camisaria).
+    const pedidosSemValorTecido = pedidosMes.filter((p) =>
+      (p.tecidos || []).some((t) => metragemParaNumero(t.metragem) !== null && !parseFloat(t.valorMetro))
+    );
+    const pecasSemValorTecido = pecasMes.filter((p) =>
+      (p.tecidos || []).some((t) => metragemParaNumero(t.metragem) !== null && !parseFloat(t.valorMetro))
+    );
+
     return {
+      pedidosSemValorTecido,
+      pecasSemValorTecido,
       camisaria: {
         receita: receitaCamisaria,
         maoDeObra: maoDeObraCamisaria,
@@ -168,6 +193,11 @@ export default function DRE({ pedidos, pecas, equipe = [], custoAviamentosPorPec
   const resultadoGeral = geral ? geral.receita - custoTotalGeral : 0;
   const margemGeral = geral && geral.receita > 0 ? (resultadoGeral / geral.receita) * 100 : 0;
   const sePagandoGeral = resultadoGeral >= 0;
+
+  const tecidoReal = useMemo(() => tecidoRealDoMes(despesas, mesSelecionado), [despesas, mesSelecionado]);
+  const tecidoEstimado = geral ? geral.tecido : 0;
+  const diferencaTecido = tecidoReal - tecidoEstimado;
+  const diferencaTecidoRelevante = tecidoEstimado > 0 && Math.abs(diferencaTecido) / tecidoEstimado > 0.15;
 
   return (
     <div>
@@ -227,12 +257,55 @@ export default function DRE({ pedidos, pecas, equipe = [], custoAviamentosPorPec
         </div>
       </div>
 
+      {dados && (dados.pedidosSemValorTecido.length > 0 || dados.pecasSemValorTecido.length > 0) && (
+        <div className="flex items-start gap-2 mb-6 p-3" style={{ background: "#F7EAE3", borderRadius: 8, fontSize: 12, color: VERMELHO }}>
+          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div>
+            Sem valor/metro cadastrado (custo de tecido desses ficou de fora, contando como R$0):{" "}
+            {[...dados.pedidosSemValorTecido, ...dados.pecasSemValorTecido].map((p) => p.cliente).join(", ")} — preencha em Compras.
+          </div>
+        </div>
+      )}
+
       {dados && (
-        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+        <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
           <LinhaDRE titulo="Camisaria" Icone={Shirt} {...dados.camisaria} />
           <LinhaDRE titulo="Alfaiataria" Icone={Scissors} {...dados.alfaiataria} />
           <LinhaDRE titulo="Geral" Icone={Layers} {...geral} destaque />
         </div>
+      )}
+
+      {geral && (
+        <Card style={{ padding: 20 }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <Scale size={15} color={BRASS} />
+            <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+              Tecido: estimado x real pago
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+            O "Tecido" do DRE acima é estimativa (metro cadastrado × valor/metro). Aqui comparamos com o que foi
+            realmente lançado no Contas a Pagar como "{CATEGORIA_TECIDO}" nesse mês — se a diferença for grande e
+            recorrente, vale atualizar o R$/metro cadastrado em Compras.
+          </div>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Estimado (DRE)</div>
+              <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(tecidoEstimado)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Real pago (Contas a Pagar)</div>
+              <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(tecidoReal)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Diferença</div>
+              <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: diferencaTecidoRelevante ? VERMELHO : INK }}>
+                {diferencaTecido >= 0 ? "+" : ""}
+                {brl(diferencaTecido)}
+              </div>
+            </div>
+          </div>
+        </Card>
       )}
     </div>
   );

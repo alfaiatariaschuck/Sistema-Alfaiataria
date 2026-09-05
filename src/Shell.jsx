@@ -957,7 +957,7 @@ export default function Shell() {
                 <ComparativoMensal pedidos={pedidos} pecas={pecas} custoAviamentosPorPecaBase={custoPorPecaBase} equipe={equipe} />
               )}
               {tab === "dre" && !loadingPecas && !loading && (
-                <DRE pedidos={pedidos} pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
+                <DRE pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
               {tab === "resultado-mensal" && !loadingPecas && !loading && (
                 <ResultadoMensal pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
