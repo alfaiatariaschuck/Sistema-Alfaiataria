@@ -493,10 +493,12 @@ export default function ContasAPagar({
   const totalReceita = receberJanela.reduce((s, p) => s + p.pendente, 0) + previsoesJanela.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
   const caixaNum = parseFloat(caixaAtual) || 0;
 
-  // Tecido ainda não comprado (pedidos + peças, ver aba Compras) — é
-  // dinheiro que vai sair e não está na provisão de custo mensal (essa
-  // é da produção recorrente, não de compra pontual), então entra aqui
-  // direto no saldo projetado como se fosse mais uma despesa pendente.
+  // Tecido ainda não comprado (pedidos + peças, ver aba Compras) — já
+  // foi vendido, então em algum momento vai sair dinheiro pra comprar,
+  // mas só entra de fato no saldo projetado/falta faturar quando
+  // marcado como "urgente" (compra_urgente) — assim o dono decide o
+  // ritmo dele: fica tudo visível pra planejar, mas só pesa na conta da
+  // semana o que ele realmente precisa comprar agora.
   const tecidoPendenteItens = [];
   (pedidos || []).forEach((p) =>
     (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "camisa", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }))
@@ -504,17 +506,26 @@ export default function ContasAPagar({
   (pecas || []).forEach((p) =>
     (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "alfaiataria", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }))
   );
-  const tecidoPendenteComPreco = tecidoPendenteItens.filter((t) => metragemParaNumero(t.metragem) !== null && parseFloat(t.valorMetro));
+  const tecidoPendenteTodosComPreco = tecidoPendenteItens.filter((t) => metragemParaNumero(t.metragem) !== null && parseFloat(t.valorMetro));
+  const tecidoPendenteUrgente = tecidoPendenteItens.filter((t) => t.urgente);
+  const tecidoPendenteComPreco = tecidoPendenteUrgente.filter((t) => metragemParaNumero(t.metragem) !== null && parseFloat(t.valorMetro));
   const tecidoPendente = tecidoPendenteComPreco.reduce((s, t) => s + metragemParaNumero(t.metragem) * parseFloat(t.valorMetro), 0);
-  const tecidoPendenteSemPreco = tecidoPendenteItens.length - tecidoPendenteComPreco.length;
+  const tecidoPendenteSemPreco = tecidoPendenteUrgente.length - tecidoPendenteComPreco.length;
 
   // Marca o tecido do item como já comprado — some da lista de pendente
-  // (e do saldo projetado/falta faturar) na hora, sem precisar ir na aba
-  // Compras. Mesmo campo "comprado" usado lá; se precisar voltar atrás,
-  // é só desmarcar em Compras.
+  // (e do saldo projetado/falta faturar, se estava urgente) na hora, sem
+  // precisar ir na aba Compras. Mesmo campo "comprado" usado lá; se
+  // precisar voltar atrás, é só desmarcar em Compras.
   function marcarTecidoComprado(item) {
     if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "comprado", true);
     else onTecidoPeca(item.pedidoId, item.tecidoId, "comprado", true);
+  }
+
+  // Marca/desmarca um item como "preciso comprar urgente" — só isso faz
+  // ele somar no saldo projetado/falta faturar.
+  function alternarTecidoUrgente(item, valor) {
+    if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "compra_urgente", valor);
+    else onTecidoPeca(item.pedidoId, item.tecidoId, "compra_urgente", valor);
   }
 
   // Saldo projetado = o que já tenho em caixa + o que ainda vou receber - o
@@ -525,8 +536,8 @@ export default function ContasAPagar({
   const faltaFaturar = Math.max(0, totalDespesas + tecidoPendente - caixaNum - totalReceita);
 
   // Quanto devo por fornecedor — despesas em aberto (não só a janela de 14
-  // dias) + tecido pendente de compra com preço já cadastrado, pra dar a
-  // visão real de quanto falta pra cada um.
+  // dias) + tecido marcado como urgente (com preço já cadastrado), pra dar
+  // a visão real de quanto falta pagar de imediato pra cada um.
   const porFornecedor = (() => {
     const mapa = new Map();
     despesasPendentes
@@ -1137,43 +1148,59 @@ export default function ContasAPagar({
             style={{ color: BRASS, fontSize: 12, fontWeight: 600, marginBottom: mostrarTecidoPendente ? 8 : 4 }}
           >
             {mostrarTecidoPendente ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {mostrarTecidoPendente ? "Ocultar itens de tecido pendente" : `Ver os ${tecidoPendenteComPreco.length} item(ns) de tecido pendente`}
+            {mostrarTecidoPendente ? "Ocultar itens de tecido pendente" : `Ver os ${tecidoPendenteTodosComPreco.length} item(ns) de tecido pendente`}
           </button>
         )}
         {mostrarTecidoPendente && (
-          <div className="flex flex-col gap-1 mb-2">
-            {tecidoPendenteComPreco.map((t, i) => (
-              <div
-                key={`${t.pedidoId}-${t.tecidoId}-${i}`}
-                className="flex items-center justify-between gap-2 flex-wrap p-2"
-                style={{ background: "#F6E3D9", borderRadius: 6, fontSize: 12 }}
-              >
-                <div>
-                  <strong>{t.cliente}</strong>{" "}
-                  <span style={{ color: TEXT_MUTED }}>
-                    · {t.codigo || "sem código"} · {t.metragem}m × {brl(t.valorMetro)}
-                  </span>
+          <>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 6 }}>
+              Marca "urgente" nos que você precisa comprar já — só esses somam no saldo projetado/falta faturar
+              acima. Os outros ficam visíveis aqui (já foram vendidos, precisam ser comprados em algum momento), sem
+              pesar na conta da semana.
+            </div>
+            <div className="flex flex-col gap-1 mb-2">
+              {tecidoPendenteTodosComPreco.map((t, i) => (
+                <div
+                  key={`${t.pedidoId}-${t.tecidoId}-${i}`}
+                  className="flex items-center justify-between gap-2 flex-wrap p-2"
+                  style={{ background: t.urgente ? "#F6E3D9" : "#F3EEDF", borderRadius: 6, fontSize: 12 }}
+                >
+                  <label className="flex items-center gap-2" style={{ cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={!!t.urgente}
+                      onChange={(e) => alternarTecidoUrgente(t, e.target.checked)}
+                      style={{ width: 15, height: 15, accentColor: "#9C4A1E", flexShrink: 0 }}
+                      title="Marcar como urgente — passa a somar no saldo projetado/falta faturar"
+                    />
+                    <div>
+                      <strong>{t.cliente}</strong>{" "}
+                      <span style={{ color: TEXT_MUTED }}>
+                        · {t.codigo || "sem código"} · {t.metragem}m × {brl(t.valorMetro)}
+                      </span>
+                    </div>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="fx-mono" style={{ fontWeight: 700 }}>
+                      {brl(metragemParaNumero(t.metragem) * parseFloat(t.valorMetro))}
+                    </span>
+                    <button
+                      onClick={() => marcarTecidoComprado(t)}
+                      className="flex items-center gap-1"
+                      style={{ color: "#2C6E31", fontWeight: 600 }}
+                      title="Marca como já comprado — some daqui e do saldo projetado/falta faturar. Pra desfazer, é só desmarcar em Compras."
+                    >
+                      <CheckCircle2 size={14} /> Já comprei
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="fx-mono" style={{ fontWeight: 700 }}>
-                    {brl(metragemParaNumero(t.metragem) * parseFloat(t.valorMetro))}
-                  </span>
-                  <button
-                    onClick={() => marcarTecidoComprado(t)}
-                    className="flex items-center gap-1"
-                    style={{ color: "#2C6E31", fontWeight: 600 }}
-                    title="Marca como já comprado — some daqui e do saldo projetado/falta faturar. Pra desfazer, é só desmarcar em Compras."
-                  >
-                    <CheckCircle2 size={14} /> Já comprei — tirar da conta
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
         {tecidoPendenteSemPreco > 0 && (
           <div style={{ fontSize: 11, color: TEXT_MUTED }}>
-            {tecidoPendenteSemPreco} item(ns) de tecido pendente sem metragem/preço cadastrado ainda em Compras —
+            {tecidoPendenteSemPreco} item(ns) marcado(s) urgente sem metragem/preço cadastrado ainda em Compras —
             fora da soma acima, então o "tecido pendente de compra" real é maior que isso.
           </div>
         )}
