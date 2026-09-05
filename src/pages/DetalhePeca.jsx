@@ -11,6 +11,7 @@ import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
+import EditarNomeCliente from "../components/EditarNomeCliente";
 import {
   BRASS,
   BRASS_SOFT,
@@ -63,6 +64,7 @@ export default function DetalhePeca({
   custoAviamentosPorPecaBase = {},
   modelosAlfaiataria = [],
   onCriarModeloAlfaiataria,
+  onRenomearCliente,
 }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -103,9 +105,7 @@ export default function DetalhePeca({
             {p.tipoPeca}
           </div>
           <div className="flex items-center gap-2">
-            <h1 className="fx-serif" style={{ fontSize: 26, fontWeight: 600 }}>
-              {p.cliente}
-            </h1>
+            <EditarNomeCliente clienteId={p.clienteId} nome={p.cliente} onRenomear={onRenomearCliente} />
             <Pill text={p.status} style={STATUS_STYLE[p.status]} />
             {p.medidasNovas && <Pill text="⚠ Medidas Novas" style={{ bg: "#F6E3D9", fg: "#9C4A1E" }} />}
             {!p.enviadoIcaro && <Pill text="📨 Não enviado pro Icaro" style={{ bg: "#DCE4EE", fg: "#2E4A6B" }} />}

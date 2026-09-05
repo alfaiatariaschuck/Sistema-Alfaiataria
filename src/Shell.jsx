@@ -49,7 +49,7 @@ import { useAviamentos } from "./hooks/useAviamentos";
 import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
 import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
 import { useModelosCamisa, useModelosAlfaiataria } from "./hooks/useModelosCamisa";
-import { encontrarOuCriarCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
+import { encontrarOuCriarCliente, renomearCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
 import { hojeISO, mediaDiasProducaoComFallback, mediaDiasProducaoPorTipo, projetarPrevisoesFilaPorEquipe } from "./lib/helpers";
 import Dashboard from "./pages/Dashboard";
@@ -159,6 +159,7 @@ export default function Shell() {
     removerPeca,
     adicionarTecido: adicionarTecidoPeca,
     atualizarTecido: atualizarTecidoPeca,
+    recarregar: recarregarPecas,
   } = usePedidosAlfaiataria();
 
   const {
@@ -263,6 +264,14 @@ export default function Shell() {
     const clienteId = await encontrarOuCriarCliente(nome);
     await salvarDadosPessoaisCliente(clienteId, dadosPessoais);
     await recarregarNomesClientes();
+  }
+
+  // Corrige erro de digitação no nome de um cliente já lançado — atualiza
+  // em cascata em pedidos, peças e Clientes, já que tudo é ligado por
+  // clienteId, não por texto solto.
+  async function renomearClienteGlobal(clienteId, novoNome) {
+    await renomearCliente(clienteId, novoNome);
+    await Promise.all([recarregar(), recarregarPecas(), recarregarNomesClientes()]);
   }
 
   async function salvarNovoPedido(p) {
@@ -530,6 +539,7 @@ export default function Shell() {
     onCriarModeloCamisa: adicionarModelo,
     custoAviamentosPorPecaBase: custoPorPecaBase,
     onVerificarDespesaFabiana: verificarDespesaFabianaDoPedido,
+    onRenomearCliente: renomearClienteGlobal,
   };
 
   function atualizarMedidaPeca(pecaId, secKey, label, valor) {
@@ -583,6 +593,7 @@ export default function Shell() {
     estoqueTecidos,
     onDarBaixaEstoque: darBaixaEstoque,
     custoAviamentosPorPecaBase: custoPorPecaBase,
+    onRenomearCliente: renomearClienteGlobal,
   };
 
   return (

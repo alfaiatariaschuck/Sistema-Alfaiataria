@@ -11,12 +11,13 @@ import LinkAcompanhamento from "../components/LinkAcompanhamento";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
+import EditarNomeCliente from "../components/EditarNomeCliente";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana, onReabrirPagamentoFabiana }) {
+export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana, onReabrirPagamentoFabiana, onRenomearCliente }) {
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -83,9 +84,7 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             Pedido
           </div>
           <div className="flex items-center gap-2">
-            <h1 className="fx-serif" style={{ fontSize: 26, fontWeight: 600 }}>
-              {p.cliente}
-            </h1>
+            <EditarNomeCliente clienteId={p.clienteId} nome={p.cliente} onRenomear={onRenomearCliente} />
             {p.recompra && <Pill text="↻ Recompra" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
             {p.medidasNovas && <Pill text="⚠ Medidas Novas" style={{ bg: "#F6E3D9", fg: "#9C4A1E" }} />}
             {p.assinatura && <Pill text="📦 Assinatura" style={{ bg: BRASS_SOFT, fg: BRASS }} />}

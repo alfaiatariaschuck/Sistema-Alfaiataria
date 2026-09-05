@@ -1,5 +1,18 @@
 import { supabase } from "../supabaseClient";
 
+// Corrige o nome de um cliente já existente (ex: erro de digitação no
+// lançamento do pedido) — atualiza em cascata em todo lugar que exibe
+// esse cliente (pedidos, peças, Clientes), já que tudo é ligado por
+// clienteId, não por texto solto. nome_normalizado tem índice único, então
+// isso falha se já existir outro cliente com o nome corrigido (nesse caso
+// é duplicidade de verdade — precisa mesclar, não só renomear).
+export async function renomearCliente(clienteId, novoNome) {
+  const nome = (novoNome || "").trim();
+  if (!clienteId || !nome) return;
+  const { error } = await supabase.from("clientes").update({ nome }).eq("id", clienteId);
+  if (error) throw error;
+}
+
 export async function encontrarOuCriarCliente(nome) {
   const nomeNormalizado = nome.trim().toLowerCase();
   const { data: existente } = await supabase
