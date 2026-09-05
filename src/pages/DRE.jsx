@@ -1,11 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ChevronLeft, ChevronRight, Info, Layers, Scale, Scissors, Shirt, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Card, PageTitle, StatCard } from "../components/ui";
-import { BRASS, INK, LINE, TEXT_MUTED } from "../lib/constants";
+import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { custoEquipeMensal } from "../lib/custoEquipe";
 import { custoCompartilhadoRateado } from "../lib/custoFixoMensal";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
+import { supabase } from "../supabaseClient";
 
 const CATEGORIA_TECIDO = "Material/Tecido avulso";
 
@@ -136,9 +137,38 @@ function LinhaDRE({ titulo, Icone, receita, maoDeObra, tecido, aviamentos, estru
 // configurado desses valores mês a mês).
 export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoAviamentosPorPecaBase = {} }) {
   const mesRealAtual = hojeISO().slice(0, 7);
-  const [mesSelecionado, setMesSelecionado] = React.useState(mesRealAtual);
+  const [mesSelecionado, setMesSelecionado] = useState(mesRealAtual);
   const ehMesAtual = mesSelecionado === mesRealAtual;
   const custosFixos = useConfigCustosFixos();
+
+  // Ajuste manual do tecido gasto no mês (opcional) — pra meses fechados
+  // onde os pedidos não têm metro/valor cadastrado (o "Tecido estimado"
+  // fica zerado), dá pra informar à mão o que foi gasto de verdade só pra
+  // enxergar o lucro real daquele mês. É por mês (chave própria na config,
+  // "tecido_manual_<mês>") — puramente informativo, não altera a
+  // composição de custo mostrada nos cards de cima nem afeta outros meses.
+  const chaveTecidoManual = `tecido_manual_${mesSelecionado}`;
+  const [tecidoManual, setTecidoManual] = useState("");
+  const [tecidoManualSalvo, setTecidoManualSalvo] = useState(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    setTecidoManualSalvo(null);
+    (async () => {
+      const { data } = await supabase.from("config").select("valor").eq("chave", chaveTecidoManual).maybeSingle();
+      if (!cancelado) setTecidoManual(data?.valor || "");
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [chaveTecidoManual]);
+
+  async function salvarTecidoManual() {
+    setTecidoManualSalvo(null);
+    const { error } = await supabase.from("config").upsert({ chave: chaveTecidoManual, valor: tecidoManual });
+    setTecidoManualSalvo(!error);
+    setTimeout(() => setTecidoManualSalvo(null), 2500);
+  }
 
   const {
     aluguelAtelie,
@@ -235,6 +265,16 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
   const margemGeral = geral && geral.receita > 0 ? (resultadoGeral / geral.receita) * 100 : 0;
   const sePagandoGeral = resultadoGeral >= 0;
 
+  // Quando o tecido informado manualmente está preenchido, ele SUBSTITUI o
+  // tecido estimado (que provavelmente está zerado/incompleto naquele mês)
+  // nesse número ajustado — só pra visualização, não mexe nos cards por
+  // linha (Camisaria/Alfaiataria) nem em outro mês.
+  const tecidoManualValor = parseFloat(tecidoManual) || 0;
+  const custoTotalGeralAjustado = tecidoManualValor > 0 ? custoTotalGeral - (geral ? geral.tecido : 0) + tecidoManualValor : custoTotalGeral;
+  const resultadoGeralAjustado = geral ? geral.receita - custoTotalGeralAjustado : 0;
+  const margemGeralAjustada = geral && geral.receita > 0 ? (resultadoGeralAjustado / geral.receita) * 100 : 0;
+  const sePagandoGeralAjustado = resultadoGeralAjustado >= 0;
+
   const tecidoReal = useMemo(() => tecidoRealDoMes(despesas, mesSelecionado), [despesas, mesSelecionado]);
   const tecidoEstimado = geral ? geral.tecido : 0;
   const diferencaTecido = tecidoReal - tecidoEstimado;
@@ -284,6 +324,50 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
           <StatCard label="Resultado do mês" value={brl(resultadoGeral)} icon={Wallet} accent={sePagandoGeral ? VERDE : VERMELHO} />
           <StatCard label="Margem do mês" value={`${margemGeral.toFixed(1)}%`} icon={sePagandoGeral ? TrendingUp : TrendingDown} accent={sePagandoGeral ? VERDE : VERMELHO} />
         </div>
+      )}
+
+      {geral && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Scale size={15} color={BRASS} />
+            <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+              Tecido gasto — informado manualmente (opcional)
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+            Só use isso em meses fechados onde o "Tecido" ficou zerado/incompleto (pedido antigo sem metro/valor
+            cadastrado) e você já sabe, pelo extrato do PJ, quanto gastou de verdade com fornecedor de tecido nesse
+            mês. É só pra enxergar o lucro real de {nomeDoMes(mesSelecionado)} — não muda os cards de Camisaria/Alfaiataria
+            acima, nem afeta outros meses.
+          </div>
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <input
+              type="number"
+              step="0.01"
+              placeholder="R$ gasto com tecido nesse mês"
+              style={{ ...inputStyle, width: 220 }}
+              value={tecidoManual}
+              onChange={(e) => setTecidoManual(e.target.value)}
+            />
+            <button
+              onClick={salvarTecidoManual}
+              style={{ background: tecidoManualSalvo ? VERDE : INK, color: "#FFF", padding: "9px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
+            >
+              {tecidoManualSalvo ? "Salvo ✓" : "Salvar"}
+            </button>
+          </div>
+          {tecidoManualValor > 0 && (
+            <div
+              className="flex items-center justify-between py-2 px-3 mt-2"
+              style={{ background: sePagandoGeralAjustado ? "#EAF3EA" : "#F7EAE3", borderRadius: 6, fontSize: 13, fontWeight: 700 }}
+            >
+              <span>Lucro ajustado com esse tecido (Geral)</span>
+              <span className="fx-mono" style={{ color: sePagandoGeralAjustado ? VERDE : VERMELHO }}>
+                {brl(resultadoGeralAjustado)} ({margemGeralAjustada.toFixed(1)}%)
+              </span>
+            </div>
+          )}
+        </Card>
       )}
 
       <div className="flex items-start gap-2 mb-6 p-3" style={{ background: "#F3EEDF", borderRadius: 8, fontSize: 12, color: TEXT_MUTED }}>
