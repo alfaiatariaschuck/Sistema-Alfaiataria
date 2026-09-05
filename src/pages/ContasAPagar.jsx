@@ -356,6 +356,7 @@ export default function ContasAPagar({
   const [editandoDespesa, setEditandoDespesa] = useState(null);
   const [valorPagoEdit, setValorPagoEdit] = useState("");
   const [buscaPaga, setBuscaPaga] = useState("");
+  const [verTodasMesAtual, setVerTodasMesAtual] = useState(false);
   const [dataPagamentoEdit, setDataPagamentoEdit] = useState(hojeISO());
   const [edicaoDespesa, setEdicaoDespesa] = useState({
     descricao: "",
@@ -482,8 +483,15 @@ export default function ContasAPagar({
   // 15 mais recentes; com busca (nome do cliente/fornecedor/descrição),
   // procura em TODAS as pagas, mesmo as antigas que já saíram do topo.
   const despesasPagasTodas = despesas.filter((d) => d.status === "Pago").sort((a, b) => (b.vencimento || "").localeCompare(a.vencimento || ""));
+  const mesAtualPagas = hojeISO().slice(0, 7);
   const despesasPagas = buscaPaga.trim()
-    ? despesasPagasTodas.filter((d) => (d.descricao || "").toLowerCase().includes(buscaPaga.trim().toLowerCase()))
+    ? despesasPagasTodas.filter(
+        (d) =>
+          (d.descricao || "").toLowerCase().includes(buscaPaga.trim().toLowerCase()) ||
+          (d.fornecedor || "").toLowerCase().includes(buscaPaga.trim().toLowerCase())
+      )
+    : verTodasMesAtual
+    ? despesasPagasTodas.filter((d) => d.vencimento && d.vencimento.slice(0, 7) === mesAtualPagas)
     : despesasPagasTodas.slice(0, 15);
   // Atrasada entra na projeção sempre, não importa o período escolhido —
   // senão some da tela assim que passa da data e vira fácil de esquecer
@@ -1372,12 +1380,30 @@ export default function ContasAPagar({
                 <span>{mostrarPagas ? "ocultar" : "ver"}</span>
               </button>
               {mostrarPagas && (
-                <input
-                  placeholder="Buscar por cliente/descrição, mesmo em pagas antigas…"
-                  value={buscaPaga}
-                  onChange={(e) => setBuscaPaga(e.target.value)}
-                  style={{ ...inputStyle, marginBottom: 8, fontSize: 12, padding: "6px 10px" }}
-                />
+                <div className="flex items-center gap-2 flex-wrap mb-2">
+                  <input
+                    placeholder="Buscar por cliente/fornecedor/descrição, mesmo em pagas antigas…"
+                    value={buscaPaga}
+                    onChange={(e) => setBuscaPaga(e.target.value)}
+                    style={{ ...inputStyle, fontSize: 12, padding: "6px 10px", flex: 1, minWidth: 200 }}
+                  />
+                  {!buscaPaga.trim() && (
+                    <button
+                      onClick={() => setVerTodasMesAtual((v) => !v)}
+                      style={{
+                        background: verTodasMesAtual ? BRASS : "#EDEAE0",
+                        color: verTodasMesAtual ? "#FFF" : INK,
+                        padding: "7px 12px",
+                        borderRadius: 8,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {verTodasMesAtual ? "✓ Todas deste mês" : "Ver todas deste mês"}
+                    </button>
+                  )}
+                </div>
               )}
               {mostrarPagas &&
                 despesasPagas.map((d) => {
