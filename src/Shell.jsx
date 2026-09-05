@@ -3,6 +3,7 @@ import {
   AlertCircle,
   Archive,
   BarChart3,
+  BookText,
   ChevronDown,
   ChevronRight,
   ClipboardList,
@@ -74,6 +75,7 @@ import CustosCamisaria from "./pages/CustosCamisaria";
 import ComparativoMensal from "./pages/ComparativoMensal";
 import PedidosVendidos from "./pages/PedidosVendidos";
 import ResultadoMensal from "./pages/ResultadoMensal";
+import DRE from "./pages/DRE";
 import ModelosCamisa from "./pages/ModelosCamisa";
 import TecidosAlfaiataria from "./pages/TecidosAlfaiataria";
 import PlanosAssinatura from "./pages/PlanosAssinatura";
@@ -110,6 +112,7 @@ const NAV = [
   { id: "consolidado", label: "Consolidado", icon: Layers, primary: false, grupo: "Geral" },
   { id: "pedidos-vendidos", label: "Pedidos Vendidos", icon: TrendingUp, primary: false, grupo: "Geral" },
   { id: "comparativo-mensal", label: "Comparativo Mensal", icon: GitCompare, primary: false, grupo: "Geral" },
+  { id: "dre", label: "DRE", icon: BookText, primary: false, grupo: "Geral" },
   { id: "resultado-mensal", label: "Resultado do Mês", icon: Scale, primary: false, grupo: "Geral" },
   { id: "metas", label: "Metas", icon: Target, primary: false, grupo: "Geral" },
   { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false, grupo: "Geral" },
@@ -941,6 +944,9 @@ export default function Shell() {
               )}
               {tab === "comparativo-mensal" && !loadingPecas && !loading && (
                 <ComparativoMensal pedidos={pedidos} pecas={pecas} custoAviamentosPorPecaBase={custoPorPecaBase} equipe={equipe} />
+              )}
+              {tab === "dre" && !loadingPecas && !loading && (
+                <DRE pedidos={pedidos} pecas={pecas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
               {tab === "resultado-mensal" && !loadingPecas && !loading && (
                 <ResultadoMensal pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
