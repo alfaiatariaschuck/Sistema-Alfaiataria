@@ -94,7 +94,6 @@ function rowParaPedido(row) {
         metragem: t.metragem || "",
         valorMetro: t.valor_metro ?? "",
         comprado: !!t.comprado,
-        urgente: !!t.compra_urgente,
         metrosBaixados: t.metros_baixados ?? null,
       })),
     observacoes: row.observacoes || "",

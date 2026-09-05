@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, HelpCircle, Pencil, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Undo2, Wallet, X } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, HelpCircle, Pencil, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Undo2, Wallet, X } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, CATEGORIAS_DESPESA, FORNECEDORES_TECIDO, INK, LINE, LINHA_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData, hojeISO, metragemParaNumero, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
@@ -8,6 +8,7 @@ import { supabase } from "../supabaseClient";
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
 const CHAVE_CAIXA = "caixa_atual";
+const CHAVE_SOMAR_TECIDO = "somar_tecido_pendente";
 const MESES_HISTORICO_FRETE = 6;
 
 // Total de uma despesa = valor do produto/serviço + frete (quando tiver).
@@ -331,8 +332,6 @@ export default function ContasAPagar({
   onRemoverPrevisao,
   onCriarNota,
   onRemoverNota,
-  onTecidoPedido,
-  onTecidoPeca,
   irParaPedido,
   irParaPeca,
 }) {
@@ -356,7 +355,6 @@ export default function ContasAPagar({
   const [novaNota, setNovaNota] = useState({ descricao: "", valor: "", dataEsperada: "" });
   const [editandoDespesa, setEditandoDespesa] = useState(null);
   const [valorPagoEdit, setValorPagoEdit] = useState("");
-  const [mostrarTecidoPendente, setMostrarTecidoPendente] = useState(true);
   const [buscaPaga, setBuscaPaga] = useState("");
   const [dataPagamentoEdit, setDataPagamentoEdit] = useState(hojeISO());
   const [edicaoDespesa, setEdicaoDespesa] = useState({
@@ -379,11 +377,16 @@ export default function ContasAPagar({
   const [mostrarGuia, setMostrarGuia] = useState(true);
   const [desfazerRecente, setDesfazerRecente] = useState(null);
   const [mostrarPagas, setMostrarPagas] = useState(false);
+  const [somarTecidoPendente, setSomarTecidoPendente] = useState(false);
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_CAIXA).maybeSingle();
       if (data?.valor) setCaixaAtual(data.valor);
+    })();
+    (async () => {
+      const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_SOMAR_TECIDO).maybeSingle();
+      setSomarTecidoPendente(data?.valor === "true");
     })();
   }, []);
 
@@ -392,6 +395,13 @@ export default function ContasAPagar({
     const { error } = await supabase.from("config").upsert({ chave: CHAVE_CAIXA, valor: caixaAtual });
     setCaixaSalvo(!error);
     setTimeout(() => setCaixaSalvo(null), 2500);
+  }
+
+  // Um clique só, liga/desliga — sem precisar entrar item por item.
+  async function alternarSomarTecidoPendente() {
+    const novo = !somarTecidoPendente;
+    setSomarTecidoPendente(novo);
+    await supabase.from("config").upsert({ chave: CHAVE_SOMAR_TECIDO, valor: novo ? "true" : "false" });
   }
 
   const hoje = hojeISO();
@@ -494,11 +504,11 @@ export default function ContasAPagar({
   const caixaNum = parseFloat(caixaAtual) || 0;
 
   // Tecido ainda não comprado (pedidos + peças, ver aba Compras) — já
-  // foi vendido, então em algum momento vai sair dinheiro pra comprar,
-  // mas só entra de fato no saldo projetado/falta faturar quando
-  // marcado como "urgente" (compra_urgente) — assim o dono decide o
-  // ritmo dele: fica tudo visível pra planejar, mas só pesa na conta da
-  // semana o que ele realmente precisa comprar agora.
+  // foi vendido, então em algum momento vai sair dinheiro pra comprar.
+  // Um interruptor só (abaixo, ligado a "somarTecidoPendente"), não por
+  // item: ligado, soma o total inteiro no saldo projetado/falta
+  // faturar; desligado, não conta nada — pra decidir o ritmo sem ficar
+  // marcando item por item.
   const tecidoPendenteItens = [];
   (pedidos || []).forEach((p) =>
     (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "camisa", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }))
@@ -506,27 +516,10 @@ export default function ContasAPagar({
   (pecas || []).forEach((p) =>
     (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "alfaiataria", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }))
   );
-  const tecidoPendenteTodosComPreco = tecidoPendenteItens.filter((t) => metragemParaNumero(t.metragem) !== null && parseFloat(t.valorMetro));
-  const tecidoPendenteUrgente = tecidoPendenteItens.filter((t) => t.urgente);
-  const tecidoPendenteComPreco = tecidoPendenteUrgente.filter((t) => metragemParaNumero(t.metragem) !== null && parseFloat(t.valorMetro));
-  const tecidoPendente = tecidoPendenteComPreco.reduce((s, t) => s + metragemParaNumero(t.metragem) * parseFloat(t.valorMetro), 0);
-  const tecidoPendenteSemPreco = tecidoPendenteUrgente.length - tecidoPendenteComPreco.length;
-
-  // Marca o tecido do item como já comprado — some da lista de pendente
-  // (e do saldo projetado/falta faturar, se estava urgente) na hora, sem
-  // precisar ir na aba Compras. Mesmo campo "comprado" usado lá; se
-  // precisar voltar atrás, é só desmarcar em Compras.
-  function marcarTecidoComprado(item) {
-    if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "comprado", true);
-    else onTecidoPeca(item.pedidoId, item.tecidoId, "comprado", true);
-  }
-
-  // Marca/desmarca um item como "preciso comprar urgente" — só isso faz
-  // ele somar no saldo projetado/falta faturar.
-  function alternarTecidoUrgente(item, valor) {
-    if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "compra_urgente", valor);
-    else onTecidoPeca(item.pedidoId, item.tecidoId, "compra_urgente", valor);
-  }
+  const tecidoPendenteComPreco = tecidoPendenteItens.filter((t) => metragemParaNumero(t.metragem) !== null && parseFloat(t.valorMetro));
+  const tecidoPendenteTotal = tecidoPendenteComPreco.reduce((s, t) => s + metragemParaNumero(t.metragem) * parseFloat(t.valorMetro), 0);
+  const tecidoPendente = somarTecidoPendente ? tecidoPendenteTotal : 0;
+  const tecidoPendenteSemPreco = tecidoPendenteItens.length - tecidoPendenteComPreco.length;
 
   // Saldo projetado = o que já tenho em caixa + o que ainda vou receber - o
   // que ainda vou pagar (despesas + tecido pendente de compra). Falta
@@ -546,12 +539,14 @@ export default function ContasAPagar({
         const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
         mapa.set(d.fornecedor, (mapa.get(d.fornecedor) || 0) + pendente);
       });
-    tecidoPendenteComPreco
-      .filter((t) => (t.fornecedor || "").trim())
-      .forEach((t) => {
-        const nome = t.fornecedor.trim();
-        mapa.set(nome, (mapa.get(nome) || 0) + metragemParaNumero(t.metragem) * parseFloat(t.valorMetro));
-      });
+    if (somarTecidoPendente) {
+      tecidoPendenteComPreco
+        .filter((t) => (t.fornecedor || "").trim())
+        .forEach((t) => {
+          const nome = t.fornecedor.trim();
+          mapa.set(nome, (mapa.get(nome) || 0) + metragemParaNumero(t.metragem) * parseFloat(t.valorMetro));
+        });
+    }
     return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
   })();
 
@@ -1135,82 +1130,34 @@ export default function ContasAPagar({
       <div className="grid gap-4 mb-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
         <StatCard label="Caixa atual" value={brl(caixaNum)} icon={PiggyBank} />
         <StatCard label="A pagar no período" value={brl(totalDespesas)} icon={TrendingDown} accent={VERMELHO} />
-        <div
-          onClick={() => {
-            setMostrarTecidoPendente(true);
-            document.getElementById("lista-tecido-pendente")?.scrollIntoView({ behavior: "smooth", block: "center" });
-          }}
-          style={{ cursor: "pointer" }}
-          title="Clica pra ver a lista de itens e marcar quais contam nessa soma"
+        <button
+          type="button"
+          onClick={alternarSomarTecidoPendente}
+          title={somarTecidoPendente ? "Clica pra parar de somar" : "Clica pra somar no saldo projetado/falta faturar"}
+          style={{ textAlign: "left", cursor: "pointer" }}
         >
-          <StatCard label="Tecido pendente de compra (marcados urgente)" value={brl(tecidoPendente)} icon={TrendingDown} accent={VERMELHO} />
-        </div>
+          <Card style={{ padding: 16, border: somarTecidoPendente ? "1px solid #E0A583" : undefined }}>
+            <div className="flex items-center justify-between mb-2">
+              <span style={{ fontSize: 12, color: TEXT_MUTED, fontWeight: 600 }}>Tecido pendente de compra</span>
+              <TrendingDown size={15} color={somarTecidoPendente ? VERMELHO : TEXT_MUTED} />
+            </div>
+            <div className="fx-serif" style={{ fontSize: 22, fontWeight: 600, color: somarTecidoPendente ? VERMELHO : INK }}>
+              {brl(tecidoPendenteTotal)}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: somarTecidoPendente ? VERMELHO : TEXT_MUTED, marginTop: 4 }}>
+              {somarTecidoPendente ? "✓ somando no saldo — clica pra parar" : "não está somando — clica pra somar"}
+            </div>
+          </Card>
+        </button>
         <StatCard label="A receber no período" value={brl(totalReceita)} icon={TrendingUp} accent={VERDE} />
         <StatCard label="Saldo projetado" value={brl(saldo)} icon={Wallet} accent={saldo < 0 ? VERMELHO : VERDE} />
         <StatCard label="Falta faturar" value={brl(faltaFaturar)} icon={TrendingUp} accent={faltaFaturar > 0 ? VERMELHO : VERDE} />
       </div>
       <div className="mb-8">
-        {tecidoPendenteComPreco.length > 0 && (
-          <button
-            onClick={() => setMostrarTecidoPendente((v) => !v)}
-            className="flex items-center gap-1"
-            style={{ color: BRASS, fontSize: 12, fontWeight: 600, marginBottom: mostrarTecidoPendente ? 8 : 4 }}
-          >
-            {mostrarTecidoPendente ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {mostrarTecidoPendente ? "Ocultar itens de tecido pendente" : `Ver os ${tecidoPendenteTodosComPreco.length} item(ns) de tecido pendente`}
-          </button>
-        )}
-        {mostrarTecidoPendente && (
-          <div id="lista-tecido-pendente">
-            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 6 }}>
-              Marca "urgente" nos que você precisa comprar já — só esses somam no saldo projetado/falta faturar
-              acima. Os outros ficam visíveis aqui (já foram vendidos, precisam ser comprados em algum momento), sem
-              pesar na conta da semana.
-            </div>
-            <div className="flex flex-col gap-1 mb-2">
-              {tecidoPendenteTodosComPreco.map((t, i) => (
-                <div
-                  key={`${t.pedidoId}-${t.tecidoId}-${i}`}
-                  className="flex items-center justify-between gap-2 flex-wrap p-2"
-                  style={{ background: t.urgente ? "#F6E3D9" : "#F3EEDF", borderRadius: 6, fontSize: 12 }}
-                >
-                  <label className="flex items-center gap-2" style={{ cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={!!t.urgente}
-                      onChange={(e) => alternarTecidoUrgente(t, e.target.checked)}
-                      style={{ width: 15, height: 15, accentColor: "#9C4A1E", flexShrink: 0 }}
-                      title="Marcar como urgente — passa a somar no saldo projetado/falta faturar"
-                    />
-                    <div>
-                      <strong>{t.cliente}</strong>{" "}
-                      <span style={{ color: TEXT_MUTED }}>
-                        · {t.codigo || "sem código"} · {t.metragem}m × {brl(t.valorMetro)}
-                      </span>
-                    </div>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span className="fx-mono" style={{ fontWeight: 700 }}>
-                      {brl(metragemParaNumero(t.metragem) * parseFloat(t.valorMetro))}
-                    </span>
-                    <button
-                      onClick={() => marcarTecidoComprado(t)}
-                      className="flex items-center gap-1"
-                      style={{ color: "#2C6E31", fontWeight: 600 }}
-                      title="Marca como já comprado — some daqui e do saldo projetado/falta faturar. Pra desfazer, é só desmarcar em Compras."
-                    >
-                      <CheckCircle2 size={14} /> Já comprei
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {tecidoPendenteSemPreco > 0 && (
+        {somarTecidoPendente && tecidoPendenteSemPreco > 0 && (
           <div style={{ fontSize: 11, color: TEXT_MUTED }}>
-            {tecidoPendenteSemPreco} item(ns) marcado(s) urgente sem metragem/preço cadastrado ainda em Compras —
-            fora da soma acima, então o "tecido pendente de compra" real é maior que isso.
+            {tecidoPendenteSemPreco} item(ns) de tecido pendente sem metragem/preço cadastrado ainda em Compras —
+            fora da soma acima, então o valor real é maior que isso.
           </div>
         )}
       </div>
