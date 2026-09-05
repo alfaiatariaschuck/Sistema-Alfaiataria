@@ -458,11 +458,22 @@ export default function Shell() {
   // "Últimas Pagas". Cobre o caso de "marquei como pago sem querer, não
   // paguei ela de verdade": zera o valor pago da despesa (mesma conta
   // do botão "Reabrir" de lá) e o pedido sincroniza sozinho de volta
-  // pra Pendente.
+  // pra Pendente. Se o pedido nunca teve despesa lançada pra ele (ex:
+  // o status de pagamento foi marcado "Pago" direto aqui, sem nunca ter
+  // passado por Contas a Pagar — pedidos antigos, de antes desse
+  // vínculo existir), não tem o que reabrir — nesse caso lança a
+  // despesa agora, como pendente, e corrige o status aqui também (senão
+  // ficaria "Pago" no pedido sem nenhuma despesa correspondente).
   async function reabrirPagamentoFabianaDoPedido(pedidoId) {
     const despesa = despesas.find((d) => d.pedidoId === pedidoId);
-    if (!despesa) return;
-    await atualizarValorPagoDespesa(despesa.id, 0);
+    if (despesa) {
+      await atualizarValorPagoDespesa(despesa.id, 0);
+      return;
+    }
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    if (!pedido) return;
+    await tentarCriarDespesaFabiana(pedido);
+    await atualizarSubcampo(pedidoId, "pagoFabiana", "statusPagamento", "Pendente");
   }
 
   // Reconfere a despesa da Fabiana desse pedido sem esperar o dono

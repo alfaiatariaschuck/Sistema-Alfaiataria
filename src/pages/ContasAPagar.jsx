@@ -356,7 +356,7 @@ export default function ContasAPagar({
   const [novaNota, setNovaNota] = useState({ descricao: "", valor: "", dataEsperada: "" });
   const [editandoDespesa, setEditandoDespesa] = useState(null);
   const [valorPagoEdit, setValorPagoEdit] = useState("");
-  const [mostrarTecidoPendente, setMostrarTecidoPendente] = useState(false);
+  const [mostrarTecidoPendente, setMostrarTecidoPendente] = useState(true);
   const [buscaPaga, setBuscaPaga] = useState("");
   const [dataPagamentoEdit, setDataPagamentoEdit] = useState(hojeISO());
   const [edicaoDespesa, setEdicaoDespesa] = useState({
@@ -1135,7 +1135,16 @@ export default function ContasAPagar({
       <div className="grid gap-4 mb-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
         <StatCard label="Caixa atual" value={brl(caixaNum)} icon={PiggyBank} />
         <StatCard label="A pagar no período" value={brl(totalDespesas)} icon={TrendingDown} accent={VERMELHO} />
-        <StatCard label="Tecido pendente de compra" value={brl(tecidoPendente)} icon={TrendingDown} accent={VERMELHO} />
+        <div
+          onClick={() => {
+            setMostrarTecidoPendente(true);
+            document.getElementById("lista-tecido-pendente")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
+          style={{ cursor: "pointer" }}
+          title="Clica pra ver a lista de itens e marcar quais contam nessa soma"
+        >
+          <StatCard label="Tecido pendente de compra (marcados urgente)" value={brl(tecidoPendente)} icon={TrendingDown} accent={VERMELHO} />
+        </div>
         <StatCard label="A receber no período" value={brl(totalReceita)} icon={TrendingUp} accent={VERDE} />
         <StatCard label="Saldo projetado" value={brl(saldo)} icon={Wallet} accent={saldo < 0 ? VERMELHO : VERDE} />
         <StatCard label="Falta faturar" value={brl(faltaFaturar)} icon={TrendingUp} accent={faltaFaturar > 0 ? VERMELHO : VERDE} />
@@ -1152,7 +1161,7 @@ export default function ContasAPagar({
           </button>
         )}
         {mostrarTecidoPendente && (
-          <>
+          <div id="lista-tecido-pendente">
             <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 6 }}>
               Marca "urgente" nos que você precisa comprar já — só esses somam no saldo projetado/falta faturar
               acima. Os outros ficam visíveis aqui (já foram vendidos, precisam ser comprados em algum momento), sem
@@ -1196,7 +1205,7 @@ export default function ContasAPagar({
                 </div>
               ))}
             </div>
-          </>
+          </div>
         )}
         {tecidoPendenteSemPreco > 0 && (
           <div style={{ fontSize: 11, color: TEXT_MUTED }}>
