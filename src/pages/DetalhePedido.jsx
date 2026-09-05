@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, Clock, Printer, RefreshCw, Save, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Printer, RefreshCw, Save, Trash2, Undo2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
@@ -16,7 +16,7 @@ import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana }) {
+export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana, onReabrirPagamentoFabiana }) {
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -331,6 +331,24 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
                 labelStatusRestante="Status da 2ª parte"
                 labelFalta="Falta pagar"
               />
+              {p.pagoFabiana.statusPagamento === "Pago" && onReabrirPagamentoFabiana && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "Marcar como NÃO paga a Fabiana? Isso reabre a despesa dela em Contas a Pagar (zera o valor pago) e volta esse pedido pra Pendente."
+                      )
+                    ) {
+                      onReabrirPagamentoFabiana(p.id);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 mt-2"
+                  style={{ color: "#9C4A1E", fontSize: 12, fontWeight: 600 }}
+                >
+                  <Undo2 size={13} /> Marcou como pago sem querer? Reabrir
+                </button>
+              )}
             </div>
           </div>
         </Card>

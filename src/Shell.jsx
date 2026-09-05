@@ -453,6 +453,18 @@ export default function Shell() {
     await sincronizarPagamentoFabiana(resultado);
   }
 
+  // Reabre a despesa da Fabiana vinculada a esse pedido — atalho direto
+  // do próprio pedido, sem precisar ir em Contas a Pagar procurar nas
+  // "Últimas Pagas". Cobre o caso de "marquei como pago sem querer, não
+  // paguei ela de verdade": zera o valor pago da despesa (mesma conta
+  // do botão "Reabrir" de lá) e o pedido sincroniza sozinho de volta
+  // pra Pendente.
+  async function reabrirPagamentoFabianaDoPedido(pedidoId) {
+    const despesa = despesas.find((d) => d.pedidoId === pedidoId);
+    if (!despesa) return;
+    await atualizarValorPagoDespesa(despesa.id, 0);
+  }
+
   // Reconfere a despesa da Fabiana desse pedido sem esperar o dono
   // editar nada — chamado sempre que o detalhe de um pedido é aberto,
   // pra corrigir sozinho qualquer despesa que tenha ficado com valor
@@ -492,6 +504,7 @@ export default function Shell() {
   const acoesPedido = {
     onCampo: atualizarCampoPedido,
     onSub: atualizarSubcampoPedido,
+    onReabrirPagamentoFabiana: reabrirPagamentoFabianaDoPedido,
     onRemover: (id) => {
       removerPedido(id);
       setSelecionado(null);
