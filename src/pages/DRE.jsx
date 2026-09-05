@@ -20,6 +20,17 @@ function tecidoRealDoMes(despesas, chaveMes) {
     .reduce((s, d) => s + (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0), 0);
 }
 
+// Impostos (valor manual mensal, configurado enquanto a declaração não
+// está fechada) rateados entre as linhas proporcional à receita de cada
+// uma — igual ao rateio dos outros custos compartilhados, mas em linha
+// própria pra ficar visível (não é uma retirada pessoal como o
+// pró-labore, então não faz sentido dividir 50/50).
+function impostoRateado(impostos, receitaLinha, receitaOutraLinha) {
+  const receitaTotal = (receitaLinha || 0) + (receitaOutraLinha || 0);
+  const fatia = receitaTotal > 0 ? receitaLinha / receitaTotal : 0.5;
+  return (parseFloat(impostos) || 0) * fatia;
+}
+
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -44,8 +55,8 @@ function nomeDoMes(mesStr) {
 // Linha do DRE (Camisaria, Alfaiataria ou Geral) — mesma composição usada
 // em Custos do Ateliê/Custos da Camisaria/Resultado do Mês, só que
 // detalhada lado a lado com as outras linhas pra comparar de uma vez.
-function LinhaDRE({ titulo, Icone, receita, maoDeObra, tecido, aviamentos, estrutura, rateio, destaque }) {
-  const custoTotal = maoDeObra + tecido + aviamentos + estrutura + rateio;
+function LinhaDRE({ titulo, Icone, receita, maoDeObra, tecido, aviamentos, estrutura, rateio, imposto, destaque }) {
+  const custoTotal = maoDeObra + tecido + aviamentos + estrutura + rateio + imposto;
   const resultado = receita - custoTotal;
   const sePagando = resultado >= 0;
   const margem = receita > 0 ? (resultado / receita) * 100 : 0;
@@ -68,6 +79,7 @@ function LinhaDRE({ titulo, Icone, receita, maoDeObra, tecido, aviamentos, estru
           ["Aviamentos", aviamentos],
           ["Estrutura (aluguel/luz)", estrutura],
           ["Compartilhado (rateio)", rateio],
+          ["Impostos", imposto],
         ].map(([label, valor]) => (
           <div key={label} className="flex items-center justify-between py-1" style={{ borderBottom: `1px solid ${LINE}` }}>
             <span>{label}</span>
@@ -114,6 +126,7 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
     prolabore,
     custosFixosPJ,
     planoSaudePJ,
+    impostos,
     loading: carregandoConfig,
   } = custosFixos;
 
@@ -143,6 +156,9 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
     const rateioCamisaria = custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaudePJ, receitaLinha: receitaCamisaria, receitaOutraLinha: receitaAlfaiataria });
     const rateioAlfaiataria = custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaudePJ, receitaLinha: receitaAlfaiataria, receitaOutraLinha: receitaCamisaria });
 
+    const impostoCamisaria = impostoRateado(impostos, receitaCamisaria, receitaAlfaiataria);
+    const impostoAlfaiataria = impostoRateado(impostos, receitaAlfaiataria, receitaCamisaria);
+
     // Pedidos/peças com tecido lançado mas sem valor/metro cadastrado — o
     // custo deles entra como R$0 sem avisar, então lista quem é (mesmo
     // aviso que já existe em Custos do Ateliê/Custos da Camisaria).
@@ -163,6 +179,7 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
         aviamentos: aviamentosCamisaria,
         estrutura: estruturaCamisaria,
         rateio: rateioCamisaria,
+        imposto: impostoCamisaria,
       },
       alfaiataria: {
         receita: receitaAlfaiataria,
@@ -171,10 +188,11 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
         aviamentos: aviamentosAlfaiataria,
         estrutura: estruturaAlfaiataria,
         rateio: rateioAlfaiataria,
+        imposto: impostoAlfaiataria,
       },
     };
     // eslint-disable-next-line
-  }, [carregandoConfig, pedidos, pecas, equipe, custoAviamentosPorPecaBase, mesSelecionado, aluguelLoja, luzLoja, aluguelAtelie, luzAtelie, prolabore, custosFixosPJ, planoSaudePJ]);
+  }, [carregandoConfig, pedidos, pecas, equipe, custoAviamentosPorPecaBase, mesSelecionado, aluguelLoja, luzLoja, aluguelAtelie, luzAtelie, prolabore, custosFixosPJ, planoSaudePJ, impostos]);
 
   const geral = useMemo(() => {
     if (!dados) return null;
@@ -186,10 +204,11 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
       aviamentos: somar("aviamentos"),
       estrutura: somar("estrutura"),
       rateio: somar("rateio"),
+      imposto: somar("imposto"),
     };
   }, [dados]);
 
-  const custoTotalGeral = geral ? geral.maoDeObra + geral.tecido + geral.aviamentos + geral.estrutura + geral.rateio : 0;
+  const custoTotalGeral = geral ? geral.maoDeObra + geral.tecido + geral.aviamentos + geral.estrutura + geral.rateio + geral.imposto : 0;
   const resultadoGeral = geral ? geral.receita - custoTotalGeral : 0;
   const margemGeral = geral && geral.receita > 0 ? (resultadoGeral / geral.receita) * 100 : 0;
   const sePagandoGeral = resultadoGeral >= 0;
@@ -248,8 +267,9 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
         <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
           Custo de produção controlado (tecido pelo valor/metro cadastrado, aviamento pelo catálogo, mão de obra e
-          estrutura) — despesas soltas do Contas a Pagar (fornecedor avulso, manutenção etc) não entram aqui, esse é
-          o simulador de caixa à parte. {ehMesAtual ? (
+          estrutura) + impostos (valor manual configurado em Configurações, rateado por receita entre as linhas) —
+          despesas soltas do Contas a Pagar (fornecedor avulso, manutenção etc) não entram aqui, esse é o simulador
+          de caixa à parte. {ehMesAtual ? (
             <>Mês corrente: número ao vivo, ainda incompleto até fechar.</>
           ) : (
             <>Mês fechado: pedidos/peças reais daquele mês, mas equipe/aluguel/luz/pró-labore usam o valor configurado hoje — não existe histórico desses valores mês a mês ainda.</>

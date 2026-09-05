@@ -8,6 +8,7 @@ const CHAVE_LUZ_LOJA = "custo_luz_loja_mensal";
 const CHAVE_PROLABORE = "custo_prolabore_mensal";
 const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
 const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
+const CHAVE_IMPOSTOS = "custo_impostos_mensal";
 
 const TODAS_CHAVES = [
   CHAVE_ALUGUEL_ATELIE,
@@ -17,6 +18,7 @@ const TODAS_CHAVES = [
   CHAVE_PROLABORE,
   CHAVE_CUSTOS_FIXOS_PJ,
   CHAVE_PLANO_SAUDE_PJ,
+  CHAVE_IMPOSTOS,
 ];
 
 // Os mesmos custos fixos da empresa (aluguel/luz do ateliê e da loja,
@@ -32,6 +34,7 @@ export function useConfigCustosFixos() {
     prolabore: 0,
     custosFixosPJ: 0,
     planoSaudePJ: 0,
+    impostos: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -50,6 +53,7 @@ export function useConfigCustosFixos() {
         prolabore: mapa[CHAVE_PROLABORE] || 0,
         custosFixosPJ: mapa[CHAVE_CUSTOS_FIXOS_PJ] || 0,
         planoSaudePJ: mapa[CHAVE_PLANO_SAUDE_PJ] || 0,
+        impostos: mapa[CHAVE_IMPOSTOS] || 0,
       });
       setLoading(false);
     })();
