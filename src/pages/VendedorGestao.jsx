@@ -6,6 +6,7 @@ import { brl, fmtData } from "../lib/helpers";
 import { custoCamisa } from "../lib/vendasMensais";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { useVendedores } from "../hooks/useVendedores";
+import SimuladorDeivid from "../components/SimuladorDeivid";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const MESES_CURTO = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -391,6 +392,8 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
           </table>
         </div>
       </Card>
+
+      <SimuladorDeivid pedidos={pedidos} custoAviamentosPorPecaBase={custoAviamentosPorPecaBase} maoDeObraPadrao={maoDeObraPadrao} />
     </div>
   );
 }
