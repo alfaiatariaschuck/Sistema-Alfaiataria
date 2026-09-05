@@ -4,7 +4,7 @@ import { Card, PageTitle, StatCard } from "../components/ui";
 import { BRASS, INK, LINE, TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO } from "../lib/helpers";
 import { custoEquipeMensal } from "../lib/custoEquipe";
-import { custoCompartilhadoRateado, custoMaoDeObraFabianaEfetivo } from "../lib/custoFixoMensal";
+import { custoCompartilhadoRateado } from "../lib/custoFixoMensal";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 const VERMELHO = "#9C4A1E";
@@ -106,7 +106,6 @@ export default function DRE({ pedidos, pecas, equipe = [], custoAviamentosPorPec
 
   const dados = useMemo(() => {
     if (carregandoConfig) return null;
-    const mesAnterior = mesAnteriorDe(mesSelecionado);
 
     // Custo de tecido/mão de obra usa TODO pedido/peça do mês (Doação
     // inclusa — consome material de verdade); receita e quantidade
@@ -117,7 +116,7 @@ export default function DRE({ pedidos, pecas, equipe = [], custoAviamentosPorPec
     const receitaCamisaria = pedidosMes.filter((p) => p.status !== "Doação").reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
     const receitaAlfaiataria = pecasMes.filter((p) => p.status !== "Doação").reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
 
-    const maoDeObraCamisaria = custoMaoDeObraFabianaEfetivo(pedidos, mesSelecionado, mesAnterior);
+    const maoDeObraCamisaria = pedidosMes.reduce((s, p) => s + (parseFloat(p.pagoFabiana?.valor) || 0), 0);
     const tecidoCamisaria = pedidosMes.reduce((s, p) => s + custoTecidoDe(p.tecidos), 0);
     const quantidadeVendidaCamisaria = pedidosMes.filter((p) => p.status !== "Doação").reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0);
     const aviamentosCamisaria = (custoAviamentosPorPecaBase["Camisa"] || 0) * quantidadeVendidaCamisaria;
