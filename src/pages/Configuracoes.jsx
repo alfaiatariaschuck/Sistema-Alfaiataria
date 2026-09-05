@@ -15,7 +15,12 @@ const CHAVE_LUZ = "custo_luz_mensal"; // Luz do ateliê (produção)
 const CHAVE_ALUGUEL_LOJA = "custo_aluguel_loja_mensal";
 const CHAVE_LUZ_LOJA = "custo_luz_loja_mensal";
 const CHAVE_PROLABORE = "custo_prolabore_mensal";
-const CHAVE_CUSTOS_FIXOS_PJ = "custos_fixos_pj_mensal";
+const CHAVE_CONTADOR = "custo_contador_mensal";
+const CHAVE_SISTEMAS = "custo_sistemas_mensal";
+const CHAVE_MARKETING = "custo_marketing_mensal";
+const CHAVE_COMBUSTIVEL = "custo_combustivel_mensal";
+const CHAVE_INTERNET_PJ = "custo_internet_pj_mensal";
+const CHAVE_OUTROS_PJ = "custo_outros_pj_mensal";
 const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
 const CHAVE_IMPOSTOS = "custo_impostos_mensal";
 
@@ -30,7 +35,12 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
   const [aluguelLoja, setAluguelLoja] = useState("");
   const [luzLoja, setLuzLoja] = useState("");
   const [prolabore, setProlabore] = useState("");
-  const [custosFixosPJ, setCustosFixosPJ] = useState("");
+  const [contador, setContador] = useState("");
+  const [sistemas, setSistemas] = useState("");
+  const [marketing, setMarketing] = useState("");
+  const [combustivel, setCombustivel] = useState("");
+  const [internetPJ, setInternetPJ] = useState("");
+  const [outrosPJ, setOutrosPJ] = useState("");
   const [planoSaudePJ, setPlanoSaudePJ] = useState("");
   const [impostos, setImpostos] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -52,7 +62,12 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
           CHAVE_ALUGUEL_LOJA,
           CHAVE_LUZ_LOJA,
           CHAVE_PROLABORE,
-          CHAVE_CUSTOS_FIXOS_PJ,
+          CHAVE_CONTADOR,
+          CHAVE_SISTEMAS,
+          CHAVE_MARKETING,
+          CHAVE_COMBUSTIVEL,
+          CHAVE_INTERNET_PJ,
+          CHAVE_OUTROS_PJ,
           CHAVE_PLANO_SAUDE_PJ,
           CHAVE_IMPOSTOS,
         ]);
@@ -67,7 +82,12 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
         if (row.chave === CHAVE_ALUGUEL_LOJA) setAluguelLoja(row.valor || "");
         if (row.chave === CHAVE_LUZ_LOJA) setLuzLoja(row.valor || "");
         if (row.chave === CHAVE_PROLABORE) setProlabore(row.valor || "");
-        if (row.chave === CHAVE_CUSTOS_FIXOS_PJ) setCustosFixosPJ(row.valor || "");
+        if (row.chave === CHAVE_CONTADOR) setContador(row.valor || "");
+        if (row.chave === CHAVE_SISTEMAS) setSistemas(row.valor || "");
+        if (row.chave === CHAVE_MARKETING) setMarketing(row.valor || "");
+        if (row.chave === CHAVE_COMBUSTIVEL) setCombustivel(row.valor || "");
+        if (row.chave === CHAVE_INTERNET_PJ) setInternetPJ(row.valor || "");
+        if (row.chave === CHAVE_OUTROS_PJ) setOutrosPJ(row.valor || "");
         if (row.chave === CHAVE_PLANO_SAUDE_PJ) setPlanoSaudePJ(row.valor || "");
         if (row.chave === CHAVE_IMPOSTOS) setImpostos(row.valor || "");
       });
@@ -88,7 +108,12 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
       { chave: CHAVE_ALUGUEL_LOJA, valor: aluguelLoja },
       { chave: CHAVE_LUZ_LOJA, valor: luzLoja },
       { chave: CHAVE_PROLABORE, valor: prolabore },
-      { chave: CHAVE_CUSTOS_FIXOS_PJ, valor: custosFixosPJ },
+      { chave: CHAVE_CONTADOR, valor: contador },
+      { chave: CHAVE_SISTEMAS, valor: sistemas },
+      { chave: CHAVE_MARKETING, valor: marketing },
+      { chave: CHAVE_COMBUSTIVEL, valor: combustivel },
+      { chave: CHAVE_INTERNET_PJ, valor: internetPJ },
+      { chave: CHAVE_OUTROS_PJ, valor: outrosPJ },
       { chave: CHAVE_PLANO_SAUDE_PJ, valor: planoSaudePJ },
       { chave: CHAVE_IMPOSTOS, valor: impostos },
     ]);
@@ -115,7 +140,12 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
       { descricao: "Aluguel — Loja", categoria: "Aluguel", valor: aluguelLoja, linha: "Camisaria" },
       { descricao: "Luz — Loja", categoria: "Água/Luz/Internet", valor: luzLoja, linha: "Camisaria" },
       { descricao: "Plano de saúde empresarial", categoria: "Plano de Saúde", valor: planoSaudePJ, linha: "" },
-      { descricao: "Outros custos fixos PJ", categoria: "Outros", valor: custosFixosPJ, linha: "" },
+      { descricao: "Contador", categoria: "Outros", valor: contador, linha: "" },
+      { descricao: "Sistemas", categoria: "Outros", valor: sistemas, linha: "" },
+      { descricao: "Marketing", categoria: "Outros", valor: marketing, linha: "" },
+      { descricao: "Combustível", categoria: "Outros", valor: combustivel, linha: "" },
+      { descricao: "Internet — PJ", categoria: "Outros", valor: internetPJ, linha: "" },
+      { descricao: "Outros custos fixos PJ", categoria: "Outros", valor: outrosPJ, linha: "" },
       { descricao: "Impostos", categoria: "Impostos", valor: impostos, linha: "" },
     ].filter((it) => (parseFloat(it.valor) || 0) > 0);
 
@@ -212,8 +242,23 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
             <Field label="Plano de saúde empresarial (R$/mês)">
               <input type="number" step="0.01" style={inputStyle} value={planoSaudePJ} onChange={(e) => setPlanoSaudePJ(e.target.value)} />
             </Field>
-            <Field label="Outros custos fixos PJ (contador, sistemas, marketing, combustível, internet, outros — R$/mês)">
-              <input type="number" step="0.01" style={inputStyle} value={custosFixosPJ} onChange={(e) => setCustosFixosPJ(e.target.value)} />
+            <Field label="Contador (R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={contador} onChange={(e) => setContador(e.target.value)} />
+            </Field>
+            <Field label="Sistemas/softwares (R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={sistemas} onChange={(e) => setSistemas(e.target.value)} />
+            </Field>
+            <Field label="Marketing (R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={marketing} onChange={(e) => setMarketing(e.target.value)} />
+            </Field>
+            <Field label="Combustível (R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={combustivel} onChange={(e) => setCombustivel(e.target.value)} />
+            </Field>
+            <Field label="Internet — PJ (R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={internetPJ} onChange={(e) => setInternetPJ(e.target.value)} />
+            </Field>
+            <Field label="Outros custos fixos PJ (o que não couber nos campos acima — R$/mês)">
+              <input type="number" step="0.01" style={inputStyle} value={outrosPJ} onChange={(e) => setOutrosPJ(e.target.value)} />
             </Field>
             <Field label="Impostos (R$/mês, manual — enquanto não fecha a declaração)">
               <input type="number" step="0.01" style={inputStyle} value={impostos} onChange={(e) => setImpostos(e.target.value)} />
