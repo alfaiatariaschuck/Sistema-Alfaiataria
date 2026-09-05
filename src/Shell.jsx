@@ -62,7 +62,6 @@ import RelatorioAlfaiataria from "./pages/RelatorioAlfaiataria";
 import Consolidado from "./pages/Consolidado";
 import Entregues from "./pages/Entregues";
 import Backup from "./pages/Backup";
-import FluxoDeCaixa from "./pages/FluxoDeCaixa";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import ControleProducao from "./pages/ControleProducao";
@@ -113,7 +112,6 @@ const NAV = [
   { id: "comparativo-mensal", label: "Comparativo Mensal", icon: GitCompare, primary: false, grupo: "Geral" },
   { id: "resultado-mensal", label: "Resultado do Mês", icon: Scale, primary: false, grupo: "Geral" },
   { id: "metas", label: "Metas", icon: Target, primary: false, grupo: "Geral" },
-  { id: "caixa", label: "Fluxo de Caixa", icon: Wallet, primary: false, grupo: "Geral" },
   { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false, grupo: "Geral" },
 
   { id: "equipe", label: "Equipe", icon: Users2, primary: false, grupo: "Sistema" },
@@ -804,7 +802,6 @@ export default function Shell() {
               {tab === "clientes" && (
                 <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} onCadastrar={cadastrarClienteManual} />
               )}
-              {tab === "caixa" && <FluxoDeCaixa pedidos={pedidos} pecas={pecas} irParaPedido={irPara} irParaPeca={irParaPeca} />}
               {tab === "contas-a-pagar" && (
                 <ContasAPagar
                   pedidos={pedidos}
