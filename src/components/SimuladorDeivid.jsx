@@ -7,7 +7,7 @@ import { custoCamisa } from "../lib/vendasMensais";
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
-const MESES_MEDIA = 3;
+const MESES_MEDIA = 2;
 const PERCENTUAIS_TESTE = [5, 8, 10, 12, 15];
 
 // Médias reais da camisaria nos últimos MESES_MEDIA meses JÁ FECHADOS
@@ -58,7 +58,8 @@ export default function SimuladorDeivid({ pedidos, custoAviamentosPorPecaBase = 
   const [metaMensal, setMetaMensal] = useState("6");
   const [gatilho, setGatilho] = useState("3");
   const [adiantamento, setAdiantamento] = useState("1500");
-  const [capacidadeFabi, setCapacidadeFabi] = useState("");
+  const [capacidadeFabi, setCapacidadeFabi] = useState("60");
+  const [custoFabiPorCamisa, setCustoFabiPorCamisa] = useState("120");
 
   const medias = useMemo(
     () => mediasCamisariaUltimosMeses(pedidos, custoAviamentosPorPecaBase, maoDeObraPadrao, MESES_MEDIA),
@@ -77,7 +78,8 @@ export default function SimuladorDeivid({ pedidos, custoAviamentosPorPecaBase = 
   const demandaAtualMedia = medias.qtdCamisasMediaMes;
   const novaDemandaMedia = demandaAtualMedia + metaNum;
   const excedente = capacidadeNum > 0 ? novaDemandaMedia - capacidadeNum : null;
-  const custoAdicionalMensal = excedente && excedente > 0 ? excedente * medias.custoMedioFabiPorCamisa : 0;
+  const custoFabiPorCamisaNum = parseFloat(custoFabiPorCamisa) || 0;
+  const custoAdicionalMensal = excedente && excedente > 0 ? excedente * custoFabiPorCamisaNum : 0;
 
   return (
     <Card style={{ padding: 20 }} className="mt-6">
@@ -216,14 +218,20 @@ export default function SimuladorDeivid({ pedidos, custoAviamentosPorPecaBase = 
           Vai precisar de outra costureira?
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
-          Hoje a loja vende em média {demandaAtualMedia.toFixed(1)} camisas/mês (todo mundo junto), pagando em média{" "}
-          {brl(medias.custoMedioFabiPorCamisa)}/camisa à Fabi. Com a meta do Deivid ({metaNum || 0} camisas) somada,
-          a demanda projetada sobe pra <strong>{novaDemandaMedia.toFixed(1)} camisas/mês</strong>. Preenche a
-          capacidade mensal da Fabi abaixo pra ver se passa do limite dela.
+          Hoje a loja vende em média {demandaAtualMedia.toFixed(1)} camisas/mês (todo mundo junto). Real lançado nos
+          últimos {MESES_MEDIA} meses: {brl(medias.custoMedioFabiPorCamisa)}/camisa pago à Fabi — os campos abaixo já
+          vêm com o combinado com ela (15/semana ≈ 60/mês, R$120/camisa), edite se mudar. Com a meta do Deivid (
+          {metaNum || 0} camisas) somada, a demanda projetada sobe pra <strong>{novaDemandaMedia.toFixed(1)} camisas/mês</strong>.
         </div>
-        <div className="flex items-center gap-3 flex-wrap mb-3">
-          <div style={{ fontSize: 11, color: TEXT_MUTED }}>Capacidade mensal da Fabi (camisas)</div>
-          <input type="number" step="1" style={{ ...inputStyle, width: 100 }} value={capacidadeFabi} onChange={(e) => setCapacidadeFabi(e.target.value)} />
+        <div className="flex items-center gap-4 flex-wrap mb-3">
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Capacidade mensal da Fabi (camisas)</div>
+            <input type="number" step="1" style={{ ...inputStyle, width: 100 }} value={capacidadeFabi} onChange={(e) => setCapacidadeFabi(e.target.value)} />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Custo por camisa de reforço (R$)</div>
+            <input type="number" step="0.01" style={{ ...inputStyle, width: 100 }} value={custoFabiPorCamisa} onChange={(e) => setCustoFabiPorCamisa(e.target.value)} />
+          </div>
         </div>
         {capacidadeNum > 0 && (
           <div
