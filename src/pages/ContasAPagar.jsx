@@ -357,6 +357,7 @@ export default function ContasAPagar({
   const [editandoDespesa, setEditandoDespesa] = useState(null);
   const [valorPagoEdit, setValorPagoEdit] = useState("");
   const [mostrarTecidoPendente, setMostrarTecidoPendente] = useState(false);
+  const [buscaPaga, setBuscaPaga] = useState("");
   const [dataPagamentoEdit, setDataPagamentoEdit] = useState(hojeISO());
   const [edicaoDespesa, setEdicaoDespesa] = useState({
     descricao: "",
@@ -467,11 +468,13 @@ export default function ContasAPagar({
 
   const despesasPendentes = despesas.filter((d) => d.status !== "Pago");
   // Últimas pagas — pra reabrir quando alguém clica errado e só percebe
-  // depois que o aviso de "desfazer" já sumiu da tela.
-  const despesasPagas = despesas
-    .filter((d) => d.status === "Pago")
-    .sort((a, b) => (b.vencimento || "").localeCompare(a.vencimento || ""))
-    .slice(0, 15);
+  // depois que o aviso de "desfazer" já sumiu da tela. Sem busca, só as
+  // 15 mais recentes; com busca (nome do cliente/fornecedor/descrição),
+  // procura em TODAS as pagas, mesmo as antigas que já saíram do topo.
+  const despesasPagasTodas = despesas.filter((d) => d.status === "Pago").sort((a, b) => (b.vencimento || "").localeCompare(a.vencimento || ""));
+  const despesasPagas = buscaPaga.trim()
+    ? despesasPagasTodas.filter((d) => (d.descricao || "").toLowerCase().includes(buscaPaga.trim().toLowerCase()))
+    : despesasPagasTodas.slice(0, 15);
   // Atrasada entra na projeção sempre, não importa o período escolhido —
   // senão some da tela assim que passa da data e vira fácil de esquecer
   // que ainda precisa pagar.
@@ -1385,6 +1388,14 @@ export default function ContasAPagar({
                 <span>ÚLTIMAS PAGAS (CLIQUE PRA REABRIR SE FOI ENGANO)</span>
                 <span>{mostrarPagas ? "ocultar" : "ver"}</span>
               </button>
+              {mostrarPagas && (
+                <input
+                  placeholder="Buscar por cliente/descrição, mesmo em pagas antigas…"
+                  value={buscaPaga}
+                  onChange={(e) => setBuscaPaga(e.target.value)}
+                  style={{ ...inputStyle, marginBottom: 8, fontSize: 12, padding: "6px 10px" }}
+                />
+              )}
               {mostrarPagas &&
                 despesasPagas.map((d) => {
                   const editandoPaga = editandoDespesa === d.id;
@@ -1392,7 +1403,10 @@ export default function ContasAPagar({
                     <div key={d.id} className="py-1.5">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div style={{ fontSize: 12, fontWeight: 600 }}>{d.descricao}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span style={{ fontSize: 12, fontWeight: 600 }}>{d.descricao}</span>
+                            {d.linha && LINHA_STYLE[d.linha] && <Pill text={d.linha} style={LINHA_STYLE[d.linha]} />}
+                          </div>
                           <div style={{ fontSize: 10, color: TEXT_MUTED }}>vencia {fmtData(d.vencimento)} · pago {brl(totalDespesa(d))}</div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
