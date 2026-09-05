@@ -6,13 +6,7 @@ import QuantidadePorMes from "../components/QuantidadePorMes";
 import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, hojeISO } from "../lib/helpers";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
-import {
-  custoMaoDeObraFabianaEfetivo,
-  metaComMargem,
-  outrasDespesasDoMes,
-  pagoNoMes,
-  pontoEquilibrioDoMes,
-} from "../lib/custoFixoMensal";
+import { custoMaoDeObraFabianaEfetivo, metaComMargem, pagoNoMes, pontoEquilibrioDoMes } from "../lib/custoFixoMensal";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_META_CAMISARIA = "meta_vendas_camisaria";
@@ -132,7 +126,7 @@ function BlocoMetaLinha({ titulo, Icone, vendido, meta, calculada, metaCalculada
   );
 }
 
-export default function Metas({ pedidos, pecas, despesas = [], equipe = [] }) {
+export default function Metas({ pedidos, pecas, despesas = [], equipe = [], custoAviamentosPorPecaBase = {} }) {
   const [metaCamisaria, setMetaCamisaria] = useState(null);
   const [metaAlfaiataria, setMetaAlfaiataria] = useState(null);
   const [margemDesejada, setMargemDesejada] = useState(MARGEM_DESEJADA_PADRAO);
@@ -181,14 +175,18 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [] }) {
   // se estiver preenchida, continua tendo prioridade sobre a calculada.
   const metaCalculada = useMemo(() => {
     if (!ehMesAtual || custosFixos.loading)
-      return { camisaria: 0, alfaiataria: 0, pontoEquilibrioCamisaria: 0, pontoEquilibrioAlfaiataria: 0, outrasDespesas: 0 };
+      return { camisaria: 0, alfaiataria: 0, pontoEquilibrioCamisaria: 0, pontoEquilibrioAlfaiataria: 0 };
+    const pedidosMes = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesRealAtual);
+    const pecasMes = (pecas || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesRealAtual);
     const mesAnteriorReal = mesAnteriorDe(mesRealAtual);
     const maoDeObraFabiana = custoMaoDeObraFabianaEfetivo(pedidos, mesRealAtual, mesAnteriorReal);
     const { camisaria: pontoEquilibrioCamisaria, alfaiataria: pontoEquilibrioAlfaiataria } = pontoEquilibrioDoMes({
       chaveMes: mesRealAtual,
-      despesas,
+      pedidosDoMes: pedidosMes,
+      pecasDoMes: pecasMes,
       custoMaoDeObraFabiana: maoDeObraFabiana,
       equipe,
+      custoAviamentosPorPecaBase,
       aluguelLoja: custosFixos.aluguelLoja,
       luzLoja: custosFixos.luzLoja,
       aluguelAtelie: custosFixos.aluguelAtelie,
@@ -199,16 +197,14 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [] }) {
       receitaCamisaria: vendidoAtual.camisaria,
       receitaAlfaiataria: vendidoAtual.alfaiataria,
     });
-    const outras = outrasDespesasDoMes(despesas, mesRealAtual);
     return {
       camisaria: metaComMargem(pontoEquilibrioCamisaria, margemDesejada),
       alfaiataria: metaComMargem(pontoEquilibrioAlfaiataria, margemDesejada),
       pontoEquilibrioCamisaria,
       pontoEquilibrioAlfaiataria,
-      outrasDespesas: outras.Camisaria + outras.Alfaiataria + outras.Compartilhado,
     };
     // eslint-disable-next-line
-  }, [ehMesAtual, custosFixos.loading, pedidos, despesas, equipe, margemDesejada, vendidoAtual.camisaria, vendidoAtual.alfaiataria]);
+  }, [ehMesAtual, custosFixos.loading, pedidos, pecas, equipe, custoAviamentosPorPecaBase, margemDesejada, vendidoAtual.camisaria, vendidoAtual.alfaiataria]);
 
   // Referência mais estável: média do Ponto de Equilíbrio dos últimos
   // MESES_HISTORICO_MEDIA meses JÁ FECHADOS (nunca o mês corrente, que
@@ -227,14 +223,18 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [] }) {
       chaves.push(cursor);
     }
     const porMes = chaves.map((chaveMes) => {
+      const pedidosMes = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === chaveMes);
+      const pecasMes = (pecas || []).filter((p) => (p.dataPedido || "").slice(0, 7) === chaveMes);
       const mesAnteriorDaquele = mesAnteriorDe(chaveMes);
       const maoDeObraFabiana = custoMaoDeObraFabianaEfetivo(pedidos, chaveMes, mesAnteriorDaquele);
       const vendidoDaquele = vendidoNoMes(pedidos, pecas, chaveMes);
       const ponto = pontoEquilibrioDoMes({
         chaveMes,
-        despesas,
+        pedidosDoMes: pedidosMes,
+        pecasDoMes: pecasMes,
         custoMaoDeObraFabiana: maoDeObraFabiana,
         equipe,
+        custoAviamentosPorPecaBase,
         aluguelLoja: custosFixos.aluguelLoja,
         luzLoja: custosFixos.luzLoja,
         aluguelAtelie: custosFixos.aluguelAtelie,
@@ -250,7 +250,7 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [] }) {
     const media = (campo) => porMes.reduce((s, m) => s + m[campo], 0) / (porMes.length || 1);
     return { camisaria: media("camisaria"), alfaiataria: media("alfaiataria"), meses: porMes };
     // eslint-disable-next-line
-  }, [custosFixos.loading, mesRealAtual, pedidos, pecas, despesas, equipe]);
+  }, [custosFixos.loading, mesRealAtual, pedidos, pecas, equipe, custoAviamentosPorPecaBase]);
 
   const metaCamisariaFinal = metaCamisaria > 0 ? metaCamisaria : metaCalculada.camisaria;
   const metaAlfaiatariaFinal = metaAlfaiataria > 0 ? metaAlfaiataria : metaCalculada.alfaiataria;
@@ -361,18 +361,12 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [] }) {
             </div>
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-            Meta = custo real do mês de cada linha (mão de obra, estrutura, a fatia rateada do compartilhado e o
-            material/outras despesas lançadas em Contas a Pagar — tecido e aviamento entram por aqui, pelo que você
-            realmente pagou ao fornecedor, não por uma estimativa da peça) ÷ margem desejada acima — a mesma conta da
-            Calculadora de preço mínimo, aplicada ao faturamento do mês inteiro. Uma meta definida manualmente em
-            Configurações continua tendo prioridade sobre essa calculada.
-            {metaCalculada.outrasDespesas > 0 && (
-              <>
-                {" "}
-                Nesse mês, <strong>{brl(metaCalculada.outrasDespesas)}</strong> de outras despesas do Contas a Pagar já
-                estão contados aqui.
-              </>
-            )}
+            Meta = custo real do mês de cada linha (mão de obra, estrutura, tecido/aviamentos — estimativa por peça,
+            igual à da Calculadora de preço mínimo — e a fatia rateada do compartilhado) ÷ margem desejada acima —
+            aplicada ao faturamento do mês inteiro. Uma meta definida manualmente em Configurações continua tendo
+            prioridade sobre essa calculada. Despesas soltas do Contas a Pagar (fornecedor avulso, manutenção etc)
+            não entram aqui — esse é o DRE, com entradas controladas; o Contas a Pagar é o simulador de caixa
+            separado.
           </div>
           <BlocoMetaLinha
             titulo="Camisaria"
@@ -447,8 +441,8 @@ export default function Metas({ pedidos, pecas, despesas = [], equipe = [] }) {
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
             Referência mais estável que o card de cima: em vez do mês corrente (sempre incompleto até fechar), é a
             média dos últimos {MESES_HISTORICO_MEDIA} meses que já terminaram — {pontoEquilibrioMedioHistorico.meses.map((m) => nomeDoMes(m.chaveMes)).join(", ")}. Usa o custo fixo de hoje (equipe, aluguel etc — não temos
-            histórico desses valores mês a mês), mas mão de obra da Fabi e despesas (incluindo material) são as reais
-            de cada mês, já fechados e completos.
+            histórico desses valores mês a mês), mas mão de obra da Fabi, tecido e aviamento são os reais de cada mês
+            (peças e pedidos daquele mês), já fechados e completos.
           </div>
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
             <div>

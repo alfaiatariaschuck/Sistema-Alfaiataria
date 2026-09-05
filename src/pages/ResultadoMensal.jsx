@@ -2,8 +2,7 @@ import React, { useMemo } from "react";
 import { AlertTriangle, Info, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, PageTitle, StatCard } from "../components/ui";
 import { BRASS, COR_REAL, COR_REFERENCIA, TEXT_MUTED } from "../lib/constants";
-import { brl, hojeISO } from "../lib/helpers";
-import { outrasDespesasDoMes } from "../lib/custoFixoMensal";
+import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO } from "../lib/helpers";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 const MESES_HISTORICO = 6;
@@ -20,13 +19,14 @@ function brlCompacto(v) {
 }
 
 // Resultado do mês consolidado (Camisaria + Alfaiataria juntas) — a
-// "linha de baixo" do financeiro: quanto entrou, quanto saiu de custo de
-// mão de obra/estrutura, e o que sobrou. Tecido e aviamento NÃO entram
-// por uma estimativa da peça aqui — isso já é usado só pra calcular a
-// margem no pedido. O custo real de material vem do que foi de fato
-// lançado em Contas a Pagar (outrasDespesasDoMes, abaixo), senão
-// duplicaria o mesmo gasto quando o fornecedor for pago de verdade.
-export default function ResultadoMensal({ pedidos, pecas, despesas, equipe }) {
+// "linha de baixo" do financeiro: quanto entrou, quanto saiu de custo, e
+// o que sobrou. Mesma base do Custos do Ateliê/Camisaria: tecido e
+// aviamento entram por estimativa da peça (metro cadastrado + catálogo
+// de aviamentos) — a mesma usada pra calcular a margem no pedido — não
+// por despesas soltas do Contas a Pagar, que viraram um simulador de
+// caixa à parte, sem curadoria (pode ter retirada pessoal, compra de
+// equipamento, salário já contado na Equipe etc).
+export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, custoAviamentosPorPecaBase = {} }) {
   const {
     aluguelAtelie: aluguel,
     luzAtelie: luz,
@@ -69,18 +69,26 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe }) {
 
   const custoMaoDeObraFabiana = useMemo(() => pedidosDoMes.reduce((s, p) => s + (parseFloat(p.pagoFabiana?.valor) || 0), 0), [pedidosDoMes]);
 
-  const custoProducao = custoMaoDeObraFabiana + custoEquipeAtelie;
+  function custoTecidoTotalDe(lista) {
+    return lista.reduce((soma, item) => soma + custoTecidoDe(item.tecidos), 0);
+  }
+  const custoTecidoCamisaria = useMemo(() => custoTecidoTotalDe(pedidosDoMes), [pedidosDoMes]);
+  const custoTecidoAlfaiataria = useMemo(() => custoTecidoTotalDe(pecasDoMes), [pecasDoMes]);
+
+  const custoAviamentosAlfaiataria = useMemo(
+    () => pecasDoMes.reduce((soma, p) => soma + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase), 0),
+    [pecasDoMes, custoAviamentosPorPecaBase]
+  );
+  // Aviamento da camisa (botões, entretela, embalagem) — peça-base
+  // "Camisa" em Aviamentos, custo fixo por unidade × quantidade vendida.
+  const quantidadeVendidaCamisaria = useMemo(() => pedidosDoMes.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0), [pedidosDoMes]);
+  const custoAviamentosCamisaria = (custoAviamentosPorPecaBase["Camisa"] || 0) * quantidadeVendidaCamisaria;
+  const custoAviamentos = custoAviamentosAlfaiataria + custoAviamentosCamisaria;
+
+  const custoProducao = custoMaoDeObraFabiana + custoEquipeAtelie + custoTecidoCamisaria + custoTecidoAlfaiataria + custoAviamentos;
   const custoEstrutura = aluguel + luz + aluguelLoja + luzLoja;
   const custoCompartilhado = prolabore + custosFixosPJ + planoSaudePJ;
-  // Outras despesas lançadas em Contas a Pagar (fornecedor avulso,
-  // manutenção, o que não seja uma das categorias fixas já contadas
-  // acima) — sem isso o lucro do mês ficava maior do que era de verdade,
-  // porque esse gasto não estava sendo descontado em lugar nenhum aqui.
-  const outrasDespesas = useMemo(() => {
-    const o = outrasDespesasDoMes(despesas, mesAtualStr);
-    return o.Camisaria + o.Alfaiataria + o.Compartilhado;
-  }, [despesas, mesAtualStr]);
-  const custoTotal = custoProducao + custoEstrutura + custoCompartilhado + outrasDespesas;
+  const custoTotal = custoProducao + custoEstrutura + custoCompartilhado;
   const resultado = faturamento - custoTotal;
   const sePagando = resultado >= 0;
   const margemPercentual = faturamento > 0 ? (resultado / faturamento) * 100 : 0;
@@ -146,13 +154,11 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe }) {
       >
         <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
-          Este número usa o <strong>custo de mão de obra + estrutura</strong> (equipe, Fabiana, aluguel/luz do ateliê
-          e da loja) <strong>mais qualquer despesa lançada em Contas a Pagar</strong> esse mês (material — tecido,
-          aviamento, o que for — fornecedor avulso, manutenção, o que não for pró-labore/aluguel/luz/plano de saúde,
-          que já entram pelo valor configurado e não são somados de novo). Tecido e aviamento não entram por uma
-          estimativa da peça — isso é só pra calcular a margem no pedido; aqui só conta o que você realmente lançou
-          como despesa. Abaixo, a seção de caixa mostra só se os custos fixos já foram pagos — não altera esse
-          resultado.
+          Este número usa o <strong>custo de produção</strong> (tecido pelo valor/metro cadastrado em Compras,
+          aviamentos, mão de obra e estrutura) — a mesma base do Custos do Ateliê e Custos da Camisaria, agora
+          somadas. Despesas soltas do Contas a Pagar (fornecedor avulso, manutenção etc) não entram aqui — esse é o
+          DRE, com entradas controladas; o Contas a Pagar é o simulador de caixa separado. Abaixo, a seção de caixa
+          mostra só se os custos fixos já foram pagos — não altera esse resultado.
         </div>
       </div>
 
@@ -161,14 +167,21 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe }) {
           Composição do custo do mês
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Mão de obra das duas linhas + estrutura (aluguel/luz do ateliê e da loja) + custos compartilhados da
-          empresa (pró-labore, PJ, plano de saúde) + outras despesas lançadas em Contas a Pagar esse mês (é aqui que
-          entra o material — tecido/aviamento — pago de verdade).
+          Produção (mão de obra + tecido + aviamentos das duas linhas) + estrutura (aluguel/luz do ateliê e da loja) +
+          custos compartilhados da empresa (pró-labore, PJ, plano de saúde).
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra (equipe + Fabiana)</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoEquipeAtelie + custoMaoDeObraFabiana)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Tecido (camisaria + alfaiataria)</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoTecidoCamisaria + custoTecidoAlfaiataria)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Aviamentos</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoAviamentos)}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Aluguel + luz (ateliê e loja)</div>
@@ -181,10 +194,6 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe }) {
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Outros PJ + plano de saúde</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custosFixosPJ + planoSaudePJ)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Outras despesas (Contas a Pagar)</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(outrasDespesas)}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo total do mês</div>

@@ -2,11 +2,10 @@ import React, { useMemo } from "react";
 import { AlertTriangle, CalendarClock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, Empty, PageTitle, StatCard } from "../components/ui";
 import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
-import { BRASS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
+import { BRASS, COMPOSICAO_AVIAMENTOS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { custoMensalDe } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
-import { outrasDespesasDoMes } from "../lib/custoFixoMensal";
 
 const MESES_HISTORICO = 6;
 
@@ -32,7 +31,7 @@ function contarSextasNoMes(ano, mes) {
   return qtd;
 }
 
-export default function CustosAtelie({ pecas, equipe, despesas = [], custoAviamentosPorPecaBase = {}, receitaMesOutraLinha = 0 }) {
+export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase = {}, receitaMesOutraLinha = 0 }) {
   const { aluguelAtelie: aluguel, luzAtelie: luz, prolabore, custosFixosPJ, planoSaudePJ, loading: carregandoConfig } = useConfigCustosFixos();
 
   const hoje = new Date(hojeISO() + "T00:00:00");
@@ -65,12 +64,10 @@ export default function CustosAtelie({ pecas, equipe, despesas = [], custoAviame
   // também se beneficia deles, então não é justo jogar 100% no ateliê.
   const custoCompartilhado = prolabore + custosFixosPJ + planoSaudePJ;
 
-  // Estimativa de tecido/aviamento por peça — a MESMA usada no pedido
-  // pra calcular a margem de venda (ver custoAviamentoComposicao/
-  // custoTecidoDe). Serve só pra alimentar a Calculadora de Markup
-  // abaixo (sugestão de preço por peça); NÃO entra no custo total do
-  // ateliê, senão duplicaria quando o fornecedor for pago de verdade
-  // (ver "Material pago no mês", que usa a despesa real).
+  // Custo de produção (tecido) do mês — soma metragem × valor/metro de
+  // cada item de tecido das peças de alfaiataria pedidas nesse mês,
+  // reaproveitando o valor/metro cadastrado em Compras. Só entra quando
+  // os dois campos estão preenchidos e a metragem dá pra entender.
   const custoProducaoTecido = useMemo(
     () =>
       (pecas || [])
@@ -78,6 +75,10 @@ export default function CustosAtelie({ pecas, equipe, despesas = [], custoAviame
         .reduce((soma, p) => soma + custoTecidoDe(p.tecidos), 0),
     [pecas, mesAtualStr]
   );
+  // Custo de aviamentos do mês — soma as peças-base que compõem cada
+  // tipo de peça vendido (ex: Traje = Paletó+Calça+Colete), pelo
+  // mapeamento em COMPOSICAO_AVIAMENTOS. "Outro" não tem composição
+  // conhecida e fica de fora.
   const custoAviamentos = useMemo(
     () =>
       (pecas || [])
@@ -85,6 +86,12 @@ export default function CustosAtelie({ pecas, equipe, despesas = [], custoAviame
         .reduce((soma, p) => soma + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase), 0),
     [pecas, mesAtualStr, custoAviamentosPorPecaBase]
   );
+
+  // Custo do ATELIÊ especificamente — só o que é dessa linha (mão de
+  // obra, aluguel/luz do ateliê, tecido e aviamentos das peças de
+  // alfaiataria). Pró-labore e custos fixos PJ NÃO entram aqui — são da
+  // empresa toda, camisaria também se beneficia deles.
+  const custoTotal = custoEquipeTotal + custoEstrutura + custoProducaoTecido + custoAviamentos;
 
   const pecasDoMes = useMemo(
     () => (pecas || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr),
@@ -116,19 +123,6 @@ export default function CustosAtelie({ pecas, equipe, despesas = [], custoAviame
   // meio a meio pra não zerar a fatia.
   const receitaTotalAmbasLinhas = receitaMes + receitaMesOutraLinha;
   const fatiaAtelie = receitaTotalAmbasLinhas > 0 ? receitaMes / receitaTotalAmbasLinhas : 0.5;
-
-  // Material pago no mês — o que de fato foi lançado em Contas a Pagar
-  // (tecido, aviamento, o que for), não uma estimativa por peça. É esse
-  // valor que entra no custo do ateliê; a estimativa acima (tecido +
-  // aviamentos) fica só pra Calculadora de Markup.
-  const outrasDespesas = useMemo(() => outrasDespesasDoMes(despesas, mesAtualStr), [despesas, mesAtualStr]);
-  const materialDoMes = outrasDespesas.Alfaiataria + outrasDespesas.Compartilhado * fatiaAtelie;
-
-  // Custo do ATELIÊ especificamente — só o que é dessa linha (mão de
-  // obra, aluguel/luz do ateliê, material pago no mês). Pró-labore e
-  // custos fixos PJ NÃO entram aqui — são da empresa toda, camisaria
-  // também se beneficia deles.
-  const custoTotal = custoEquipeTotal + custoEstrutura + materialDoMes;
 
   const resultado = receitaMes - custoTotal;
   const sePagando = resultado >= 0;
@@ -247,9 +241,8 @@ export default function CustosAtelie({ pecas, equipe, despesas = [], custoAviame
           Composição do custo próprio do ateliê
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Só o que é específico da linha de alfaiataria: mão de obra (equipe) + aluguel/luz do ateliê + material
-          pago no mês (tecido, aviamento, o que for lançado em Contas a Pagar — não uma estimativa por peça, pra não
-          duplicar com o pedido). Não inclui os custos compartilhados da empresa (acima).
+          Só o que é específico da linha de alfaiataria: mão de obra (equipe) + aluguel/luz do ateliê + tecido e
+          aviamentos das peças pedidas esse mês. Não inclui os custos compartilhados da empresa (acima).
         </div>
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
@@ -265,10 +258,25 @@ export default function CustosAtelie({ pecas, equipe, despesas = [], custoAviame
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoEstrutura)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Material pago no mês (Contas a Pagar)</div>
-            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(materialDoMes)}</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — tecido do mês</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoProducaoTecido)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Produção — aviamentos do mês</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoAviamentos)}</div>
           </div>
         </div>
+        {pecasSemValorTecido.length > 0 && (
+          <div style={{ fontSize: 11, color: "#9C4A1E", marginBottom: 4 }}>
+            Sem valor/metro cadastrado (custo de tecido fora da conta): {pecasSemValorTecido.map((p) => p.cliente).join(", ")}{" "}
+            — preencha em Compras.
+          </div>
+        )}
+        {pecasSemAviamento.length > 0 && (
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>
+            Sem composição de aviamento conhecida (tipo "Outro"): {pecasSemAviamento.map((p) => p.cliente).join(", ")}.
+          </div>
+        )}
 
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -312,17 +320,6 @@ export default function CustosAtelie({ pecas, equipe, despesas = [], custoAviame
         custoVariavelPadrao={pecasDoMes.length > 0 ? (custoProducaoTecido + custoAviamentos) / pecasDoMes.length : 0}
         unidadeLabel="peça"
       />
-      {pecasSemValorTecido.length > 0 && (
-        <div style={{ fontSize: 11, color: "#9C4A1E", marginTop: -16, marginBottom: 16 }}>
-          Sem valor/metro cadastrado (fora da estimativa de custo variável acima): {pecasSemValorTecido.map((p) => p.cliente).join(", ")}{" "}
-          — preencha em Compras.
-        </div>
-      )}
-      {pecasSemAviamento.length > 0 && (
-        <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: -16, marginBottom: 16 }}>
-          Sem composição de aviamento conhecida (tipo "Outro"): {pecasSemAviamento.map((p) => p.cliente).join(", ")}.
-        </div>
-      )}
 
       <Card style={{ padding: 20 }}>
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
@@ -330,9 +327,8 @@ export default function CustosAtelie({ pecas, equipe, despesas = [], custoAviame
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
           A receita de cada mês é real (vendas daquele mês). O custo usa o patamar estimado de <strong>hoje</strong>{" "}
-          (equipe, estrutura do ateliê e o material pago nesse mês — sem os custos compartilhados da empresa) como
-          régua fixa — não é o custo exato que valia em cada mês, é uma referência pra ver quantos meses recentes
-          cobririam o custo de agora.{" "}
+          (equipe, estrutura, tecido e aviamentos do ateliê — sem os custos compartilhados da empresa) como régua fixa — não é o custo exato que valia em cada mês,
+          é uma referência pra ver quantos meses recentes cobririam o custo de agora.{" "}
           {mesesQueSePagaram} de {historicoMensal.length} meses se pagariam com esse patamar.
         </div>
         <BarraDuasSeries

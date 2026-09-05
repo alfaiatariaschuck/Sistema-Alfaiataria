@@ -1,19 +1,23 @@
+import { custoAviamentoComposicao, custoTecidoDe } from "./helpers";
 import { custoEquipeMensal } from "./custoEquipe";
 
 // Custo próprio do ateliê (alfaiataria) no mês — mão de obra da equipe +
-// aluguel/luz do ateliê. NÃO inclui tecido/aviamento: esse custo por
-// peça é só uma ESTIMATIVA usada pra calcular a margem na hora do
-// pedido (ver custoAviamentoComposicao/custoTecidoDe em NovoPedido/
-// PedidoAlfaiataria) — se também contasse aqui, e você também lançar o
-// pagamento real do fornecedor como despesa, contaria duas vezes. O
-// custo real de material que entra no Ponto de Equilíbrio vem só do que
-// foi de fato lançado em Contas a Pagar (ver outrasDespesasDoMes).
+// aluguel/luz do ateliê + tecido e aviamentos das peças pedidas nesse mês
+// (estimativa por peça, a mesma usada pra calcular a margem na venda —
+// ver custoAviamentoComposicao/custoTecidoDe). Essa é a fonte oficial do
+// custo de material no DRE: previsível e controlada (metro cadastrado +
+// catálogo de aviamentos), em vez de puxar despesas soltas do Contas a
+// Pagar — essas viraram um simulador de caixa à parte, sem curadoria
+// nenhuma (pode ter retirada pessoal, compra de equipamento, salário já
+// contado em outro lugar), e por isso não entram mais aqui.
 // Não inclui o rateio dos custos compartilhados da empresa (ver
 // custoCompartilhadoRateado) — mesma composição usada em Custos do Ateliê.
-export function custoAtelieDoMes({ equipe, aluguel, luz }) {
+export function custoAtelieDoMes({ equipe, pecasDoMes, custoAviamentosPorPecaBase, aluguel, luz }) {
   const custoEquipeTotal = custoEquipeMensal(equipe || []);
   const custoEstrutura = (parseFloat(aluguel) || 0) + (parseFloat(luz) || 0);
-  return custoEquipeTotal + custoEstrutura;
+  const custoProducaoTecido = (pecasDoMes || []).reduce((s, p) => s + custoTecidoDe(p.tecidos), 0);
+  const custoAviamentos = (pecasDoMes || []).reduce((s, p) => s + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase), 0);
+  return custoEquipeTotal + custoEstrutura + custoProducaoTecido + custoAviamentos;
 }
 
 // Quanto pagar à Fabiana no mês, com a mesma projeção usada em Custos da
@@ -31,14 +35,19 @@ export function custoMaoDeObraFabianaEfetivo(pedidos, mesAtualStr, mesAnteriorSt
 }
 
 // Custo próprio da camisaria no mês — mão de obra da Fabiana (projetada,
-// ver acima) + aluguel/luz da loja. Mesma ressalva do ateliê acima:
-// tecido/aviamento NÃO entram aqui (só como estimativa de margem no
-// pedido) — o custo real de material vem das despesas lançadas em
-// Contas a Pagar (ver outrasDespesasDoMes), senão duplicaria o mesmo
-// gasto quando o fornecedor for pago de verdade.
-export function custoCamisariaDoMes({ custoMaoDeObraFabiana, aluguel, luz }) {
+// ver acima) + aluguel/luz da loja + tecido dos pedidos + aviamentos por
+// camisa vendida (mesma estimativa por peça do ateliê, acima).
+// "pedidosDoMes" é TODO pedido do mês (Doação incluída — ela também
+// consome tecido de verdade); só a quantidade que entra no cálculo do
+// aviamento exclui Doação (não é venda).
+export function custoCamisariaDoMes({ pedidosDoMes, custoMaoDeObraFabiana, custoAviamentosPorPecaBase, aluguel, luz }) {
   const custoEstrutura = (parseFloat(aluguel) || 0) + (parseFloat(luz) || 0);
-  return (parseFloat(custoMaoDeObraFabiana) || 0) + custoEstrutura;
+  const custoProducaoTecido = (pedidosDoMes || []).reduce((s, p) => s + custoTecidoDe(p.tecidos), 0);
+  const quantidadeVendida = (pedidosDoMes || [])
+    .filter((p) => p.status !== "Doação")
+    .reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0);
+  const custoAviamentos = ((custoAviamentosPorPecaBase || {})["Camisa"] || 0) * quantidadeVendida;
+  return (parseFloat(custoMaoDeObraFabiana) || 0) + custoEstrutura + custoProducaoTecido + custoAviamentos;
 }
 
 // Rateio do custo compartilhado da empresa (pró-labore, contador,
@@ -58,7 +67,7 @@ export function custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaude
 // a partir da despesa lançada em Contas a Pagar duplicaria o valor. Fica
 // só como rede de segurança extra — o filtro que realmente evita a
 // duplicação é o de descrição exata, abaixo.
-const CATEGORIAS_JA_CONTADAS = ["Pró-labore", "Aluguel", "Água/Luz/Internet", "Plano de Saúde"];
+const CATEGORIAS_JA_CONTADAS = ["Pró-labore", "Aluguel", "Água/Luz/Internet", "Plano de Saúde", "Investimento"];
 
 // Descrições EXATAS que o botão "Lançar custos fixos deste mês"
 // (Configurações) usa pra criar a despesa de cada custo fixo — inclusive
@@ -75,18 +84,16 @@ const DESCRICOES_CUSTOS_FIXOS_AUTO = [
   "Outros custos fixos PJ",
 ];
 
-// Quanto de TODAS as outras despesas lançadas em Contas a Pagar (frete,
-// fornecedor avulso, manutenção, o que for) cai em cada linha nesse mês —
-// pra elas passarem a contar de verdade no custo real usado na Meta e no
-// Ponto de Equilíbrio, não só ficarem só no Contas a Pagar. Usa o
-// vencimento pra decidir o mês (a despesa já é um gasto assumido, esteja
-// paga ou não) e o mesmo critério de rateio já usado em Contas a Pagar:
-// Camisaria/Alfaiataria discriminados quando a despesa tem os dois
-// campos preenchidos, senão a "Linha" marcada inteira, senão cai como
-// Compartilhado (rateado por receita, igual ao resto do compartilhado).
-// Despesas com "pedidoId" são as da mão de obra da Fabiana, geradas
-// sozinhas a partir do pedido — já contam via custoMaoDeObraFabianaEfetivo,
-// então ficam de fora daqui pra não duplicar.
+// Quanto de despesas soltas do Contas a Pagar (fornecedor avulso,
+// manutenção, o que for) cai em cada linha nesse mês. NÃO é usada por
+// padrão no Ponto de Equilíbrio/DRE (decisão consciente: o Contas a
+// Pagar hoje é um simulador de caixa sem curadoria — pode ter retirada
+// pessoal, compra de equipamento, salário de gente que já está na
+// Equipe — e contar isso de novo aqui distorceria o custo do mês, como
+// já aconteceu). Fica disponível pra quando, olhando junto com o Tales,
+// alguma despesa específica fizer sentido entrar como custo fixo de
+// verdade — nesse caso ela deve virar um campo configurado (como
+// "Outros custos fixos PJ" já é), não um puxão automático daqui.
 export function outrasDespesasDoMes(despesas, chaveMes) {
   const totais = { Camisaria: 0, Alfaiataria: 0, Compartilhado: 0 };
   (despesas || [])
@@ -116,20 +123,22 @@ export function outrasDespesasDoMes(despesas, chaveMes) {
   return totais;
 }
 
-// Ponto de equilíbrio completo de UM mês, por linha — junta mão de obra +
-// estrutura + fatia do compartilhado rateada por receita + outras
-// despesas do Contas a Pagar daquele mês (é daqui que vem o custo real
-// de material — tecido/aviamento não são mais estimados por peça aqui,
-// só no pedido, pra não duplicar quando o fornecedor for pago de
-// verdade). Um "pacote" só com a mesma conta usada em Metas.jsx,
-// extraída pra poder rodar tanto pro mês corrente (ao vivo, ainda
-// incompleto até fechar) quanto pra tirar a média de meses já fechados
-// (referência mais estável, porque tem o dado completo).
+// Ponto de equilíbrio completo de UM mês, por linha — mão de obra +
+// estrutura + tecido/aviamento (estimativa por peça, dessa linha) +
+// fatia do compartilhado rateada por receita. NÃO inclui despesas soltas
+// do Contas a Pagar (ver outrasDespesasDoMes acima) — é o DRE, com
+// entradas controladas, não um espelho de tudo que foi lançado por lá.
+// Um "pacote" só com a mesma conta usada em Metas.jsx, extraída pra
+// poder rodar tanto pro mês corrente (ao vivo, ainda incompleto até
+// fechar) quanto pra tirar a média de meses já fechados (referência mais
+// estável, porque tem o dado completo).
 export function pontoEquilibrioDoMes({
   chaveMes,
-  despesas,
+  pedidosDoMes,
+  pecasDoMes,
   custoMaoDeObraFabiana,
   equipe,
+  custoAviamentosPorPecaBase,
   aluguelLoja,
   luzLoja,
   aluguelAtelie,
@@ -140,16 +149,13 @@ export function pontoEquilibrioDoMes({
   receitaCamisaria,
   receitaAlfaiataria,
 }) {
-  const custoCamisaria = custoCamisariaDoMes({ custoMaoDeObraFabiana, aluguel: aluguelLoja, luz: luzLoja });
-  const custoAtelie = custoAtelieDoMes({ equipe, aluguel: aluguelAtelie, luz: luzAtelie });
+  const custoCamisaria = custoCamisariaDoMes({ pedidosDoMes, custoMaoDeObraFabiana, custoAviamentosPorPecaBase, aluguel: aluguelLoja, luz: luzLoja });
+  const custoAtelie = custoAtelieDoMes({ equipe, pecasDoMes, custoAviamentosPorPecaBase, aluguel: aluguelAtelie, luz: luzAtelie });
   const rateioCamisaria = custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaudePJ, receitaLinha: receitaCamisaria, receitaOutraLinha: receitaAlfaiataria });
   const rateioAlfaiataria = custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaudePJ, receitaLinha: receitaAlfaiataria, receitaOutraLinha: receitaCamisaria });
-  const outras = outrasDespesasDoMes(despesas, chaveMes);
-  const receitaTotal = (receitaCamisaria || 0) + (receitaAlfaiataria || 0);
-  const fatiaCamisaria = receitaTotal > 0 ? receitaCamisaria / receitaTotal : 0.5;
   return {
-    camisaria: custoCamisaria + rateioCamisaria + outras.Camisaria + outras.Compartilhado * fatiaCamisaria,
-    alfaiataria: custoAtelie + rateioAlfaiataria + outras.Alfaiataria + outras.Compartilhado * (1 - fatiaCamisaria),
+    camisaria: custoCamisaria + rateioCamisaria,
+    alfaiataria: custoAtelie + rateioAlfaiataria,
   };
 }
 
