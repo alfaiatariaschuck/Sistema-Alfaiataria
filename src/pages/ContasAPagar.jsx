@@ -89,12 +89,18 @@ function EditorDespesa({ edicaoDespesa, setEdicaoDespesa, valorPagoEdit, setValo
           />
         </Field>
         <Field label="Categoria">
-          <input
+          <select
             style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }}
-            list="lista-categorias-despesa"
             value={edicaoDespesa.categoria}
             onChange={(e) => setEdicaoDespesa({ ...edicaoDespesa, categoria: e.target.value })}
-          />
+          >
+            <option value="">— sem categoria —</option>
+            {CATEGORIAS_DESPESA.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="Fornecedor">
           <input
@@ -1194,12 +1200,14 @@ export default function ContasAPagar({
               </Field>
               <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
                 <Field label="Categoria">
-                  <input style={inputStyle} list="lista-categorias-despesa" value={nova.categoria} onChange={(e) => setNova({ ...nova, categoria: e.target.value })} />
-                  <datalist id="lista-categorias-despesa">
+                  <select style={inputStyle} value={nova.categoria} onChange={(e) => setNova({ ...nova, categoria: e.target.value })}>
+                    <option value="">— sem categoria —</option>
                     {CATEGORIAS_DESPESA.map((c) => (
-                      <option key={c} value={c} />
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
                     ))}
-                  </datalist>
+                  </select>
                 </Field>
                 <Field label="Fornecedor (opcional)">
                   <input style={inputStyle} list="lista-fornecedores-despesa" value={nova.fornecedor} onChange={(e) => setNova({ ...nova, fornecedor: e.target.value })} />
