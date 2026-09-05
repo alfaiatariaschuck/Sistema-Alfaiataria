@@ -20,6 +20,28 @@ function tecidoRealDoMes(despesas, chaveMes) {
     .reduce((s, d) => s + (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0), 0);
 }
 
+// Por fornecedor, o que de fato SAIU DA CONTA nesse mês (data do
+// pagamento, não vencimento, e valor efetivamente pago, não o lançado) —
+// diferente do "Real pago" acima (que usa vencimento, pra comparar com a
+// estimativa do DRE), esse aqui é a conta certa pra bater linha a linha
+// com o extrato bancário do PJ.
+function tecidoPorFornecedorPagoNoMes(despesas, chaveMes) {
+  const mapa = new Map();
+  (despesas || [])
+    .filter(
+      (d) =>
+        d.categoria === CATEGORIA_TECIDO &&
+        d.dataPagamento &&
+        d.dataPagamento.slice(0, 7) === chaveMes &&
+        (parseFloat(d.valorPago) || 0) > 0
+    )
+    .forEach((d) => {
+      const nome = d.fornecedor || "Sem fornecedor";
+      mapa.set(nome, (mapa.get(nome) || 0) + (parseFloat(d.valorPago) || 0));
+    });
+  return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
+}
+
 // Impostos (valor manual mensal, configurado enquanto a declaração não
 // está fechada) rateados entre as linhas proporcional à receita de cada
 // uma — igual ao rateio dos outros custos compartilhados, mas em linha
@@ -217,6 +239,7 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
   const tecidoEstimado = geral ? geral.tecido : 0;
   const diferencaTecido = tecidoReal - tecidoEstimado;
   const diferencaTecidoRelevante = tecidoEstimado > 0 && Math.abs(diferencaTecido) / tecidoEstimado > 0.15;
+  const tecidoPorFornecedor = useMemo(() => tecidoPorFornecedorPagoNoMes(despesas, mesSelecionado), [despesas, mesSelecionado]);
 
   return (
     <div>
@@ -324,6 +347,33 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
                 {brl(diferencaTecido)}
               </div>
             </div>
+          </div>
+
+          <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${LINE}` }}>
+            <div className="fx-serif mb-1" style={{ fontSize: 13, fontWeight: 600 }}>
+              Por fornecedor — valor pago em {nomeDoMes(mesSelecionado)}
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+              Pela data em que você registrou o pagamento (não o vencimento) — essa é a conta certa pra bater linha a
+              linha com o extrato bancário do PJ.
+            </div>
+            {tecidoPorFornecedor.length === 0 ? (
+              <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                Nada pago em {CATEGORIA_TECIDO.toLowerCase()} com pagamento registrado nesse mês ainda — lance em
+                Contas a Pagar (categoria "{CATEGORIA_TECIDO}", com o fornecedor e a data de pagamento certos).
+              </div>
+            ) : (
+              tecidoPorFornecedor.map(([fornecedor, valor], i) => (
+                <div
+                  key={fornecedor}
+                  className="flex items-center justify-between py-1.5"
+                  style={{ borderBottom: i < tecidoPorFornecedor.length - 1 ? `1px solid ${LINE}` : "none", fontSize: 12 }}
+                >
+                  <span>{fornecedor}</span>
+                  <span className="fx-mono" style={{ fontWeight: 600 }}>{brl(valor)}</span>
+                </div>
+              ))
+            )}
           </div>
         </Card>
       )}
