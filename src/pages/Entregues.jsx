@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { BRASS_SOFT, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { fmtData } from "../lib/helpers";
+import { brl, fmtData, valorRecebidoEfetivo } from "../lib/helpers";
 
 // Histórico de entregas — uma linha por vez (toggle interno Camisaria/
 // Alfaiataria), pra não precisar de duas abas na lateral. Assim que um
@@ -35,9 +35,59 @@ export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
 
   const eyebrow = isCamisaria ? `${clientes.length} clientes · ${totalCamisas} camisas` : `${clientes.length} clientes · ${pecasEntregues.length} peças`;
 
+  // Pedidos já entregues (cliente já levou a camisa) mas que ficaram sem
+  // baixa de pagamento pra Fabiana — sem valor lançado (esqueceu de
+  // preencher) ou lançado mas nunca marcado como pago. Sempre visível,
+  // independente do toggle Camisaria/Alfaiataria, porque é sobre
+  // descuido do dono, não sobre o que está sendo olhado no momento.
+  const pedidosSemPagarFabi = (pedidos || [])
+    .filter((p) => p.status === "Entregue")
+    .map((p) => {
+      const valorFabiana = parseFloat(p.pagoFabiana?.valor) || 0;
+      const pago = valorRecebidoEfetivo({
+        pagamentoDividido: p.pagamentoFabianaDividido,
+        valorEntrada: p.valorEntradaFabiana,
+        statusEntrada: p.statusEntradaFabiana,
+        valorRestante: p.valorRestanteFabiana,
+        statusRestante: p.statusRestanteFabiana,
+        valorTotal: valorFabiana,
+        statusTotal: p.pagoFabiana?.statusPagamento,
+        labelPago: "Pago",
+      });
+      return { ...p, valorFabiana, pendenteFabiana: Math.max(0, valorFabiana - pago) };
+    })
+    .filter((p) => p.valorFabiana === 0 || p.pendenteFabiana > 0)
+    .sort((a, b) => (b.dataEntrega || b.dataPedido || "").localeCompare(a.dataEntrega || a.dataPedido || ""));
+
   return (
     <div>
       <PageTitle eyebrow={eyebrow} title="Entregues" />
+
+      {pedidosSemPagarFabi.length > 0 && (
+        <div className="mb-4 p-4" style={{ background: "#F6E3D9", border: "1px solid #E0A583", borderRadius: 8 }}>
+          <div className="flex items-center gap-2 mb-2" style={{ color: "#9C4A1E", fontWeight: 700, fontSize: 13 }}>
+            <AlertTriangle size={16} />
+            {pedidosSemPagarFabi.length} pedido(s) entregue(s) sem baixa de pagamento pra Fabiana
+          </div>
+          <div className="flex flex-col gap-1">
+            {pedidosSemPagarFabi.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => irPara(p.id)}
+                className="w-full flex items-center justify-between"
+                style={{ fontSize: 12, color: "#7A3A18", textAlign: "left", padding: "3px 0" }}
+              >
+                <span>
+                  {p.cliente} · entregue {fmtData(p.dataEntrega || p.dataPedido)} · {p.quantidade} un
+                </span>
+                <span className="fx-mono" style={{ fontWeight: 700 }}>
+                  {p.valorFabiana === 0 ? "sem valor lançado" : `falta ${brl(p.pendenteFabiana)}`}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-4">
         {[
