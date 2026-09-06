@@ -3,6 +3,7 @@ import { Calculator } from "lucide-react";
 import { Card } from "./ui";
 import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, custoTecidoDe } from "../lib/helpers";
+import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
@@ -91,6 +92,7 @@ function pedidosDosMeses(pedidos, chaves) {
 // todo o histórico dela. Sem pedido nenhum ainda, cai pra média da
 // camisaria toda nos últimos meses fechados.
 export default function SimuladorComissao({ pessoaNome, fonteNome, pedidos, pedidosPessoa = [], janelaMesesPessoa, mesesFixos, custoAviamentosPorPecaBase = {} }) {
+  const { aliquotaImposto } = useConfigCustosFixos();
   const nomeDaFonte = fonteNome || pessoaNome;
   const [metaMensal, setMetaMensal] = useState("6");
   const [gatilho, setGatilho] = useState("4");
@@ -133,7 +135,9 @@ export default function SimuladorComissao({ pessoaNome, fonteNome, pedidos, pedi
   const margemAposProducao = receita - custoMaterial - maoDeObraTotal;
   const comissaoPessoa = receita * (percentualNum / 100);
   const ganhoPessoa = comissaoPessoa + fixoAplicavel + bonusVolumeAplicavel;
-  const resultadoLiquidoEmpresa = margemAposProducao - ganhoPessoa;
+  const impostoNum = (parseFloat(aliquotaImposto) || 0) / 100;
+  const impostoSimulado = receita * impostoNum;
+  const resultadoLiquidoEmpresa = margemAposProducao - ganhoPessoa - impostoSimulado;
 
   return (
     <Card style={{ padding: 20 }} className="mt-6">
@@ -261,8 +265,8 @@ export default function SimuladorComissao({ pessoaNome, fonteNome, pedidos, pedi
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Cascata do gatilho de {metaNum || 0} camisas: receita → material → mão de obra (por produção, valor acima) →
-          comissão escalonada de {pessoaNome} (por faixa de volume, definida abaixo) + o fixo → o que sobra líquido
-          pra empresa. Imposto ainda <strong>não entra</strong> nessa conta — isso só é tratado no DRE.
+          comissão escalonada de {pessoaNome} (por faixa de volume, definida abaixo) + o fixo → imposto ({(parseFloat(aliquotaImposto) || 0).toFixed(1)}% da
+          receita, mesma alíquota configurada em Configurações) → o que sobra líquido pra empresa.
         </div>
 
         <div className="mb-4" style={{ overflowX: "auto" }}>
@@ -314,6 +318,7 @@ export default function SimuladorComissao({ pessoaNome, fonteNome, pedidos, pedi
               label: `(–) Bônus de volume (a cada ${BONUS_A_CADA} camisas acima de ${BONUS_A_PARTIR_DE})${bonusVolumeAplicavel === 0 ? " (ainda não bateu)" : ""}`,
               valor: -bonusVolumeAplicavel,
             },
+            { label: `(–) Imposto (${(impostoNum * 100).toFixed(1)}% da receita)`, valor: -impostoSimulado },
           ].map(({ label, valor, destaque }) => (
             <div key={label} className="flex items-center justify-between py-1.5" style={{ borderBottom: `1px solid ${LINE}` }}>
               <span style={{ color: destaque ? INK : TEXT_MUTED, fontWeight: destaque ? 600 : 400 }}>{label}</span>

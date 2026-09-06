@@ -1,13 +1,16 @@
 import React from "react";
 import { TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe } from "../lib/helpers";
+import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 // Mostra, na peça de alfaiataria, o custo real (tecido + aviamento da
 // composição do tipo de peça + valor devido ao Ícaro) e, quando já tem
-// valor de venda digitado, a margem daquela venda. Sem "preço sugerido"
-// — alfaiataria não tem um catálogo de preço por tecido feito Tecidos
-// de Camisa, é sob medida. Uso interno — nunca aparece na ficha do Icaro.
+// valor de venda digitado, a margem daquela venda e quanto reservar de
+// imposto sobre ela. Sem "preço sugerido" — alfaiataria não tem um
+// catálogo de preço por tecido feito Tecidos de Camisa, é sob medida.
+// Uso interno — nunca aparece na ficha do Icaro.
 export default function EstimativaCustoPeca({ tecidos, tipoPeca, custoAviamentosPorPecaBase = {}, valorTotal, valorVenda }) {
+  const { aliquotaImposto } = useConfigCustosFixos();
   const custoTecido = custoTecidoDe(tecidos);
   const custoAviamento = custoAviamentoComposicao(tipoPeca, custoAviamentosPorPecaBase);
   const maoDeObra = parseFloat(valorTotal) || 0;
@@ -20,6 +23,7 @@ export default function EstimativaCustoPeca({ tecidos, tipoPeca, custoAviamentos
   const temVenda = !isNaN(venda) && venda > 0;
   const margem = temVenda ? venda - custo : null;
   const margemPercentual = temVenda && venda > 0 ? (margem / venda) * 100 : null;
+  const impostoReservar = temVenda ? venda * ((parseFloat(aliquotaImposto) || 0) / 100) : null;
 
   return (
     <div className="mt-3 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
@@ -34,6 +38,12 @@ export default function EstimativaCustoPeca({ tecidos, tipoPeca, custoAviamentos
             <strong className="fx-mono" style={{ color: margemPercentual >= 0 ? "#2C6E31" : "#9C4A1E" }}>
               {brl(margem)} ({margemPercentual.toFixed(0)}%)
             </strong>
+          </span>
+        )}
+        {impostoReservar != null && (
+          <span>
+            <span style={{ color: TEXT_MUTED }}>Reservar p/ imposto ({(parseFloat(aliquotaImposto) || 0).toFixed(1)}%): </span>
+            <strong className="fx-mono">{brl(impostoReservar)}</strong>
           </span>
         )}
       </div>

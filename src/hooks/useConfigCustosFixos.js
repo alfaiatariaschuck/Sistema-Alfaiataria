@@ -16,7 +16,12 @@ const CHAVE_COMBUSTIVEL = "custo_combustivel_mensal";
 const CHAVE_INTERNET_PJ = "custo_internet_pj_mensal";
 const CHAVE_OUTROS_PJ = "custo_outros_pj_mensal";
 const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
-const CHAVE_IMPOSTOS = "custo_impostos_mensal";
+// Imposto não é mais um valor fixo mensal — é uma alíquota (%) sobre o
+// faturamento de cada linha, já que o DAS do Simples Nacional varia mês a
+// mês conforme o quanto se vendeu (visto no extrato do PJ). Default 8,
+// que é a alíquota atual informada pelo Tales enquanto ele não configura
+// outra em Configurações.
+const CHAVE_ALIQUOTA_IMPOSTO = "aliquota_imposto_pct";
 
 const TODAS_CHAVES = [
   CHAVE_ALUGUEL_ATELIE,
@@ -31,7 +36,7 @@ const TODAS_CHAVES = [
   CHAVE_INTERNET_PJ,
   CHAVE_OUTROS_PJ,
   CHAVE_PLANO_SAUDE_PJ,
-  CHAVE_IMPOSTOS,
+  CHAVE_ALIQUOTA_IMPOSTO,
 ];
 
 // Os mesmos custos fixos da empresa (aluguel/luz do ateliê e da loja,
@@ -47,7 +52,7 @@ export function useConfigCustosFixos() {
     prolabore: 0,
     custosFixosPJ: 0,
     planoSaudePJ: 0,
-    impostos: 0,
+    aliquotaImposto: 8,
   });
   const [loading, setLoading] = useState(true);
 
@@ -58,6 +63,7 @@ export function useConfigCustosFixos() {
       (data || []).forEach((row) => {
         mapa[row.chave] = parseFloat(row.valor) || 0;
       });
+      const temAliquotaSalva = (data || []).some((row) => row.chave === CHAVE_ALIQUOTA_IMPOSTO);
       setValores({
         aluguelAtelie: mapa[CHAVE_ALUGUEL_ATELIE] || 0,
         luzAtelie: mapa[CHAVE_LUZ_ATELIE] || 0,
@@ -72,7 +78,7 @@ export function useConfigCustosFixos() {
           (mapa[CHAVE_INTERNET_PJ] || 0) +
           (mapa[CHAVE_OUTROS_PJ] || 0),
         planoSaudePJ: mapa[CHAVE_PLANO_SAUDE_PJ] || 0,
-        impostos: mapa[CHAVE_IMPOSTOS] || 0,
+        aliquotaImposto: temAliquotaSalva ? mapa[CHAVE_ALIQUOTA_IMPOSTO] || 0 : 8,
       });
       setLoading(false);
     })();

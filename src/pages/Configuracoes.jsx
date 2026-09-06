@@ -22,7 +22,7 @@ const CHAVE_COMBUSTIVEL = "custo_combustivel_mensal";
 const CHAVE_INTERNET_PJ = "custo_internet_pj_mensal";
 const CHAVE_OUTROS_PJ = "custo_outros_pj_mensal";
 const CHAVE_PLANO_SAUDE_PJ = "custo_plano_saude_pj_mensal";
-const CHAVE_IMPOSTOS = "custo_impostos_mensal";
+const CHAVE_ALIQUOTA_IMPOSTO = "aliquota_imposto_pct";
 
 export default function Configuracoes({ despesas = [], onCriarDespesa }) {
   const [telFabi, setTelFabi] = useState("");
@@ -42,7 +42,7 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
   const [internetPJ, setInternetPJ] = useState("");
   const [outrosPJ, setOutrosPJ] = useState("");
   const [planoSaudePJ, setPlanoSaudePJ] = useState("");
-  const [impostos, setImpostos] = useState("");
+  const [aliquotaImposto, setAliquotaImposto] = useState("8");
   const [carregando, setCarregando] = useState(true);
   const [salvo, setSalvo] = useState(null);
 
@@ -69,7 +69,7 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
           CHAVE_INTERNET_PJ,
           CHAVE_OUTROS_PJ,
           CHAVE_PLANO_SAUDE_PJ,
-          CHAVE_IMPOSTOS,
+          CHAVE_ALIQUOTA_IMPOSTO,
         ]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_FABI) setTelFabi(row.valor || "");
@@ -89,7 +89,7 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
         if (row.chave === CHAVE_INTERNET_PJ) setInternetPJ(row.valor || "");
         if (row.chave === CHAVE_OUTROS_PJ) setOutrosPJ(row.valor || "");
         if (row.chave === CHAVE_PLANO_SAUDE_PJ) setPlanoSaudePJ(row.valor || "");
-        if (row.chave === CHAVE_IMPOSTOS) setImpostos(row.valor || "");
+        if (row.chave === CHAVE_ALIQUOTA_IMPOSTO) setAliquotaImposto(row.valor || "8");
       });
       setCarregando(false);
     })();
@@ -115,7 +115,7 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
       { chave: CHAVE_INTERNET_PJ, valor: internetPJ },
       { chave: CHAVE_OUTROS_PJ, valor: outrosPJ },
       { chave: CHAVE_PLANO_SAUDE_PJ, valor: planoSaudePJ },
-      { chave: CHAVE_IMPOSTOS, valor: impostos },
+      { chave: CHAVE_ALIQUOTA_IMPOSTO, valor: aliquotaImposto },
     ]);
     setSalvo(!error);
   }
@@ -146,7 +146,6 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
       { descricao: "Combustível", categoria: "Outros", valor: combustivel, linha: "" },
       { descricao: "Internet — PJ", categoria: "Outros", valor: internetPJ, linha: "" },
       { descricao: "Outros custos fixos PJ", categoria: "Outros", valor: outrosPJ, linha: "" },
-      { descricao: "Impostos", categoria: "Impostos", valor: impostos, linha: "" },
     ].filter((it) => (parseFloat(it.valor) || 0) > 0);
 
     let criadas = 0;
@@ -260,8 +259,8 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
             <Field label="Outros custos fixos PJ (o que não couber nos campos acima — R$/mês)">
               <input type="number" step="0.01" style={inputStyle} value={outrosPJ} onChange={(e) => setOutrosPJ(e.target.value)} />
             </Field>
-            <Field label="Impostos (R$/mês, manual — enquanto não fecha a declaração)">
-              <input type="number" step="0.01" style={inputStyle} value={impostos} onChange={(e) => setImpostos(e.target.value)} />
+            <Field label="Alíquota de imposto (% sobre o faturamento — Simples Nacional)">
+              <input type="number" step="0.01" style={inputStyle} value={aliquotaImposto} onChange={(e) => setAliquotaImposto(e.target.value)} />
             </Field>
           </div>
         )}

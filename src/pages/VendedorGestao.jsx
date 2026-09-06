@@ -5,6 +5,7 @@ import { BRASS, INK, LINE, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
 import { custoCamisa } from "../lib/vendasMensais";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
+import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 import { useVendedores } from "../hooks/useVendedores";
 import SimuladorComissao from "../components/SimuladorComissao";
 
@@ -36,13 +37,17 @@ function nomeDoMes(mesStr) {
 }
 
 // Métricas de um conjunto de pedidos (já filtrado por pessoa e mês) —
-// inclui custo/margem de cada pedido (mesma conta de Pedidos Vendidos).
-function estatisticasDe(lista, custoAviamentosPorPecaBase, maoDeObraPadrao) {
+// inclui custo/margem de cada pedido (mesma conta de Pedidos Vendidos) e o
+// imposto (alíquota configurada sobre o valor vendido), pra já mostrar a
+// margem líquida de verdade nessa aba, não só a margem pré-imposto.
+function estatisticasDe(lista, custoAviamentosPorPecaBase, maoDeObraPadrao, aliquotaImposto) {
   const vendidos = lista.filter((p) => p.status !== "Doação");
   const camisas = vendidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
   const valor = vendidos.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
   const custo = vendidos.reduce((s, p) => s + custoCamisa(p, custoAviamentosPorPecaBase, maoDeObraPadrao).custo, 0);
   const margem = valor - custo;
+  const imposto = valor * ((parseFloat(aliquotaImposto) || 0) / 100);
+  const margemLiquida = margem - imposto;
   return {
     fechados: vendidos.length,
     camisas,
@@ -53,6 +58,8 @@ function estatisticasDe(lista, custoAviamentosPorPecaBase, maoDeObraPadrao) {
     custo,
     margem,
     margemPercentual: valor > 0 ? (margem / valor) * 100 : null,
+    imposto,
+    margemLiquida,
   };
 }
 
@@ -76,6 +83,7 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
   const [abaSimulador, setAbaSimulador] = useState("deivid");
   const { vendedores, loading: carregandoVendedores } = useVendedores();
   const { maoDeObraPadrao } = useConfigPrecoCamisa();
+  const { aliquotaImposto } = useConfigCustosFixos();
   const idsVendedores = new Set(vendedores.map((v) => v.id));
 
   const pessoas = [{ id: "dono", nome: NOME_DONO }, ...vendedores.map((v) => ({ id: v.id, nome: v.nome }))];
@@ -111,10 +119,10 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
     }
     return chaves.map((chaveMes) => {
       const doMes = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === chaveMes);
-      return { chaveMes, porPessoa: pessoas.map((pessoa) => ({ pessoa, stats: estatisticasDe(pedidosDaPessoa(pessoa.id, doMes), custoAviamentosPorPecaBase, maoDeObraPadrao) })) };
+      return { chaveMes, porPessoa: pessoas.map((pessoa) => ({ pessoa, stats: estatisticasDe(pedidosDaPessoa(pessoa.id, doMes), custoAviamentosPorPecaBase, maoDeObraPadrao, aliquotaImposto) })) };
     });
     // eslint-disable-next-line
-  }, [pedidos, pessoas.length, custoAviamentosPorPecaBase, maoDeObraPadrao]);
+  }, [pedidos, pessoas.length, custoAviamentosPorPecaBase, maoDeObraPadrao, aliquotaImposto]);
 
   const listaOrdenada =
     pessoaFiltro === "ambos"
@@ -224,11 +232,13 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
                   { label: "Custo estimado", campo: "custo", fmt: brl },
                   { label: "Margem (R$)", campo: "margem", fmt: brl, destaque: true },
                   { label: "Margem (%)", campo: "margemPercentual", fmt: (v) => (v == null ? "—" : `${v.toFixed(0)}%`), destaque: true },
+                  { label: `Imposto (${(parseFloat(aliquotaImposto) || 0).toFixed(1)}%)`, campo: "imposto", fmt: brl },
+                  { label: "Margem líquida (após imposto)", campo: "margemLiquida", fmt: brl, destaque: true },
                 ].map((linha, i, arr) => (
                   <tr key={linha.campo} style={{ borderBottom: i < arr.length - 1 ? `1px solid ${LINE}` : "none" }}>
                     <td style={{ padding: "8px 14px", color: TEXT_MUTED }}>{linha.label}</td>
                     {pessoas.map((pessoa) => {
-                      const stats = estatisticasDe(pedidosDaPessoa(pessoa.id, doMesTodos), custoAviamentosPorPecaBase, maoDeObraPadrao);
+                      const stats = estatisticasDe(pedidosDaPessoa(pessoa.id, doMesTodos), custoAviamentosPorPecaBase, maoDeObraPadrao, aliquotaImposto);
                       const valorCampo = stats[linha.campo];
                       return (
                         <td
@@ -258,7 +268,7 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
       ) : (
         <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           {(() => {
-            const stats = estatisticasDe(listaOrdenada, custoAviamentosPorPecaBase, maoDeObraPadrao);
+            const stats = estatisticasDe(listaOrdenada, custoAviamentosPorPecaBase, maoDeObraPadrao, aliquotaImposto);
             return (
               <>
                 <StatCard label="Pedidos fechados" value={String(stats.fechados)} icon={ClipboardList} />
@@ -272,6 +282,13 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
                   value={`${brl(stats.margem)}${stats.margemPercentual != null ? ` (${stats.margemPercentual.toFixed(0)}%)` : ""}`}
                   icon={TrendingUp}
                   accent={stats.margem >= 0 ? VERDE : VERMELHO}
+                />
+                <StatCard label={`Imposto (${(parseFloat(aliquotaImposto) || 0).toFixed(1)}%)`} value={brl(stats.imposto)} icon={TrendingUp} />
+                <StatCard
+                  label="Margem líquida (após imposto)"
+                  value={brl(stats.margemLiquida)}
+                  icon={TrendingUp}
+                  accent={stats.margemLiquida >= 0 ? VERDE : VERMELHO}
                 />
               </>
             );
@@ -352,17 +369,18 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
           Histórico — últimos {MESES_HISTORICO} meses
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Camisas vendidas, valor e margem de cada mês, mês mais recente primeiro — exclui Doação.
+          Camisas vendidas, valor, margem e margem líquida (já descontado o imposto de {(parseFloat(aliquotaImposto) || 0).toFixed(1)}%) de cada
+          mês, mês mais recente primeiro — exclui Doação.
         </div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: pessoas.length > 1 ? 560 : 420 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: pessoas.length > 1 ? 680 : 500 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${LINE}` }}>
                 <th rowSpan={2} style={{ textAlign: "left", padding: "6px 10px", fontWeight: 600, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase", verticalAlign: "bottom" }}>
                   Mês
                 </th>
                 {pessoas.map((pessoa) => (
-                  <th key={pessoa.id} colSpan={3} style={{ textAlign: "center", padding: "6px 10px", fontWeight: 700, fontSize: 12, color: INK, borderBottom: `1px solid ${LINE}` }}>
+                  <th key={pessoa.id} colSpan={4} style={{ textAlign: "center", padding: "6px 10px", fontWeight: 700, fontSize: 12, color: INK, borderBottom: `1px solid ${LINE}` }}>
                     {pessoa.nome}
                   </th>
                 ))}
@@ -373,6 +391,7 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
                     <th style={{ textAlign: "right", padding: "4px 8px", fontWeight: 600, fontSize: 10, color: TEXT_MUTED }}>Camisas</th>
                     <th style={{ textAlign: "right", padding: "4px 8px", fontWeight: 600, fontSize: 10, color: TEXT_MUTED }}>Valor</th>
                     <th style={{ textAlign: "right", padding: "4px 8px", fontWeight: 600, fontSize: 10, color: TEXT_MUTED }}>Margem</th>
+                    <th style={{ textAlign: "right", padding: "4px 8px", fontWeight: 600, fontSize: 10, color: TEXT_MUTED }}>Líquido</th>
                   </React.Fragment>
                 ))}
               </tr>
@@ -390,6 +409,12 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
                         style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: stats.valor > 0 ? (stats.margem >= 0 ? VERDE : VERMELHO) : TEXT_MUTED }}
                       >
                         {stats.valor > 0 ? brl(stats.margem) : "—"}
+                      </td>
+                      <td
+                        className="fx-mono"
+                        style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: stats.valor > 0 ? (stats.margemLiquida >= 0 ? VERDE : VERMELHO) : TEXT_MUTED }}
+                      >
+                        {stats.valor > 0 ? brl(stats.margemLiquida) : "—"}
                       </td>
                     </React.Fragment>
                   ))}

@@ -35,6 +35,7 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
     prolabore,
     custosFixosPJ,
     planoSaudePJ,
+    aliquotaImposto,
     loading: carregandoConfig,
   } = useConfigCustosFixos();
 
@@ -88,7 +89,8 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
   const custoProducao = custoMaoDeObraFabiana + custoEquipeAtelie + custoTecidoCamisaria + custoTecidoAlfaiataria + custoAviamentos;
   const custoEstrutura = aluguel + luz + aluguelLoja + luzLoja;
   const custoCompartilhado = prolabore + custosFixosPJ + planoSaudePJ;
-  const custoTotal = custoProducao + custoEstrutura + custoCompartilhado;
+  const custoImposto = faturamento * ((parseFloat(aliquotaImposto) || 0) / 100);
+  const custoTotal = custoProducao + custoEstrutura + custoCompartilhado + custoImposto;
   const resultado = faturamento - custoTotal;
   const sePagando = resultado >= 0;
   const margemPercentual = faturamento > 0 ? (resultado / faturamento) * 100 : 0;
@@ -168,7 +170,8 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Produção (mão de obra + tecido + aviamentos das duas linhas) + estrutura (aluguel/luz do ateliê e da loja) +
-          custos compartilhados da empresa (pró-labore, PJ, plano de saúde).
+          custos compartilhados da empresa (pró-labore, PJ, plano de saúde) + impostos (alíquota configurada sobre o
+          faturamento do mês).
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
@@ -194,6 +197,10 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Outros PJ + plano de saúde</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custosFixosPJ + planoSaudePJ)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Impostos ({(parseFloat(aliquotaImposto) || 0).toFixed(1)}% do faturamento)</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(custoImposto)}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, color: TEXT_MUTED }}>Custo total do mês</div>

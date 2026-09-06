@@ -43,15 +43,11 @@ function tecidoPorFornecedorPagoNoMes(despesas, chaveMes) {
   return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
 }
 
-// Impostos (valor manual mensal, configurado enquanto a declaração não
-// está fechada) rateados entre as linhas proporcional à receita de cada
-// uma — igual ao rateio dos outros custos compartilhados, mas em linha
-// própria pra ficar visível (não é uma retirada pessoal como o
-// pró-labore, então não faz sentido dividir 50/50).
-function impostoRateado(impostos, receitaLinha, receitaOutraLinha) {
-  const receitaTotal = (receitaLinha || 0) + (receitaOutraLinha || 0);
-  const fatia = receitaTotal > 0 ? receitaLinha / receitaTotal : 0.5;
-  return (parseFloat(impostos) || 0) * fatia;
+// Imposto (Simples Nacional) é a alíquota configurada (%) sobre o próprio
+// faturamento de cada linha — não precisa ratear feito os outros custos
+// compartilhados porque já nasce proporcional à receita de quem gerou ele.
+function impostoDaLinha(aliquotaImposto, receitaLinha) {
+  return (receitaLinha || 0) * ((parseFloat(aliquotaImposto) || 0) / 100);
 }
 
 const VERMELHO = "#9C4A1E";
@@ -178,7 +174,7 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
     prolabore,
     custosFixosPJ,
     planoSaudePJ,
-    impostos,
+    aliquotaImposto,
     loading: carregandoConfig,
   } = custosFixos;
 
@@ -208,8 +204,8 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
     const rateioCamisaria = custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaudePJ, receitaLinha: receitaCamisaria, receitaOutraLinha: receitaAlfaiataria });
     const rateioAlfaiataria = custoCompartilhadoRateado({ prolabore, custosFixosPJ, planoSaudePJ, receitaLinha: receitaAlfaiataria, receitaOutraLinha: receitaCamisaria });
 
-    const impostoCamisaria = impostoRateado(impostos, receitaCamisaria, receitaAlfaiataria);
-    const impostoAlfaiataria = impostoRateado(impostos, receitaAlfaiataria, receitaCamisaria);
+    const impostoCamisaria = impostoDaLinha(aliquotaImposto, receitaCamisaria);
+    const impostoAlfaiataria = impostoDaLinha(aliquotaImposto, receitaAlfaiataria);
 
     // Pedidos/peças com tecido lançado mas sem valor/metro cadastrado — o
     // custo deles entra como R$0 sem avisar, então lista quem é (mesmo
@@ -244,7 +240,7 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
       },
     };
     // eslint-disable-next-line
-  }, [carregandoConfig, pedidos, pecas, equipe, custoAviamentosPorPecaBase, mesSelecionado, aluguelLoja, luzLoja, aluguelAtelie, luzAtelie, prolabore, custosFixosPJ, planoSaudePJ, impostos]);
+  }, [carregandoConfig, pedidos, pecas, equipe, custoAviamentosPorPecaBase, mesSelecionado, aluguelLoja, luzLoja, aluguelAtelie, luzAtelie, prolabore, custosFixosPJ, planoSaudePJ, aliquotaImposto]);
 
   const geral = useMemo(() => {
     if (!dados) return null;
@@ -374,9 +370,9 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
         <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
           Custo de produção controlado (tecido pelo valor/metro cadastrado, aviamento pelo catálogo, mão de obra e
-          estrutura) + impostos (valor manual configurado em Configurações, rateado por receita entre as linhas) —
-          despesas soltas do Contas a Pagar (fornecedor avulso, manutenção etc) não entram aqui, esse é o simulador
-          de caixa à parte. {ehMesAtual ? (
+          estrutura) + impostos ({(parseFloat(aliquotaImposto) || 0).toFixed(1)}% sobre o faturamento de cada linha,
+          alíquota configurada em Configurações) — despesas soltas do Contas a Pagar (fornecedor avulso, manutenção
+          etc) não entram aqui, esse é o simulador de caixa à parte. {ehMesAtual ? (
             <>Mês corrente: número ao vivo, ainda incompleto até fechar.</>
           ) : (
             <>Mês fechado: pedidos/peças reais daquele mês, mas equipe/aluguel/luz/pró-labore usam o valor configurado hoje — não existe histórico desses valores mês a mês ainda.</>
