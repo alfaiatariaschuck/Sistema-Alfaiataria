@@ -135,7 +135,7 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
 
       <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
         <div>
-          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Meta mensal (camisas)</div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Gatilho de vendas (camisas/mês)</div>
           <input type="number" step="1" style={inputStyle} value={metaMensal} onChange={(e) => setMetaMensal(e.target.value)} />
         </div>
         <div>
@@ -169,7 +169,7 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 11, color: TEXT_MUTED }}>Na meta de {metaNum || "—"} camisas</div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED }}>No gatilho de {metaNum || "—"} camisas</div>
           {pontoEquilibrioCamisas != null && metaNum > 0 ? (
             <div className="fx-mono" style={{ fontSize: 14, fontWeight: 700, color: metaNum >= pontoEquilibrioCamisas ? VERDE : VERMELHO }}>
               {metaNum >= pontoEquilibrioCamisas
@@ -201,8 +201,8 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
                 <tr key={qtd} style={{ borderBottom: `1px solid ${LINE}` }}>
                   <td style={{ padding: "6px 10px", fontWeight: 600 }}>
                     {qtd}
-                    {qtd === gatilhoNum && " (gatilho)"}
-                    {qtd === metaNum && " (meta)"}
+                    {qtd === gatilhoNum && " (gatilho do adiantamento)"}
+                    {qtd === metaNum && " (gatilho de vendas)"}
                   </td>
                   <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{brl(margemGerada)}</td>
                   <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{brl(adiantamentoNum)}</td>
@@ -222,7 +222,7 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
           Simulador completo — comissão + produção, tudo junto
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Cascata da meta de {metaNum || 0} camisas: receita → material → mão de obra (por produção, valor acima) →
+          Cascata do gatilho de {metaNum || 0} camisas: receita → material → mão de obra (por produção, valor acima) →
           comissão escalonada do Deivid (por faixa de volume, definida abaixo) + o fixo → o que sobra líquido pra
           empresa. Imposto ainda <strong>não entra</strong> nessa conta — isso só é tratado no DRE.
         </div>
@@ -249,7 +249,7 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
                 >
                   <td style={{ padding: "6px 10px", fontWeight: f === faixaAtual ? 700 : 500 }}>
                     {rotuloFaixa(f)}
-                    {f === faixaAtual && " ← meta atual"}
+                    {f === faixaAtual && " ← gatilho atual"}
                   </td>
                   <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right", fontWeight: f === faixaAtual ? 700 : 500 }}>
                     {f.pct}%
@@ -266,7 +266,7 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
 
         <div style={{ fontSize: 13 }}>
           {[
-            { label: "Receita (meta × ticket médio)", valor: receita },
+            { label: "Receita (gatilho × ticket médio)", valor: receita },
             { label: "(–) Custo de material (tecido + aviamento)", valor: -custoMaterial },
             { label: "(–) Mão de obra (por produção)", valor: -maoDeObraTotal },
             { label: "= Margem após produção", valor: margemAposProducao, destaque: true },
@@ -295,8 +295,8 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
 
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 12 }}>
           Como a mão de obra é paga por produção, ela já está descontada camisa a camisa acima — não existe um
-          "número mínimo de camisas" pra começar a pagar quem produz, cada venda já cobre a própria produção. Na meta
-          de {metaNum || 0} camisas, o total disponível pra pagar produção (Fabi ou uma nova costureira) é{" "}
+          "número mínimo de camisas" pra começar a pagar quem produz, cada venda já cobre a própria produção. No
+          gatilho de {metaNum || 0} camisas, o total disponível pra pagar produção (Fabi ou uma nova costureira) é{" "}
           <strong>{brl(maoDeObraTotal)}/mês</strong>.
         </div>
       </div>
