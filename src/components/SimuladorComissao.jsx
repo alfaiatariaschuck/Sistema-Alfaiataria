@@ -31,15 +31,16 @@ function rotuloFaixa(f) {
   return f.max === Infinity ? `${f.min}+ camisas` : `${f.min}–${f.max} camisas`;
 }
 
-// Bônus de volume — a partir de 30 camisas, cada bloco cheio de 10 a mais
-// (40, 50, 60...) soma +R$500, além da comissão da faixa e do fixo.
-const BONUS_A_PARTIR_DE = 30;
+// Bônus de volume — ao ATINGIR 60 camisas já ganha +R$500, e a cada
+// bloco cheio de 10 a mais (70, 80, 90...) soma outro +R$500, além da
+// comissão da faixa e do fixo.
+const BONUS_A_PARTIR_DE = 60;
 const BONUS_A_CADA = 10;
 const BONUS_VALOR = 500;
 
 function bonusVolume(qtd) {
-  if (qtd <= BONUS_A_PARTIR_DE) return 0;
-  return Math.floor((qtd - BONUS_A_PARTIR_DE) / BONUS_A_CADA) * BONUS_VALOR;
+  if (qtd < BONUS_A_PARTIR_DE) return 0;
+  return (Math.floor((qtd - BONUS_A_PARTIR_DE) / BONUS_A_CADA) + 1) * BONUS_VALOR;
 }
 
 // Ticket médio e custo de MATERIAL médio (tecido + aviamento — sem mão de
@@ -301,8 +302,9 @@ export default function SimuladorComissao({ pessoaNome, fonteNome, pedidos, pedi
             </tbody>
           </table>
           <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6 }}>
-            Abaixo do gatilho ({gatilhoNum} camisas) não ganha nem comissão nem o fixo. Acima de {BONUS_A_PARTIR_DE}{" "}
-            camisas, some ainda um bônus de {brl(BONUS_VALOR)} a cada {BONUS_A_CADA} camisas a mais (40, 50, 60...).
+            Abaixo do gatilho ({gatilhoNum} camisas) não ganha nem comissão nem o fixo. Ao atingir {BONUS_A_PARTIR_DE}{" "}
+            camisas, some ainda um bônus de {brl(BONUS_VALOR)}, e mais {brl(BONUS_VALOR)} a cada {BONUS_A_CADA} camisas
+            a mais ({BONUS_A_PARTIR_DE}, {BONUS_A_PARTIR_DE + BONUS_A_CADA}, {BONUS_A_PARTIR_DE + BONUS_A_CADA * 2}...).
           </div>
         </div>
 
