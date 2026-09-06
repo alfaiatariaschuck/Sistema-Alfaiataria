@@ -89,7 +89,8 @@ function pedidosDosMeses(pedidos, chaves) {
 // usa os últimos N meses fechados a partir de hoje; sem nenhum dos dois,
 // todo o histórico dela. Sem pedido nenhum ainda, cai pra média da
 // camisaria toda nos últimos meses fechados.
-export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa = [], janelaMesesPessoa, mesesFixos, custoAviamentosPorPecaBase = {} }) {
+export default function SimuladorComissao({ pessoaNome, fonteNome, pedidos, pedidosPessoa = [], janelaMesesPessoa, mesesFixos, custoAviamentosPorPecaBase = {} }) {
+  const nomeDaFonte = fonteNome || pessoaNome;
   const [metaMensal, setMetaMensal] = useState("6");
   const [gatilho, setGatilho] = useState("4");
   const [adiantamento, setAdiantamento] = useState("1500");
@@ -144,7 +145,7 @@ export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa =
       <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
         {usaPessoa ? (
           <>
-            Baseado nos <strong>pedidos reais de {pessoaNome}</strong>
+            Baseado nos <strong>pedidos reais de {nomeDaFonte}</strong>
             {mesesFixos
               ? ` (${mesesFixos.join(" e ")}`
               : janelaMesesPessoa
@@ -152,10 +153,16 @@ export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa =
               : " (todo o histórico"}
             , {base.qtdCamisasTotal} camisa(s)) — ticket médio {brl(base.ticketMedio)}, material médio{" "}
             {brl(base.custoMaterialMedioPorCamisa)}/camisa.
+            {nomeDaFonte !== pessoaNome && (
+              <>
+                {" "}
+                Simulando como se {pessoaNome} tivesse vendido com a margem real de {nomeDaFonte}.
+              </>
+            )}
           </>
         ) : (
           <>
-            {pessoaNome} ainda não tem pedido próprio nessa janela, então a base é a <strong>média da camisaria toda</strong> nos
+            {nomeDaFonte} ainda não tem pedido próprio nessa janela, então a base é a <strong>média da camisaria toda</strong> nos
             últimos {MESES_MEDIA} meses fechados — ticket médio {brl(base.ticketMedio)}, material médio{" "}
             {brl(base.custoMaterialMedioPorCamisa)}/camisa.
           </>

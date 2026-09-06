@@ -425,7 +425,7 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
             color: abaSimulador === "dono" ? "#FFF" : INK,
           }}
         >
-          Simulador — {NOME_DONO}
+          Simulador — Deivid (com minha margem)
         </button>
       </div>
       {abaSimulador === "deivid" ? (
@@ -437,7 +437,8 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
         />
       ) : (
         <SimuladorComissao
-          pessoaNome={NOME_DONO}
+          pessoaNome="Deivid"
+          fonteNome={NOME_DONO}
           pedidos={pedidos}
           pedidosPessoa={pedidosDono}
           janelaMesesPessoa={2}
