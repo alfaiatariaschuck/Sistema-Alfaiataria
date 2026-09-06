@@ -136,6 +136,16 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
   const custoCompartilhadoRateado = prolaboreMetade + custoCompartilhadoRateavel * fatiaAtelie;
   const custoTotalComRateio = custoTotal + custoCompartilhadoRateado;
 
+  // Simulação: quanto falta faturar esse mês pra cobrir tudo (custo
+  // próprio do ateliê + fatia rateada do compartilhado), e quanto isso dá
+  // por dia nos dias que restam do mês — mesma conta de Custos da Camisaria.
+  const metaFaturamento = custoTotalComRateio;
+  const faltaFaturar = Math.max(0, metaFaturamento - receitaMes);
+  const percentualAtingido = metaFaturamento > 0 ? Math.min(100, (receitaMes / metaFaturamento) * 100) : 100;
+  const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
+  const diasRestantes = Math.max(1, diasNoMes - hoje.getDate() + 1);
+  const faturamentoPorDiaNecessario = faltaFaturar > 0 ? faltaFaturar / diasRestantes : 0;
+
   const semCadastro = equipeComCusto.filter((m) => !m.tipoRemuneracao);
 
   // Últimos meses: receita real de cada mês (vendas) comparada ao custo
@@ -190,6 +200,37 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
         />
         <StatCard label="Ateliê cobre seus custos próprios?" value={sePagando ? "Sim" : "Não"} icon={sePagando ? TrendingUp : AlertTriangle} accent={sePagando ? "#2C6E31" : "#9C4A1E"} />
       </div>
+
+      <Card style={{ padding: 20 }} className="mb-6">
+        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+          Quanto preciso faturar esse mês
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+          Meta = custo próprio do ateliê + fatia rateada do compartilhado. {diasRestantes} dia(s) restam no mês.
+        </div>
+        <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Meta de faturamento do mês</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{carregandoConfig ? "…" : brl(metaFaturamento)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Faturado até agora</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: "#2C6E31" }}>{brl(receitaMes)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Falta faturar</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: faltaFaturar > 0 ? "#9C4A1E" : "#2C6E31" }}>{brl(faltaFaturar)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Precisa faturar/dia (resto do mês)</div>
+            <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: BRASS }}>{brl(faturamentoPorDiaNecessario)}</div>
+          </div>
+        </div>
+        <div style={{ background: "#EDEAE0", borderRadius: 999, height: 8, overflow: "hidden" }}>
+          <div style={{ background: percentualAtingido >= 100 ? "#2C6E31" : BRASS, height: "100%", width: `${percentualAtingido}%` }} />
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 6 }}>{percentualAtingido.toFixed(0)}% da meta atingida.</div>
+      </Card>
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
