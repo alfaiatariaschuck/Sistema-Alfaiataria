@@ -76,24 +76,33 @@ function pedidosDosUltimosMeses(pedidos, nMeses) {
   return (pedidos || []).filter((p) => chaves.includes((p.dataPedido || "").slice(0, 7)));
 }
 
+function pedidosDosMeses(pedidos, chaves) {
+  return (pedidos || []).filter((p) => chaves.includes((p.dataPedido || "").slice(0, 7)));
+}
+
 // Esboço de simulador de comissão/produção pra uma pessoa (Deivid, Tales
 // etc). Mão de obra é SEMPRE um valor manual por camisa (é o que se paga
 // por produção, não muda se for a Fabi ou outra pessoa) — sem distinção
 // de capacidade/reforço, porque o preço por peça é o mesmo. O ticket e o
-// custo de material vêm dos PEDIDOS REAIS da pessoa (com
-// `janelaMesesPessoa` definido, só os últimos N meses; sem isso, todo o
-// histórico dela). Sem pedido nenhum ainda, cai pra média da camisaria
-// toda nos últimos meses fechados.
-export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa = [], janelaMesesPessoa, custoAviamentosPorPecaBase = {} }) {
+// custo de material vêm dos PEDIDOS REAIS da pessoa — com `mesesFixos`
+// (array de "AAAA-MM") usa exatamente esses meses; com `janelaMesesPessoa`
+// usa os últimos N meses fechados a partir de hoje; sem nenhum dos dois,
+// todo o histórico dela. Sem pedido nenhum ainda, cai pra média da
+// camisaria toda nos últimos meses fechados.
+export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa = [], janelaMesesPessoa, mesesFixos, custoAviamentosPorPecaBase = {} }) {
   const [metaMensal, setMetaMensal] = useState("6");
   const [gatilho, setGatilho] = useState("4");
   const [adiantamento, setAdiantamento] = useState("1500");
   const [maoDeObra, setMaoDeObra] = useState("120");
 
   const mediasPessoa = useMemo(() => {
-    const lista = janelaMesesPessoa ? pedidosDosUltimosMeses(pedidosPessoa, janelaMesesPessoa) : pedidosPessoa;
+    const lista = mesesFixos
+      ? pedidosDosMeses(pedidosPessoa, mesesFixos)
+      : janelaMesesPessoa
+      ? pedidosDosUltimosMeses(pedidosPessoa, janelaMesesPessoa)
+      : pedidosPessoa;
     return mediasDeCamisas(lista, custoAviamentosPorPecaBase);
-  }, [pedidosPessoa, janelaMesesPessoa, custoAviamentosPorPecaBase]);
+  }, [pedidosPessoa, janelaMesesPessoa, mesesFixos, custoAviamentosPorPecaBase]);
   const mediasLoja = useMemo(
     () => mediasDeCamisas(pedidosDosUltimosMeses(pedidos, MESES_MEDIA), custoAviamentosPorPecaBase),
     [pedidos, custoAviamentosPorPecaBase]
@@ -136,8 +145,13 @@ export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa =
         {usaPessoa ? (
           <>
             Baseado nos <strong>pedidos reais de {pessoaNome}</strong>
-            {janelaMesesPessoa ? ` (últimos ${janelaMesesPessoa} meses fechados` : " (todo o histórico"}, {base.qtdCamisasTotal}{" "}
-            camisa(s)) — ticket médio {brl(base.ticketMedio)}, material médio {brl(base.custoMaterialMedioPorCamisa)}/camisa.
+            {mesesFixos
+              ? ` (${mesesFixos.join(" e ")}`
+              : janelaMesesPessoa
+              ? ` (últimos ${janelaMesesPessoa} meses fechados`
+              : " (todo o histórico"}
+            , {base.qtdCamisasTotal} camisa(s)) — ticket médio {brl(base.ticketMedio)}, material médio{" "}
+            {brl(base.custoMaterialMedioPorCamisa)}/camisa.
           </>
         ) : (
           <>
