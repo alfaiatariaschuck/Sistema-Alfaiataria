@@ -441,7 +441,7 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
           fonteNome={NOME_DONO}
           pedidos={pedidos}
           pedidosPessoa={pedidosDono}
-          janelaMesesPessoa={2}
+          mesesFixos={["2026-09"]}
           custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
         />
       )}

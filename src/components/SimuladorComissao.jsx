@@ -49,10 +49,11 @@ function mediasDeCamisas(lista, custoAviamentosPorPecaBase) {
   let somaMaterial = 0;
   let somaQtd = 0;
   (lista || [])
-    // Doação ou pedido sem valor lançado (ex: peça dada de presente/cortesia,
-    // não uma venda de verdade) não entra na média — puxaria ticket/margem
-    // pra baixo sem representar uma venda real.
-    .filter((p) => p.status !== "Doação" && (parseFloat(p.aReceber?.valor) || 0) > 0)
+    // Doação, pedido sem valor lançado (ex: peça dada de presente/cortesia,
+    // não uma venda de verdade) ou sem quantidade preenchida não entra na
+    // média — sem quantidade, o valor do pedido inteiro ficaria contado só
+    // no numerador (dividido por 0 camisas), inflando o ticket médio.
+    .filter((p) => p.status !== "Doação" && (parseFloat(p.aReceber?.valor) || 0) > 0 && (parseFloat(p.quantidade) || 0) > 0)
     .forEach((p) => {
       const qtd = parseFloat(p.quantidade) || 0;
       somaValor += parseFloat(p.aReceber?.valor) || 0;
