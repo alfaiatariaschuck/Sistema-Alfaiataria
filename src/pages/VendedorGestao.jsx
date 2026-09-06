@@ -6,7 +6,7 @@ import { brl, fmtData } from "../lib/helpers";
 import { custoCamisa } from "../lib/vendasMensais";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { useVendedores } from "../hooks/useVendedores";
-import SimuladorDeivid from "../components/SimuladorDeivid";
+import SimuladorComissao from "../components/SimuladorComissao";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const MESES_CURTO = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -73,6 +73,7 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
   const mesRealAtual = hojeStr.slice(0, 7);
   const [mesSelecionado, setMesSelecionado] = useState(mesRealAtual);
   const [pessoaFiltro, setPessoaFiltro] = useState("ambos");
+  const [abaSimulador, setAbaSimulador] = useState("deivid");
   const { vendedores, loading: carregandoVendedores } = useVendedores();
   const { maoDeObraPadrao } = useConfigPrecoCamisa();
   const idsVendedores = new Set(vendedores.map((v) => v.id));
@@ -96,6 +97,8 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
   // Todos os pedidos já creditados a algum vendedor (não ao dono), pra
   // basear o Simulador do Deivid nos dados reais dele assim que existirem.
   const pedidosVendedores = (pedidos || []).filter((p) => idsVendedores.has(pessoaDe(p)));
+  // Pedidos do próprio dono, pra alimentar o simulador com "minha margem".
+  const pedidosDono = (pedidos || []).filter((p) => pessoaDe(p) === "dono");
 
   // Histórico dos últimos MESES_HISTORICO meses, mês mais recente primeiro
   // — mesmo padrão de "últimos 12 meses" usado em Comparativo Mensal.
@@ -397,7 +400,50 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
         </div>
       </Card>
 
-      <SimuladorDeivid pedidos={pedidos} pedidosDeivid={pedidosVendedores} custoAviamentosPorPecaBase={custoAviamentosPorPecaBase} />
+      <div className="flex items-center gap-2 mt-8 mb-1">
+        <button
+          onClick={() => setAbaSimulador("deivid")}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px 8px 0 0",
+            fontSize: 13,
+            fontWeight: 600,
+            background: abaSimulador === "deivid" ? INK : "#EDEAE0",
+            color: abaSimulador === "deivid" ? "#FFF" : INK,
+          }}
+        >
+          Simulador — Deivid
+        </button>
+        <button
+          onClick={() => setAbaSimulador("dono")}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px 8px 0 0",
+            fontSize: 13,
+            fontWeight: 600,
+            background: abaSimulador === "dono" ? INK : "#EDEAE0",
+            color: abaSimulador === "dono" ? "#FFF" : INK,
+          }}
+        >
+          Simulador — {NOME_DONO}
+        </button>
+      </div>
+      {abaSimulador === "deivid" ? (
+        <SimuladorComissao
+          pessoaNome="Deivid"
+          pedidos={pedidos}
+          pedidosPessoa={pedidosVendedores}
+          custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
+        />
+      ) : (
+        <SimuladorComissao
+          pessoaNome={NOME_DONO}
+          pedidos={pedidos}
+          pedidosPessoa={pedidosDono}
+          janelaMesesPessoa={2}
+          custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
+        />
+      )}
     </div>
   );
 }
