@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BarChart3, ChevronRight, ClipboardList, LogOut, Megaphone, Plus, Ruler } from "lucide-react";
+import { BarChart3, Calculator, ChevronRight, ClipboardList, LogOut, Megaphone, Plus, Ruler } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePedidos } from "./hooks/usePedidos";
 import { useNomesClientes } from "./hooks/useNomesClientes";
@@ -11,6 +11,7 @@ import VendedorNovoPedido from "./pages/VendedorNovoPedido";
 import DetalhePedidoVendedor from "./pages/DetalhePedidoVendedor";
 import CampanhaVendedor from "./pages/CampanhaVendedor";
 import MeuDesempenhoVendedor from "./pages/MeuDesempenhoVendedor";
+import MinhaComissaoVendedor from "./pages/MinhaComissaoVendedor";
 
 // App enxuto pro vendedor: só a ficha de pedido de camisa (criar e
 // editar o que ele mesmo lançou) — nada de painéis, financeiro,
@@ -121,6 +122,23 @@ export default function ShellVendedor() {
         >
           <BarChart3 size={15} /> Minha Gestão
         </button>
+        <button
+          onClick={() => {
+            setTab("comissao");
+            setSelecionado(null);
+          }}
+          className="flex items-center gap-2"
+          style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+            background: tab === "comissao" ? INK : "#EDEAE0",
+            color: tab === "comissao" ? "#FFF" : INK_SOFT,
+          }}
+        >
+          <Calculator size={15} /> Minha Comissão
+        </button>
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6">
@@ -129,6 +147,8 @@ export default function ShellVendedor() {
         {tab === "campanha" && <CampanhaVendedor clientesBase={clientesBase} />}
 
         {tab === "gestao" && <MeuDesempenhoVendedor pedidos={pedidos} />}
+
+        {tab === "comissao" && <MinhaComissaoVendedor pedidos={pedidos} />}
 
         {tab === "pedidos" && atual && (
           <DetalhePedidoVendedor
