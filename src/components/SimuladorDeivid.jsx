@@ -7,7 +7,28 @@ import { brl, custoTecidoDe } from "../lib/helpers";
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
 const MESES_MEDIA = 2;
-const PERCENTUAIS_RAPIDOS = [5, 8, 10, 12, 15];
+
+// Comissão escalonada combinada com o Deivid — quanto mais ele vender no
+// mês, maior o percentual sobre TUDO que ele vendeu (não só o excedente
+// da faixa), pra ficar desafiador e simples de explicar. Abaixo do
+// gatilho não ganha nada; a partir dele, o fixo entra (por enquanto,
+// enquanto ele ainda está começando) e o percentual sobe por faixa.
+const FAIXAS_COMISSAO = [
+  { min: 0, max: 2, pct: 0 },
+  { min: 3, max: 9, pct: 5 },
+  { min: 10, max: 14, pct: 8 },
+  { min: 15, max: 19, pct: 10 },
+  { min: 20, max: 29, pct: 12 },
+  { min: 30, max: Infinity, pct: 15 },
+];
+
+function faixaDe(qtd) {
+  return FAIXAS_COMISSAO.find((f) => qtd >= f.min && qtd <= f.max) || FAIXAS_COMISSAO[0];
+}
+
+function rotuloFaixa(f) {
+  return f.max === Infinity ? `${f.min}+ camisas` : `${f.min}–${f.max} camisas`;
+}
 
 // Ticket médio e custo de MATERIAL médio (tecido + aviamento — sem mão de
 // obra, que aqui é sempre o campo manual) de uma lista de pedidos de
@@ -17,7 +38,10 @@ function mediasDeCamisas(lista, custoAviamentosPorPecaBase) {
   let somaMaterial = 0;
   let somaQtd = 0;
   (lista || [])
-    .filter((p) => p.status !== "Doação")
+    // Doação ou pedido sem valor lançado (ex: peça dada de presente/cortesia,
+    // não uma venda de verdade) não entra na média — puxaria ticket/margem
+    // pra baixo sem representar uma venda real.
+    .filter((p) => p.status !== "Doação" && (parseFloat(p.aReceber?.valor) || 0) > 0)
     .forEach((p) => {
       const qtd = parseFloat(p.quantidade) || 0;
       somaValor += parseFloat(p.aReceber?.valor) || 0;
@@ -52,7 +76,6 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
   const [metaMensal, setMetaMensal] = useState("6");
   const [gatilho, setGatilho] = useState("3");
   const [adiantamento, setAdiantamento] = useState("1500");
-  const [percentualComissao, setPercentualComissao] = useState("10");
   const [maoDeObra, setMaoDeObra] = useState("120");
 
   const mediasDeivid = useMemo(() => mediasDeCamisas(pedidosDeivid, custoAviamentosPorPecaBase), [pedidosDeivid, custoAviamentosPorPecaBase]);
@@ -66,8 +89,11 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
   const metaNum = parseInt(metaMensal, 10) || 0;
   const gatilhoNum = parseInt(gatilho, 10) || 0;
   const adiantamentoNum = parseFloat(adiantamento) || 0;
-  const percentualNum = parseFloat(percentualComissao) || 0;
   const maoDeObraNum = parseFloat(maoDeObra) || 0;
+
+  const faixaAtual = faixaDe(metaNum);
+  const percentualNum = faixaAtual.pct;
+  const fixoAplicavel = metaNum >= gatilhoNum ? adiantamentoNum : 0;
 
   const margemPorCamisa = base.ticketMedio - base.custoMaterialMedioPorCamisa - maoDeObraNum;
 
@@ -79,7 +105,7 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
   const maoDeObraTotal = metaNum * maoDeObraNum;
   const margemAposProducao = receita - custoMaterial - maoDeObraTotal;
   const comissaoDeivid = receita * (percentualNum / 100);
-  const ganhoDeivid = comissaoDeivid + adiantamentoNum;
+  const ganhoDeivid = comissaoDeivid + fixoAplicavel;
   const resultadoLiquidoEmpresa = margemAposProducao - ganhoDeivid;
 
   return (
@@ -197,32 +223,44 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           Cascata da meta de {metaNum || 0} camisas: receita → material → mão de obra (por produção, valor acima) →
-          comissão do Deivid (% escolhido) + o fixo → o que sobra líquido pra empresa. Imposto ainda{" "}
-          <strong>não entra</strong> nessa conta — isso só é tratado no DRE.
+          comissão escalonada do Deivid (por faixa de volume, definida abaixo) + o fixo → o que sobra líquido pra
+          empresa. Imposto ainda <strong>não entra</strong> nessa conta — isso só é tratado no DRE.
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap mb-4">
-          <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>% de comissão</div>
-            <input type="number" step="0.5" style={{ ...inputStyle, width: 90 }} value={percentualComissao} onChange={(e) => setPercentualComissao(e.target.value)} />
-          </div>
-          <div className="flex items-end gap-1.5">
-            {PERCENTUAIS_RAPIDOS.map((pct) => (
-              <button
-                key={pct}
-                onClick={() => setPercentualComissao(String(pct))}
-                style={{
-                  background: percentualNum === pct ? BRASS : "#EDEAE0",
-                  color: percentualNum === pct ? "#FFF" : INK,
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
-              >
-                {pct}%
-              </button>
-            ))}
+        <div className="mb-4" style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 320 }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${LINE}` }}>
+                {["Faixa", "Comissão"].map((h) => (
+                  <th key={h} style={{ textAlign: h === "Faixa" ? "left" : "right", padding: "6px 10px", fontWeight: 600, fontSize: 10, color: TEXT_MUTED, textTransform: "uppercase" }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {FAIXAS_COMISSAO.map((f) => (
+                <tr
+                  key={f.min}
+                  style={{
+                    borderBottom: `1px solid ${LINE}`,
+                    background: f === faixaAtual ? "#F3EEDF" : "transparent",
+                  }}
+                >
+                  <td style={{ padding: "6px 10px", fontWeight: f === faixaAtual ? 700 : 500 }}>
+                    {rotuloFaixa(f)}
+                    {f === faixaAtual && " ← meta atual"}
+                  </td>
+                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right", fontWeight: f === faixaAtual ? 700 : 500 }}>
+                    {f.pct}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6 }}>
+            Abaixo do gatilho ({gatilhoNum} camisas) não ganha nem comissão nem o fixo — a faixa e o gatilho de
+            hoje são combinados, mas fica de olho: a ideia é subir o gatilho pra 6 assim que der.
           </div>
         </div>
 
@@ -232,8 +270,8 @@ export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAvia
             { label: "(–) Custo de material (tecido + aviamento)", valor: -custoMaterial },
             { label: "(–) Mão de obra (por produção)", valor: -maoDeObraTotal },
             { label: "= Margem após produção", valor: margemAposProducao, destaque: true },
-            { label: `(–) Comissão do Deivid (${percentualNum}% da receita)`, valor: -comissaoDeivid },
-            { label: "(–) Adiantamento fixo do Deivid", valor: -adiantamentoNum },
+            { label: `(–) Comissão do Deivid (${percentualNum}% da receita — faixa ${rotuloFaixa(faixaAtual)})`, valor: -comissaoDeivid },
+            { label: `(–) Adiantamento fixo do Deivid${fixoAplicavel === 0 ? " (abaixo do gatilho, não se aplica)" : ""}`, valor: -fixoAplicavel },
           ].map(({ label, valor, destaque }) => (
             <div key={label} className="flex items-center justify-between py-1.5" style={{ borderBottom: `1px solid ${LINE}` }}>
               <span style={{ color: destaque ? INK : TEXT_MUTED, fontWeight: destaque ? 600 : 400 }}>{label}</span>
