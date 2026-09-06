@@ -93,6 +93,10 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
 
   const doMesTodos = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesSelecionado);
 
+  // Todos os pedidos já creditados a algum vendedor (não ao dono), pra
+  // basear o Simulador do Deivid nos dados reais dele assim que existirem.
+  const pedidosVendedores = (pedidos || []).filter((p) => idsVendedores.has(pessoaDe(p)));
+
   // Histórico dos últimos MESES_HISTORICO meses, mês mais recente primeiro
   // — mesmo padrão de "últimos 12 meses" usado em Comparativo Mensal.
   const mesesHistorico = useMemo(() => {
@@ -393,7 +397,7 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
         </div>
       </Card>
 
-      <SimuladorDeivid pedidos={pedidos} custoAviamentosPorPecaBase={custoAviamentosPorPecaBase} maoDeObraPadrao={maoDeObraPadrao} />
+      <SimuladorDeivid pedidos={pedidos} pedidosDeivid={pedidosVendedores} custoAviamentosPorPecaBase={custoAviamentosPorPecaBase} />
     </div>
   );
 }
