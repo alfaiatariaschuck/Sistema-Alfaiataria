@@ -30,6 +30,17 @@ function rotuloFaixa(f) {
   return f.max === Infinity ? `${f.min}+ camisas` : `${f.min}–${f.max} camisas`;
 }
 
+// Bônus de volume — a partir de 30 camisas, cada bloco cheio de 10 a mais
+// (40, 50, 60...) soma +R$500, além da comissão da faixa e do fixo.
+const BONUS_A_PARTIR_DE = 30;
+const BONUS_A_CADA = 10;
+const BONUS_VALOR = 500;
+
+function bonusVolume(qtd) {
+  if (qtd <= BONUS_A_PARTIR_DE) return 0;
+  return Math.floor((qtd - BONUS_A_PARTIR_DE) / BONUS_A_CADA) * BONUS_VALOR;
+}
+
 // Ticket médio e custo de MATERIAL médio (tecido + aviamento — sem mão de
 // obra, que aqui é sempre o campo manual) de uma lista de pedidos de
 // camisa, ponderado por camisa (soma tudo, divide pela quantidade total).
@@ -98,6 +109,7 @@ export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa =
   const faixaAtual = faixaDe(metaNum);
   const percentualNum = faixaAtual.pct;
   const fixoAplicavel = metaNum >= gatilhoNum ? adiantamentoNum : 0;
+  const bonusVolumeAplicavel = bonusVolume(metaNum);
 
   const margemPorCamisa = base.ticketMedio - base.custoMaterialMedioPorCamisa - maoDeObraNum;
 
@@ -109,7 +121,7 @@ export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa =
   const maoDeObraTotal = metaNum * maoDeObraNum;
   const margemAposProducao = receita - custoMaterial - maoDeObraTotal;
   const comissaoPessoa = receita * (percentualNum / 100);
-  const ganhoPessoa = comissaoPessoa + fixoAplicavel;
+  const ganhoPessoa = comissaoPessoa + fixoAplicavel + bonusVolumeAplicavel;
   const resultadoLiquidoEmpresa = margemAposProducao - ganhoPessoa;
 
   return (
@@ -263,7 +275,8 @@ export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa =
             </tbody>
           </table>
           <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6 }}>
-            Abaixo do gatilho ({gatilhoNum} camisas) não ganha nem comissão nem o fixo.
+            Abaixo do gatilho ({gatilhoNum} camisas) não ganha nem comissão nem o fixo. Acima de {BONUS_A_PARTIR_DE}{" "}
+            camisas, some ainda um bônus de {brl(BONUS_VALOR)} a cada {BONUS_A_CADA} camisas a mais (40, 50, 60...).
           </div>
         </div>
 
@@ -275,6 +288,10 @@ export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa =
             { label: "= Margem após produção", valor: margemAposProducao, destaque: true },
             { label: `(–) Comissão de ${pessoaNome} (${percentualNum}% da receita — faixa ${rotuloFaixa(faixaAtual)})`, valor: -comissaoPessoa },
             { label: `(–) Adiantamento fixo de ${pessoaNome}${fixoAplicavel === 0 ? " (abaixo do gatilho, não se aplica)" : ""}`, valor: -fixoAplicavel },
+            {
+              label: `(–) Bônus de volume (a cada ${BONUS_A_CADA} camisas acima de ${BONUS_A_PARTIR_DE})${bonusVolumeAplicavel === 0 ? " (ainda não bateu)" : ""}`,
+              valor: -bonusVolumeAplicavel,
+            },
           ].map(({ label, valor, destaque }) => (
             <div key={label} className="flex items-center justify-between py-1.5" style={{ borderBottom: `1px solid ${LINE}` }}>
               <span style={{ color: destaque ? INK : TEXT_MUTED, fontWeight: destaque ? 600 : 400 }}>{label}</span>
@@ -285,7 +302,7 @@ export default function SimuladorComissao({ pessoaNome, pedidos, pedidosPessoa =
 
         <div className="grid gap-4 mt-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
           <div className="py-3 px-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Ganho total de {pessoaNome} (comissão + fixo)</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Ganho total de {pessoaNome} (comissão + fixo + bônus)</div>
             <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: BRASS }}>{brl(ganhoPessoa)}</div>
           </div>
           <div className="py-3 px-3" style={{ background: resultadoLiquidoEmpresa >= 0 ? "#EAF3EA" : "#F7EAE3", borderRadius: 8 }}>
