@@ -14,8 +14,8 @@ const MESES_MEDIA = 2;
 // gatilho não ganha nada; a partir dele, o fixo entra (por enquanto,
 // enquanto ele ainda está começando) e o percentual sobe por faixa.
 const FAIXAS_COMISSAO = [
-  { min: 0, max: 2, pct: 0 },
-  { min: 3, max: 9, pct: 5 },
+  { min: 0, max: 4, pct: 0 },
+  { min: 5, max: 9, pct: 5 },
   { min: 10, max: 14, pct: 8 },
   { min: 15, max: 19, pct: 10 },
   { min: 20, max: 29, pct: 12 },
@@ -74,7 +74,7 @@ function pedidosDosUltimosMeses(pedidos, nMeses) {
 // histórico, usa a média da loja toda nos últimos meses fechados.
 export default function SimuladorDeivid({ pedidos, pedidosDeivid = [], custoAviamentosPorPecaBase = {} }) {
   const [metaMensal, setMetaMensal] = useState("6");
-  const [gatilho, setGatilho] = useState("3");
+  const [gatilho, setGatilho] = useState("4");
   const [adiantamento, setAdiantamento] = useState("1500");
   const [maoDeObra, setMaoDeObra] = useState("120");
 
