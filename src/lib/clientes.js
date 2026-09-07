@@ -37,13 +37,32 @@ export async function encontrarOuCriarCliente(nome, opcoes = {}) {
   if (existente) return existente.id;
 
   const donoCarteiraId = await carteiraPadraoDoCriador();
+
+  // "Indicado por" é digitado como texto livre (mesmo campo de
+  // autocomplete do nome do cliente) — se bater com um cliente já
+  // cadastrado, linka por ID também, pra o Ranking de Indicação
+  // (RankingIndicacao.jsx) somar certo sem depender de nome igual
+  // letra por letra. Não achando, fica só o texto (indicador ainda não
+  // é cliente cadastrado, ou nome digitado diferente).
+  let indicadoPorClienteId = null;
+  const indicadoPorTexto = (opcoes.indicadoPor || "").trim();
+  if (indicadoPorTexto) {
+    const { data: indicador } = await supabase
+      .from("clientes")
+      .select("id")
+      .eq("nome_normalizado", indicadoPorTexto.toLowerCase())
+      .maybeSingle();
+    indicadoPorClienteId = indicador?.id || null;
+  }
+
   const { data: criado, error } = await supabase
     .from("clientes")
     .insert({
       nome: nome.trim(),
       dono_carteira_id: donoCarteiraId,
       origem: opcoes.origem || null,
-      indicado_por: opcoes.indicadoPor || null,
+      indicado_por: indicadoPorTexto || null,
+      indicado_por_cliente_id: indicadoPorClienteId,
     })
     .select("id")
     .single();

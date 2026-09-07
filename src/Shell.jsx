@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   TrendingUp,
+  Trophy,
   UserCheck,
   Users,
   Users2,
@@ -57,6 +58,7 @@ import DashboardAlfaiataria from "./pages/DashboardAlfaiataria";
 import NovoPedido from "./pages/NovoPedido";
 import Pedidos from "./pages/Pedidos";
 import Clientes from "./pages/Clientes";
+import RankingIndicacao from "./pages/RankingIndicacao";
 import Compras from "./pages/Compras";
 import Relatorio from "./pages/Relatorio";
 import RelatorioAlfaiataria from "./pages/RelatorioAlfaiataria";
@@ -109,6 +111,7 @@ const NAV = [
   { id: "estoque-camisaria", label: "Estoque de Tecido", icon: PackageCheck, primary: false, grupo: "Geral" },
   { id: "entregues", label: "Entregues", icon: Archive, primary: false, grupo: "Geral" },
   { id: "clientes", label: "Clientes", icon: Users, primary: false, grupo: "Geral" },
+  { id: "ranking-indicacao", label: "Ranking de Indicação", icon: Trophy, primary: false, grupo: "Geral" },
   { id: "consolidado", label: "Consolidado", icon: Layers, primary: false, grupo: "Geral" },
   { id: "pedidos-vendidos", label: "Pedidos Vendidos", icon: TrendingUp, primary: false, grupo: "Geral" },
   { id: "comparativo-mensal", label: "Comparativo Mensal", icon: GitCompare, primary: false, grupo: "Geral" },
@@ -231,6 +234,7 @@ export default function Shell() {
         donoCarteiraId: c.donoCarteiraId || null,
         origem: c.origem || null,
         indicadoPor: c.indicadoPor || null,
+        indicadoPorClienteId: c.indicadoPorClienteId || null,
       });
     });
     pedidos.forEach((p) => {
@@ -825,6 +829,7 @@ export default function Shell() {
               {tab === "clientes" && (
                 <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} onCadastrar={cadastrarClienteManual} recarregarClientes={recarregarNomesClientes} />
               )}
+              {tab === "ranking-indicacao" && <RankingIndicacao clientes={clientes} />}
               {tab === "contas-a-pagar" && (
                 <ContasAPagar
                   pedidos={pedidos}

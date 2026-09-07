@@ -13,11 +13,20 @@ export function useNomesClientes() {
     // Passou de 1000 clientes depois da importação da planilha antiga —
     // sem paginar, o Supabase corta silenciosamente na linha 1000.
     const data = await buscarTodasLinhas(() =>
-      supabase.from("clientes").select("id, nome, campanha_contatado_em, dono_carteira_id, origem, indicado_por").order("nome")
+      supabase
+        .from("clientes")
+        .select("id, nome, campanha_contatado_em, dono_carteira_id, origem, indicado_por, indicado_por_cliente_id")
+        .order("nome")
     );
     setNomesClientes(data.map((r) => r.nome));
     setClientesBase(
-      data.map((r) => ({ ...r, donoCarteiraId: r.dono_carteira_id, origem: r.origem, indicadoPor: r.indicado_por }))
+      data.map((r) => ({
+        ...r,
+        donoCarteiraId: r.dono_carteira_id,
+        origem: r.origem,
+        indicadoPor: r.indicado_por,
+        indicadoPorClienteId: r.indicado_por_cliente_id,
+      }))
     );
   }, []);
 
