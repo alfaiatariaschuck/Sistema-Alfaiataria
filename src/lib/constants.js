@@ -99,7 +99,7 @@ export const ORIGENS_CLIENTE = ["Indicação", "Google", "Instagram", "Campanha 
 // por mês). Definido com o Tales e a Ana — sujeito a novas faixas
 // depois de 20.
 export const FAIXAS_INDICACAO = [
-  { chave: "premio_5", pecas: 5, label: "Voucher R$345 (churrascaria — metade de uma camisa nacional)" },
+  { chave: "premio_5", pecas: 5, label: "Voucher R$345 pra gastar na Schuck Alfaiataria (metade de uma camisa nacional)" },
   { chave: "premio_10", pecas: 10, label: "Camisa sob medida — tecido nacional (cortesia)" },
   { chave: "premio_15", pecas: 15, label: "Camisa sob medida — tecido italiano Frota e Zanone" },
   { chave: "premio_20", pecas: 20, label: "Camisa sob medida — tecido Cavalli" },
