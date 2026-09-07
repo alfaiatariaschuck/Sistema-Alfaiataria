@@ -8,6 +8,7 @@ import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 import { useVendedores } from "../hooks/useVendedores";
 import SimuladorComissao from "../components/SimuladorComissao";
+import FunilVendas from "../components/FunilVendas";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const MESES_CURTO = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -470,6 +471,17 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
           custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
         />
       )}
+
+      {vendedores.map((v) => (
+        <div key={v.id} className="mt-6">
+          <FunilVendas
+            vendedorId={v.id}
+            pedidos={pedidosDaPessoa(v.id, pedidos)}
+            podeEditar={false}
+            tituloCompacto={`Funil de Vendas — ${v.nome}`}
+          />
+        </div>
+      ))}
     </div>
   );
 }
