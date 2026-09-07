@@ -16,6 +16,7 @@ export function pedidoVazio() {
     cliente: "",
     origemCliente: "",
     indicadoPor: "",
+    indicadoPorCpf: "",
     vendedor: "",
     dataPedido: new Date().toISOString().slice(0, 10),
     previsaoEntrega: "",
@@ -172,7 +173,7 @@ export function usePedidos() {
 
   async function criarPedido(p) {
     return comIndicador(async () => {
-      const clienteId = await encontrarOuCriarCliente(p.cliente, { origem: p.origemCliente, indicadoPor: p.indicadoPor });
+      const clienteId = await encontrarOuCriarCliente(p.cliente, { origem: p.origemCliente, indicadoPor: p.indicadoPor, indicadoPorCpf: p.indicadoPorCpf });
       const { data: pedidoRow, error } = await supabase
         .from("pedidos")
         .insert({

@@ -829,7 +829,7 @@ export default function Shell() {
               {tab === "clientes" && (
                 <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} onCadastrar={cadastrarClienteManual} recarregarClientes={recarregarNomesClientes} />
               )}
-              {tab === "ranking-indicacao" && <RankingIndicacao clientes={clientes} />}
+              {tab === "ranking-indicacao" && <RankingIndicacao clientesBase={clientesBase} />}
               {tab === "contas-a-pagar" && (
                 <ContasAPagar
                   pedidos={pedidos}

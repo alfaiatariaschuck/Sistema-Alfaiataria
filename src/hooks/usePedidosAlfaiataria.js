@@ -8,6 +8,7 @@ export function pecaVazia() {
     cliente: "",
     origemCliente: "",
     indicadoPor: "",
+    indicadoPorCpf: "",
     tipoPeca: "Traje",
     dataPedido: hojeISO(),
     previsaoEntrega: "",
@@ -187,7 +188,7 @@ export function usePedidosAlfaiataria() {
 
   async function criarPeca(p) {
     return comIndicador(async () => {
-      const clienteId = await encontrarOuCriarCliente(p.cliente, { origem: p.origemCliente, indicadoPor: p.indicadoPor });
+      const clienteId = await encontrarOuCriarCliente(p.cliente, { origem: p.origemCliente, indicadoPor: p.indicadoPor, indicadoPorCpf: p.indicadoPorCpf });
       const { data: pecaRow, error } = await supabase
         .from("pedidos_alfaiataria")
         .insert({

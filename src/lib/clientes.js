@@ -41,18 +41,27 @@ export async function encontrarOuCriarCliente(nome, opcoes = {}) {
   // "Indicado por" é digitado como texto livre (mesmo campo de
   // autocomplete do nome do cliente) — se bater com um cliente já
   // cadastrado, linka por ID também, pra o Ranking de Indicação
-  // (RankingIndicacao.jsx) somar certo sem depender de nome igual
-  // letra por letra. Não achando, fica só o texto (indicador ainda não
-  // é cliente cadastrado, ou nome digitado diferente).
+  // (RankingIndicacao.jsx) somar certo sem depender de nome igual letra
+  // por letra. Se NÃO bater e vier um CPF junto (a pessoa confirmou que
+  // quer mesmo cadastrar esse indicador), cria um registro de cliente
+  // pra ele — mesmo sem nenhum pedido próprio, só pra existir e poder
+  // ganhar prêmio de indicação — e já grava o CPF (fica em
+  // clientes_dados_pessoais, protegido por LGPD igual qualquer outro).
   let indicadoPorClienteId = null;
   const indicadoPorTexto = (opcoes.indicadoPor || "").trim();
+  const indicadoPorCpf = (opcoes.indicadoPorCpf || "").trim();
   if (indicadoPorTexto) {
     const { data: indicador } = await supabase
       .from("clientes")
       .select("id")
       .eq("nome_normalizado", indicadoPorTexto.toLowerCase())
       .maybeSingle();
-    indicadoPorClienteId = indicador?.id || null;
+    if (indicador) {
+      indicadoPorClienteId = indicador.id;
+    } else if (indicadoPorCpf) {
+      indicadoPorClienteId = await encontrarOuCriarCliente(indicadoPorTexto);
+      await salvarDadosPessoaisCliente(indicadoPorClienteId, { cpf: indicadoPorCpf });
+    }
   }
 
   const { data: criado, error } = await supabase

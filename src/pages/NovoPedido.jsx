@@ -20,6 +20,10 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
   const [previsaoAuto, setPrevisaoAuto] = useState(null);
   const [valorFabianaAuto, setValorFabianaAuto] = useState(null);
   const temposMedios = useMemo(() => temposMediosProducao(pedidos || []), [pedidos]);
+  // Se o nome digitado em "Indicado por" já bate com um cliente
+  // cadastrado, não precisa pedir CPF de novo — só pede quando é
+  // alguém novo que ainda não existe no sistema.
+  const indicadorJaCadastrado = (nomesClientes || []).some((n) => n.trim().toLowerCase() === p.indicadoPor.trim().toLowerCase());
 
   function set(campo, valor) {
     setP((prev) => ({ ...prev, [campo]: valor }));
@@ -226,6 +230,20 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
                   onChange={(e) => set("indicadoPor", e.target.value)}
                   placeholder="Nome de quem indicou"
                 />
+              </Field>
+            )}
+            {!p.recompra && p.origemCliente === "Indicação" && p.indicadoPor.trim() && !indicadorJaCadastrado && (
+              <Field label="CPF de quem indicou (pra cadastrar e valer no Ranking de Indicação)">
+                <input
+                  style={inputStyle}
+                  value={p.indicadoPorCpf}
+                  onChange={(e) => set("indicadoPorCpf", e.target.value)}
+                  placeholder="000.000.000-00"
+                />
+                <span style={{ fontSize: 10, color: TEXT_MUTED }}>
+                  Esse nome ainda não é um cliente cadastrado — preenchendo o CPF, ele já entra no sistema (sem
+                  pedido nenhum) e passa a contar no Ranking de Indicação.
+                </span>
               </Field>
             )}
             <Field label="Vendedor">

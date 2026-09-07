@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BarChart3, Calculator, ChevronRight, ClipboardList, Compass, LogOut, Plus, Ruler } from "lucide-react";
+import { BarChart3, Calculator, ChevronRight, ClipboardList, Compass, LogOut, Plus, Ruler, Trophy } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePedidos } from "./hooks/usePedidos";
 import { useNomesClientes } from "./hooks/useNomesClientes";
@@ -12,6 +12,7 @@ import DetalhePedidoVendedor from "./pages/DetalhePedidoVendedor";
 import MeuDesempenhoVendedor from "./pages/MeuDesempenhoVendedor";
 import MinhaComissaoVendedor from "./pages/MinhaComissaoVendedor";
 import FunilVendas from "./components/FunilVendas";
+import RankingIndicacao from "./pages/RankingIndicacao";
 
 // App enxuto pro vendedor: só a ficha de pedido de camisa (criar e
 // editar o que ele mesmo lançou) — nada de painéis, financeiro,
@@ -22,7 +23,7 @@ export default function ShellVendedor() {
   const [tab, setTab] = useState("novo");
   const [selecionado, setSelecionado] = useState(null);
   const { pedidos, loading, saving, criarPedido, atualizarCampo, atualizarSubcampo, adicionarTecido, atualizarTecido } = usePedidos();
-  const { nomesClientes, recarregarNomesClientes } = useNomesClientes();
+  const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
 
   async function salvar(p) {
     const { clienteId } = await criarPedido(p);
@@ -139,10 +140,29 @@ export default function ShellVendedor() {
         >
           <Compass size={15} /> Funil de Vendas
         </button>
+        <button
+          onClick={() => {
+            setTab("ranking-indicacao");
+            setSelecionado(null);
+          }}
+          className="flex items-center gap-2"
+          style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+            background: tab === "ranking-indicacao" ? INK : "#EDEAE0",
+            color: tab === "ranking-indicacao" ? "#FFF" : INK_SOFT,
+          }}
+        >
+          <Trophy size={15} /> Ranking de Indicação
+        </button>
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6">
         {tab === "novo" && <VendedorNovoPedido onSalvar={salvar} nomesClientes={nomesClientes} nomeVendedor={perfil?.nome} pedidos={pedidos} />}
+
+        {tab === "ranking-indicacao" && <RankingIndicacao clientesBase={clientesBase} podeMarcarEntregue={false} />}
 
         {tab === "gestao" && <MeuDesempenhoVendedor pedidos={pedidos} />}
 

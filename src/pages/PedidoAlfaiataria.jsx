@@ -34,6 +34,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
   const [previsaoAuto, setPrevisaoAuto] = useState(null);
   const [temPecaAnterior, setTemPecaAnterior] = useState(false);
   const abertas = useMemo(() => (pecas || []).filter((p) => p.status !== "Entregue"), [pecas]);
+  const indicadorJaCadastrado = (nomesClientes || []).some((n) => n.trim().toLowerCase() === novaPeca.indicadoPor.trim().toLowerCase());
 
   // Sugere a previsão de entrega já considerando a fila de quem está
   // esperando (não só a média de produção) e quem na equipe realmente
@@ -176,6 +177,20 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
                   onChange={(e) => setNovaPeca({ ...novaPeca, indicadoPor: e.target.value })}
                   placeholder="Nome de quem indicou"
                 />
+              </Field>
+            )}
+            {novaPeca.origemCliente === "Indicação" && novaPeca.indicadoPor.trim() && !indicadorJaCadastrado && (
+              <Field label="CPF de quem indicou (pra cadastrar e valer no Ranking de Indicação)">
+                <input
+                  style={inputStyle}
+                  value={novaPeca.indicadoPorCpf}
+                  onChange={(e) => setNovaPeca({ ...novaPeca, indicadoPorCpf: e.target.value })}
+                  placeholder="000.000.000-00"
+                />
+                <span style={{ fontSize: 10, color: TEXT_MUTED }}>
+                  Esse nome ainda não é um cliente cadastrado — preenchendo o CPF, ele já entra no sistema (sem
+                  pedido nenhum) e passa a contar no Ranking de Indicação.
+                </span>
               </Field>
             )}
             <Field label="Tipo de peça">

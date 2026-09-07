@@ -1,21 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Award, CheckCircle2, ChevronDown, ChevronUp, Gift, Trophy } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
-import { BRASS, BRASS_SOFT, INK, LINE, TEXT_MUTED } from "../lib/constants";
-import { FAIXAS_INDICACAO } from "../lib/constants";
+import { BRASS, BRASS_SOFT, FAIXAS_INDICACAO, INK, LINE, TEXT_MUTED } from "../lib/constants";
 import { adicionarHistoricoCliente } from "../lib/clientes";
 import { supabase } from "../supabaseClient";
 
 const VERDE = "#2C6E31";
-
-// Quantas peças esse cliente fechou de verdade (camisa + alfaiataria,
-// Doação de fora — não é venda) — mesma régua usada em Pedidos
-// Vendidos/Vendedor pra "fechamento".
-function pecasFechadasDe(cliente) {
-  const camisas = (cliente.pedidos || []).filter((p) => p.status !== "Doação").reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
-  const alfaiataria = (cliente.pecas || []).filter((p) => p.status !== "Doação").length;
-  return camisas + alfaiataria;
-}
 
 function faixaAtualDe(totalPecas) {
   let atual = null;
@@ -35,19 +25,28 @@ function proximaFaixaDe(totalPecas) {
 // (voucher, camisa de cortesia etc — ver FAIXAS_INDICACAO). "Indicado
 // por" precisa estar linkado por cliente (indicadoPorClienteId) — texto
 // solto sem match não entra no ranking, só aparece na ficha do cliente.
-export default function RankingIndicacao({ clientes }) {
+//
+// As peças fechadas vêm da view "pecas_fechadas_por_cliente" (não dos
+// pedidos/peças que o navegador consegue ler) — isso importa de
+// verdade: o login do vendedor só enxerga, por RLS, os pedidos que ele
+// mesmo criou, então somar a partir disso daria um número ERRADO
+// (menor) sempre que um cliente indicado tiver comprado por outro
+// caminho. A view já vem com o total certo, igual pra qualquer login.
+export default function RankingIndicacao({ clientesBase, podeMarcarEntregue = true }) {
+  const [pecasPorCliente, setPecasPorCliente] = useState(new Map());
   const [entregues, setEntregues] = useState(new Map());
   const [carregando, setCarregando] = useState(true);
   const [expandido, setExpandido] = useState(null);
   const [marcando, setMarcando] = useState(null);
 
   const ranking = useMemo(() => {
+    const porId = new Map((clientesBase || []).map((c) => [c.id, c]));
     const porIndicador = new Map();
-    (clientes || []).forEach((c) => {
+    (clientesBase || []).forEach((c) => {
       if (!c.indicadoPorClienteId) return;
-      const indicador = (clientes || []).find((x) => x.id === c.indicadoPorClienteId);
+      const indicador = porId.get(c.indicadoPorClienteId);
       if (!indicador) return;
-      const pecas = pecasFechadasDe(c);
+      const pecas = pecasPorCliente.get(c.id) || 0;
       if (!porIndicador.has(indicador.id)) {
         porIndicador.set(indicador.id, { id: indicador.id, nome: indicador.nome, indicados: [] });
       }
@@ -61,15 +60,20 @@ export default function RankingIndicacao({ clientes }) {
       }))
       .filter((r) => r.totalPecas > 0)
       .sort((a, b) => b.totalPecas - a.totalPecas);
-  }, [clientes]);
+  }, [clientesBase, pecasPorCliente]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("pecas_fechadas_por_cliente").select("cliente_id, pecas");
+      setPecasPorCliente(new Map((data || []).map((row) => [row.cliente_id, row.pecas])));
+      setCarregando(false);
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
       const ids = ranking.map((r) => r.id);
-      if (ids.length === 0) {
-        setCarregando(false);
-        return;
-      }
+      if (ids.length === 0) return;
       const { data } = await supabase.from("clientes_historico").select("cliente_id, marco").in("cliente_id", ids).not("marco", "is", null);
       const mapa = new Map();
       (data || []).forEach((row) => {
@@ -77,7 +81,6 @@ export default function RankingIndicacao({ clientes }) {
         mapa.get(row.cliente_id).add(row.marco);
       });
       setEntregues(mapa);
-      setCarregando(false);
     })();
     // eslint-disable-next-line
   }, [ranking.map((r) => r.id).join(",")]);
@@ -194,13 +197,17 @@ export default function RankingIndicacao({ clientes }) {
                                 <CheckCircle2 size={13} /> entregue
                               </span>
                             ) : bateu ? (
-                              <button
-                                onClick={() => marcarEntregue(r.id, f)}
-                                disabled={marcando === `${r.id}-${f.chave}`}
-                                style={{ color: BRASS, fontWeight: 600, textDecoration: "underline" }}
-                              >
-                                {marcando === `${r.id}-${f.chave}` ? "marcando…" : "marcar como entregue"}
-                              </button>
+                              podeMarcarEntregue ? (
+                                <button
+                                  onClick={() => marcarEntregue(r.id, f)}
+                                  disabled={marcando === `${r.id}-${f.chave}`}
+                                  style={{ color: BRASS, fontWeight: 600, textDecoration: "underline" }}
+                                >
+                                  {marcando === `${r.id}-${f.chave}` ? "marcando…" : "marcar como entregue"}
+                                </button>
+                              ) : (
+                                <span style={{ color: BRASS, fontWeight: 600 }}>batido — aguardando entrega</span>
+                              )
                             ) : (
                               <span style={{ color: TEXT_MUTED }}>ainda não bateu</span>
                             )}
@@ -217,8 +224,9 @@ export default function RankingIndicacao({ clientes }) {
 
       <div className="flex items-center gap-2 mt-4" style={{ fontSize: 11, color: TEXT_MUTED }}>
         <Award size={14} />
-        Marcar como entregue é definitivo pra essa faixa — fica registrado no histórico do cliente indicador, pra
-        nunca dar o mesmo prêmio duas vezes.
+        {podeMarcarEntregue
+          ? "Marcar como entregue é definitivo pra essa faixa — fica registrado no histórico do cliente indicador, pra nunca dar o mesmo prêmio duas vezes."
+          : "Só o Tales confirma a entrega do prêmio por aqui."}
       </div>
     </div>
   );
