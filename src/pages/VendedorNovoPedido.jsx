@@ -4,7 +4,7 @@ import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
-import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
+import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, ORIGENS_CLIENTE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 
@@ -156,6 +156,27 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
               </div>
               <span style={{ fontSize: 10, color: TEXT_MUTED }}>Detectado automaticamente pelo nome — toque pra corrigir se precisar.</span>
             </Field>
+            {!p.recompra && (
+              <Field label="Como chegou até a Schuck">
+                <select style={inputStyle} value={p.origemCliente} onChange={(e) => set("origemCliente", e.target.value)}>
+                  <option value="">Selecione</option>
+                  {ORIGENS_CLIENTE.map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            {!p.recompra && p.origemCliente === "Indicação" && (
+              <Field label="Indicado por">
+                <input
+                  style={inputStyle}
+                  list="lista-clientes-vendedor"
+                  value={p.indicadoPor}
+                  onChange={(e) => set("indicadoPor", e.target.value)}
+                  placeholder="Nome de quem indicou"
+                />
+              </Field>
+            )}
             <Field label="Data do pedido">
               <input type="date" style={inputStyle} value={p.dataPedido} onChange={(e) => set("dataPedido", e.target.value)} />
             </Field>
