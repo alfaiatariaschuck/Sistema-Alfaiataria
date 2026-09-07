@@ -4,6 +4,7 @@ import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
+import HistoricoCliente from "../components/HistoricoCliente";
 import { BRASS, DESC_CAMPOS, FORMAS_PAGAMENTO, LINE, MEDIDA_LABELS, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 
@@ -150,6 +151,10 @@ export default function DetalhePedidoVendedor({ pedido: p, onVoltar, onCampo, on
         <Field label="Observações">
           <textarea style={{ ...inputStyle, minHeight: 70 }} value={p.observacoes} onChange={(e) => set("observacoes", e.target.value)} />
         </Field>
+      </Card>
+
+      <Card style={{ padding: 20 }} className="mb-5">
+        <HistoricoCliente clienteId={p.clienteId} ultimaCompraData={p.dataPedido} />
       </Card>
 
       <div className="flex items-center gap-3">

@@ -76,7 +76,7 @@ function estatisticasDe(lista, custoAviamentosPorPecaBase, maoDeObraPadrao, aliq
 // (ex: vendedor fechou a venda mas pediu pro dono lançar). Os pedidos
 // são os MESMOS da aba Pedidos — nada é duplicado, essa aba é só um
 // filtro/comparativo sobre a mesma tabela.
-export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAviamentosPorPecaBase = {} }) {
+export default function VendedorGestao({ pedidos, clientesBase = [], irParaPedido, onCampo, custoAviamentosPorPecaBase = {} }) {
   const hojeStr = new Date().toISOString().slice(0, 10);
   const mesRealAtual = hojeStr.slice(0, 7);
   const [mesSelecionado, setMesSelecionado] = useState(mesRealAtual);
@@ -89,10 +89,25 @@ export default function VendedorGestao({ pedidos, irParaPedido, onCampo, custoAv
 
   const pessoas = [{ id: "dono", nome: NOME_DONO }, ...vendedores.map((v) => ({ id: v.id, nome: v.nome }))];
 
-  // Quem "conta" pra esse pedido: a reatribuição manual do dono, se
-  // tiver uma; senão quem de fato criou a linha pelo próprio login.
+  const donoCarteiraPorClienteId = useMemo(() => {
+    const mapa = new Map();
+    clientesBase.forEach((c) => {
+      if (c.donoCarteiraId) mapa.set(c.id, c.donoCarteiraId);
+    });
+    return mapa;
+  }, [clientesBase]);
+
+  // Quem "conta" pra esse pedido, em ordem de prioridade: 1) reatribuição
+  // manual do dono (vendedorAtribuidoId), pro caso excepcional de querer
+  // forçar o crédito; 2) dono da carteira do CLIENTE — a venda é de quem
+  // é dono do relacionamento, não necessariamente de quem lançou (ex: o
+  // Tales fecha uma venda com um cliente que já é da carteira do Deivid,
+  // o crédito é do Deivid); 3) quem de fato criou a linha pelo próprio
+  // login (fallback pra pedidos antigos, de antes da carteira existir).
   function pessoaDe(p) {
     if (p.vendedorAtribuidoId) return idsVendedores.has(p.vendedorAtribuidoId) ? p.vendedorAtribuidoId : "dono";
+    const donoCliente = donoCarteiraPorClienteId.get(p.clienteId);
+    if (donoCliente) return idsVendedores.has(donoCliente) ? donoCliente : "dono";
     if (p.criadoPor && idsVendedores.has(p.criadoPor)) return p.criadoPor;
     return "dono";
   }

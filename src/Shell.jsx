@@ -222,7 +222,16 @@ export default function Shell() {
     clientesBase.forEach((c) => {
       const key = c.nome.trim().toLowerCase();
       if (!key) return;
-      map.set(key, { id: c.id, nome: c.nome.trim(), pedidos: [], pecas: [], contatadoEm: c.campanha_contatado_em || null });
+      map.set(key, {
+        id: c.id,
+        nome: c.nome.trim(),
+        pedidos: [],
+        pecas: [],
+        contatadoEm: c.campanha_contatado_em || null,
+        donoCarteiraId: c.donoCarteiraId || null,
+        origem: c.origem || null,
+        indicadoPor: c.indicadoPor || null,
+      });
     });
     pedidos.forEach((p) => {
       const key = p.cliente.trim().toLowerCase();
@@ -814,7 +823,7 @@ export default function Shell() {
               )}
               {tab === "entregues" && !loadingPecas && <Entregues pedidos={pedidos} pecas={pecas} irPara={irPara} irParaPeca={irParaPeca} />}
               {tab === "clientes" && (
-                <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} onCadastrar={cadastrarClienteManual} />
+                <Clientes clientes={clientes} irParaPedido={irPara} irParaPeca={irParaPeca} onCadastrar={cadastrarClienteManual} recarregarClientes={recarregarNomesClientes} />
               )}
               {tab === "contas-a-pagar" && (
                 <ContasAPagar
@@ -966,7 +975,7 @@ export default function Shell() {
                 <Metas pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
               {tab === "vendedor" && !loading && (
-                <VendedorGestao pedidos={pedidos} irParaPedido={irPara} onCampo={atualizarCampoPedido} custoAviamentosPorPecaBase={custoPorPecaBase} />
+                <VendedorGestao pedidos={pedidos} clientesBase={clientesBase} irParaPedido={irPara} onCampo={atualizarCampoPedido} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
               {tab === "config" && <Configuracoes despesas={despesas} onCriarDespesa={criarDespesa} />}

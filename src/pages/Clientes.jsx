@@ -6,9 +6,14 @@ import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDados
 import AvisarClienteWhatsapp from "../components/AvisarClienteWhatsapp";
 import RecompraPorAno from "../components/RecompraPorAno";
 import VendasPorAno from "../components/VendasPorAno";
+import HistoricoCliente from "../components/HistoricoCliente";
 import { BRASS, BRASS_SOFT, INK, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { brl, fmtData, hojeISO, mesesDesde, valorRecebidoEfetivo } from "../lib/helpers";
+import { useVendedores } from "../hooks/useVendedores";
+import { definirDonoCarteira } from "../lib/clientes";
 import { supabase } from "../supabaseClient";
+
+const NOME_DONO = "Tales";
 
 const CHAVE_SUMIDO = "cliente_sumido_meses";
 const VERMELHO = "#9C4A1E";
@@ -34,7 +39,51 @@ function medidasPecaTexto(tipoPeca, medidas) {
 const MENSAGEM_CAMPANHA_PADRAO =
   "Oi {nome}! Faz um tempo que você não aparece por aqui e sentimos sua falta — temos novidades pra te mostrar. Vem dar uma olhada? 😊";
 
-export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastrar }) {
+// Quem é dono da carteira desse cliente (Tales ou um vendedor) — só o
+// dono consegue mudar isso de verdade (RLS: só ele tem UPDATE em
+// "clientes"), então esse seletor só faz sentido aparecer pra ele.
+function SeletorCarteira({ clienteId, donoCarteiraId, vendedores, onMudou }) {
+  const [salvando, setSalvando] = useState(false);
+  const valor = donoCarteiraId || "dono";
+
+  async function mudar(novoId) {
+    setSalvando(true);
+    try {
+      await definirDonoCarteira(clienteId, novoId === "dono" ? null : novoId);
+      onMudou();
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <select
+      value={valor}
+      disabled={salvando}
+      onChange={(e) => mudar(e.target.value)}
+      title="De quem é a carteira desse cliente — a venda é creditada pro dono da carteira, não necessariamente pra quem lançou"
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        border: `1px solid ${LINE}`,
+        borderRadius: 6,
+        padding: "4px 6px",
+        color: donoCarteiraId ? BRASS : TEXT_MUTED,
+        background: donoCarteiraId ? "#FCEFC7" : "transparent",
+      }}
+    >
+      <option value="dono">Cliente {NOME_DONO}</option>
+      {vendedores.map((v) => (
+        <option key={v.id} value={v.id}>
+          Cliente {v.nome}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastrar, recarregarClientes }) {
+  const { vendedores } = useVendedores();
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [limiteMeses, setLimiteMeses] = useState(6);
@@ -511,13 +560,22 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
 
           return (
             <Card key={c.nome} style={{ padding: 18 }}>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1 flex-wrap gap-1.5">
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{c.nome}</div>
                 <div className="flex items-center gap-1.5">
                   {sumido && <Pill text={`sumido há ${mesesSemComprar}m`} style={{ bg: "#F6E3D9", fg: VERMELHO }} />}
                   {c.recompra && <Pill text="↻ recompra" style={{ bg: BRASS_SOFT, fg: BRASS }} />}
+                  {vendedores.length > 0 && (
+                    <SeletorCarteira clienteId={c.id} donoCarteiraId={c.donoCarteiraId} vendedores={vendedores} onMudou={recarregarClientes} />
+                  )}
                 </div>
               </div>
+              {c.origem && (
+                <div className="mb-1" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                  Chegou por: <strong style={{ color: INK }}>{c.origem}</strong>
+                  {c.indicadoPor && <> — indicado por {c.indicadoPor}</>}
+                </div>
+              )}
               <div className="flex items-center gap-3 mb-2 flex-wrap" style={{ fontSize: 12, color: TEXT_MUTED }}>
                 {c.pedidos.length > 0 && <span className="fx-mono">{totalCamisas} camisa(s)</span>}
                 {pecas.length > 0 && <span className="fx-mono">{pecas.length} peça(s) de alfaiataria</span>}
@@ -625,6 +683,10 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
                       </div>
                     </div>
                   )}
+
+                  <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
+                    <HistoricoCliente clienteId={c.id} ultimaCompraData={maisRecente?.data} />
+                  </div>
 
                   <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
                     <DadosPessoaisCliente clienteId={c.id} />

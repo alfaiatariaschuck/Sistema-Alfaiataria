@@ -13,7 +13,21 @@ export async function renomearCliente(clienteId, novoNome) {
   if (error) throw error;
 }
 
-export async function encontrarOuCriarCliente(nome) {
+// Cliente novo criado pelo login de um vendedor entra automaticamente na
+// carteira dele (foi ele quem prospectou/atendeu) — o dono pode
+// transferir depois em Clientes. Criado pelo dono, fica sem carteira
+// definida (cai no "Tales" por padrão em todo lugar que usa esse campo,
+// como o crédito de venda em VendedorGestao).
+async function carteiraPadraoDoCriador() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: perfil } = await supabase.from("perfis").select("papel").eq("id", user.id).maybeSingle();
+  return perfil?.papel === "vendedor" ? user.id : null;
+}
+
+export async function encontrarOuCriarCliente(nome, opcoes = {}) {
   const nomeNormalizado = nome.trim().toLowerCase();
   const { data: existente } = await supabase
     .from("clientes")
@@ -21,9 +35,44 @@ export async function encontrarOuCriarCliente(nome) {
     .eq("nome_normalizado", nomeNormalizado)
     .maybeSingle();
   if (existente) return existente.id;
-  const { data: criado, error } = await supabase.from("clientes").insert({ nome: nome.trim() }).select("id").single();
+
+  const donoCarteiraId = await carteiraPadraoDoCriador();
+  const { data: criado, error } = await supabase
+    .from("clientes")
+    .insert({
+      nome: nome.trim(),
+      dono_carteira_id: donoCarteiraId,
+      origem: opcoes.origem || null,
+      indicado_por: opcoes.indicadoPor || null,
+    })
+    .select("id")
+    .single();
   if (error) throw error;
   return criado.id;
+}
+
+// Transferência de carteira — só o dono consegue de verdade (RLS: só ele
+// tem UPDATE em "clientes"), então essa função nem existe pro vendedor
+// na prática.
+export async function definirDonoCarteira(clienteId, donoCarteiraId) {
+  const { error } = await supabase.from("clientes").update({ dono_carteira_id: donoCarteiraId }).eq("id", clienteId);
+  if (error) throw error;
+}
+
+// Timeline de observações/histórico do cliente — nunca sobrescreve, só
+// adiciona. "marco" opcional identifica uma ação de pós-venda concluída
+// (D+1, D+15 etc — ver FunilPosVenda), pra não repetir o alerta.
+export async function adicionarHistoricoCliente(clienteId, texto, marco = null) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase.from("clientes_historico").insert({
+    cliente_id: clienteId,
+    autor_id: user?.id || null,
+    texto,
+    marco,
+  });
+  if (error) throw error;
 }
 
 // Só grava se pelo menos um campo foi preenchido — não cria uma linha vazia

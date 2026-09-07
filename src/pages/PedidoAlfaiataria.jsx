@@ -15,6 +15,7 @@ import {
   INK,
   LINE,
   MEDIDAS_ALFAIATARIA,
+  ORIGENS_CLIENTE,
   PECA_SECOES,
   STATUS_ALFAIATARIA,
   TEXT_MUTED,
@@ -157,6 +158,26 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
                 ))}
               </datalist>
             </Field>
+            <Field label="Como chegou até a Schuck">
+              <select style={inputStyle} value={novaPeca.origemCliente} onChange={(e) => setNovaPeca({ ...novaPeca, origemCliente: e.target.value })}>
+                <option value="">Selecione</option>
+                {ORIGENS_CLIENTE.map((o) => (
+                  <option key={o}>{o}</option>
+                ))}
+              </select>
+              <span style={{ fontSize: 10, color: TEXT_MUTED }}>Só usado se for a primeira vez desse cliente — ignorado se já existir.</span>
+            </Field>
+            {novaPeca.origemCliente === "Indicação" && (
+              <Field label="Indicado por">
+                <input
+                  style={inputStyle}
+                  list="lista-clientes-alfaiataria"
+                  value={novaPeca.indicadoPor}
+                  onChange={(e) => setNovaPeca({ ...novaPeca, indicadoPor: e.target.value })}
+                  placeholder="Nome de quem indicou"
+                />
+              </Field>
+            )}
             <Field label="Tipo de peça">
               <select style={inputStyle} value={novaPeca.tipoPeca} onChange={(e) => setNovaPeca({ ...novaPeca, tipoPeca: e.target.value })}>
                 {TIPOS_PECA.map((t) => (

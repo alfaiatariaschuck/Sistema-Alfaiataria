@@ -11,6 +11,7 @@ import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
+import HistoricoCliente from "../components/HistoricoCliente";
 import EditarNomeCliente from "../components/EditarNomeCliente";
 import {
   BRASS,
@@ -632,6 +633,10 @@ export default function DetalhePeca({
             <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{p.observacoesProducao}</div>
           </div>
         )}
+      </Card>
+
+      <Card style={{ padding: 20 }} className="mt-6">
+        <HistoricoCliente clienteId={p.clienteId} ultimaCompraData={p.dataPedido} />
       </Card>
 
       <Card style={{ padding: 20 }} className="mt-6">

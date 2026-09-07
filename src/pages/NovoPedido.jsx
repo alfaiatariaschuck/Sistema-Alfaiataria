@@ -6,7 +6,7 @@ import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDados
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
-import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
+import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, ORIGENS_CLIENTE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
@@ -207,6 +207,27 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
                 recompra as medidas e características do último pedido já vêm pré-preenchidas.
               </span>
             </Field>
+            {!p.recompra && (
+              <Field label="Como chegou até a Schuck">
+                <select style={inputStyle} value={p.origemCliente} onChange={(e) => set("origemCliente", e.target.value)}>
+                  <option value="">Selecione</option>
+                  {ORIGENS_CLIENTE.map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            {!p.recompra && p.origemCliente === "Indicação" && (
+              <Field label="Indicado por">
+                <input
+                  style={inputStyle}
+                  list="lista-clientes"
+                  value={p.indicadoPor}
+                  onChange={(e) => set("indicadoPor", e.target.value)}
+                  placeholder="Nome de quem indicou"
+                />
+              </Field>
+            )}
             <Field label="Vendedor">
               <input style={inputStyle} value={p.vendedor} onChange={(e) => set("vendedor", e.target.value)} />
             </Field>

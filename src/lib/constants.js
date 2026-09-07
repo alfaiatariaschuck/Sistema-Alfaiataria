@@ -89,6 +89,10 @@ export const PAG_STYLE = {
 
 export const FORMAS_PAGAMENTO = ["Cartão de Crédito", "PIX", "Dinheiro", "Transferência", "Boleto"];
 
+// Canal por onde o cliente chegou até a Schuck — preenchido na primeira
+// venda dele (fica salvo no cadastro do cliente, não em cada pedido).
+export const ORIGENS_CLIENTE = ["Indicação", "Google", "Instagram", "Campanha Instagram (tráfego pago)", "Facebook", "Prospecção ativa", "Outro"];
+
 export const LINHA_STYLE = {
   Camisaria: { bg: "#EFE1CC", fg: "#A9793E" },
   Alfaiataria: { bg: "#E9E1F5", fg: "#5B3E96" },

@@ -6,6 +6,8 @@ import { diasEntre, hojeISO } from "../lib/helpers";
 export function pecaVazia() {
   return {
     cliente: "",
+    origemCliente: "",
+    indicadoPor: "",
     tipoPeca: "Traje",
     dataPedido: hojeISO(),
     previsaoEntrega: "",
@@ -185,7 +187,7 @@ export function usePedidosAlfaiataria() {
 
   async function criarPeca(p) {
     return comIndicador(async () => {
-      const clienteId = await encontrarOuCriarCliente(p.cliente);
+      const clienteId = await encontrarOuCriarCliente(p.cliente, { origem: p.origemCliente, indicadoPor: p.indicadoPor });
       const { data: pecaRow, error } = await supabase
         .from("pedidos_alfaiataria")
         .insert({
