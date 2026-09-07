@@ -1,17 +1,16 @@
 import React, { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Compass, TrendingUp, UserPlus, Users } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Compass, HandCoins, Percent, Phone } from "lucide-react";
 import { Card, PageTitle, StatCard } from "./ui";
 import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { useAtividadesComerciais } from "../hooks/useAtividadesComerciais";
 
 const VERDE = "#2C6E31";
+const VERMELHO = "#9C4A1E";
 
-// Metas semanais de referência do Manual de Vendas Schuck ("Rotina
-// Semanal") — só orientativas, não travam nada.
+// Meta semanal de referência do Manual de Vendas Schuck ("Rotina
+// Semanal") — só orientativa, não trava nada.
 const META_CONTATOS = "40–50";
-const META_CONVERSAS = "25–30";
-const META_ATENDIMENTOS = "10–15";
-const META_CLIENTES_NOVOS = "3–5";
+const META_FECHAMENTOS = "3–5";
 
 const HISTORICO_SEMANAS = 8;
 
@@ -73,12 +72,11 @@ function referenciaCarteiraDoMes(mesDoFunil) {
   return ref;
 }
 
-// Funil de vendas do Manual de Vendas Schuck — contatos, conversas,
-// atendimentos e indicações recebidas são registrados à mão pelo próprio
-// vendedor (não têm outro rastro no sistema); clientes novos vem
-// direto dos pedidos reais, pra não duplicar/divergir. Usado tanto no
-// login do vendedor (editável, "podeEditar") quanto no login do dono,
-// pra acompanhar (só leitura).
+// Funil de vendas — Contatos e Agendamentos são registrados à mão pelo
+// próprio vendedor (não têm outro rastro no sistema); Fechamentos e a
+// taxa de conversão vêm direto dos pedidos reais, pra não
+// duplicar/divergir. Usado tanto no login do vendedor (editável,
+// "podeEditar") quanto no login do dono, pra acompanhar (só leitura).
 export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, tituloCompacto }) {
   const { atividades, loading, salvando, salvarSemana } = useAtividadesComerciais(vendedorId);
   const hojeISO = new Date().toISOString().slice(0, 10);
@@ -87,7 +85,7 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
 
   const linhaSemana = atividades.find((a) => a.semana === semana);
   const [edicao, setEdicao] = useState(null);
-  const editando = edicao && edicao.semana === semana ? edicao : { semana, contatos: linhaSemana?.contatos || 0, conversas: linhaSemana?.conversas || 0, atendimentos: linhaSemana?.atendimentos || 0, indicacoesRecebidas: linhaSemana?.indicacoesRecebidas || 0 };
+  const editando = edicao && edicao.semana === semana ? edicao : { semana, contatos: linhaSemana?.contatos || 0, agendamentos: linhaSemana?.agendamentos || 0 };
 
   function setCampo(campo, valor) {
     setEdicao({ ...editando, semana, [campo]: Math.max(0, parseInt(valor, 10) || 0) });
@@ -105,7 +103,8 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
     const fim = domingoDe(semana);
     return (pedidos || []).filter((p) => p.dataPedido && p.dataPedido >= semana && p.dataPedido <= fim);
   }, [pedidos, semana]);
-  const clientesNovosSemana = pedidosDaSemana.filter((p) => p.status !== "Doação" && !p.recompra).length;
+  const fechamentosSemana = pedidosDaSemana.filter((p) => p.status !== "Doação").length;
+  const taxaConversaoSemana = editando.contatos > 0 ? (fechamentosSemana / editando.contatos) * 100 : null;
 
   const totalClientesCarteira = useMemo(() => {
     const ids = new Set();
@@ -133,17 +132,16 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
     }
     return semanas.map((s) => {
       const fim = domingoDe(s);
-      const novos = (pedidos || []).filter((p) => p.dataPedido && p.dataPedido >= s && p.dataPedido <= fim && p.status !== "Doação" && !p.recompra).length;
+      const fechamentos = (pedidos || []).filter((p) => p.dataPedido && p.dataPedido >= s && p.dataPedido <= fim && p.status !== "Doação").length;
       const linha = atividades.find((a) => a.semana === s);
-      return { semana: s, novos, ...linha };
+      const taxa = linha?.contatos > 0 ? (fechamentos / linha.contatos) * 100 : null;
+      return { semana: s, fechamentos, taxa, ...linha };
     });
   }, [semana, pedidos, atividades]);
 
   const linhas = [
-    { campo: "contatos", label: "Novos contatos", meta: META_CONTATOS, icon: Compass },
-    { campo: "conversas", label: "Conversas reais", meta: META_CONVERSAS, icon: Users },
-    { campo: "atendimentos", label: "Atendimentos", meta: META_ATENDIMENTOS, icon: TrendingUp },
-    { campo: "indicacoesRecebidas", label: "Indicações recebidas", meta: null, icon: UserPlus },
+    { campo: "contatos", label: "Contatos", meta: META_CONTATOS, icon: Phone },
+    { campo: "agendamentos", label: "Agendamentos", meta: null, icon: CalendarCheck },
   ];
 
   return (
@@ -196,12 +194,12 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-          Os 5 números da semana
+          Contatos, Agendamentos e Fechamentos
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           {podeEditar
-            ? "Contatos, conversas, atendimentos e indicações são registrados por você — clientes novos vem sozinho dos pedidos fechados."
-            : "Contatos, conversas, atendimentos e indicações são registrados pelo próprio vendedor — clientes novos vem dos pedidos fechados."}
+            ? "Contatos e agendamentos são registrados por você — fechamentos e a taxa de conversão vêm sozinhos dos pedidos fechados."
+            : "Contatos e agendamentos são registrados pelo próprio vendedor — fechamentos e a taxa de conversão vêm dos pedidos fechados."}
         </div>
         <div className="grid gap-4 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
           {linhas.map(({ campo, label, meta, icon: Icon }) =>
@@ -216,7 +214,13 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
               <StatCard key={campo} label={meta ? `${label} (meta ${meta})` : label} value={String(loading ? "…" : editando[campo])} icon={Icon} />
             )
           )}
-          <StatCard label={`Clientes novos (meta ${META_CLIENTES_NOVOS})`} value={String(clientesNovosSemana)} icon={UserPlus} accent={clientesNovosSemana > 0 ? VERDE : undefined} />
+          <StatCard label={`Fechamentos (meta ${META_FECHAMENTOS})`} value={String(fechamentosSemana)} icon={HandCoins} accent={fechamentosSemana > 0 ? VERDE : undefined} />
+          <StatCard
+            label="Taxa de conversão"
+            value={taxaConversaoSemana != null ? `${taxaConversaoSemana.toFixed(0)}%` : "—"}
+            icon={Percent}
+            accent={taxaConversaoSemana != null ? (taxaConversaoSemana >= 10 ? VERDE : VERMELHO) : undefined}
+          />
         </div>
         {podeEditar && (
           <button
@@ -235,10 +239,10 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>Semana mais recente primeiro.</div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 560 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 480 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${LINE}` }}>
-                {["Semana", "Contatos", "Conversas", "Atendimentos", "Indicações", "Clientes novos"].map((h, i) => (
+                {["Semana", "Contatos", "Agendamentos", "Fechamentos", "Conversão"].map((h, i) => (
                   <th key={h} style={{ textAlign: i === 0 ? "left" : "right", padding: "6px 10px", fontWeight: 600, fontSize: 10, color: TEXT_MUTED, textTransform: "uppercase" }}>
                     {h}
                   </th>
@@ -250,10 +254,9 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
                 <tr key={h.semana} style={{ borderBottom: `1px solid ${LINE}` }}>
                   <td style={{ padding: "6px 10px", fontWeight: 600, whiteSpace: "nowrap" }}>{rotuloSemana(h.semana)}</td>
                   <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.contatos ?? "—"}</td>
-                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.conversas ?? "—"}</td>
-                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.atendimentos ?? "—"}</td>
-                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.indicacoesRecebidas ?? "—"}</td>
-                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: h.novos > 0 ? VERDE : TEXT_MUTED }}>{h.novos}</td>
+                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.agendamentos ?? "—"}</td>
+                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: h.fechamentos > 0 ? VERDE : TEXT_MUTED }}>{h.fechamentos}</td>
+                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.taxa != null ? `${h.taxa.toFixed(0)}%` : "—"}</td>
                 </tr>
               ))}
             </tbody>
