@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Printer } from "lucide-react";
 import { DESC_LABELS, MEDIDA_LABELS, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, fmtData, hojeISO } from "../lib/helpers";
@@ -78,7 +79,11 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
     onMarcarEnviado && onMarcarEnviado();
   }
 
-  return (
+  // Portal direto pra <body>, fora da árvore do app — assim, na hora de
+  // imprimir, dá pra sumir com o app inteiro (#root) sem que a altura
+  // dele (mesmo invisível) sobre como um monte de página em branco antes
+  // ou depois da ficha (ver @media print em index.css).
+  return createPortal(
     <div className="ficha-overlay" style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 50, overflow: "auto" }}>
       <div className="no-print" style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 0" }}>
         <div style={{ background: "#FFF", borderRadius: 10, padding: 16, marginBottom: 12 }}>
@@ -260,6 +265,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

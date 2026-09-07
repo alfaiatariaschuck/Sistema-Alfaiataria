@@ -52,7 +52,7 @@ textarea {
 }
 @media print {
   /* O fundo bege do app (--canvas) é pintado no <body> inteiro — como
-     ele não é filho de si mesmo, a regra "body *" abaixo não o esconde,
+     ele não é filho de si mesmo, a regra "#root" abaixo não o esconde,
      e sozinho ele sobra como um bloco bege nas áreas em branco da
      página impressa (mais visível ainda depois do color-adjust:exact
      abaixo, que força cores de fundo a aparecerem na impressão). */
@@ -60,18 +60,27 @@ textarea {
   body {
     background: #fff !important;
   }
-  body * {
-    visibility: hidden;
-  }
-  #ficha-print,
-  #ficha-print * {
-    visibility: visible;
+  /* A ficha/relatório imprimível é renderizada num portal direto em
+     <body> (ver createPortal em FichaImprimivel/FichaImprimivelAlfaiataria
+     /RelatorioImprimivel/CronogramaImprimivel), fora da árvore do app —
+     por isso dá pra simplesmente sumir com o app inteiro (#root) na
+     impressão, sem precisar de nenhum truque de visibility. Isso importa
+     de verdade: "visibility:hidden" deixa invisível mas NÃO reduz a
+     altura do elemento, então o app inteiro (painéis, listas, tudo)
+     continuava ocupando espaço na página impressa por trás da ficha —
+     e o Chrome paginava esse espaço vazio todo, gerando dezenas de
+     páginas em branco antes/depois do conteúdo de verdade. "display:none"
+     zera a altura de verdade, então só sobra a altura da ficha mesmo.
+  */
+  #root {
+    display: none !important;
   }
   /* O overlay do modal usa position:fixed pra cobrir a tela — em telas
      normais isso é o que queremos, mas navegadores tratam elementos
      "fixed" como uma camada repetida em toda página impressa, o que
-     causava a ficha aparecer duplicada. Durante a impressão ele vira
-     um bloco normal, sem posição fixa nem fundo escuro. */
+     causava a ficha aparecer duplicada quando tinha mais de uma página.
+     Durante a impressão ele vira um bloco normal, sem posição fixa nem
+     fundo escuro. */
   .ficha-overlay {
     position: static !important;
     inset: auto !important;

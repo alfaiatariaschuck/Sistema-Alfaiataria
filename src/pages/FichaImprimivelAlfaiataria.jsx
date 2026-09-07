@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Printer } from "lucide-react";
 import { CARACTERISTICAS_TRAJE, MEDIDAS_ALFAIATARIA, PECA_SECOES, inputStyle } from "../lib/constants";
 import { fmtData, hojeISO } from "../lib/helpers";
@@ -83,7 +84,7 @@ export default function FichaImprimivelAlfaiataria({ peca: p, onFechar, onMarcar
     onMarcarEnviado && onMarcarEnviado();
   }
 
-  return (
+  return createPortal(
     <div className="ficha-overlay" style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 50, overflow: "auto" }}>
       <div className="no-print" style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 0" }}>
         <div style={{ background: "#FFF", borderRadius: 10, padding: 16, marginBottom: 12 }}>
@@ -253,6 +254,7 @@ export default function FichaImprimivelAlfaiataria({ peca: p, onFechar, onMarcar
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { Printer, X } from "lucide-react";
 import { fmtData, hojeISO, diasAte } from "../lib/helpers";
 import { imprimirComNome } from "../lib/imprimirFicha";
@@ -16,7 +17,7 @@ export default function CronogramaImprimivel({ itens, onFechar }) {
   const atrasados = itens.filter((p) => -diasAte(p.dataPedido) > DIAS_LIMITE).length;
   const totalCamisas = itens.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
 
-  return (
+  return createPortal(
     <div className="ficha-overlay" style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 50, overflow: "auto" }}>
       <div className="no-print" style={{ maxWidth: 780, margin: "0 auto", padding: "16px 16px 0" }}>
         <div style={{ background: "#FFF", borderRadius: 10, padding: 16, marginBottom: 12 }} className="flex flex-wrap gap-2">
@@ -109,6 +110,7 @@ export default function CronogramaImprimivel({ itens, onFechar }) {
           </tbody>
         </table>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

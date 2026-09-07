@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { Printer, X } from "lucide-react";
 import { brl, fmtData, hojeISO } from "../lib/helpers";
 import { imprimirComNome } from "../lib/imprimirFicha";
@@ -8,7 +9,7 @@ export default function RelatorioImprimivel({ titulo, periodo, resumo, itens, on
     imprimirComNome(`${titulo} - ${periodo}`);
   }
 
-  return (
+  return createPortal(
     <div className="ficha-overlay" style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 50, overflow: "auto" }}>
       <div className="no-print" style={{ maxWidth: 780, margin: "0 auto", padding: "16px 16px 0" }}>
         <div style={{ background: "#FFF", borderRadius: 10, padding: 16, marginBottom: 12 }} className="flex flex-wrap gap-2">
@@ -78,6 +79,7 @@ export default function RelatorioImprimivel({ titulo, periodo, resumo, itens, on
           </tbody>
         </table>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
