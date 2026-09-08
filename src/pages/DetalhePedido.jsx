@@ -75,6 +75,13 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onP
       setSub("pagoFabiana", "statusPagamento", statusDividido(next.statusEntradaFabiana, next.statusRestanteFabiana, "Pago"));
     }
   }
+  // Mesma sugestão (mão de obra padrão × quantidade) que já existe na
+  // hora de criar o pedido — só que aqui pro caso de pedidos lançados
+  // pelo vendedor, que nunca passam por aquela tela e chegam com esse
+  // campo vazio. Sem valor, a despesa da Fabiana não é lançada sozinha.
+  const maoDeObraNum = parseFloat(maoDeObraPadrao) || 0;
+  const qtdPedido = parseFloat(p.quantidade) || 0;
+  const sugestaoValorFabiana = maoDeObraNum > 0 && qtdPedido > 0 ? (maoDeObraNum * qtdPedido).toFixed(2) : null;
 
   return (
     <div>
@@ -368,6 +375,25 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onP
                   onChange={(e) => setSub("pagoFabiana", "qtdCamisas", e.target.value)}
                 />
               </Field>
+              {!p.pagoFabiana.valor && (
+                <div className="mb-3 px-3 py-2" style={{ background: "#F6E3D9", color: "#9C4A1E", borderRadius: 6, fontSize: 12 }}>
+                  Sem "Valor Fabiana" preenchido, a despesa dela <strong>não é lançada automaticamente</strong> em
+                  Contas a Pagar ao marcar "Em Produção" — pedidos lançados pelo vendedor não têm esse campo, então
+                  chegam sempre em branco.
+                  {sugestaoValorFabiana && (
+                    <>
+                      {" "}
+                      <button
+                        type="button"
+                        onClick={() => setSub("pagoFabiana", "valor", sugestaoValorFabiana)}
+                        style={{ color: "#9C4A1E", fontWeight: 700, textDecoration: "underline" }}
+                      >
+                        Usar sugestão: R$ {sugestaoValorFabiana} (mão de obra padrão × {p.quantidade || 1})
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
               <CampoPagamento
                 labelValor="Valor Fabiana (R$)"
                 labelPago="Pago"
