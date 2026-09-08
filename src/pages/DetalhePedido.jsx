@@ -15,15 +15,16 @@ import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import HistoricoCliente from "../components/HistoricoCliente";
 import EditarNomeCliente from "../components/EditarNomeCliente";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
+import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, totalDividido } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana, onReabrirPagamentoFabiana, onRenomearCliente }) {
+export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onPausar, onRetomar, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana, onReabrirPagamentoFabiana, onRenomearCliente }) {
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [convertendo, setConvertendo] = useState(false);
+  const [notaPausa, setNotaPausa] = useState("");
 
   // Reconfere a despesa da Fabiana sozinho toda vez que esse pedido é
   // aberto — corrige na hora qualquer despesa que tenha ficado
@@ -246,6 +247,64 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
               />
             </div>
           </div>
+
+          {p.status !== "Entregue" && (
+            <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${LINE}` }}>
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                <span style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  Em produção há: <strong style={{ color: "#16212E" }}>{diasProducaoRealPedido(p)}d</strong>
+                  {p.diasPausados > 0 && ` (${p.diasPausados}d pausados não contam no prazo médio)`}
+                </span>
+                {p.pausado ? (
+                  <button
+                    type="button"
+                    onClick={() => onRetomar(p.id)}
+                    style={{ background: "#DCEBDD", color: "#2C6E31", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                  >
+                    Retomar produção
+                  </button>
+                ) : null}
+              </div>
+              {p.pausado ? (
+                <Pill text="⏸ Pausado — aguardando cliente" style={{ bg: "#F6E3D9", fg: "#9C4A1E" }} />
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <input
+                    style={{ ...inputStyle, fontSize: 12, padding: "6px 8px" }}
+                    placeholder="Motivo (opcional) — ex: Renato Nahas, não responde pra marcar a prova"
+                    value={notaPausa}
+                    onChange={(e) => setNotaPausa(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onPausar(p.id, "cliente_prova", notaPausa);
+                      setNotaPausa("");
+                    }}
+                    style={{ background: "#F6E3D9", color: "#9C4A1E", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, alignSelf: "flex-start" }}
+                  >
+                    ⏸ Pausar (cliente sem contato pra prova)
+                  </button>
+                </div>
+              )}
+              {p.pausas && p.pausas.length > 0 && (
+                <div className="mt-3 flex flex-col gap-2">
+                  {[...p.pausas]
+                    .sort((a, b) => (b.dataInicio || "").localeCompare(a.dataInicio || ""))
+                    .map((pa, i) => (
+                      <div key={pa.id || i} style={{ background: "#F3EEDF", borderRadius: 6, padding: "8px 10px", fontSize: 12 }}>
+                        <div className="flex items-center justify-between">
+                          <span style={{ fontWeight: 600 }}>{pa.observacao || "Pausa sem motivo registrado"}</span>
+                          <span style={{ color: TEXT_MUTED, whiteSpace: "nowrap" }}>
+                            {fmtData(pa.dataInicio)} — {pa.dataFim ? fmtData(pa.dataFim) : "em andamento"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
         </Card>
 
         <Card style={{ padding: 20 }}>

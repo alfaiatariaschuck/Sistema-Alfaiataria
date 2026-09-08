@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { DESC_LABELS, MEDIDA_LABELS } from "../lib/constants";
 import { encontrarOuCriarCliente } from "../lib/clientes";
-import { hojeISO } from "../lib/helpers";
+import { diasEntre, hojeISO } from "../lib/helpers";
 
 function medidasVazias() {
   return Object.fromEntries(MEDIDA_LABELS.map((l) => [l, ""]));
@@ -49,6 +49,10 @@ export function pedidoVazio() {
     enviadoFabi: false,
     medidasNovas: false,
     tecidoChegou: false,
+    pausado: false,
+    dataPausaInicio: "",
+    diasPausados: 0,
+    pausas: [],
   };
 }
 
@@ -105,10 +109,20 @@ function rowParaPedido(row) {
     enviadoFabi: row.enviado_fabi === undefined ? true : !!row.enviado_fabi,
     medidasNovas: !!row.medidas_novas,
     tecidoChegou: !!row.tecido_chegou,
+    pausado: !!row.pausado,
+    dataPausaInicio: row.data_pausa_inicio || "",
+    diasPausados: row.dias_pausados || 0,
+    pausas: (row.pedidos_pausas || []).map((pa) => ({
+      id: pa.id,
+      motivo: pa.motivo,
+      dataInicio: pa.data_inicio,
+      dataFim: pa.data_fim || "",
+      observacao: pa.observacao || "",
+    })),
   };
 }
 
-const SELECT = "*, clientes(nome), tecidos(*)";
+const SELECT = "*, clientes(nome), tecidos(*), pedidos_pausas(*)";
 
 const CAMPO_PARA_COLUNA = {
   vendedor: "vendedor",
@@ -248,7 +262,16 @@ export function usePedidos() {
     // tiver uma) — é o que alimenta o cálculo de tempo médio de produção.
     const pedidoAtual = pedidos.find((p) => p.id === pedidoId);
     const marcarEntrega = campo === "status" && valor === "Entregue" && pedidoAtual && !pedidoAtual.dataEntrega;
-    const patch = marcarEntrega ? { [campo]: valor, dataEntrega: hojeISO() } : { [campo]: valor };
+    // Se ainda estava pausado quando marcou Entregue (esqueceu de
+    // retomar), fecha a pausa sozinho — senão diasProducaoRealPedido
+    // ficaria contando pausa pra sempre a partir de hoje.
+    const diasDaPausaAberta = marcarEntrega && pedidoAtual.pausado && pedidoAtual.dataPausaInicio ? diasEntre(pedidoAtual.dataPausaInicio, hojeISO()) || 0 : 0;
+    const retomarAoEntregar = marcarEntrega && pedidoAtual.pausado;
+    const patch = {
+      [campo]: valor,
+      ...(marcarEntrega ? { dataEntrega: hojeISO() } : {}),
+      ...(retomarAoEntregar ? { pausado: false, dataPausaInicio: "", diasPausados: (pedidoAtual.diasPausados || 0) + diasDaPausaAberta } : {}),
+    };
 
     setPedidos((prev) => prev.map((p) => (p.id === pedidoId ? { ...p, ...patch } : p)));
     const coluna = CAMPO_PARA_COLUNA[campo];
@@ -256,8 +279,68 @@ export function usePedidos() {
     await comIndicador(async () => {
       const update = { [coluna]: valor === "" ? null : valor };
       if (marcarEntrega) update.data_entrega = patch.dataEntrega;
+      if (retomarAoEntregar) {
+        update.pausado = false;
+        update.data_pausa_inicio = null;
+        update.dias_pausados = patch.diasPausados;
+      }
       const { error } = await supabase.from("pedidos").update(update).eq("id", pedidoId);
       if (error) setErro(error.message);
+      const pausaAberta = retomarAoEntregar ? (pedidoAtual.pausas || []).find((pa) => !pa.dataFim) : null;
+      if (pausaAberta?.id) {
+        const { error: errPausa } = await supabase.from("pedidos_pausas").update({ data_fim: hojeISO() }).eq("id", pausaAberta.id);
+        if (errPausa) setErro(errPausa.message);
+      }
+    });
+  }
+
+  // Pausa/retoma a produção do pedido — pra quando o cliente some e não
+  // dá pra marcar a prova (não responde, viajou etc.), e o pedido fica
+  // parado sem culpa da Fabi. Os dias pausados não contam no prazo médio
+  // de produção (diasProducaoRealPedido, em helpers.js). O registro em
+  // pedidos_pausas é um log paralelo só pra categorizar por motivo e
+  // poder reportar o gargalo do cliente separado.
+  async function pausarPedido(pedidoId, motivo = "cliente_prova", observacao = "") {
+    const dataInicio = hojeISO();
+    const patch = { pausado: true, dataPausaInicio: dataInicio };
+    setPedidos((prev) =>
+      prev.map((p) =>
+        p.id === pedidoId ? { ...p, ...patch, pausas: [...(p.pausas || []), { id: null, motivo, dataInicio, dataFim: "", observacao }] } : p
+      )
+    );
+    await comIndicador(async () => {
+      const { error } = await supabase.from("pedidos").update({ pausado: true, data_pausa_inicio: dataInicio }).eq("id", pedidoId);
+      if (error) setErro(error.message);
+      const { data: pausaRow, error: errPausa } = await supabase
+        .from("pedidos_pausas")
+        .insert({ pedido_id: pedidoId, motivo, data_inicio: dataInicio, observacao: observacao || null })
+        .select("id")
+        .single();
+      if (errPausa) setErro(errPausa.message);
+      else setPedidos((prev) => prev.map((p) => (p.id === pedidoId ? { ...p, pausas: p.pausas.map((pa) => (pa.id === null && !pa.dataFim ? { ...pa, id: pausaRow.id } : pa)) } : p)));
+    });
+  }
+
+  async function retomarPedido(pedidoId) {
+    const pedidoAtual = pedidos.find((p) => p.id === pedidoId);
+    if (!pedidoAtual) return;
+    const dias = pedidoAtual.dataPausaInicio ? diasEntre(pedidoAtual.dataPausaInicio, hojeISO()) || 0 : 0;
+    const diasPausados = (pedidoAtual.diasPausados || 0) + dias;
+    const dataFim = hojeISO();
+    const pausaAberta = (pedidoAtual.pausas || []).find((pa) => !pa.dataFim);
+    const patch = { pausado: false, dataPausaInicio: "", diasPausados };
+    setPedidos((prev) =>
+      prev.map((p) =>
+        p.id === pedidoId ? { ...p, ...patch, pausas: (p.pausas || []).map((pa) => (pa === pausaAberta ? { ...pa, dataFim } : pa)) } : p
+      )
+    );
+    await comIndicador(async () => {
+      const { error } = await supabase.from("pedidos").update({ pausado: false, data_pausa_inicio: null, dias_pausados: diasPausados }).eq("id", pedidoId);
+      if (error) setErro(error.message);
+      if (pausaAberta?.id) {
+        const { error: errPausa } = await supabase.from("pedidos_pausas").update({ data_fim: dataFim }).eq("id", pausaAberta.id);
+        if (errPausa) setErro(errPausa.message);
+      }
     });
   }
 
@@ -333,6 +416,8 @@ export function usePedidos() {
     criarPedido,
     atualizarCampo,
     atualizarSubcampo,
+    pausarPedido,
+    retomarPedido,
     removerPedido,
     adicionarTecido,
     atualizarTecido,

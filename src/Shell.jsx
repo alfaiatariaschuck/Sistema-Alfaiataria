@@ -146,7 +146,7 @@ export default function Shell() {
     if (grupo) setGruposAbertos((prev) => (prev.has(grupo) ? prev : new Set(prev).add(grupo)));
   }, [tab]);
 
-  const { pedidos, loading, erro, saving, recarregar, limparErro, criarPedido, atualizarCampo, atualizarSubcampo, removerPedido, adicionarTecido, atualizarTecido } =
+  const { pedidos, loading, erro, saving, recarregar, limparErro, criarPedido, atualizarCampo, atualizarSubcampo, pausarPedido, retomarPedido, removerPedido, adicionarTecido, atualizarTecido } =
     usePedidos();
 
   const {
@@ -538,6 +538,8 @@ export default function Shell() {
   const acoesPedido = {
     onCampo: atualizarCampoPedido,
     onSub: atualizarSubcampoPedido,
+    onPausar: pausarPedido,
+    onRetomar: retomarPedido,
     onReabrirPagamentoFabiana: reabrirPagamentoFabianaDoPedido,
     onRemover: (id) => {
       removerPedido(id);

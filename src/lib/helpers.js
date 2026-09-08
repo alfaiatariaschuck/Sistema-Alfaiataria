@@ -200,7 +200,21 @@ export function somarDias(iso, dias) {
 }
 
 function mediaDiasEntrega(lista) {
-  return lista.length ? Math.round(lista.reduce((s, p) => s + (diasEntre(p.dataPedido, p.dataEntrega) || 0), 0) / lista.length) : null;
+  return lista.length ? Math.round(lista.reduce((s, p) => s + (diasProducaoRealPedido(p) || 0), 0) / lista.length) : null;
+}
+
+// Tempo de produção "de verdade" de um pedido de camisa: do pedido até a
+// entrega, descontando os dias em que ficou pausado (ex: cliente sem
+// contato pra vir fazer a prova) — senão essas pausas distorcem o prazo
+// médio (mesma lógica que já vale pra Alfaiataria, em diasProducaoReal).
+// Enquanto não tem data de entrega, calcula "até hoje" (em andamento).
+export function diasProducaoRealPedido(pedido) {
+  const emAndamento = !pedido.dataEntrega;
+  const fim = pedido.dataEntrega || hojeISO();
+  const bruto = diasEntre(pedido.dataPedido, fim);
+  if (bruto === null) return null;
+  const pausadoAgora = emAndamento && pedido.pausado && pedido.dataPausaInicio ? diasEntre(pedido.dataPausaInicio, hojeISO()) || 0 : 0;
+  return Math.max(0, bruto - (pedido.diasPausados || 0) - pausadoAgora);
 }
 
 // Tempo médio de produção separado por tipo de cliente (novo x recompra) —
