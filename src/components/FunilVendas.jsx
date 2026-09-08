@@ -168,7 +168,7 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
         </div>
       )}
 
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 mb-2 flex-wrap">
         <button
           onClick={() => setSemana(semanaAnteriorDe(semana))}
           className="flex items-center gap-1"
@@ -190,7 +190,26 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
             voltar pra semana atual
           </button>
         )}
+        {podeEditar && (
+          <label className="flex items-center gap-1.5" style={{ fontSize: 11, color: TEXT_MUTED }}>
+            ir direto pra uma data:
+            <input
+              type="date"
+              max={hojeISO}
+              style={{ ...inputStyle, width: "auto", padding: "5px 8px", fontSize: 12 }}
+              onChange={(e) => e.target.value && setSemana(segundaFeiraDe(e.target.value))}
+              value=""
+            />
+          </label>
+        )}
       </div>
+      {podeEditar && (
+        <div className="mb-5" style={{ fontSize: 11, color: ehSemanaAtual ? TEXT_MUTED : BRASS, fontWeight: ehSemanaAtual ? 400 : 600 }}>
+          {ehSemanaAtual
+            ? 'Esqueceu de lançar uma semana passada? Clique em "semana anterior" (ou escolha a data acima) e salve normalmente.'
+            : `Lançando dados retroativos da semana de ${rotuloSemana(semana)} — pode preencher e salvar normalmente.`}
+        </div>
+      )}
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
