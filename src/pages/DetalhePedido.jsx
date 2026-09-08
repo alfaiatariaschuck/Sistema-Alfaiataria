@@ -82,6 +82,23 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onP
   const maoDeObraNum = parseFloat(maoDeObraPadrao) || 0;
   const qtdPedido = parseFloat(p.quantidade) || 0;
   const sugestaoValorFabiana = maoDeObraNum > 0 && qtdPedido > 0 ? (maoDeObraNum * qtdPedido).toFixed(2) : null;
+  const sugestaoPorCamisa = maoDeObraNum > 0 ? maoDeObraNum.toFixed(2) : null;
+
+  // Preenchendo "Valor por camisa", o total ("Valor Fabiana") passa a
+  // ser sempre calculado sozinho a partir dele — resolve o caso clássico
+  // de "digitei o total pensando em N camisas, depois a quantidade do
+  // pedido mudou e o total ficou desatualizado", que gerava despesa com
+  // valor errado (proporção calculada com a quantidade nova sobre um
+  // total pensado pra quantidade antiga).
+  useEffect(() => {
+    const unit = parseFloat(p.valorPorCamisaFabiana);
+    if (!(unit > 0)) return;
+    const totalCorreto = (unit * qtdPedido).toFixed(2);
+    if (String(p.pagoFabiana.valor) !== totalCorreto) {
+      setSub("pagoFabiana", "valor", totalCorreto);
+    }
+    // eslint-disable-next-line
+  }, [p.valorPorCamisaFabiana, qtdPedido]);
 
   return (
     <div>
@@ -365,6 +382,26 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onP
                 agora (ex: 1 pra prova), preencha "Qtd. camisas já em produção" — o Contas a Pagar recebe só a
                 fração proporcional; o resto entra sozinho quando você aumentar essa quantidade.
               </div>
+              <Field label="Valor por camisa (R$) — preenchendo aqui, o total abaixo é calculado sozinho e acompanha a quantidade automaticamente">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  style={{ ...inputStyle, maxWidth: 160 }}
+                  placeholder="ex: 120"
+                  value={p.valorPorCamisaFabiana}
+                  onChange={(e) => set("valorPorCamisaFabiana", e.target.value)}
+                />
+                {!p.valorPorCamisaFabiana && sugestaoPorCamisa && (
+                  <button
+                    type="button"
+                    onClick={() => set("valorPorCamisaFabiana", sugestaoPorCamisa)}
+                    style={{ color: BRASS, fontSize: 11, fontWeight: 600 }}
+                  >
+                    usar padrão configurado: R$ {sugestaoPorCamisa}
+                  </button>
+                )}
+              </Field>
               <Field label="Qtd. camisas já em produção (deixe em branco = todas)">
                 <input
                   type="number"
@@ -375,24 +412,19 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onP
                   onChange={(e) => setSub("pagoFabiana", "qtdCamisas", e.target.value)}
                 />
               </Field>
-              {!p.pagoFabiana.valor && (
-                <div className="mb-3 px-3 py-2" style={{ background: "#F6E3D9", color: "#9C4A1E", borderRadius: 6, fontSize: 12 }}>
-                  Sem "Valor Fabiana" preenchido, a despesa dela <strong>não é lançada automaticamente</strong> em
-                  Contas a Pagar ao marcar "Em Produção" — pedidos lançados pelo vendedor não têm esse campo, então
-                  chegam sempre em branco.
-                  {sugestaoValorFabiana && (
-                    <>
-                      {" "}
-                      <button
-                        type="button"
-                        onClick={() => setSub("pagoFabiana", "valor", sugestaoValorFabiana)}
-                        style={{ color: "#9C4A1E", fontWeight: 700, textDecoration: "underline" }}
-                      >
-                        Usar sugestão: R$ {sugestaoValorFabiana} (mão de obra padrão × {p.quantidade || 1})
-                      </button>
-                    </>
-                  )}
+              {p.valorPorCamisaFabiana ? (
+                <div className="mb-3" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                  Total calculado sozinho: R$ {p.valorPorCamisaFabiana} × {p.quantidade || 1} camisas — não precisa
+                  editar o campo abaixo, ele já acompanha a quantidade do pedido.
                 </div>
+              ) : (
+                !p.pagoFabiana.valor && (
+                  <div className="mb-3 px-3 py-2" style={{ background: "#F6E3D9", color: "#9C4A1E", borderRadius: 6, fontSize: 12 }}>
+                    Sem "Valor Fabiana" preenchido, a despesa dela <strong>não é lançada automaticamente</strong> em
+                    Contas a Pagar ao marcar "Em Produção" — pedidos lançados pelo vendedor não têm esse campo, então
+                    chegam sempre em branco. Preencha "Valor por camisa" acima (recomendado) ou o total abaixo.
+                  </div>
+                )
               )}
               <CampoPagamento
                 labelValor="Valor Fabiana (R$)"

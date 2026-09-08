@@ -134,6 +134,20 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
     // eslint-disable-next-line
   }, [p.quantidade, maoDeObraPadrao]);
 
+  // Preenchendo "Valor por camisa", o total ("Valor Fabiana") passa a
+  // ser sempre calculado sozinho a partir dele — evita o caso clássico
+  // de digitar um total pensando numa quantidade e a quantidade do
+  // pedido mudar depois sem o total acompanhar (a despesa saía com
+  // valor errado, calculada com a quantidade nova sobre o total velho).
+  useEffect(() => {
+    const unit = parseFloat(p.valorPorCamisaFabiana);
+    if (!(unit > 0)) return;
+    const qtd = parseFloat(p.quantidade) || 0;
+    const totalCorreto = (unit * qtd).toFixed(2);
+    setP((prev) => (String(prev.pagoFabiana.valor) === totalCorreto ? prev : { ...prev, pagoFabiana: { ...prev.pagoFabiana, valor: totalCorreto } }));
+    // eslint-disable-next-line
+  }, [p.valorPorCamisaFabiana, p.quantidade]);
+
   async function submeter(e) {
     e.preventDefault();
     if (!p.cliente.trim()) return;
@@ -266,6 +280,17 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
               o Contas a Pagar recebe só a fração proporcional; o resto entra sozinho quando você aumentar essa
               quantidade.
             </div>
+            <Field label="Valor por camisa (R$) — preenchendo aqui, o total abaixo é calculado sozinho e acompanha a quantidade automaticamente">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                style={{ ...inputStyle, maxWidth: 160 }}
+                placeholder="ex: 120"
+                value={p.valorPorCamisaFabiana}
+                onChange={(e) => set("valorPorCamisaFabiana", e.target.value)}
+              />
+            </Field>
             <Field label="Qtd. camisas já em produção (deixe em branco = todas)">
               <input
                 type="number"
@@ -276,6 +301,12 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
                 onChange={(e) => set("pagoFabiana", { ...p.pagoFabiana, qtdCamisas: e.target.value })}
               />
             </Field>
+            {p.valorPorCamisaFabiana && (
+              <div className="mb-3" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                Total calculado sozinho: R$ {p.valorPorCamisaFabiana} × {p.quantidade || 1} camisas — não precisa
+                editar o campo abaixo, ele já acompanha a quantidade do pedido.
+              </div>
+            )}
             <CampoPagamento
               labelValor="Valor Fabiana (R$)"
               labelPago="Pago"
