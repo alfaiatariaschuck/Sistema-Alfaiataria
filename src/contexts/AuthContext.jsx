@@ -23,9 +23,9 @@ export function AuthProvider({ children }) {
     (async () => {
       // Se a tabela "perfis" ainda não existir (schema_v9 não rodado), trata
       // como dono — não quebra o app enquanto o acesso de vendedor não for ativado.
-      const { data, error } = await supabase.from("perfis").select("papel, nome").eq("id", session.user.id).maybeSingle();
+      const { data, error } = await supabase.from("perfis").select("id, papel, nome").eq("id", session.user.id).maybeSingle();
       if (cancelado) return;
-      setPerfil(error ? { papel: "dono", nome: "" } : data || { papel: "dono", nome: "" });
+      setPerfil(error ? { id: session.user.id, papel: "dono", nome: "" } : data || { id: session.user.id, papel: "dono", nome: "" });
     })();
     return () => {
       cancelado = true;
