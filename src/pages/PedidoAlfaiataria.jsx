@@ -6,6 +6,8 @@ import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDados
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
+import CampoAutocomplete from "../components/CampoAutocomplete";
+import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import {
   BRASS,
   BRASS_SOFT,
@@ -146,18 +148,12 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
         <Card style={{ padding: 20 }} className="mb-5">
           <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
             <Field label="Cliente">
-              <input
-                style={inputStyle}
-                list="lista-clientes-alfaiataria"
+              <CampoAutocomplete
                 value={novaPeca.cliente}
+                onChange={(v) => setNovaPeca({ ...novaPeca, cliente: v })}
+                opcoes={nomesClientes || []}
                 required
-                onChange={(e) => setNovaPeca({ ...novaPeca, cliente: e.target.value })}
               />
-              <datalist id="lista-clientes-alfaiataria">
-                {(nomesClientes || []).map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
             </Field>
             <Field label="Como chegou até a Schuck">
               <select style={inputStyle} value={novaPeca.origemCliente} onChange={(e) => setNovaPeca({ ...novaPeca, origemCliente: e.target.value })}>
@@ -170,11 +166,10 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
             </Field>
             {novaPeca.origemCliente === "Indicação" && (
               <Field label="Indicado por">
-                <input
-                  style={inputStyle}
-                  list="lista-clientes-alfaiataria"
+                <CampoAutocomplete
                   value={novaPeca.indicadoPor}
-                  onChange={(e) => setNovaPeca({ ...novaPeca, indicadoPor: e.target.value })}
+                  onChange={(v) => setNovaPeca({ ...novaPeca, indicadoPor: v })}
+                  opcoes={nomesClientes || []}
                   placeholder="Nome de quem indicou"
                 />
               </Field>
@@ -291,6 +286,11 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
               labelFormaEntrada="1ª forma de pagamento"
               labelRestante="2ª forma — valor (R$)"
               labelFormaRestante="2ª forma de pagamento"
+            />
+            <TaxaCartaoRecebido
+              valorVenda={novaPeca.valorVenda}
+              valorLiquidoRecebido={novaPeca.valorLiquidoRecebido}
+              onChange={(v) => setNovaPeca({ ...novaPeca, valorLiquidoRecebido: v })}
             />
           </div>
 

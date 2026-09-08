@@ -4,6 +4,8 @@ import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
+import CampoAutocomplete from "../components/CampoAutocomplete";
+import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, ORIGENS_CLIENTE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
@@ -106,19 +108,7 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
         <Card style={{ padding: 20 }} className="mb-5">
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
             <Field label="Cliente">
-              <input
-                style={inputStyle}
-                list="lista-clientes-vendedor"
-                value={p.cliente}
-                onChange={(e) => set("cliente", e.target.value)}
-                placeholder="Nome do cliente"
-                required
-              />
-              <datalist id="lista-clientes-vendedor">
-                {nomesClientes.map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
+              <CampoAutocomplete value={p.cliente} onChange={(v) => set("cliente", v)} opcoes={nomesClientes} placeholder="Nome do cliente" required />
             </Field>
             <Field label="Tipo de cliente">
               <div className="flex gap-2">
@@ -169,13 +159,7 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
             )}
             {!p.recompra && p.origemCliente === "Indicação" && (
               <Field label="Indicado por">
-                <input
-                  style={inputStyle}
-                  list="lista-clientes-vendedor"
-                  value={p.indicadoPor}
-                  onChange={(e) => set("indicadoPor", e.target.value)}
-                  placeholder="Nome de quem indicou"
-                />
+                <CampoAutocomplete value={p.indicadoPor} onChange={(v) => set("indicadoPor", v)} opcoes={nomesClientes} placeholder="Nome de quem indicou" />
               </Field>
             )}
             {!p.recompra && p.origemCliente === "Indicação" && p.indicadoPor.trim() && !indicadorJaCadastrado && (
@@ -241,6 +225,7 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
               formaPagamentoRestante={p.formaPagamentoRestante}
               onFormaPagamentoRestante={(v) => setPagamento({ formaPagamentoRestante: v })}
             />
+            <TaxaCartaoRecebido valorVenda={p.aReceber.valor} valorLiquidoRecebido={p.valorLiquidoRecebido} onChange={(v) => set("valorLiquidoRecebido", v)} />
           </div>
         </Card>
 
