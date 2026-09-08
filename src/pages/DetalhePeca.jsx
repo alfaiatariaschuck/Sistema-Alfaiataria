@@ -12,6 +12,7 @@ import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import HistoricoCliente from "../components/HistoricoCliente";
+import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import EditarNomeCliente from "../components/EditarNomeCliente";
 import {
   BRASS,
@@ -457,6 +458,7 @@ export default function DetalhePeca({
           labelRestante="2ª forma — valor (R$)"
           labelFormaRestante="2ª forma de pagamento"
         />
+        <TaxaCartaoRecebido valorVenda={p.valorVenda} valorLiquidoRecebido={p.valorLiquidoRecebido} onChange={(v) => set("valorLiquidoRecebido", v)} />
       </Card>
 
       {(PECA_SECOES[p.tipoPeca] || []).length > 0 && (

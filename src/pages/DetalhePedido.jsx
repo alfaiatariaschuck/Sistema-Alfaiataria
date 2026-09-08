@@ -10,6 +10,7 @@ import CopiarDadosContabilidade from "../components/CopiarDadosContabilidade";
 import LinkAcompanhamento from "../components/LinkAcompanhamento";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
+import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import HistoricoCliente from "../components/HistoricoCliente";
 import EditarNomeCliente from "../components/EditarNomeCliente";
@@ -279,6 +280,7 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onR
             labelRestante="2ª forma — valor (R$)"
             labelFormaRestante="2ª forma de pagamento"
           />
+          <TaxaCartaoRecebido valorVenda={p.aReceber.valor} valorLiquidoRecebido={p.valorLiquidoRecebido} onChange={(v) => set("valorLiquidoRecebido", v)} />
           <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
             <Field label="Forma de pagamento">
               <select style={inputStyle} value={p.formaPagamento || ""} onChange={(e) => set("formaPagamento", e.target.value)}>

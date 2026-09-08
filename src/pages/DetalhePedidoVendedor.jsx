@@ -5,6 +5,7 @@ import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import HistoricoCliente from "../components/HistoricoCliente";
+import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import { BRASS, DESC_CAMPOS, FORMAS_PAGAMENTO, LINE, MEDIDA_LABELS, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 
@@ -93,6 +94,7 @@ export default function DetalhePedidoVendedor({ pedido: p, onVoltar, onCampo, on
             formaPagamentoRestante={p.formaPagamentoRestante}
             onFormaPagamentoRestante={(v) => setPagamento({ formaPagamentoRestante: v })}
           />
+          <TaxaCartaoRecebido valorVenda={p.aReceber.valor} valorLiquidoRecebido={p.valorLiquidoRecebido} onChange={(v) => set("valorLiquidoRecebido", v)} />
         </div>
       </Card>
 

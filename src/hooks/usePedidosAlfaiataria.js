@@ -22,6 +22,7 @@ export function pecaVazia() {
     formaPagamentoEntrada: "",
     formaPagamentoRestante: "",
     valorVenda: "",
+    valorLiquidoRecebido: "",
     statusPagamentoVenda: "Pendente",
     pagamentoDividido: false,
     valorEntrada: "",
@@ -68,6 +69,7 @@ function rowParaPeca(row) {
     formaPagamentoEntrada: row.forma_pagamento_entrada || "",
     formaPagamentoRestante: row.forma_pagamento_restante || "",
     valorVenda: row.valor_venda ?? "",
+    valorLiquidoRecebido: row.valor_liquido_recebido ?? "",
     statusPagamentoVenda: row.status_pagamento_venda || "Pendente",
     pagamentoDividido: !!row.pagamento_dividido,
     valorEntrada: row.valor_entrada ?? "",
@@ -133,6 +135,7 @@ const CAMPO_PARA_COLUNA = {
   formaPagamentoEntrada: "forma_pagamento_entrada",
   formaPagamentoRestante: "forma_pagamento_restante",
   valorVenda: "valor_venda",
+  valorLiquidoRecebido: "valor_liquido_recebido",
   statusPagamentoVenda: "status_pagamento_venda",
   pagamentoDividido: "pagamento_dividido",
   valorEntrada: "valor_entrada",
@@ -204,6 +207,7 @@ export function usePedidosAlfaiataria() {
           forma_pagamento_entrada: p.formaPagamentoEntrada || null,
           forma_pagamento_restante: p.formaPagamentoRestante || null,
           valor_venda: p.valorVenda === "" ? null : Number(p.valorVenda),
+          valor_liquido_recebido: p.valorLiquidoRecebido === "" || p.valorLiquidoRecebido == null ? null : Number(p.valorLiquidoRecebido),
           status_pagamento_venda: p.statusPagamentoVenda || null,
           pagamento_dividido: !!p.pagamentoDividido,
           valor_entrada: p.valorEntrada === "" ? null : Number(p.valorEntrada),
@@ -264,7 +268,7 @@ export function usePedidosAlfaiataria() {
     setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
     const coluna = CAMPO_PARA_COLUNA[campo];
     if (!coluna) return;
-    const CAMPOS_NUMERICOS = ["valorTotal", "pago", "valorVenda", "valorEntrada", "valorRestante"];
+    const CAMPOS_NUMERICOS = ["valorTotal", "pago", "valorVenda", "valorLiquidoRecebido", "valorEntrada", "valorRestante"];
     // Colunas de data no Postgres não aceitam string vazia (só data
     // válida ou nulo) — um input de data pode disparar onChange com ""
     // no meio da digitação, antes de completar a data, então isso
