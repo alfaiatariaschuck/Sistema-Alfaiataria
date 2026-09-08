@@ -104,7 +104,8 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
     return (pedidos || []).filter((p) => p.dataPedido && p.dataPedido >= semana && p.dataPedido <= fim);
   }, [pedidos, semana]);
   const fechamentosSemana = pedidosDaSemana.filter((p) => p.status !== "Doação").length;
-  const taxaConversaoSemana = editando.contatos > 0 ? (fechamentosSemana / editando.contatos) * 100 : null;
+  const taxaContatoAgendamento = editando.contatos > 0 ? (editando.agendamentos / editando.contatos) * 100 : null;
+  const taxaAgendamentoFechamento = editando.agendamentos > 0 ? (fechamentosSemana / editando.agendamentos) * 100 : null;
 
   const totalClientesCarteira = useMemo(() => {
     const ids = new Set();
@@ -134,8 +135,9 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
       const fim = domingoDe(s);
       const fechamentos = (pedidos || []).filter((p) => p.dataPedido && p.dataPedido >= s && p.dataPedido <= fim && p.status !== "Doação").length;
       const linha = atividades.find((a) => a.semana === s);
-      const taxa = linha?.contatos > 0 ? (fechamentos / linha.contatos) * 100 : null;
-      return { semana: s, fechamentos, taxa, ...linha };
+      const taxaCA = linha?.contatos > 0 ? (linha.agendamentos / linha.contatos) * 100 : null;
+      const taxaAF = linha?.agendamentos > 0 ? (fechamentos / linha.agendamentos) * 100 : null;
+      return { semana: s, fechamentos, taxaCA, taxaAF, ...linha };
     });
   }, [semana, pedidos, atividades]);
 
@@ -217,8 +219,8 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
           {podeEditar
-            ? "Contatos e agendamentos são registrados por você — fechamentos e a taxa de conversão vêm sozinhos dos pedidos fechados."
-            : "Contatos e agendamentos são registrados pelo próprio vendedor — fechamentos e a taxa de conversão vêm dos pedidos fechados."}
+            ? "Contatos e agendamentos são registrados por você — fechamentos e as taxas de conversão vêm sozinhos dos pedidos fechados."
+            : "Contatos e agendamentos são registrados pelo próprio vendedor — fechamentos e as taxas de conversão vêm dos pedidos fechados."}
         </div>
         <div className="grid gap-4 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
           {linhas.map(({ campo, label, meta, icon: Icon }) =>
@@ -235,10 +237,16 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
           )}
           <StatCard label={`Fechamentos (meta ${META_FECHAMENTOS})`} value={String(fechamentosSemana)} icon={HandCoins} accent={fechamentosSemana > 0 ? VERDE : undefined} />
           <StatCard
-            label="Taxa de conversão"
-            value={taxaConversaoSemana != null ? `${taxaConversaoSemana.toFixed(0)}%` : "—"}
+            label="Taxa Contato → Agendamento"
+            value={taxaContatoAgendamento != null ? `${taxaContatoAgendamento.toFixed(0)}%` : "—"}
             icon={Percent}
-            accent={taxaConversaoSemana != null ? (taxaConversaoSemana >= 10 ? VERDE : VERMELHO) : undefined}
+            accent={taxaContatoAgendamento != null ? (taxaContatoAgendamento >= 10 ? VERDE : VERMELHO) : undefined}
+          />
+          <StatCard
+            label="Taxa Agendamento → Fechamento"
+            value={taxaAgendamentoFechamento != null ? `${taxaAgendamentoFechamento.toFixed(0)}%` : "—"}
+            icon={Percent}
+            accent={taxaAgendamentoFechamento != null ? (taxaAgendamentoFechamento >= 50 ? VERDE : VERMELHO) : undefined}
           />
         </div>
         {podeEditar && (
@@ -266,10 +274,10 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>Semana mais recente primeiro.</div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 480 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 620 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${LINE}` }}>
-                {["Semana", "Contatos", "Agendamentos", "Fechamentos", "Conversão"].map((h, i) => (
+                {["Semana", "Contatos", "Agendamentos", "Fechamentos", "Contato→Agend.", "Agend.→Fecho."].map((h, i) => (
                   <th key={h} style={{ textAlign: i === 0 ? "left" : "right", padding: "6px 10px", fontWeight: 600, fontSize: 10, color: TEXT_MUTED, textTransform: "uppercase" }}>
                     {h}
                   </th>
@@ -283,7 +291,8 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
                   <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.contatos ?? "—"}</td>
                   <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.agendamentos ?? "—"}</td>
                   <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: h.fechamentos > 0 ? VERDE : TEXT_MUTED }}>{h.fechamentos}</td>
-                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.taxa != null ? `${h.taxa.toFixed(0)}%` : "—"}</td>
+                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.taxaCA != null ? `${h.taxaCA.toFixed(0)}%` : "—"}</td>
+                  <td className="fx-mono" style={{ padding: "6px 10px", textAlign: "right" }}>{h.taxaAF != null ? `${h.taxaAF.toFixed(0)}%` : "—"}</td>
                 </tr>
               ))}
             </tbody>
