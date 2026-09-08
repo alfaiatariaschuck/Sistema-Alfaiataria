@@ -78,7 +78,7 @@ function referenciaCarteiraDoMes(mesDoFunil) {
 // duplicar/divergir. Usado tanto no login do vendedor (editável,
 // "podeEditar") quanto no login do dono, pra acompanhar (só leitura).
 export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, tituloCompacto }) {
-  const { atividades, loading, salvando, salvarSemana } = useAtividadesComerciais(vendedorId);
+  const { atividades, loading, salvando, erro, salvarSemana } = useAtividadesComerciais(vendedorId);
   const hojeISO = new Date().toISOString().slice(0, 10);
   const [semana, setSemana] = useState(segundaFeiraDe(hojeISO));
   const ehSemanaAtual = semana === segundaFeiraDe(hojeISO);
@@ -242,13 +242,21 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
           />
         </div>
         {podeEditar && (
-          <button
-            onClick={salvar}
-            disabled={salvando}
-            style={{ background: salvo ? VERDE : INK, color: "#FFF", padding: "9px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
-          >
-            {salvando ? "Salvando…" : salvo ? "Salvo ✓" : "Salvar semana"}
-          </button>
+          <div>
+            <button
+              type="button"
+              onClick={salvar}
+              disabled={salvando}
+              style={{ background: salvo === false ? VERMELHO : salvo ? VERDE : INK, color: "#FFF", padding: "9px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
+            >
+              {salvando ? "Salvando…" : salvo === false ? "Não salvou — tentar de novo" : salvo ? "Salvo ✓" : "Salvar semana"}
+            </button>
+            {erro && (
+              <div className="mt-2" style={{ fontSize: 11, color: VERMELHO }}>
+                Erro ao salvar: {erro}
+              </div>
+            )}
+          </div>
         )}
       </Card>
 

@@ -10,6 +10,7 @@ export function useAtividadesComerciais(vendedorId) {
   const [atividades, setAtividades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState(null);
 
   async function recarregar() {
     if (!vendedorId) {
@@ -17,11 +18,12 @@ export function useAtividadesComerciais(vendedorId) {
       setLoading(false);
       return;
     }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("atividades_comerciais")
       .select("*")
       .eq("vendedor_id", vendedorId)
       .order("semana", { ascending: false });
+    if (error) setErro(error.message);
     setAtividades(
       (data || []).map((row) => ({
         semana: row.semana,
@@ -38,8 +40,12 @@ export function useAtividadesComerciais(vendedorId) {
     // eslint-disable-next-line
   }, [vendedorId]);
 
+  // Não engole erro do upsert em silêncio — sem isso, uma falha (RLS,
+  // conexão etc.) parecia "salvar" pro vendedor (o botão só voltava ao
+  // normal) sem nunca persistir nada.
   async function salvarSemana(semana, campos) {
     setSalvando(true);
+    setErro(null);
     const { error } = await supabase.from("atividades_comerciais").upsert(
       {
         vendedor_id: vendedorId,
@@ -49,10 +55,14 @@ export function useAtividadesComerciais(vendedorId) {
       },
       { onConflict: "vendedor_id,semana" }
     );
-    if (!error) await recarregar();
+    if (error) {
+      setErro(error.message);
+    } else {
+      await recarregar();
+    }
     setSalvando(false);
     return !error;
   }
 
-  return { atividades, loading, salvando, salvarSemana };
+  return { atividades, loading, salvando, erro, salvarSemana };
 }
