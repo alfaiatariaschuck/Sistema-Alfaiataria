@@ -19,7 +19,7 @@ import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, totalDi
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onPausar, onRetomar, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana, onReabrirPagamentoFabiana, onRenomearCliente }) {
+export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onDefinirValorPorCamisaFabiana, onPausar, onRetomar, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana, onReabrirPagamentoFabiana, onRenomearCliente }) {
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -83,22 +83,6 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onP
   const qtdPedido = parseFloat(p.quantidade) || 0;
   const sugestaoValorFabiana = maoDeObraNum > 0 && qtdPedido > 0 ? (maoDeObraNum * qtdPedido).toFixed(2) : null;
   const sugestaoPorCamisa = maoDeObraNum > 0 ? maoDeObraNum.toFixed(2) : null;
-
-  // Preenchendo "Valor por camisa", o total ("Valor Fabiana") passa a
-  // ser sempre calculado sozinho a partir dele — resolve o caso clássico
-  // de "digitei o total pensando em N camisas, depois a quantidade do
-  // pedido mudou e o total ficou desatualizado", que gerava despesa com
-  // valor errado (proporção calculada com a quantidade nova sobre um
-  // total pensado pra quantidade antiga).
-  useEffect(() => {
-    const unit = parseFloat(p.valorPorCamisaFabiana);
-    if (!(unit > 0)) return;
-    const totalCorreto = (unit * qtdPedido).toFixed(2);
-    if (String(p.pagoFabiana.valor) !== totalCorreto) {
-      setSub("pagoFabiana", "valor", totalCorreto);
-    }
-    // eslint-disable-next-line
-  }, [p.valorPorCamisaFabiana, qtdPedido]);
 
   return (
     <div>
@@ -390,12 +374,12 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onP
                   style={{ ...inputStyle, maxWidth: 160 }}
                   placeholder="ex: 120"
                   value={p.valorPorCamisaFabiana}
-                  onChange={(e) => set("valorPorCamisaFabiana", e.target.value)}
+                  onChange={(e) => onDefinirValorPorCamisaFabiana(p.id, e.target.value)}
                 />
                 {!p.valorPorCamisaFabiana && sugestaoPorCamisa && (
                   <button
                     type="button"
-                    onClick={() => set("valorPorCamisaFabiana", sugestaoPorCamisa)}
+                    onClick={() => onDefinirValorPorCamisaFabiana(p.id, sugestaoPorCamisa)}
                     style={{ color: BRASS, fontSize: 11, fontWeight: 600 }}
                   >
                     usar padrão configurado: R$ {sugestaoPorCamisa}

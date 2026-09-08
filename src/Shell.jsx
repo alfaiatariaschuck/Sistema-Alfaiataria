@@ -518,6 +518,22 @@ export default function Shell() {
       const pedido = pedidos.find((p) => p.id === pedidoId);
       if (pedido) await tentarCriarDespesaFabiana(pedido);
     }
+    // Se o pedido já usa "valor por camisa" e a quantidade muda depois
+    // (ex: cliente pediu mais uma), o total ("Valor Fabiana") tem que
+    // acompanhar sozinho — foi exatamente a falta disso que causou o
+    // valor errado de despesa relatado (total pensado pra uma
+    // quantidade, quantidade mudou, total ficou desatualizado).
+    if (campo === "quantidade") {
+      const pedido = pedidos.find((p) => p.id === pedidoId);
+      const unit = parseFloat(pedido?.valorPorCamisaFabiana);
+      if (pedido && unit > 0) {
+        const total = (unit * (parseFloat(valor) || 0)).toFixed(2);
+        await atualizarSubcampo(pedidoId, "pagoFabiana", "valor", total);
+        if (pedido.status === "Em Produção") {
+          await tentarCriarDespesaFabiana({ ...pedido, quantidade: valor, pagoFabiana: { ...pedido.pagoFabiana, valor: total } });
+        }
+      }
+    }
   }
 
   // Cobre o caso de preencher/corrigir "Valor a pagar à Fabiana" DEPOIS
@@ -535,8 +551,27 @@ export default function Shell() {
     }
   }
 
+  // Ação única pro "Valor por camisa" da Fabiana — usada tanto na ficha
+  // do pedido quanto na lista de Pendências (Pedidos.jsx), pra sempre
+  // seguir a mesma conta: total = valor por camisa × quantidade. Fica
+  // aqui (e não num useEffect dentro da página) porque tem que funcionar
+  // igual não importa de onde for chamada, sem depender de qual tela
+  // está montada no momento.
+  async function definirValorPorCamisaFabianaDoPedido(pedidoId, valorPorCamisa) {
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    if (!pedido) return;
+    const unit = parseFloat(valorPorCamisa) || 0;
+    const total = (unit * (parseFloat(pedido.quantidade) || 0)).toFixed(2);
+    await atualizarCampo(pedidoId, "valorPorCamisaFabiana", valorPorCamisa);
+    await atualizarSubcampo(pedidoId, "pagoFabiana", "valor", total);
+    if (pedido.status === "Em Produção") {
+      await tentarCriarDespesaFabiana({ ...pedido, valorPorCamisaFabiana: valorPorCamisa, pagoFabiana: { ...pedido.pagoFabiana, valor: total } });
+    }
+  }
+
   const acoesPedido = {
     onCampo: atualizarCampoPedido,
+    onDefinirValorPorCamisaFabiana: definirValorPorCamisaFabianaDoPedido,
     onSub: atualizarSubcampoPedido,
     onPausar: pausarPedido,
     onRetomar: retomarPedido,
