@@ -1,21 +1,26 @@
 import React, { useState } from "react";
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Package, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Package, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { fmtData } from "../lib/helpers";
+import { brl, fmtData } from "../lib/helpers";
 
 const VERMELHO = "#9C4A1E";
 
-export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido, onCadastrar, onRegistrarCompra, onRemover }) {
+export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido, onCadastrar, onRegistrarCompra, onAtualizarValorMetro, onRemover }) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [novoCodigo, setNovoCodigo] = useState("");
   const [novoFornecedor, setNovoFornecedor] = useState("");
   const [novoMetrosPorRolo, setNovoMetrosPorRolo] = useState("30");
+  const [novoValorMetro, setNovoValorMetro] = useState("");
   const [comprando, setComprando] = useState(null);
   const [rolos, setRolos] = useState("1");
+  const [valorMetroCompra, setValorMetroCompra] = useState("");
+  const [editandoValor, setEditandoValor] = useState(null);
+  const [valorEditado, setValorEditado] = useState("");
   const [erro, setErro] = useState(null);
 
   const totalMetros = estoque.reduce((s, e) => s + e.saldoMetros, 0);
+  const valorTotalEstoque = estoque.reduce((s, e) => s + e.saldoMetros * (e.valorMetro || 0), 0);
   const baixoEstoque = estoque.filter((e) => e.saldoMetros < e.metrosPorRolo);
 
   const ranking = (consumoPorTecido || [])
@@ -29,10 +34,11 @@ export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido
     if (!novoCodigo.trim()) return;
     setErro(null);
     try {
-      await onCadastrar(novoCodigo, novoFornecedor, novoMetrosPorRolo);
+      await onCadastrar(novoCodigo, novoFornecedor, novoMetrosPorRolo, novoValorMetro);
       setNovoCodigo("");
       setNovoFornecedor("");
       setNovoMetrosPorRolo("30");
+      setNovoValorMetro("");
       setMostrarForm(false);
     } catch (e) {
       setErro("Não consegui cadastrar (" + e.message + ").");
@@ -43,11 +49,22 @@ export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido
     const metros = (parseFloat(rolos) || 0) * item.metrosPorRolo;
     if (metros <= 0) return;
     try {
-      await onRegistrarCompra(item.id, metros, `Compra de ${rolos} rolo(s) — ${item.fornecedor || "fornecedor não informado"}`);
+      await onRegistrarCompra(item.id, metros, `Compra de ${rolos} rolo(s) — ${item.fornecedor || "fornecedor não informado"}`, valorMetroCompra);
       setComprando(null);
       setRolos("1");
+      setValorMetroCompra("");
     } catch (e) {
       setErro("Não consegui registrar a compra (" + e.message + ").");
+    }
+  }
+
+  async function salvarValorEditado(item) {
+    try {
+      await onAtualizarValorMetro(item.id, valorEditado);
+      setEditandoValor(null);
+      setValorEditado("");
+    } catch (e) {
+      setErro("Não consegui atualizar o valor (" + e.message + ").");
     }
   }
 
@@ -59,6 +76,7 @@ export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido
         <StatCard label="Tecidos rastreados" value={estoque.length} icon={Package} />
         <StatCard label="Total em estoque (m)" value={totalMetros.toFixed(1)} icon={Package} />
         <StatCard label="Estoque baixo (< 1 rolo)" value={baixoEstoque.length} icon={AlertTriangle} accent={baixoEstoque.length > 0 ? VERMELHO : undefined} />
+        <StatCard label="Valor total em estoque" value={brl(valorTotalEstoque)} icon={Wallet} />
       </div>
 
       <button
@@ -87,6 +105,9 @@ export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido
               </Field>
               <Field label="Metros por rolo">
                 <input type="number" step="0.5" style={inputStyle} value={novoMetrosPorRolo} onChange={(e) => setNovoMetrosPorRolo(e.target.value)} />
+              </Field>
+              <Field label="Valor por metro (R$)">
+                <input type="number" step="0.01" min="0" style={inputStyle} placeholder="ex: 45,90" value={novoValorMetro} onChange={(e) => setNovoValorMetro(e.target.value)} />
               </Field>
             </div>
             {erro && <div className="mb-2" style={{ fontSize: 12, color: VERMELHO }}>{erro}</div>}
@@ -117,30 +138,92 @@ export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido
               <div style={{ fontSize: 12, color: TEXT_MUTED }} className="mb-2">
                 {item.fornecedor || "Fornecedor não informado"} · rolo de {item.metrosPorRolo}m
               </div>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-2">
                 <span className="fx-serif" style={{ fontSize: 24, fontWeight: 700, color: alerta ? VERMELHO : INK }}>
                   {item.saldoMetros.toFixed(1)}m
                 </span>
                 {alerta && <Pill text="estoque baixo" style={{ bg: "#F6E3D9", fg: VERMELHO }} />}
               </div>
 
-              {comprando === item.id ? (
-                <div className="flex items-center gap-2">
+              {editandoValor === item.id ? (
+                <div className="flex items-center gap-2 mb-3">
                   <input
                     type="number"
-                    step="1"
-                    min="1"
-                    style={{ ...inputStyle, width: 70 }}
-                    value={rolos}
-                    onChange={(e) => setRolos(e.target.value)}
+                    step="0.01"
+                    min="0"
+                    style={{ ...inputStyle, width: 90 }}
+                    placeholder="R$/metro"
+                    value={valorEditado}
+                    onChange={(e) => setValorEditado(e.target.value)}
+                    autoFocus
                   />
-                  <span style={{ fontSize: 12, color: TEXT_MUTED }}>rolo(s) = {((parseFloat(rolos) || 0) * item.metrosPorRolo).toFixed(1)}m</span>
-                  <button onClick={() => comprar(item)} style={{ background: "#2C6E31", color: "#FFF", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
-                    Confirmar
+                  <button onClick={() => salvarValorEditado(item)} style={{ background: "#2C6E31", color: "#FFF", padding: "5px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+                    salvar
                   </button>
-                  <button onClick={() => setComprando(null)} style={{ color: TEXT_MUTED, fontSize: 12 }}>
+                  <button onClick={() => setEditandoValor(null)} style={{ color: TEXT_MUTED, fontSize: 12 }}>
                     cancelar
                   </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-3 flex-wrap" style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  {item.valorMetro ? (
+                    <>
+                      <span>
+                        R$/metro <strong style={{ color: INK }}>{brl(item.valorMetro)}</strong> · valor em estoque{" "}
+                        <strong style={{ color: INK }}>{brl(item.saldoMetros * item.valorMetro)}</strong>
+                      </span>
+                    </>
+                  ) : (
+                    <span>Sem valor/metro cadastrado</span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setEditandoValor(item.id);
+                      setValorEditado(item.valorMetro || "");
+                    }}
+                    title="Editar valor por metro"
+                  >
+                    <Pencil size={12} color={BRASS} />
+                  </button>
+                </div>
+              )}
+
+              {comprando === item.id ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      style={{ ...inputStyle, width: 70 }}
+                      value={rolos}
+                      onChange={(e) => setRolos(e.target.value)}
+                    />
+                    <span style={{ fontSize: 12, color: TEXT_MUTED }}>rolo(s) = {((parseFloat(rolos) || 0) * item.metrosPorRolo).toFixed(1)}m</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    style={{ ...inputStyle, width: 140 }}
+                    placeholder={item.valorMetro ? `R$/metro (${brl(item.valorMetro)})` : "R$/metro dessa compra"}
+                    value={valorMetroCompra}
+                    onChange={(e) => setValorMetroCompra(e.target.value)}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => comprar(item)} style={{ background: "#2C6E31", color: "#FFF", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+                      Confirmar
+                    </button>
+                    <button
+                      onClick={() => {
+                        setComprando(null);
+                        setValorMetroCompra("");
+                      }}
+                      style={{ color: TEXT_MUTED, fontSize: 12 }}
+                    >
+                      cancelar
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button

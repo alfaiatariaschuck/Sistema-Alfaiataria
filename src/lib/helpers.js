@@ -193,6 +193,17 @@ export function valorRecebidoEfetivo({ pagamentoDividido, valorEntrada, statusEn
   return statusTotal === labelPago ? parseFloat(valorTotal) || 0 : 0;
 }
 
+// Preço de referência (R$/metro) de um código já cadastrado no Estoque
+// de Tecido — usado pra pré-preencher o "valor por metro" na ficha do
+// pedido sozinho, sem precisar redigitar o mesmo valor toda vez que o
+// mesmo rolo é usado em pedidos diferentes.
+export function valorMetroDoEstoque(codigo, estoqueTecidos) {
+  const chave = (codigo || "").trim().toLowerCase();
+  if (!chave) return null;
+  const item = (estoqueTecidos || []).find((e) => (e.codigo || "").trim().toLowerCase() === chave);
+  return item && item.valorMetro ? item.valorMetro : null;
+}
+
 export function somarDias(iso, dias) {
   const d = new Date(iso + "T00:00:00");
   d.setDate(d.getDate() + dias);

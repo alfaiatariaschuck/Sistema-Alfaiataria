@@ -9,7 +9,7 @@ import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
 import CampoAutocomplete from "../components/CampoAutocomplete";
 import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, ORIGENS_CLIENTE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
+import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 
@@ -470,7 +470,19 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
           {p.tecidos.map((t, i) => (
             <div key={i} className="mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => setTecido(i, "codigo", e.target.value)} />
+                <input
+                  style={inputStyle}
+                  placeholder="Código"
+                  value={t.codigo}
+                  onChange={(e) => {
+                    const novoCodigo = e.target.value;
+                    setTecido(i, "codigo", novoCodigo);
+                    if (t.valorMetro === "" || t.valorMetro == null) {
+                      const preco = valorMetroDoEstoque(novoCodigo, estoqueTecidos);
+                      if (preco) setTecido(i, "valorMetro", preco);
+                    }
+                  }}
+                />
                 <input
                   style={{ ...inputStyle, background: BRASS_SOFT }}
                   list="lista-fornecedores"

@@ -9,6 +9,7 @@ function rowParaTecido(row) {
     fornecedor: row.fornecedor || "",
     saldoMetros: parseFloat(row.saldo_metros) || 0,
     metrosPorRolo: parseFloat(row.metros_por_rolo) || 30,
+    valorMetro: row.valor_metro != null ? parseFloat(row.valor_metro) : null,
   };
 }
 
@@ -66,30 +67,54 @@ export function useEstoqueTecidos() {
   }
 
   // Cadastra um código novo no estoque (ou, se já existir, só atualiza
-  // fornecedor/metros por rolo) — não mexe no saldo, isso é feito por
-  // registrarCompra.
-  async function cadastrarTecido(codigo, fornecedor, metrosPorRolo) {
+  // fornecedor/metros por rolo/valor por metro) — não mexe no saldo,
+  // isso é feito por registrarCompra.
+  async function cadastrarTecido(codigo, fornecedor, metrosPorRolo, valorMetro) {
     return comIndicador(async () => {
-      const { error } = await supabase
-        .from("estoque_tecidos")
-        .upsert({ codigo: codigo.trim(), fornecedor: fornecedor || null, metros_por_rolo: Number(metrosPorRolo) || 30 }, { onConflict: "codigo_normalizado", ignoreDuplicates: false });
+      const { error } = await supabase.from("estoque_tecidos").upsert(
+        {
+          codigo: codigo.trim(),
+          fornecedor: fornecedor || null,
+          metros_por_rolo: Number(metrosPorRolo) || 30,
+          valor_metro: valorMetro === "" || valorMetro == null ? null : Number(valorMetro),
+        },
+        { onConflict: "codigo_normalizado", ignoreDuplicates: false }
+      );
       if (error) throw error;
       await recarregar();
     });
   }
 
   // Registra uma compra (entrada) — rolos * metrosPorRolo, ou metros direto.
-  async function registrarCompra(estoqueId, metros, motivo) {
+  // novoValorMetro é opcional — só atualiza o preço de referência do
+  // código se você passar um valor (a compra pode ter vindo por um
+  // preço diferente da última vez).
+  async function registrarCompra(estoqueId, metros, motivo, novoValorMetro) {
     return comIndicador(async () => {
       const item = estoque.find((e) => e.id === estoqueId);
       if (!item) throw new Error("Tecido não encontrado no estoque");
       const novoSaldo = item.saldoMetros + Number(metros);
-      const { error: errUpd } = await supabase.from("estoque_tecidos").update({ saldo_metros: novoSaldo, atualizado_em: new Date().toISOString() }).eq("id", estoqueId);
+      const update = { saldo_metros: novoSaldo, atualizado_em: new Date().toISOString() };
+      if (novoValorMetro !== "" && novoValorMetro != null) update.valor_metro = Number(novoValorMetro);
+      const { error: errUpd } = await supabase.from("estoque_tecidos").update(update).eq("id", estoqueId);
       if (errUpd) throw errUpd;
       const { error: errMov } = await supabase
         .from("estoque_movimentos")
         .insert({ estoque_id: estoqueId, tipo: "entrada", metros: Number(metros), motivo: motivo || "Compra registrada" });
       if (errMov) throw errMov;
+      await recarregar();
+    });
+  }
+
+  // Atualiza só o valor de referência por metro — pra corrigir o preço
+  // sem precisar registrar uma compra nova.
+  async function atualizarValorMetro(estoqueId, valorMetro) {
+    return comIndicador(async () => {
+      const { error } = await supabase
+        .from("estoque_tecidos")
+        .update({ valor_metro: valorMetro === "" || valorMetro == null ? null : Number(valorMetro) })
+        .eq("id", estoqueId);
+      if (error) throw error;
       await recarregar();
     });
   }
@@ -133,6 +158,7 @@ export function useEstoqueTecidos() {
     encontrarPorCodigo,
     cadastrarTecido,
     registrarCompra,
+    atualizarValorMetro,
     darBaixa,
     removerTecido,
   };

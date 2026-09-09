@@ -15,7 +15,7 @@ import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import HistoricoCliente from "../components/HistoricoCliente";
 import EditarNomeCliente from "../components/EditarNomeCliente";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, totalDividido } from "../lib/helpers";
+import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
@@ -522,7 +522,19 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onD
         {p.tecidos.map((t) => (
           <div key={t.id} className="mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-center">
-              <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(p.id, t.id, "codigo", e.target.value)} />
+              <input
+                style={inputStyle}
+                placeholder="Código"
+                value={t.codigo}
+                onChange={(e) => {
+                  const novoCodigo = e.target.value;
+                  onTecido(p.id, t.id, "codigo", novoCodigo);
+                  if (t.valorMetro === "" || t.valorMetro == null) {
+                    const preco = valorMetroDoEstoque(novoCodigo, estoqueTecidos);
+                    if (preco) onTecido(p.id, t.id, "valorMetro", preco);
+                  }
+                }}
+              />
               <input
                 style={{ ...inputStyle, background: BRASS_SOFT }}
                 list="lista-fornecedores"

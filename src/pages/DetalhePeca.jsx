@@ -28,7 +28,7 @@ import {
   TEXT_MUTED,
   inputStyle,
 } from "../lib/constants";
-import { brl, diasEsperaCliente, diasProducaoReal, fmtData, hojeISO, previsaoEfetivaDe, previsaoEstimada, statusDividido, statusEvento, statusParaEtapa, totalDividido } from "../lib/helpers";
+import { brl, diasEsperaCliente, diasProducaoReal, fmtData, hojeISO, previsaoEfetivaDe, previsaoEstimada, statusDividido, statusEvento, statusParaEtapa, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
@@ -537,7 +537,19 @@ export default function DetalhePeca({
         {p.tecidos.map((t) => (
           <div key={t.id} className="mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-center">
-              <input style={inputStyle} placeholder="Código" value={t.codigo} onChange={(e) => onTecido(p.id, t.id, "codigo", e.target.value)} />
+              <input
+                style={inputStyle}
+                placeholder="Código"
+                value={t.codigo}
+                onChange={(e) => {
+                  const novoCodigo = e.target.value;
+                  onTecido(p.id, t.id, "codigo", novoCodigo);
+                  if (t.valorMetro === "" || t.valorMetro == null) {
+                    const preco = valorMetroDoEstoque(novoCodigo, estoqueTecidos);
+                    if (preco) onTecido(p.id, t.id, "valorMetro", preco);
+                  }
+                }}
+              />
               <input
                 style={{ ...inputStyle, background: BRASS_SOFT }}
                 list="lista-fornecedores"
