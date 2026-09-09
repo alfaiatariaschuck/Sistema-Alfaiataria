@@ -32,7 +32,7 @@ function contarSextasNoMes(ano, mes) {
 }
 
 export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase = {}, receitaMesOutraLinha = 0 }) {
-  const { aluguelAtelie: aluguel, luzAtelie: luz, prolabore, custosFixosPJ, planoSaudePJ, loading: carregandoConfig } = useConfigCustosFixos();
+  const { aluguelAtelie: aluguel, luzAtelie: luz, prolabore, custosFixosPJ, planoSaudePJ, aliquotaImposto, loading: carregandoConfig } = useConfigCustosFixos();
 
   const hoje = new Date(hojeISO() + "T00:00:00");
   const anoAtual = hoje.getFullYear();
@@ -138,8 +138,11 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
 
   // Simulação: quanto falta faturar esse mês pra cobrir tudo (custo
   // próprio do ateliê + fatia rateada do compartilhado), e quanto isso dá
-  // por dia nos dias que restam do mês — mesma conta de Custos da Camisaria.
-  const metaFaturamento = custoTotalComRateio;
+  // por dia nos dias que restam do mês — mesma conta de Custos da
+  // Camisaria, já somando o imposto (sai de cima do faturamento, não do
+  // custo — por isso divide por (1 - alíquota) em vez de só somar).
+  const aliquotaFracao = (parseFloat(aliquotaImposto) || 0) / 100;
+  const metaFaturamento = aliquotaFracao < 1 ? custoTotalComRateio / (1 - aliquotaFracao) : custoTotalComRateio;
   const faltaFaturar = Math.max(0, metaFaturamento - receitaMes);
   const percentualAtingido = metaFaturamento > 0 ? Math.min(100, (receitaMes / metaFaturamento) * 100) : 100;
   const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
@@ -206,7 +209,9 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
           Quanto preciso faturar esse mês
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Meta = custo próprio do ateliê + fatia rateada do compartilhado. {diasRestantes} dia(s) restam no mês.
+          Meta = custo próprio do ateliê + fatia rateada do compartilhado, já somando o imposto (alíquota de{" "}
+          {(parseFloat(aliquotaImposto) || 0).toFixed(1)}% sobre o faturamento — a meta já vem maior pra sobrar o
+          suficiente depois do imposto). {diasRestantes} dia(s) restam no mês.
         </div>
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
