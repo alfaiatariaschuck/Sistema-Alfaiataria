@@ -9,6 +9,7 @@ import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 import { useVendedores } from "../hooks/useVendedores";
 import SimuladorComissao from "../components/SimuladorComissao";
 import FunilVendas from "../components/FunilVendas";
+import { calcularComissao } from "../lib/comissao";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const MESES_CURTO = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -35,6 +36,14 @@ function mesSeguinteDe(mesStr) {
 function nomeDoMes(mesStr) {
   const [ano, mes] = mesStr.split("-").map(Number);
   return `${MESES[mes - 1]} de ${ano}`;
+}
+function ultimoDiaDoMes(mesStr) {
+  const [ano, mes] = mesStr.split("-").map(Number);
+  const d = new Date(ano, mes, 0);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function descricaoComissao(nomeVendedor, mesStr) {
+  return `Comissão — ${nomeVendedor} — ${mesStr}`;
 }
 
 // Métricas de um conjunto de pedidos (já filtrado por pessoa e mês) —
@@ -76,11 +85,21 @@ function estatisticasDe(lista, custoAviamentosPorPecaBase, maoDeObraPadrao, aliq
 // (ex: vendedor fechou a venda mas pediu pro dono lançar). Os pedidos
 // são os MESMOS da aba Pedidos — nada é duplicado, essa aba é só um
 // filtro/comparativo sobre a mesma tabela.
-export default function VendedorGestao({ pedidos, clientesBase = [], irParaPedido, onCampo, custoAviamentosPorPecaBase = {} }) {
+export default function VendedorGestao({
+  pedidos,
+  clientesBase = [],
+  irParaPedido,
+  onCampo,
+  custoAviamentosPorPecaBase = {},
+  despesas = [],
+  criarDespesa,
+  atualizarValorTotalDespesa,
+}) {
   const hojeStr = new Date().toISOString().slice(0, 10);
   const mesRealAtual = hojeStr.slice(0, 7);
   const [mesSelecionado, setMesSelecionado] = useState(mesRealAtual);
   const [pessoaFiltro, setPessoaFiltro] = useState("ambos");
+  const [lancandoComissao, setLancandoComissao] = useState(null);
   const [abaSimulador, setAbaSimulador] = useState("deivid");
   const { vendedores, loading: carregandoVendedores } = useVendedores();
   const { maoDeObraPadrao } = useConfigPrecoCamisa();
@@ -145,6 +164,45 @@ export default function VendedorGestao({ pedidos, clientesBase = [], irParaPedid
       ? [...doMesTodos].sort((a, b) => (b.dataPedido || "").localeCompare(a.dataPedido || ""))
       : [...pedidosDaPessoa(pessoaFiltro, doMesTodos)].sort((a, b) => (b.dataPedido || "").localeCompare(a.dataPedido || ""));
 
+  // Comissão real de cada vendedor no mês selecionado — mesma regra
+  // oficial de "Minha Comissão" (lib/comissao.js), calculada em cima dos
+  // pedidos de verdade (não é mais só simulação). "Lançar" cria a
+  // despesa em Contas a Pagar; se já existir uma pra esse vendedor nesse
+  // mês, vira "Atualizar" (ajusta o total sem mexer no que já foi pago,
+  // igual já funciona pra despesa da Fabiana).
+  const comissoesDoMes = vendedores.map((v) => {
+    const vendidos = pedidosDaPessoa(v.id, doMesTodos).filter((p) => p.status !== "Doação");
+    const qtd = vendidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
+    const receita = vendidos.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
+    const calculo = calcularComissao(qtd, receita);
+    const descricao = descricaoComissao(v.nome, mesSelecionado);
+    const despesaExistente = despesas.find((d) => d.descricao === descricao);
+    return { vendedor: v, qtd, receita, calculo, descricao, despesaExistente };
+  });
+
+  async function lancarOuAtualizarComissao(item) {
+    if (!(item.calculo.total > 0)) return;
+    setLancandoComissao(item.vendedor.id);
+    try {
+      if (item.despesaExistente) {
+        await atualizarValorTotalDespesa(item.despesaExistente.id, item.calculo.total.toFixed(2));
+      } else {
+        await criarDespesa({
+          descricao: item.descricao,
+          categoria: "Comissões",
+          fornecedor: item.vendedor.nome,
+          valor: item.calculo.total.toFixed(2),
+          frete: 0,
+          vencimento: ultimoDiaDoMes(mesSelecionado),
+          recorrente: false,
+          linha: "Camisaria",
+        });
+      }
+    } finally {
+      setLancandoComissao(null);
+    }
+  }
+
   return (
     <div>
       <PageTitle eyebrow="Comparativo por pessoa" title="Vendedor" />
@@ -187,6 +245,51 @@ export default function VendedorGestao({ pedidos, clientesBase = [], irParaPedid
           </button>
         )}
       </div>
+
+      {comissoesDoMes.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Comissão real do mês — lançar em Contas a Pagar
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 14 }}>
+            Calculado com o resultado de verdade de {nomeDoMes(mesSelecionado)}, mesma regra oficial de "Minha
+            Comissão". Revise e lance quando fechar o mês — atualizar não mexe no que já foi pago.
+          </div>
+          <div className="flex flex-col gap-2">
+            {comissoesDoMes.map((item) => {
+              const jaLancado = !!item.despesaExistente;
+              const valorBate = jaLancado && Math.abs((parseFloat(item.despesaExistente.valor) || 0) - item.calculo.total) < 0.01;
+              return (
+                <div key={item.vendedor.id} className="flex items-center justify-between flex-wrap gap-2" style={{ background: "#F3EEDF", borderRadius: 8, padding: "10px 14px" }}>
+                  <div>
+                    <strong style={{ fontSize: 13 }}>{item.vendedor.nome}</strong>
+                    <div style={{ fontSize: 11, color: TEXT_MUTED }}>
+                      {item.qtd} camisas · faixa {item.calculo.faixa.pct}%
+                      {item.calculo.fixo > 0 && <> · fixo {brl(item.calculo.fixo)}</>}
+                      {item.calculo.bonus > 0 && <> · bônus {brl(item.calculo.bonus)}</>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="fx-mono" style={{ fontWeight: 700, fontSize: 15 }}>{brl(item.calculo.total)}</span>
+                    {jaLancado && valorBate ? (
+                      <Pill text="✓ Lançada" style={{ bg: "#DCEBDD", fg: VERDE }} />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => lancarOuAtualizarComissao(item)}
+                        disabled={lancandoComissao === item.vendedor.id || !(item.calculo.total > 0)}
+                        style={{ background: BRASS, color: "#FFF", padding: "7px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, opacity: lancandoComissao === item.vendedor.id ? 0.7 : 1 }}
+                      >
+                        {lancandoComissao === item.vendedor.id ? "Lançando…" : jaLancado ? "Atualizar valor lançado" : "Lançar em Contas a Pagar"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       <div className="flex items-center gap-2 mb-6 flex-wrap">
         <span style={{ fontSize: 12, color: TEXT_MUTED }}>Filtrar:</span>

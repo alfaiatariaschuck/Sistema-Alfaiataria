@@ -1017,7 +1017,16 @@ export default function Shell() {
                 <Metas pedidos={pedidos} pecas={pecas} despesas={despesas} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
               {tab === "vendedor" && !loading && (
-                <VendedorGestao pedidos={pedidos} clientesBase={clientesBase} irParaPedido={irPara} onCampo={atualizarCampoPedido} custoAviamentosPorPecaBase={custoPorPecaBase} />
+                <VendedorGestao
+                  pedidos={pedidos}
+                  clientesBase={clientesBase}
+                  irParaPedido={irPara}
+                  onCampo={atualizarCampoPedido}
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
+                  despesas={despesas}
+                  criarDespesa={criarDespesa}
+                  atualizarValorTotalDespesa={atualizarValorTotalDespesa}
+                />
               )}
               {tab === "backup" && <Backup pedidos={pedidos} onImportar={criarPedido} />}
               {tab === "config" && <Configuracoes despesas={despesas} onCriarDespesa={criarDespesa} />}

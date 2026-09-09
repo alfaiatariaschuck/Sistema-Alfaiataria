@@ -3,34 +3,16 @@ import { Calculator } from "lucide-react";
 import { Card, PageTitle } from "../components/ui";
 import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl } from "../lib/helpers";
+import { BONUS_A_CADA, BONUS_A_PARTIR_DE, FAIXAS_COMISSAO, GATILHO_FIXO, calcularComissao } from "../lib/comissao";
 
 // Mesmas regras de comissão do Simulador interno (SimuladorComissao.jsx),
 // só que fixas (o vendedor não edita gatilho/faixas/bônus, só simula
 // quantidade e ticket) e sem NENHUM dado de margem/custo da empresa — só
 // o que é dele: comissão, ajuda de custo fixa, bônus e total. Regras
-// combinadas com o Tales, aprovadas antes de subir aqui.
-const FAIXAS_COMISSAO = [
-  { min: 0, max: 4, pct: 0, rotulo: "0–4" },
-  { min: 5, max: 9, pct: 5, rotulo: "5–9" },
-  { min: 10, max: 14, pct: 8, rotulo: "10–14" },
-  { min: 15, max: 19, pct: 10, rotulo: "15–19" },
-  { min: 20, max: 29, pct: 12, rotulo: "20–29" },
-  { min: 30, max: Infinity, pct: 15, rotulo: "30+" },
-];
-const GATILHO_FIXO = 4;
-const VALOR_FIXO = 1500;
-const BONUS_A_PARTIR_DE = 60;
-const BONUS_A_CADA = 10;
-const BONUS_VALOR = 500;
+// combinadas com o Tales, aprovadas antes de subir aqui — vêm de
+// lib/comissao.js, a mesma fonte usada no lançamento real da comissão em
+// Contas a Pagar (VendedorGestao.jsx), pra nunca desalinhar.
 const TICKET_PADRAO = 280;
-
-function faixaDe(qtd) {
-  return FAIXAS_COMISSAO.find((f) => qtd >= f.min && qtd <= f.max) || FAIXAS_COMISSAO[0];
-}
-function bonusDe(qtd) {
-  if (qtd < BONUS_A_PARTIR_DE) return 0;
-  return (Math.floor((qtd - BONUS_A_PARTIR_DE) / BONUS_A_CADA) + 1) * BONUS_VALOR;
-}
 
 // Painel de comissão do próprio vendedor — os pedidos que chegam aqui já
 // vêm filtrados pelo RLS (só os dele mesmo). Os campos de quantidade e
@@ -63,12 +45,8 @@ export default function MinhaComissaoVendedor({ pedidos }) {
 
   const qtdNum = Math.max(0, parseInt(qtd, 10) || 0);
   const ticketNum = parseFloat(ticket) || 0;
-  const faixa = faixaDe(qtdNum);
   const receita = qtdNum * ticketNum;
-  const comissao = receita * (faixa.pct / 100);
-  const fixo = qtdNum >= GATILHO_FIXO ? VALOR_FIXO : 0;
-  const bonus = bonusDe(qtdNum);
-  const total = comissao + fixo + bonus;
+  const { faixa, comissao, fixo, bonus, total } = calcularComissao(qtdNum, receita);
 
   return (
     <div>

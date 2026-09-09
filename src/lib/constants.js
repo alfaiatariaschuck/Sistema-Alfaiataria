@@ -119,6 +119,7 @@ export const CATEGORIAS_DESPESA = [
   "Material/Tecido avulso",
   "Manutenção",
   "Salários",
+  "Comissões",
   "Pró-labore",
   "Plano de Saúde",
   "Investimento",
