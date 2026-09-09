@@ -30,6 +30,14 @@ export default function RelatorioAlfaiataria({ pecas }) {
     qtd: filtrados.filter((p) => p.formaPagamento === f).length,
   })).filter((x) => x.qtd > 0);
 
+  // Taxa de cartão do período — mesma conta do Relatório de Camisaria, só
+  // soma as peças com valor líquido recebido lançado (TaxaCartaoRecebido.jsx).
+  const comLiquidoLancado = filtrados.filter((p) => p.valorLiquidoRecebido !== undefined && p.valorLiquidoRecebido !== null && p.valorLiquidoRecebido !== "");
+  const totalVendidoComLiquido = comLiquidoLancado.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+  const totalLiquidoRecebido = comLiquidoLancado.reduce((s, p) => s + (parseFloat(p.valorLiquidoRecebido) || 0), 0);
+  const totalTaxaCartao = totalVendidoComLiquido - totalLiquidoRecebido;
+  const taxaCartaoPercentual = totalVendidoComLiquido > 0 ? (totalTaxaCartao / totalVendidoComLiquido) * 100 : null;
+
   function exportarCSV() {
     const linhas = [
       ["Data do Pedido", "Cliente", "Peça", "Valor de venda (R$)", "Forma de Pagamento", "Status do Pagamento"].join(";"),
@@ -92,6 +100,29 @@ export default function RelatorioAlfaiataria({ pecas }) {
           <StatCard key={f.forma} label={f.forma} value={`${brl(f.total)} · ${f.qtd}x`} icon={FileText} />
         ))}
       </div>
+
+      {comLiquidoLancado.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Taxa de cartão do período
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 14 }}>
+            Soma das {comLiquidoLancado.length} de {filtrados.length} peça(s) do período com "valor líquido
+            recebido" lançado (extrato da maquininha) — as demais (Pix/dinheiro, ou sem esse valor lançado ainda)
+            ficam fora dessa conta.
+          </div>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+            <StatCard label="Vendido (com valor líquido lançado)" value={brl(totalVendidoComLiquido)} icon={Wallet} />
+            <StatCard label="Líquido recebido" value={brl(totalLiquidoRecebido)} icon={Wallet} accent="#2C6E31" />
+            <StatCard
+              label="Taxa de cartão total"
+              value={`${brl(totalTaxaCartao)}${taxaCartaoPercentual != null ? ` (${taxaCartaoPercentual.toFixed(1)}%)` : ""}`}
+              icon={TrendingUp}
+              accent={totalTaxaCartao >= 0 ? "#9C4A1E" : "#2C6E31"}
+            />
+          </div>
+        </Card>
+      )}
 
       <button
         onClick={exportarCSV}
