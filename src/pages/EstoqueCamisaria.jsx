@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Package, Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Package, Pencil, Plus, Shirt, Trash2, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
+import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 
 const VERMELHO = "#9C4A1E";
+const VERDE = "#2C6E31";
 
-export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido, onCadastrar, onRegistrarCompra, onAtualizarValorMetro, onRemover }) {
+export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido, onCadastrar, onRegistrarCompra, onAtualizarValorMetro, onRemover, custoAviamentosPorPecaBase = {} }) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [novoCodigo, setNovoCodigo] = useState("");
   const [novoFornecedor, setNovoFornecedor] = useState("");
@@ -18,10 +20,38 @@ export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido
   const [editandoValor, setEditandoValor] = useState(null);
   const [valorEditado, setValorEditado] = useState("");
   const [erro, setErro] = useState(null);
+  const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
 
   const totalMetros = estoque.reduce((s, e) => s + e.saldoMetros, 0);
   const valorTotalEstoque = estoque.reduce((s, e) => s + e.saldoMetros * (e.valorMetro || 0), 0);
   const baixoEstoque = estoque.filter((e) => e.saldoMetros < e.metrosPorRolo);
+
+  // Potencial de faturamento — se todo esse tecido virar camisa (mesma
+  // conta da Estimativa de Custo do Pedido: metragem padrão × valor/metro
+  // + aviamento + mão de obra da Fabi = custo; custo × margem padrão =
+  // preço de venda). É uma estimativa (assume tudo virando camisa, com o
+  // padrão configurado) — tecido que vai pra alfaiataria usa outra
+  // metragem, não entra certinho nessa conta.
+  const metragemNum = parseFloat(String(metragemPadrao).replace(",", ".")) || 0;
+  const maoDeObraNum = parseFloat(maoDeObraPadrao) || 0;
+  const margemNum = parseFloat(margemPadrao) || 0;
+  const custoAviamentoCamisa = custoAviamentosPorPecaBase["Camisa"] || 0;
+
+  function potencialDe(item) {
+    if (!item.valorMetro || metragemNum <= 0) return null;
+    const camisasPossiveis = Math.floor(item.saldoMetros / metragemNum);
+    if (camisasPossiveis <= 0) return null;
+    const custoPorCamisa = item.valorMetro * metragemNum + custoAviamentoCamisa + maoDeObraNum;
+    const precoPorCamisa = custoPorCamisa * (1 + margemNum / 100);
+    const faturamento = camisasPossiveis * precoPorCamisa;
+    const custoTotal = camisasPossiveis * custoPorCamisa;
+    return { camisasPossiveis, faturamento, margem: faturamento - custoTotal };
+  }
+
+  const potenciais = estoque.map((item) => ({ item, pot: potencialDe(item) })).filter((x) => x.pot);
+  const totalCamisasPossiveis = potenciais.reduce((s, x) => s + x.pot.camisasPossiveis, 0);
+  const totalFaturamentoPotencial = potenciais.reduce((s, x) => s + x.pot.faturamento, 0);
+  const totalMargemPotencial = potenciais.reduce((s, x) => s + x.pot.margem, 0);
 
   const ranking = (consumoPorTecido || [])
     .map((c) => ({ ...c, codigo: estoque.find((e) => e.id === c.estoqueId)?.codigo || "Tecido removido" }))
@@ -78,6 +108,23 @@ export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido
         <StatCard label="Estoque baixo (< 1 rolo)" value={baixoEstoque.length} icon={AlertTriangle} accent={baixoEstoque.length > 0 ? VERMELHO : undefined} />
         <StatCard label="Valor total em estoque" value={brl(valorTotalEstoque)} icon={Wallet} />
       </div>
+
+      {totalCamisasPossiveis > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Potencial de faturamento desse estoque
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 14 }}>
+            Se todo esse tecido virar camisa (metragem, mão de obra e margem padrão configuradas em "Preço de venda")
+            — tecido que for pra alfaiataria usa outra metragem e não entra certinho nessa conta.
+          </div>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+            <StatCard label="Camisas possíveis" value={String(totalCamisasPossiveis)} icon={Shirt} />
+            <StatCard label="Faturamento potencial" value={brl(totalFaturamentoPotencial)} icon={TrendingUp} accent={BRASS} />
+            <StatCard label="Margem potencial" value={brl(totalMargemPotencial)} icon={Wallet} accent={totalMargemPotencial >= 0 ? VERDE : VERMELHO} />
+          </div>
+        </Card>
+      )}
 
       <button
         onClick={() => setMostrarForm((v) => !v)}
@@ -185,6 +232,13 @@ export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido
                   >
                     <Pencil size={12} color={BRASS} />
                   </button>
+                </div>
+              )}
+
+              {potencialDe(item) && (
+                <div className="mb-3" style={{ fontSize: 11.5, color: TEXT_MUTED }}>
+                  Dá pra fazer <strong style={{ color: INK }}>~{potencialDe(item).camisasPossiveis} camisa(s)</strong> · faturamento
+                  estimado <strong style={{ color: BRASS }}>{brl(potencialDe(item).faturamento)}</strong>
                 </div>
               )}
 

@@ -849,6 +849,7 @@ export default function Shell() {
                   onRegistrarCompra={registrarCompra}
                   onAtualizarValorMetro={atualizarValorMetro}
                   onRemover={removerEstoque}
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
                 />
               )}
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
