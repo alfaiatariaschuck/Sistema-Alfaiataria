@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Package, Pencil, Plus, Shirt, Trash2, TrendingUp, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, ChevronDown, ChevronUp, Package, Pencil, Plus, Shirt, TrendingDown, TrendingUp, Trash2, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
@@ -8,8 +8,9 @@ import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
 
-export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido, onCadastrar, onRegistrarCompra, onAtualizarValorMetro, onRemover, custoAviamentosPorPecaBase = {} }) {
+export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico, consumoPorTecido, onCadastrar, onRegistrarCompra, onAtualizarValorMetro, onRemover, custoAviamentosPorPecaBase = {} }) {
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [historicoAberto, setHistoricoAberto] = useState(null);
   const [novoCodigo, setNovoCodigo] = useState("");
   const [novoFornecedor, setNovoFornecedor] = useState("");
   const [novoMetrosPorRolo, setNovoMetrosPorRolo] = useState("30");
@@ -232,6 +233,39 @@ export default function EstoqueCamisaria({ estoque, movimentos, consumoPorTecido
                   >
                     <Pencil size={12} color={BRASS} />
                   </button>
+                </div>
+              )}
+
+              {(precosHistorico || []).some((h) => h.estoque_id === item.id) && (
+                <div className="mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setHistoricoAberto(historicoAberto === item.id ? null : item.id)}
+                    className="flex items-center gap-1"
+                    style={{ color: BRASS, fontSize: 11, fontWeight: 600 }}
+                  >
+                    {historicoAberto === item.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    Histórico de preço
+                  </button>
+                  {historicoAberto === item.id && (
+                    <div className="mt-2 flex flex-col gap-1">
+                      {precosHistorico
+                        .filter((h) => h.estoque_id === item.id)
+                        .map((h, i, arr) => {
+                          const anterior = arr[i + 1];
+                          const delta = anterior ? h.valor_metro - anterior.valor_metro : null;
+                          return (
+                            <div key={h.id} className="flex items-center justify-between" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                              <span>{fmtData(h.criado_em.slice(0, 10))}</span>
+                              <span className="flex items-center gap-1">
+                                <strong style={{ color: INK }}>{brl(h.valor_metro)}</strong>
+                                {delta != null && Math.abs(delta) >= 0.005 && (delta > 0 ? <TrendingUp size={11} color={VERMELHO} /> : <TrendingDown size={11} color={VERDE} />)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
                 </div>
               )}
 

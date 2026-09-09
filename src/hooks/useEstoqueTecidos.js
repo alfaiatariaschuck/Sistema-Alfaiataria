@@ -16,6 +16,7 @@ function rowParaTecido(row) {
 export function useEstoqueTecidos() {
   const [estoque, setEstoque] = useState([]);
   const [movimentos, setMovimentos] = useState([]);
+  const [precosHistorico, setPrecosHistorico] = useState([]);
   const [consumoPorTecido, setConsumoPorTecido] = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
@@ -30,18 +31,30 @@ export function useEstoqueTecidos() {
     }
   }
 
+  // Só registra um ponto novo no histórico de preço quando o valor
+  // realmente muda — resalvar o mesmo valor (ex: reabrir "editar" sem
+  // mexer em nada) não deveria empilhar pontos repetidos no histórico.
+  async function registrarPrecoSeMudou(estoqueId, valorAnterior, valorNovo) {
+    if (valorNovo == null) return;
+    if (valorAnterior != null && Math.abs(valorAnterior - valorNovo) < 0.005) return;
+    const { error } = await supabase.from("estoque_precos_historico").insert({ estoque_id: estoqueId, valor_metro: valorNovo });
+    if (error) throw error;
+  }
+
   const recarregar = useCallback(async () => {
     setLoading(true);
-    const [{ data: tecidos, error: errTec }, { data: movs, error: errMov }] = await Promise.all([
+    const [{ data: tecidos, error: errTec }, { data: movs, error: errMov }, { data: precos, error: errPrecos }] = await Promise.all([
       supabase.from("estoque_tecidos").select("*").order("codigo"),
       supabase.from("estoque_movimentos").select("*").order("criado_em", { ascending: false }).limit(40),
+      supabase.from("estoque_precos_historico").select("*").order("criado_em", { ascending: false }),
     ]);
-    if (errTec || errMov) {
-      setErro((errTec || errMov).message);
+    if (errTec || errMov || errPrecos) {
+      setErro((errTec || errMov || errPrecos).message);
     } else {
       setErro(null);
       setEstoque((tecidos || []).map(rowParaTecido));
       setMovimentos(movs || []);
+      setPrecosHistorico(precos || []);
     }
 
     // Consumo total (saídas) por tecido, pra ranking — separado do feed
@@ -71,16 +84,23 @@ export function useEstoqueTecidos() {
   // isso é feito por registrarCompra.
   async function cadastrarTecido(codigo, fornecedor, metrosPorRolo, valorMetro) {
     return comIndicador(async () => {
-      const { error } = await supabase.from("estoque_tecidos").upsert(
-        {
-          codigo: codigo.trim(),
-          fornecedor: fornecedor || null,
-          metros_por_rolo: Number(metrosPorRolo) || 30,
-          valor_metro: valorMetro === "" || valorMetro == null ? null : Number(valorMetro),
-        },
-        { onConflict: "codigo_normalizado", ignoreDuplicates: false }
-      );
+      const existente = encontrarPorCodigo(codigo);
+      const valorFinal = valorMetro === "" || valorMetro == null ? null : Number(valorMetro);
+      const { data: row, error } = await supabase
+        .from("estoque_tecidos")
+        .upsert(
+          {
+            codigo: codigo.trim(),
+            fornecedor: fornecedor || null,
+            metros_por_rolo: Number(metrosPorRolo) || 30,
+            valor_metro: valorFinal,
+          },
+          { onConflict: "codigo_normalizado", ignoreDuplicates: false }
+        )
+        .select("id")
+        .single();
       if (error) throw error;
+      await registrarPrecoSeMudou(row.id, existente?.valorMetro ?? null, valorFinal);
       await recarregar();
     });
   }
@@ -95,13 +115,15 @@ export function useEstoqueTecidos() {
       if (!item) throw new Error("Tecido não encontrado no estoque");
       const novoSaldo = item.saldoMetros + Number(metros);
       const update = { saldo_metros: novoSaldo, atualizado_em: new Date().toISOString() };
-      if (novoValorMetro !== "" && novoValorMetro != null) update.valor_metro = Number(novoValorMetro);
+      const valorNovo = novoValorMetro !== "" && novoValorMetro != null ? Number(novoValorMetro) : null;
+      if (valorNovo != null) update.valor_metro = valorNovo;
       const { error: errUpd } = await supabase.from("estoque_tecidos").update(update).eq("id", estoqueId);
       if (errUpd) throw errUpd;
       const { error: errMov } = await supabase
         .from("estoque_movimentos")
         .insert({ estoque_id: estoqueId, tipo: "entrada", metros: Number(metros), motivo: motivo || "Compra registrada" });
       if (errMov) throw errMov;
+      await registrarPrecoSeMudou(estoqueId, item.valorMetro, valorNovo);
       await recarregar();
     });
   }
@@ -110,11 +132,11 @@ export function useEstoqueTecidos() {
   // sem precisar registrar uma compra nova.
   async function atualizarValorMetro(estoqueId, valorMetro) {
     return comIndicador(async () => {
-      const { error } = await supabase
-        .from("estoque_tecidos")
-        .update({ valor_metro: valorMetro === "" || valorMetro == null ? null : Number(valorMetro) })
-        .eq("id", estoqueId);
+      const item = estoque.find((e) => e.id === estoqueId);
+      const valorFinal = valorMetro === "" || valorMetro == null ? null : Number(valorMetro);
+      const { error } = await supabase.from("estoque_tecidos").update({ valor_metro: valorFinal }).eq("id", estoqueId);
       if (error) throw error;
+      await registrarPrecoSeMudou(estoqueId, item?.valorMetro ?? null, valorFinal);
       await recarregar();
     });
   }
@@ -149,6 +171,7 @@ export function useEstoqueTecidos() {
   return {
     estoque,
     movimentos,
+    precosHistorico,
     consumoPorTecido,
     loading,
     erro,
