@@ -7,6 +7,7 @@ import { diasAte, fmtData } from "../lib/helpers";
 import DetalhePedido from "./DetalhePedido";
 import CronogramaImprimivel from "./CronogramaImprimivel";
 import PendenciasFabiana from "../components/PendenciasFabiana";
+import OutrasPendencias from "../components/OutrasPendencias";
 
 const VERMELHO = "#9C4A1E";
 const DIAS_LIMITE = 40;
@@ -48,6 +49,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
     <div>
       <PageTitle eyebrow={`${filtrados.length} pedido(s) · ${totalCamisasFiltradas} camisa(s)`} title="Pedidos" />
       <PendenciasFabiana pedidos={pedidos} onDefinirValorPorCamisaFabiana={acoes.onDefinirValorPorCamisaFabiana} onSelecionar={setSelecionado} />
+      <OutrasPendencias pedidos={pedidos} onSelecionar={setSelecionado} />
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 360, padding: "6px 10px" }}>
           <Search size={14} color={TEXT_MUTED} />
