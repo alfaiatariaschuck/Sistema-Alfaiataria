@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { CheckCircle2, Clock, Copy, Search } from "lucide-react";
+import React, { useMemo, useRef, useState } from "react";
+import { CheckCircle2, Clock, Copy, Search, Undo2 } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { BRASS, BRASS_SOFT, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, metragemParaNumero } from "../lib/helpers";
@@ -32,6 +32,12 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
   const [filtroStatus, setFiltroStatus] = useState("Pendente");
   const [copiado, setCopiado] = useState(null);
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
+  const [desfazerDisponivel, setDesfazerDisponivel] = useState(null);
+  const desfazerTimeoutRef = useRef(null);
+
+  function chaveDe(item) {
+    return item.origem + "-" + item.pedidoId + "-" + item.tecidoId;
+  }
 
   const itens = [];
   pedidos.forEach((p) => {
@@ -97,8 +103,13 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
 
   const filtrados = itens.filter((i) => {
     if (filtroFornecedor !== "Todos" && i.fornecedor !== filtroFornecedor) return false;
-    if (filtroStatus === "Pendente" && i.comprado) return false;
-    if (filtroStatus === "Comprado" && !i.comprado) return false;
+    // Item que acabou de ser marcado/desmarcado (poucos segundos atrás)
+    // continua aparecendo mesmo que o filtro de status normalmente
+    // escondesse ele — dá tempo de clicar em "desfazer" antes de sumir
+    // da lista, pro caso de ter clicado no item errado.
+    const recemAlternado = chaveDe(i) === desfazerDisponivel;
+    if (filtroStatus === "Pendente" && i.comprado && !recemAlternado) return false;
+    if (filtroStatus === "Comprado" && !i.comprado && !recemAlternado) return false;
     if (busca && !i.cliente.toLowerCase().includes(busca.toLowerCase()) && !i.codigo.toLowerCase().includes(busca.toLowerCase())) return false;
     return true;
   });
@@ -125,6 +136,16 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
   function alternarComprado(item) {
     if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "comprado", !item.comprado);
     else onTecidoPeca(item.pedidoId, item.tecidoId, "comprado", !item.comprado);
+
+    // Clicou errado? Por alguns segundos o item continua na tela (mesmo
+    // que o filtro de status normalmente escondesse ele) com um botão
+    // de desfazer — depois disso, some do filtro normalmente.
+    const chave = chaveDe(item);
+    if (desfazerTimeoutRef.current) clearTimeout(desfazerTimeoutRef.current);
+    setDesfazerDisponivel(chave);
+    desfazerTimeoutRef.current = setTimeout(() => {
+      setDesfazerDisponivel((atual) => (atual === chave ? null : atual));
+    }, 8000);
   }
 
   function atualizarMetragem(item, valor) {
@@ -319,15 +340,19 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
                 onClick={() => alternarComprado(item)}
                 className="flex items-center gap-1 flex-shrink-0"
                 style={{
-                  background: item.comprado ? "#DCEBDD" : "#F6E3D9",
-                  color: item.comprado ? "#2C6E31" : "#9C4A1E",
+                  background: chaveDe(item) === desfazerDisponivel ? BRASS_SOFT : item.comprado ? "#DCEBDD" : "#F6E3D9",
+                  color: chaveDe(item) === desfazerDisponivel ? BRASS : item.comprado ? "#2C6E31" : "#9C4A1E",
                   padding: "7px 12px",
                   borderRadius: 6,
                   fontSize: 12,
                   fontWeight: 600,
                 }}
               >
-                {item.comprado ? (
+                {chaveDe(item) === desfazerDisponivel ? (
+                  <>
+                    <Undo2 size={13} /> {item.comprado ? "Marcado — desfazer" : "Desmarcado — desfazer"}
+                  </>
+                ) : item.comprado ? (
                   <>
                     <CheckCircle2 size={13} /> Comprado
                   </>
