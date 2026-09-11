@@ -245,6 +245,24 @@ export function tempoMedioProducaoGenerico(lista) {
   return mediaDiasEntrega(lista.filter((p) => p.status === "Entregue" && p.dataEntrega));
 }
 
+// Média de camisas vendidas por mês, olhando os últimos `meses` meses JÁ
+// FECHADOS (não conta o mês corrente, que ainda está incompleto e
+// puxaria a média pra baixo) — pela data do pedido, exclui Doação (não é
+// venda de verdade). Base pra projetar quanto tempo um estoque de tecido
+// dura no ritmo real de vendas, em vez de assumir tudo vendido de uma vez.
+export function mediaCamisasVendidasPorMes(pedidos, meses = 3) {
+  const hoje = new Date(hojeISO() + "T00:00:00");
+  let total = 0;
+  for (let i = 1; i <= meses; i++) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    const chaveMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    total += (pedidos || [])
+      .filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === chaveMes)
+      .reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0);
+  }
+  return meses > 0 ? total / meses : 0;
+}
+
 // Tempo de produção "de verdade" de uma peça: do início real (não da
 // venda) até a entrega, descontando os dias em que ficou pausada (ex:
 // cliente viajou e não deu pra fazer prova) — senão essas pausas

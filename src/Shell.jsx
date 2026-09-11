@@ -182,7 +182,18 @@ export default function Shell() {
   const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
   const { historicoVendas } = useHistoricoVendas();
   const { clientesComTelefone } = useTelefonesClientes();
-  const { estoque: estoqueTecidos, movimentos: movimentosEstoque, precosHistorico, consumoPorTecido, cadastrarTecido, registrarCompra, atualizarValorMetro, darBaixa: darBaixaEstoque, removerTecido: removerEstoque } = useEstoqueTecidos();
+  const {
+    estoque: estoqueTecidos,
+    movimentos: movimentosEstoque,
+    precosHistorico,
+    consumoPorTecido,
+    cadastrarTecido,
+    registrarCompra,
+    atualizarValorMetro,
+    atualizarPrecoVenda,
+    darBaixa: darBaixaEstoque,
+    removerTecido: removerEstoque,
+  } = useEstoqueTecidos();
   const { despesas, criarDespesa, marcarPaga, atualizarValorPago, atualizarValorTotalDespesa, atualizarVencimentoDespesa, atualizarDespesa, removerDespesa } = useDespesas();
   const { equipe, loading: loadingEquipe, adicionarMembro, atualizarMembro, removerMembro } = useEquipeProducao();
   const { fornecedores, loading: loadingFornecedores, adicionarFornecedor, atualizarFornecedor, removerFornecedor } = useFornecedores();
@@ -852,9 +863,11 @@ export default function Shell() {
                   movimentos={movimentosEstoque}
                   precosHistorico={precosHistorico}
                   consumoPorTecido={consumoPorTecido}
+                  pedidos={pedidos}
                   onCadastrar={cadastrarTecido}
                   onRegistrarCompra={registrarCompra}
                   onAtualizarValorMetro={atualizarValorMetro}
+                  onAtualizarPrecoVenda={atualizarPrecoVenda}
                   onRemover={removerEstoque}
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                 />

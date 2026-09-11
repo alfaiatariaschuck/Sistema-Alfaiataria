@@ -10,6 +10,7 @@ function rowParaTecido(row) {
     saldoMetros: parseFloat(row.saldo_metros) || 0,
     metrosPorRolo: parseFloat(row.metros_por_rolo) || 30,
     valorMetro: row.valor_metro != null ? parseFloat(row.valor_metro) : null,
+    precoVendaCamisa: row.preco_venda_camisa != null ? parseFloat(row.preco_venda_camisa) : null,
   };
 }
 
@@ -82,10 +83,11 @@ export function useEstoqueTecidos() {
   // Cadastra um código novo no estoque (ou, se já existir, só atualiza
   // fornecedor/metros por rolo/valor por metro) — não mexe no saldo,
   // isso é feito por registrarCompra.
-  async function cadastrarTecido(codigo, fornecedor, metrosPorRolo, valorMetro) {
+  async function cadastrarTecido(codigo, fornecedor, metrosPorRolo, valorMetro, precoVendaCamisa) {
     return comIndicador(async () => {
       const existente = encontrarPorCodigo(codigo);
       const valorFinal = valorMetro === "" || valorMetro == null ? null : Number(valorMetro);
+      const precoVendaFinal = precoVendaCamisa === "" || precoVendaCamisa == null ? null : Number(precoVendaCamisa);
       const { data: row, error } = await supabase
         .from("estoque_tecidos")
         .upsert(
@@ -94,6 +96,7 @@ export function useEstoqueTecidos() {
             fornecedor: fornecedor || null,
             metros_por_rolo: Number(metrosPorRolo) || 30,
             valor_metro: valorFinal,
+            preco_venda_camisa: precoVendaFinal,
           },
           { onConflict: "codigo_normalizado", ignoreDuplicates: false }
         )
@@ -101,6 +104,17 @@ export function useEstoqueTecidos() {
         .single();
       if (error) throw error;
       await registrarPrecoSeMudou(row.id, existente?.valorMetro ?? null, valorFinal);
+      await recarregar();
+    });
+  }
+
+  // Corrige só o preço de venda por camisa desse tecido (ex: mudou a
+  // tabela de preço), sem mexer em nada mais.
+  async function atualizarPrecoVenda(estoqueId, precoVendaCamisa) {
+    return comIndicador(async () => {
+      const precoFinal = precoVendaCamisa === "" || precoVendaCamisa == null ? null : Number(precoVendaCamisa);
+      const { error } = await supabase.from("estoque_tecidos").update({ preco_venda_camisa: precoFinal }).eq("id", estoqueId);
+      if (error) throw error;
       await recarregar();
     });
   }
@@ -182,6 +196,7 @@ export function useEstoqueTecidos() {
     cadastrarTecido,
     registrarCompra,
     atualizarValorMetro,
+    atualizarPrecoVenda,
     darBaixa,
     removerTecido,
   };

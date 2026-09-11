@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, ChevronDown, ChevronUp, MessageCircle, Package, Pencil, Plus, Shirt, TrendingDown, TrendingUp, Trash2, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, fmtData } from "../lib/helpers";
+import { brl, fmtData, mediaCamisasVendidasPorMes } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
 
@@ -10,18 +10,33 @@ const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
 const CHAVE_TELEFONE_FABI = "telefone_fabi";
 
-export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico, consumoPorTecido, onCadastrar, onRegistrarCompra, onAtualizarValorMetro, onRemover, custoAviamentosPorPecaBase = {} }) {
+export default function EstoqueCamisaria({
+  estoque,
+  movimentos,
+  precosHistorico,
+  consumoPorTecido,
+  pedidos = [],
+  onCadastrar,
+  onRegistrarCompra,
+  onAtualizarValorMetro,
+  onAtualizarPrecoVenda,
+  onRemover,
+  custoAviamentosPorPecaBase = {},
+}) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [historicoAberto, setHistoricoAberto] = useState(null);
   const [novoCodigo, setNovoCodigo] = useState("");
   const [novoFornecedor, setNovoFornecedor] = useState("");
   const [novoMetrosPorRolo, setNovoMetrosPorRolo] = useState("30");
   const [novoValorMetro, setNovoValorMetro] = useState("");
+  const [novoPrecoVenda, setNovoPrecoVenda] = useState("");
   const [comprando, setComprando] = useState(null);
   const [rolos, setRolos] = useState("1");
   const [valorMetroCompra, setValorMetroCompra] = useState("");
   const [editandoValor, setEditandoValor] = useState(null);
   const [valorEditado, setValorEditado] = useState("");
+  const [editandoPrecoVenda, setEditandoPrecoVenda] = useState(null);
+  const [precoVendaEditado, setPrecoVendaEditado] = useState("");
   const [erro, setErro] = useState(null);
   const [telefoneFabi, setTelefoneFabi] = useState(null);
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
@@ -57,12 +72,15 @@ export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico,
   const margemNum = parseFloat(margemPadrao) || 0;
   const custoAviamentoCamisa = custoAviamentosPorPecaBase["Camisa"] || 0;
 
+  // Preço por camisa: usa o preço de venda fixo cadastrado nesse tecido
+  // (ex: R$790 chinês x R$690 nacional) quando tiver — senão cai pra
+  // sugestão de margem padrão configurada (custo × margem), igual antes.
   function potencialDe(item) {
     if (!item.valorMetro || metragemNum <= 0) return null;
     const camisasPossiveis = Math.floor(item.saldoMetros / metragemNum);
     if (camisasPossiveis <= 0) return null;
     const custoPorCamisa = item.valorMetro * metragemNum + custoAviamentoCamisa + maoDeObraNum;
-    const precoPorCamisa = custoPorCamisa * (1 + margemNum / 100);
+    const precoPorCamisa = item.precoVendaCamisa || custoPorCamisa * (1 + margemNum / 100);
     const faturamento = camisasPossiveis * precoPorCamisa;
     const custoTotal = camisasPossiveis * custoPorCamisa;
     return { camisasPossiveis, faturamento, margem: faturamento - custoTotal };
@@ -72,6 +90,17 @@ export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico,
   const totalCamisasPossiveis = potenciais.reduce((s, x) => s + x.pot.camisasPossiveis, 0);
   const totalFaturamentoPotencial = potenciais.reduce((s, x) => s + x.pot.faturamento, 0);
   const totalMargemPotencial = potenciais.reduce((s, x) => s + x.pot.margem, 0);
+
+  // Projeção de margem mensal: pega o ritmo real de vendas (média dos
+  // últimos 3 meses fechados) e projeta quanto tempo esse estoque dura e
+  // quanto de margem variável (tecido+aviamento+mão de obra já
+  // descontados) ele renderia por mês nesse ritmo — não inclui custo
+  // fixo/imposto, que já saem quase o mesmo todo mês independente do
+  // volume vendido (isso já está no DRE).
+  const mediaMensalVendas = mediaCamisasVendidasPorMes(pedidos, 3);
+  const margemPorCamisaMedia = totalCamisasPossiveis > 0 ? totalMargemPotencial / totalCamisasPossiveis : 0;
+  const mesesDeEstoque = mediaMensalVendas > 0 ? totalCamisasPossiveis / mediaMensalVendas : null;
+  const margemMensalProjetada = mediaMensalVendas > 0 ? Math.min(mediaMensalVendas, totalCamisasPossiveis) * margemPorCamisaMedia : 0;
 
   const ranking = (consumoPorTecido || [])
     .map((c) => ({ ...c, codigo: estoque.find((e) => e.id === c.estoqueId)?.codigo || "Tecido removido" }))
@@ -84,14 +113,25 @@ export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico,
     if (!novoCodigo.trim()) return;
     setErro(null);
     try {
-      await onCadastrar(novoCodigo, novoFornecedor, novoMetrosPorRolo, novoValorMetro);
+      await onCadastrar(novoCodigo, novoFornecedor, novoMetrosPorRolo, novoValorMetro, novoPrecoVenda);
       setNovoCodigo("");
       setNovoFornecedor("");
       setNovoMetrosPorRolo("30");
       setNovoValorMetro("");
+      setNovoPrecoVenda("");
       setMostrarForm(false);
     } catch (e) {
       setErro("Não consegui cadastrar (" + e.message + ").");
+    }
+  }
+
+  async function salvarPrecoVendaEditado(item) {
+    try {
+      await onAtualizarPrecoVenda(item.id, precoVendaEditado);
+      setEditandoPrecoVenda(null);
+      setPrecoVendaEditado("");
+    } catch (e) {
+      setErro("Não consegui atualizar o preço de venda (" + e.message + ").");
     }
   }
 
@@ -161,14 +201,37 @@ export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico,
             Potencial de faturamento desse estoque
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 14 }}>
-            Se todo esse tecido virar camisa (metragem, mão de obra e margem padrão configuradas em "Preço de venda")
-            — tecido que for pra alfaiataria usa outra metragem e não entra certinho nessa conta.
+            Se todo esse tecido virar camisa — usa o preço de venda fixo cadastrado por tecido quando tiver, senão a
+            margem padrão configurada em "Preço de venda" (metragem e mão de obra também são as configuradas ali) —
+            tecido que for pra alfaiataria usa outra metragem e não entra certinho nessa conta.
           </div>
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
             <StatCard label="Camisas possíveis" value={String(totalCamisasPossiveis)} icon={Shirt} />
             <StatCard label="Faturamento potencial" value={brl(totalFaturamentoPotencial)} icon={TrendingUp} accent={BRASS} />
             <StatCard label="Margem potencial" value={brl(totalMargemPotencial)} icon={Wallet} accent={totalMargemPotencial >= 0 ? VERDE : VERMELHO} />
           </div>
+        </Card>
+      )}
+
+      {totalCamisasPossiveis > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Projeção de margem mensal com esse estoque
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 14 }}>
+            {mediaMensalVendas > 0
+              ? `Baseado na média de ${mediaMensalVendas.toFixed(0)} camisa(s)/mês vendidas nos últimos 3 meses fechados. Já desconta tecido, aviamento e mão de obra da Fabi — não inclui custo fixo (aluguel, luz, pró-labore) nem impostos, que saem quase o mesmo todo mês independente do volume vendido: pra ver o resultado líquido completo, olha no DRE.`
+              : "Sem pedidos suficientes nos últimos 3 meses fechados pra calcular um ritmo médio de vendas ainda."}
+          </div>
+          {mediaMensalVendas > 0 ? (
+            <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+              <StatCard label="Ritmo médio de vendas" value={`${mediaMensalVendas.toFixed(0)} camisas/mês`} icon={Shirt} />
+              <StatCard label="Esse estoque dura" value={mesesDeEstoque !== null ? `~${mesesDeEstoque.toFixed(1)} meses` : "—"} icon={Package} />
+              <StatCard label="Margem variável projetada/mês" value={brl(margemMensalProjetada)} icon={TrendingUp} accent={BRASS} />
+            </div>
+          ) : (
+            <Empty texto="Assim que tiver pedidos lançados em meses anteriores, a projeção aparece aqui." />
+          )}
         </Card>
       )}
 
@@ -201,6 +264,17 @@ export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico,
               </Field>
               <Field label="Valor por metro (R$)">
                 <input type="number" step="0.01" min="0" style={inputStyle} placeholder="ex: 45,90" value={novoValorMetro} onChange={(e) => setNovoValorMetro(e.target.value)} />
+              </Field>
+              <Field label="Preço de venda por camisa (R$)">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  style={inputStyle}
+                  placeholder="opcional — ex: 790"
+                  value={novoPrecoVenda}
+                  onChange={(e) => setNovoPrecoVenda(e.target.value)}
+                />
               </Field>
             </div>
             {erro && <div className="mb-2" style={{ fontSize: 12, color: VERMELHO }}>{erro}</div>}
@@ -275,6 +349,49 @@ export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico,
                       setValorEditado(item.valorMetro || "");
                     }}
                     title="Editar valor por metro"
+                  >
+                    <Pencil size={12} color={BRASS} />
+                  </button>
+                </div>
+              )}
+
+              {editandoPrecoVenda === item.id ? (
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    style={{ ...inputStyle, width: 90 }}
+                    placeholder="R$ venda/camisa"
+                    value={precoVendaEditado}
+                    onChange={(e) => setPrecoVendaEditado(e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => salvarPrecoVendaEditado(item)}
+                    style={{ background: "#2C6E31", color: "#FFF", padding: "5px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                  >
+                    salvar
+                  </button>
+                  <button onClick={() => setEditandoPrecoVenda(null)} style={{ color: TEXT_MUTED, fontSize: 12 }}>
+                    cancelar
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-3 flex-wrap" style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  {item.precoVendaCamisa ? (
+                    <span>
+                      Preço de venda/camisa <strong style={{ color: INK }}>{brl(item.precoVendaCamisa)}</strong>
+                    </span>
+                  ) : (
+                    <span>Sem preço de venda fixo (usa margem padrão pra estimar)</span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setEditandoPrecoVenda(item.id);
+                      setPrecoVendaEditado(item.precoVendaCamisa || "");
+                    }}
+                    title="Editar preço de venda por camisa"
                   >
                     <Pencil size={12} color={BRASS} />
                   </button>
