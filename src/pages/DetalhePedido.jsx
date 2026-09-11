@@ -13,13 +13,37 @@ import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
 import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import HistoricoCliente from "../components/HistoricoCliente";
+import VincularIndicador from "../components/VincularIndicador";
 import EditarNomeCliente from "../components/EditarNomeCliente";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
-export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onDefinirValorPorCamisaFabiana, onPausar, onRetomar, onRemover, onAddTecido, onTecido, onConverterPlano, estoqueTecidos, onDarBaixaEstoque, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {}, onVerificarDespesaFabiana, onReabrirPagamentoFabiana, onRenomearCliente }) {
+export default function DetalhePedido({
+  pedido: p,
+  onVoltar,
+  onCampo,
+  onSub,
+  onDefinirValorPorCamisaFabiana,
+  onPausar,
+  onRetomar,
+  onRemover,
+  onAddTecido,
+  onTecido,
+  onConverterPlano,
+  estoqueTecidos,
+  onDarBaixaEstoque,
+  modelosCamisa = [],
+  onCriarModeloCamisa,
+  custoAviamentosPorPecaBase = {},
+  onVerificarDespesaFabiana,
+  onReabrirPagamentoFabiana,
+  onRenomearCliente,
+  clientesBase = [],
+  nomesClientes,
+  onIndicadorVinculado,
+}) {
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -629,6 +653,19 @@ export default function DetalhePedido({ pedido: p, onVoltar, onCampo, onSub, onD
       <Card style={{ padding: 20 }} className="mt-6">
         <HistoricoCliente clienteId={p.clienteId} ultimaCompraData={p.dataPedido} />
       </Card>
+
+      {(() => {
+        const clienteAtual = clientesBase.find((c) => c.id === p.clienteId);
+        if (!clienteAtual || clienteAtual.indicadoPorClienteId) return null;
+        return (
+          <Card style={{ padding: 20 }} className="mt-6">
+            <div className="fx-serif mb-2" style={{ fontSize: 15, fontWeight: 600 }}>
+              Indicação
+            </div>
+            <VincularIndicador clienteId={clienteAtual.id} nomeAtual={clienteAtual.indicadoPor} nomesClientes={nomesClientes} onVinculado={onIndicadorVinculado} />
+          </Card>
+        );
+      })()}
 
       <Card style={{ padding: 20 }} className="mt-6">
         <DadosPessoaisCliente clienteId={p.clienteId} />

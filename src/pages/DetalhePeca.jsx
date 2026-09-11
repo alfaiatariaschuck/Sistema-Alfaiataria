@@ -12,6 +12,7 @@ import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import HistoricoCliente from "../components/HistoricoCliente";
+import VincularIndicador from "../components/VincularIndicador";
 import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import EditarNomeCliente from "../components/EditarNomeCliente";
 import {
@@ -67,6 +68,9 @@ export default function DetalhePeca({
   modelosAlfaiataria = [],
   onCriarModeloAlfaiataria,
   onRenomearCliente,
+  clientesBase = [],
+  nomesClientes,
+  onIndicadorVinculado,
 }) {
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -652,6 +656,19 @@ export default function DetalhePeca({
       <Card style={{ padding: 20 }} className="mt-6">
         <HistoricoCliente clienteId={p.clienteId} ultimaCompraData={p.dataPedido} />
       </Card>
+
+      {(() => {
+        const clienteAtual = clientesBase.find((c) => c.id === p.clienteId);
+        if (!clienteAtual || clienteAtual.indicadoPorClienteId) return null;
+        return (
+          <Card style={{ padding: 20 }} className="mt-6">
+            <div className="fx-serif mb-2" style={{ fontSize: 15, fontWeight: 600 }}>
+              Indicação
+            </div>
+            <VincularIndicador clienteId={clienteAtual.id} nomeAtual={clienteAtual.indicadoPor} nomesClientes={nomesClientes} onVinculado={onIndicadorVinculado} />
+          </Card>
+        );
+      })()}
 
       <Card style={{ padding: 20 }} className="mt-6">
         <DadosPessoaisCliente clienteId={p.clienteId} />

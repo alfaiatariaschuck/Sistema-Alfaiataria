@@ -590,6 +590,9 @@ export default function Shell() {
     custoAviamentosPorPecaBase: custoPorPecaBase,
     onVerificarDespesaFabiana: verificarDespesaFabianaDoPedido,
     onRenomearCliente: renomearClienteGlobal,
+    clientesBase,
+    nomesClientes,
+    onIndicadorVinculado: recarregarNomesClientes,
   };
 
   function atualizarMedidaPeca(pecaId, secKey, label, valor) {
@@ -644,6 +647,9 @@ export default function Shell() {
     onDarBaixaEstoque: darBaixaEstoque,
     custoAviamentosPorPecaBase: custoPorPecaBase,
     onRenomearCliente: renomearClienteGlobal,
+    clientesBase,
+    nomesClientes,
+    onIndicadorVinculado: recarregarNomesClientes,
   };
 
   return (
