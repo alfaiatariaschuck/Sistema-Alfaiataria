@@ -536,10 +536,15 @@ export default function EstoqueCamisaria({
                     </div>
                   </div>
                 </div>
-                <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600, color: m.tipo === "entrada" ? "#2C6E31" : BRASS }}>
-                  {m.tipo === "entrada" ? "+" : "-"}
-                  {parseFloat(m.metros).toFixed(1)}m
-                </span>
+                <div style={{ textAlign: "right" }}>
+                  <div className="fx-mono" style={{ fontSize: 13, fontWeight: 600, color: m.tipo === "entrada" ? "#2C6E31" : BRASS }}>
+                    {m.tipo === "entrada" ? "+" : "-"}
+                    {parseFloat(m.metros).toFixed(1)}m
+                  </div>
+                  {metragemNum > 0 && (
+                    <div style={{ fontSize: 10, color: TEXT_MUTED }}>≈{Math.floor((parseFloat(m.metros) || 0) / metragemNum)} camisa(s)</div>
+                  )}
+                </div>
               </div>
             );
           })}
