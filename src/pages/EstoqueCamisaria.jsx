@@ -1,12 +1,14 @@
-import React, { useState } from "react";
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, ChevronDown, ChevronUp, Package, Pencil, Plus, Shirt, TrendingDown, TrendingUp, Trash2, Wallet } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, ChevronDown, ChevronUp, MessageCircle, Package, Pencil, Plus, Shirt, TrendingDown, TrendingUp, Trash2, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
+import { supabase } from "../supabaseClient";
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
+const CHAVE_TELEFONE_FABI = "telefone_fabi";
 
 export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico, consumoPorTecido, onCadastrar, onRegistrarCompra, onAtualizarValorMetro, onRemover, custoAviamentosPorPecaBase = {} }) {
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -21,7 +23,24 @@ export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico,
   const [editandoValor, setEditandoValor] = useState(null);
   const [valorEditado, setValorEditado] = useState("");
   const [erro, setErro] = useState(null);
+  const [telefoneFabi, setTelefoneFabi] = useState(null);
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_TELEFONE_FABI).maybeSingle();
+      setTelefoneFabi(data?.valor || null);
+    })();
+  }, []);
+
+  // Relatório só com código e saldo em metros — de propósito sem valor
+  // por metro, valor em estoque nem nada de gestão, pra poder mandar pra
+  // Fabi acompanhar o que tem disponível sem expor preço/custo.
+  function mensagemEstoqueFabi() {
+    const disponiveis = [...estoque].filter((e) => e.saldoMetros > 0).sort((a, b) => a.codigo.localeCompare(b.codigo));
+    const linhas = disponiveis.map((e) => `${e.codigo} — ${e.saldoMetros.toFixed(1)}m`).join("\n");
+    return `Estoque de tecido disponível:\n${linhas}`;
+  }
 
   const totalMetros = estoque.reduce((s, e) => s + e.saldoMetros, 0);
   const valorTotalEstoque = estoque.reduce((s, e) => s + e.saldoMetros * (e.valorMetro || 0), 0);
@@ -109,6 +128,32 @@ export default function EstoqueCamisaria({ estoque, movimentos, precosHistorico,
         <StatCard label="Estoque baixo (< 1 rolo)" value={baixoEstoque.length} icon={AlertTriangle} accent={baixoEstoque.length > 0 ? VERMELHO : undefined} />
         <StatCard label="Valor total em estoque" value={brl(valorTotalEstoque)} icon={Wallet} />
       </div>
+
+      <Card style={{ padding: 16 }} className="mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div className="fx-serif" style={{ fontSize: 14, fontWeight: 600 }}>
+              Relatório de estoque pra Fabi
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>
+              Só código e quantos metros tem disponível de cada um — sem valor nem nenhuma informação de gestão.
+            </div>
+          </div>
+          {telefoneFabi ? (
+            <a
+              href={`https://wa.me/${telefoneFabi.replace(/\D/g, "")}?text=${encodeURIComponent(mensagemEstoqueFabi())}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2"
+              style={{ background: "#25D366", color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, width: "fit-content", flexShrink: 0 }}
+            >
+              <MessageCircle size={15} /> Enviar pra Fabi
+            </a>
+          ) : (
+            <span style={{ fontSize: 12, color: TEXT_MUTED }}>Telefone da Fabi não cadastrado — adicione em Configurações.</span>
+          )}
+        </div>
+      </Card>
 
       {totalCamisasPossiveis > 0 && (
         <Card style={{ padding: 20 }} className="mb-6">
