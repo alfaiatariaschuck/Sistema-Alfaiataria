@@ -110,7 +110,7 @@ export const LINHA_STYLE = {
   Alfaiataria: { bg: "#E9E1F5", fg: "#5B3E96" },
 };
 
-export const FORNECEDORES_TECIDO = ["Imperiale", "Wtext", "LS Tecidos", "Markbel", "Erlu", "Dab Dab", "Cataguases"];
+export const FORNECEDORES_TECIDO = ["Imperiale", "Wtext", "LS Tecidos", "Markbel", "Erlu", "Dab Dab", "Cataguases", "LYC do Brasil"];
 
 export const CATEGORIAS_DESPESA = [
   "Aluguel",
