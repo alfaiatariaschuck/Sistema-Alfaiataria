@@ -79,6 +79,24 @@ export async function encontrarOuCriarCliente(nome, opcoes = {}) {
   return criado.id;
 }
 
+// Vincula (ou corrige) o indicador de um cliente já cadastrado — cobre o
+// caso de "lancei o pedido só com o nome de quem indicou, não tinha o
+// CPF na hora" (a pessoa que indicou nem sempre já é cliente, então na
+// hora do pedido não dava pra cadastrar ela ainda). Cria (ou acha) o
+// registro de cliente do indicador, salva o CPF, e atualiza o
+// indicado_por_cliente_id do cliente indicado — só assim ele passa a
+// contar de verdade no Ranking de Indicação (que soma por ID, não por
+// nome digitado).
+export async function vincularIndicador(clienteId, nomeIndicador, cpfIndicador) {
+  const nome = (nomeIndicador || "").trim();
+  if (!clienteId || !nome) return null;
+  const indicadorId = await encontrarOuCriarCliente(nome);
+  if ((cpfIndicador || "").trim()) await salvarDadosPessoaisCliente(indicadorId, { cpf: cpfIndicador });
+  const { error } = await supabase.from("clientes").update({ indicado_por: nome, indicado_por_cliente_id: indicadorId }).eq("id", clienteId);
+  if (error) throw error;
+  return indicadorId;
+}
+
 // Transferência de carteira — só o dono consegue de verdade (RLS: só ele
 // tem UPDATE em "clientes"), então essa função nem existe pro vendedor
 // na prática.

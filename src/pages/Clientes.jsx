@@ -10,7 +10,7 @@ import HistoricoCliente from "../components/HistoricoCliente";
 import { BRASS, BRASS_SOFT, INK, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { brl, fmtData, hojeISO, mesesDesde, valorRecebidoEfetivo } from "../lib/helpers";
 import { useVendedores } from "../hooks/useVendedores";
-import { definirDonoCarteira } from "../lib/clientes";
+import { definirDonoCarteira, vincularIndicador } from "../lib/clientes";
 import { supabase } from "../supabaseClient";
 
 const NOME_DONO = "Tales";
@@ -79,6 +79,59 @@ function SeletorCarteira({ clienteId, donoCarteiraId, vendedores, onMudou }) {
         </option>
       ))}
     </select>
+  );
+}
+
+// Quando o pedido foi lançado só com o NOME de quem indicou (sem CPF,
+// porque a pessoa ainda não era cliente na hora), o indicador não fica
+// linkado por ID — e sem isso ele não conta no Ranking de Indicação.
+// Esse formulário cadastra o CPF agora e faz o vínculo retroativo.
+function VincularIndicador({ clienteId, nomeIndicador, onVinculado }) {
+  const [aberto, setAberto] = useState(false);
+  const [cpf, setCpf] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  async function vincular() {
+    setSalvando(true);
+    try {
+      await vincularIndicador(clienteId, nomeIndicador, cpf);
+      setAberto(false);
+      setCpf("");
+      onVinculado();
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (!aberto) {
+    return (
+      <button type="button" onClick={() => setAberto(true)} style={{ color: BRASS, fontSize: 11, fontWeight: 600 }}>
+        cadastrar CPF de {nomeIndicador} pra contar no Ranking
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap mt-1">
+      <input
+        style={{ ...inputStyle, width: 160, padding: "5px 8px", fontSize: 12 }}
+        placeholder="CPF de quem indicou"
+        value={cpf}
+        onChange={(e) => setCpf(e.target.value)}
+        autoFocus
+      />
+      <button
+        type="button"
+        onClick={vincular}
+        disabled={salvando || !cpf.trim()}
+        style={{ background: "#2C6E31", color: "#FFF", padding: "5px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600, opacity: salvando || !cpf.trim() ? 0.7 : 1 }}
+      >
+        {salvando ? "Vinculando…" : "Vincular"}
+      </button>
+      <button type="button" onClick={() => setAberto(false)} style={{ color: TEXT_MUTED, fontSize: 12 }}>
+        cancelar
+      </button>
+    </div>
   );
 }
 
@@ -574,6 +627,11 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
                 <div className="mb-1" style={{ fontSize: 11, color: TEXT_MUTED }}>
                   Chegou por: <strong style={{ color: INK }}>{c.origem}</strong>
                   {c.indicadoPor && <> — indicado por {c.indicadoPor}</>}
+                </div>
+              )}
+              {c.indicadoPor && !c.indicadoPorClienteId && (
+                <div className="mb-1">
+                  <VincularIndicador clienteId={c.id} nomeIndicador={c.indicadoPor} onVinculado={recarregarClientes} />
                 </div>
               )}
               <div className="flex items-center gap-3 mb-2 flex-wrap" style={{ fontSize: 12, color: TEXT_MUTED }}>
