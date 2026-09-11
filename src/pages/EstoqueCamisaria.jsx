@@ -93,12 +93,12 @@ export default function EstoqueCamisaria({
   const totalMargemPotencial = potenciais.reduce((s, x) => s + x.pot.margem, 0);
 
   // Projeção de margem mensal: pega o ritmo real de vendas (média dos
-  // últimos 3 meses fechados) e projeta quanto tempo esse estoque dura e
+  // últimos 2 meses fechados) e projeta quanto tempo esse estoque dura e
   // quanto de margem variável (tecido+aviamento+mão de obra já
   // descontados) ele renderia por mês nesse ritmo — não inclui custo
   // fixo/imposto, que já saem quase o mesmo todo mês independente do
   // volume vendido (isso já está no DRE).
-  const mediaMensalVendas = mediaCamisasVendidasPorMes(pedidos, 3);
+  const mediaMensalVendas = mediaCamisasVendidasPorMes(pedidos, 2);
   const margemPorCamisaMedia = totalCamisasPossiveis > 0 ? totalMargemPotencial / totalCamisasPossiveis : 0;
   const mesesDeEstoque = mediaMensalVendas > 0 ? totalCamisasPossiveis / mediaMensalVendas : null;
   const margemMensalProjetada = mediaMensalVendas > 0 ? Math.min(mediaMensalVendas, totalCamisasPossiveis) * margemPorCamisaMedia : 0;
@@ -222,8 +222,8 @@ export default function EstoqueCamisaria({
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 14 }}>
             {mediaMensalVendas > 0
-              ? `Baseado na média de ${mediaMensalVendas.toFixed(0)} camisa(s)/mês vendidas nos últimos 3 meses fechados. Já desconta tecido, aviamento e mão de obra da Fabi — não inclui custo fixo (aluguel, luz, pró-labore) nem impostos, que saem quase o mesmo todo mês independente do volume vendido: pra ver o resultado líquido completo, olha no DRE.`
-              : "Sem pedidos suficientes nos últimos 3 meses fechados pra calcular um ritmo médio de vendas ainda."}
+              ? `Baseado na média de ${mediaMensalVendas.toFixed(0)} camisa(s)/mês vendidas nos últimos 2 meses fechados. Já desconta tecido, aviamento e mão de obra da Fabi — não inclui custo fixo (aluguel, luz, pró-labore) nem impostos, que saem quase o mesmo todo mês independente do volume vendido: pra ver o resultado líquido completo, olha no DRE.`
+              : "Sem pedidos suficientes nos últimos 2 meses fechados pra calcular um ritmo médio de vendas ainda."}
           </div>
           {mediaMensalVendas > 0 ? (
             <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
