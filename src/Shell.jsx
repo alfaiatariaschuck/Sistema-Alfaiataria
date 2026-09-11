@@ -471,8 +471,8 @@ export default function Shell() {
     await sincronizarPagamentoFabiana(resultado);
   }
 
-  async function atualizarValorPagoDespesa(id, novoValorPago) {
-    const resultado = await atualizarValorPago(id, novoValorPago);
+  async function atualizarValorPagoDespesa(id, novoValorPago, dataPagamento, valorPagoCamisaria, valorPagoAlfaiataria) {
+    const resultado = await atualizarValorPago(id, novoValorPago, dataPagamento, valorPagoCamisaria, valorPagoAlfaiataria);
     await sincronizarPagamentoFabiana(resultado);
   }
 

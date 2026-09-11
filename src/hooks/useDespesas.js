@@ -25,6 +25,8 @@ function rowParaDespesa(row) {
     valor: row.valor,
     frete: row.frete ?? 0,
     valorPago: row.valor_pago ?? 0,
+    valorPagoCamisaria: row.valor_pago_camisaria ?? "",
+    valorPagoAlfaiataria: row.valor_pago_alfaiataria ?? "",
     dataPagamento: row.data_pagamento || null,
     vencimento: row.vencimento,
     status: row.status,
@@ -162,15 +164,23 @@ export function useDespesas() {
   // algo pago ontem ou antes) — importante principalmente perto da
   // virada do mês, senão o pagamento cai no mês errado na conferência.
   // Zerar o valor pago (reabrir) limpa essa data de novo, já que não foi
-  // paga.
-  async function atualizarValorPago(id, novoValorPago, dataPagamento) {
+  // paga. valorPagoCamisaria/valorPagoAlfaiataria são opcionais — só fazem
+  // sentido pra despesa com tecido discriminado por linha (dizem quanto
+  // DESSE pagamento foi de cada uma); quando não informados (undefined),
+  // ficam null no banco (reabrir ou pagar sem discriminar zera a divisão).
+  async function atualizarValorPago(id, novoValorPago, dataPagamento, valorPagoCamisaria, valorPagoAlfaiataria) {
     const despesa = despesas.find((d) => d.id === id);
     return comIndicador(async () => {
       const pago = Math.max(0, Number(novoValorPago) || 0);
       const total = (parseFloat(despesa?.valor) || 0) + (parseFloat(despesa?.frete) || 0);
       const status = pago <= 0 ? "Pendente" : pago >= total ? "Pago" : "Parcial";
       const dataPagamentoFinal = pago > 0 ? dataPagamento || hojeISO() : null;
-      const { error } = await supabase.from("despesas").update({ valor_pago: pago, status, data_pagamento: dataPagamentoFinal }).eq("id", id);
+      const pagoCam = valorPagoCamisaria == null ? null : Math.max(0, Number(valorPagoCamisaria) || 0);
+      const pagoAlf = valorPagoAlfaiataria == null ? null : Math.max(0, Number(valorPagoAlfaiataria) || 0);
+      const { error } = await supabase
+        .from("despesas")
+        .update({ valor_pago: pago, status, data_pagamento: dataPagamentoFinal, valor_pago_camisaria: pagoCam, valor_pago_alfaiataria: pagoAlf })
+        .eq("id", id);
       if (error) throw error;
       if (despesa && despesa.recorrente && status === "Pago") {
         const { error: errProx } = await supabase.from("despesas").insert({
@@ -195,9 +205,19 @@ export function useDespesas() {
   }
 
   // Atalho pro botão de "marcar como paga" — quita o valor inteiro (produto + frete) de uma vez.
+  // Se a despesa tem tecido discriminado por linha, considera as duas linhas
+  // totalmente quitadas também (senão o pendente por linha do Fluxo de Caixa
+  // ficaria estranho: despesa Paga mas com sobra pendente numa linha).
   async function marcarPaga(id) {
     const despesa = despesas.find((d) => d.id === id);
-    return atualizarValorPago(id, (parseFloat(despesa?.valor) || 0) + (parseFloat(despesa?.frete) || 0));
+    const dividido = (parseFloat(despesa?.valorCamisaria) || 0) > 0 || (parseFloat(despesa?.valorAlfaiataria) || 0) > 0;
+    return atualizarValorPago(
+      id,
+      (parseFloat(despesa?.valor) || 0) + (parseFloat(despesa?.frete) || 0),
+      undefined,
+      dividido ? parseFloat(despesa?.valorCamisaria) || 0 : undefined,
+      dividido ? parseFloat(despesa?.valorAlfaiataria) || 0 : undefined
+    );
   }
 
   async function removerDespesa(id) {

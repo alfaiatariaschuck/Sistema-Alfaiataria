@@ -51,7 +51,26 @@ function novaDespesaVazia() {
 // com valor/data errado, também precisa poder ser editada, não só
 // reaberta). Extraído pra não duplicar esse formulário grande nos dois
 // lugares.
-function EditorDespesa({ edicaoDespesa, setEdicaoDespesa, valorPagoEdit, setValorPagoEdit, dataPagamentoEdit, setDataPagamentoEdit, onSalvar }) {
+function EditorDespesa({
+  edicaoDespesa,
+  setEdicaoDespesa,
+  valorPagoEdit,
+  setValorPagoEdit,
+  valorPagoCamisariaEdit,
+  setValorPagoCamisariaEdit,
+  valorPagoAlfaiatariaEdit,
+  setValorPagoAlfaiatariaEdit,
+  dataPagamentoEdit,
+  setDataPagamentoEdit,
+  onSalvar,
+}) {
+  // Despesa com tecido discriminado por linha: a baixa também precisa dizer
+  // quanto desse pagamento foi de Camisaria e quanto foi de Alfaiataria —
+  // senão o "pendente por linha" (Fluxo de Caixa) fica só numa estimativa
+  // proporcional, que não bate quando o pagamento real não segue a mesma
+  // proporção da dívida original.
+  const dividido = (parseFloat(edicaoDespesa.valorCamisaria) || 0) > 0 || (parseFloat(edicaoDespesa.valorAlfaiataria) || 0) > 0;
+  const totalPagoDividido = (parseFloat(valorPagoCamisariaEdit) || 0) + (parseFloat(valorPagoAlfaiatariaEdit) || 0);
   return (
     <div className="mt-2 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
       <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: "2fr 1fr 1fr" }}>
@@ -147,15 +166,41 @@ function EditorDespesa({ edicaoDespesa, setEdicaoDespesa, valorPagoEdit, setValo
         se recalcula sozinho).
       </div>
       <div className="flex items-center gap-2 flex-wrap">
-        <span style={{ fontSize: 11, color: TEXT_MUTED }}>Valor pago até agora:</span>
-        <input
-          type="number"
-          step="0.01"
-          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, width: 100 }}
-          value={valorPagoEdit}
-          onChange={(e) => setValorPagoEdit(e.target.value)}
-        />
-        {(parseFloat(valorPagoEdit) || 0) > 0 && (
+        {dividido ? (
+          <>
+            <span style={{ fontSize: 11, color: TEXT_MUTED }}>Pago Camisaria (R$):</span>
+            <input
+              type="number"
+              step="0.01"
+              style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, width: 90 }}
+              value={valorPagoCamisariaEdit}
+              onChange={(e) => setValorPagoCamisariaEdit(e.target.value)}
+              placeholder="0,00"
+            />
+            <span style={{ fontSize: 11, color: TEXT_MUTED }}>Pago Alfaiataria (R$):</span>
+            <input
+              type="number"
+              step="0.01"
+              style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, width: 90 }}
+              value={valorPagoAlfaiatariaEdit}
+              onChange={(e) => setValorPagoAlfaiatariaEdit(e.target.value)}
+              placeholder="0,00"
+            />
+            <span style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 600 }}>Total pago: {brl(totalPagoDividido)}</span>
+          </>
+        ) : (
+          <>
+            <span style={{ fontSize: 11, color: TEXT_MUTED }}>Valor pago até agora:</span>
+            <input
+              type="number"
+              step="0.01"
+              style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, width: 100 }}
+              value={valorPagoEdit}
+              onChange={(e) => setValorPagoEdit(e.target.value)}
+            />
+          </>
+        )}
+        {(dividido ? totalPagoDividido : parseFloat(valorPagoEdit) || 0) > 0 && (
           <>
             <span style={{ fontSize: 11, color: TEXT_MUTED }}>Pago em:</span>
             <input
@@ -361,6 +406,8 @@ export default function ContasAPagar({
   const [novaNota, setNovaNota] = useState({ descricao: "", valor: "", dataEsperada: "" });
   const [editandoDespesa, setEditandoDespesa] = useState(null);
   const [valorPagoEdit, setValorPagoEdit] = useState("");
+  const [valorPagoCamisariaEdit, setValorPagoCamisariaEdit] = useState("");
+  const [valorPagoAlfaiatariaEdit, setValorPagoAlfaiatariaEdit] = useState("");
   const [buscaPaga, setBuscaPaga] = useState("");
   const [verTodasMesAtual, setVerTodasMesAtual] = useState(false);
   const [dataPagamentoEdit, setDataPagamentoEdit] = useState(hojeISO());
@@ -565,20 +612,36 @@ export default function ContasAPagar({
   })();
 
   // Quanto das despesas em aberto é de cada linha — despesas com tecido
-  // discriminado (valorCamisaria/valorAlfaiataria) ratam o pendente na
-  // mesma proporção; as marcadas só com "Linha" vão inteiras pra ela; o
-  // resto cai em "Compartilhado".
+  // discriminado (valorCamisaria/valorAlfaiataria) usam a baixa real por
+  // linha (Pago Camisaria/Pago Alfaiataria) quando ela já foi informada,
+  // já que o pagamento nem sempre segue a mesma proporção da dívida
+  // original; sem essa informação (despesas de antes desse recurso, ou
+  // ainda sem nenhuma baixa parcial detalhada), cai de volta pra rateio
+  // proporcional do valor pendente. As marcadas só com "Linha" vão
+  // inteiras pra ela; o resto cai em "Compartilhado".
   const porLinha = (() => {
     const totais = { Camisaria: 0, Alfaiataria: 0, Compartilhado: 0 };
     despesasPendentes.forEach((d) => {
-      const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
       const cam = parseFloat(d.valorCamisaria) || 0;
       const alf = parseFloat(d.valorAlfaiataria) || 0;
       if (cam > 0 || alf > 0) {
         const totalTecido = cam + alf;
-        totais.Camisaria += pendente * (cam / totalTecido);
-        totais.Alfaiataria += pendente * (alf / totalTecido);
+        const frete = parseFloat(d.frete) || 0;
+        const camComFrete = cam + frete * (cam / totalTecido);
+        const alfComFrete = alf + frete * (alf / totalTecido);
+        const temSplitPago = d.valorPagoCamisaria !== "" || d.valorPagoAlfaiataria !== "";
+        if (temSplitPago) {
+          const pagoCam = parseFloat(d.valorPagoCamisaria) || 0;
+          const pagoAlf = parseFloat(d.valorPagoAlfaiataria) || 0;
+          totais.Camisaria += Math.max(0, camComFrete - pagoCam);
+          totais.Alfaiataria += Math.max(0, alfComFrete - pagoAlf);
+        } else {
+          const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
+          totais.Camisaria += pendente * (cam / totalTecido);
+          totais.Alfaiataria += pendente * (alf / totalTecido);
+        }
       } else {
+        const pendente = Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
         const chave = d.linha === "Camisaria" || d.linha === "Alfaiataria" ? d.linha : "Compartilhado";
         totais[chave] += pendente;
       }
@@ -805,7 +868,11 @@ export default function ContasAPagar({
     setErro(null);
     try {
       await onAtualizarDespesa(id, edicaoDespesa);
-      await onAtualizarValorPago(id, valorPagoEdit, dataPagamentoEdit);
+      const dividido = (parseFloat(edicaoDespesa.valorCamisaria) || 0) > 0 || (parseFloat(edicaoDespesa.valorAlfaiataria) || 0) > 0;
+      const pagoCam = parseFloat(valorPagoCamisariaEdit) || 0;
+      const pagoAlf = parseFloat(valorPagoAlfaiatariaEdit) || 0;
+      const valorPagoFinal = dividido ? pagoCam + pagoAlf : valorPagoEdit;
+      await onAtualizarValorPago(id, valorPagoFinal, dataPagamentoEdit, dividido ? pagoCam : null, dividido ? pagoAlf : null);
       setEditandoDespesa(null);
     } catch (e) {
       setErro("Não consegui salvar (" + e.message + ").");
@@ -846,6 +913,8 @@ export default function ContasAPagar({
     }
     setEditandoDespesa(d.id);
     setValorPagoEdit(String(d.valorPago || ""));
+    setValorPagoCamisariaEdit(String(d.valorPagoCamisaria || ""));
+    setValorPagoAlfaiatariaEdit(String(d.valorPagoAlfaiataria || ""));
     setDataPagamentoEdit(d.dataPagamento || hojeISO());
     setEdicaoDespesa({
       descricao: d.descricao,
@@ -932,6 +1001,10 @@ export default function ContasAPagar({
             setEdicaoDespesa={setEdicaoDespesa}
             valorPagoEdit={valorPagoEdit}
             setValorPagoEdit={setValorPagoEdit}
+            valorPagoCamisariaEdit={valorPagoCamisariaEdit}
+            setValorPagoCamisariaEdit={setValorPagoCamisariaEdit}
+            valorPagoAlfaiatariaEdit={valorPagoAlfaiatariaEdit}
+            setValorPagoAlfaiatariaEdit={setValorPagoAlfaiatariaEdit}
             dataPagamentoEdit={dataPagamentoEdit}
             setDataPagamentoEdit={setDataPagamentoEdit}
             onSalvar={() => salvarEdicaoDespesa(d.id)}
@@ -1456,6 +1529,10 @@ export default function ContasAPagar({
                           setEdicaoDespesa={setEdicaoDespesa}
                           valorPagoEdit={valorPagoEdit}
                           setValorPagoEdit={setValorPagoEdit}
+                          valorPagoCamisariaEdit={valorPagoCamisariaEdit}
+                          setValorPagoCamisariaEdit={setValorPagoCamisariaEdit}
+                          valorPagoAlfaiatariaEdit={valorPagoAlfaiatariaEdit}
+                          setValorPagoAlfaiatariaEdit={setValorPagoAlfaiatariaEdit}
                           dataPagamentoEdit={dataPagamentoEdit}
                           setDataPagamentoEdit={setDataPagamentoEdit}
                           onSalvar={() => salvarEdicaoDespesa(d.id)}
@@ -1649,6 +1726,10 @@ export default function ContasAPagar({
                       setEdicaoDespesa={setEdicaoDespesa}
                       valorPagoEdit={valorPagoEdit}
                       setValorPagoEdit={setValorPagoEdit}
+                      valorPagoCamisariaEdit={valorPagoCamisariaEdit}
+                      setValorPagoCamisariaEdit={setValorPagoCamisariaEdit}
+                      valorPagoAlfaiatariaEdit={valorPagoAlfaiatariaEdit}
+                      setValorPagoAlfaiatariaEdit={setValorPagoAlfaiatariaEdit}
                       dataPagamentoEdit={dataPagamentoEdit}
                       setDataPagamentoEdit={setDataPagamentoEdit}
                       onSalvar={() => salvarEdicaoDespesa(d.id)}
