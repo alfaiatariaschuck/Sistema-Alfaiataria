@@ -695,14 +695,25 @@ export default function ContasAPagar({
   // sem precisar escolher mês por mês.
   const porCategoriaHistorico = (() => {
     const chaveMesLimite = historicoDespesas[0]?.chaveMes;
+    // Agrupa ignorando maiúsculas/minúsculas e espaços extras (ex: "Material/Tecido
+    // avulso" vs "Material/Tecido Avulso" não podem virar duas linhas separadas) —
+    // o rótulo exibido usa a grafia oficial de CATEGORIAS_DESPESA quando bate,
+    // senão fica com a primeira grafia encontrada.
+    const normalizar = (s) => s.trim().toLowerCase();
+    const rotulos = new Map();
     const mapa = new Map();
     despesas
       .filter((d) => d.status === "Pago" && d.vencimento && chaveMesLimite && d.vencimento.slice(0, 7) >= chaveMesLimite)
       .forEach((d) => {
-        const chave = d.categoria || "Sem categoria";
+        const bruta = (d.categoria || "").trim() || "Sem categoria";
+        const chave = normalizar(bruta);
+        if (!rotulos.has(chave)) {
+          const oficial = CATEGORIAS_DESPESA.find((c) => normalizar(c) === chave);
+          rotulos.set(chave, oficial || bruta);
+        }
         mapa.set(chave, (mapa.get(chave) || 0) + totalDespesa(d));
       });
-    return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
+    return [...mapa.entries()].map(([chave, valor]) => [rotulos.get(chave), valor]).sort((a, b) => b[1] - a[1]);
   })();
 
   // Divide um valor em N parcelas sem perder centavo no arredondamento —
