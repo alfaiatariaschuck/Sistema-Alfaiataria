@@ -245,6 +245,35 @@ export function tempoMedioProducaoGenerico(lista) {
   return mediaDiasEntrega(lista.filter((p) => p.status === "Entregue" && p.dataEntrega));
 }
 
+// Preço médio de venda por camisa já praticado com um código de tecido
+// específico — olha todo pedido (fora Doação) que tem uma linha de
+// tecido com esse código e pondera o preço unitário do pedido (valor a
+// receber ÷ quantidade total do pedido) pela quantidade daquela linha.
+// Serve pra projetar o estoque pelo preço REAL de venda em vez de
+// depender de alguém digitar um preço fixo — só cai pra margem padrão
+// quando o código nunca foi vendido ainda (tecido novo, sem histórico).
+export function precoVendaMedioPorTecido(pedidos, codigo) {
+  const chave = (codigo || "").trim().toLowerCase();
+  if (!chave) return null;
+  let somaValor = 0;
+  let somaQtd = 0;
+  (pedidos || []).forEach((p) => {
+    if (p.status === "Doação") return;
+    const qtdPedido = parseInt(p.quantidade, 10) || 0;
+    const valorPedido = parseFloat(p.aReceber?.valor) || 0;
+    if (qtdPedido <= 0 || valorPedido <= 0) return;
+    const precoUnitario = valorPedido / qtdPedido;
+    (p.tecidos || []).forEach((t) => {
+      if ((t.codigo || "").trim().toLowerCase() !== chave) return;
+      const qtdLinha = parseFloat(t.qtd) || 0;
+      if (qtdLinha <= 0) return;
+      somaValor += precoUnitario * qtdLinha;
+      somaQtd += qtdLinha;
+    });
+  });
+  return somaQtd > 0 ? somaValor / somaQtd : null;
+}
+
 // Média de camisas vendidas por mês, olhando os últimos `meses` meses JÁ
 // FECHADOS (não conta o mês corrente, que ainda está incompleto e
 // puxaria a média pra baixo) — pela data do pedido, exclui Doação (não é

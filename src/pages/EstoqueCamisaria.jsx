@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, ChevronDown, ChevronUp, MessageCircle, Package, Pencil, Plus, Shirt, TrendingDown, TrendingUp, Trash2, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, fmtData, mediaCamisasVendidasPorMes } from "../lib/helpers";
+import { brl, fmtData, mediaCamisasVendidasPorMes, precoVendaMedioPorTecido } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
 
@@ -80,10 +80,11 @@ export default function EstoqueCamisaria({
     const camisasPossiveis = Math.floor(item.saldoMetros / metragemNum);
     if (camisasPossiveis <= 0) return null;
     const custoPorCamisa = item.valorMetro * metragemNum + custoAviamentoCamisa + maoDeObraNum;
-    const precoPorCamisa = item.precoVendaCamisa || custoPorCamisa * (1 + margemNum / 100);
+    const precoHistorico = precoVendaMedioPorTecido(pedidos, item.codigo);
+    const precoPorCamisa = item.precoVendaCamisa || precoHistorico || custoPorCamisa * (1 + margemNum / 100);
     const faturamento = camisasPossiveis * precoPorCamisa;
     const custoTotal = camisasPossiveis * custoPorCamisa;
-    return { camisasPossiveis, faturamento, margem: faturamento - custoTotal };
+    return { camisasPossiveis, faturamento, margem: faturamento - custoTotal, precoPorCamisa, precoHistorico };
   }
 
   const potenciais = estoque.map((item) => ({ item, pot: potencialDe(item) })).filter((x) => x.pot);
@@ -201,9 +202,10 @@ export default function EstoqueCamisaria({
             Potencial de faturamento desse estoque
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 14 }}>
-            Se todo esse tecido virar camisa — usa o preço de venda fixo cadastrado por tecido quando tiver, senão a
-            margem padrão configurada em "Preço de venda" (metragem e mão de obra também são as configuradas ali) —
-            tecido que for pra alfaiataria usa outra metragem e não entra certinho nessa conta.
+            Se todo esse tecido virar camisa — usa o preço de venda fixo cadastrado nesse tecido quando tiver, senão o
+            preço médio já vendido com esse código (calculado sozinho conforme os pedidos vão entrando), e só cai pra
+            margem padrão configurada em "Preço de venda" enquanto o código nunca tiver sido vendido — tecido que for
+            pra alfaiataria usa outra metragem e não entra certinho nessa conta.
           </div>
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
             <StatCard label="Camisas possíveis" value={String(totalCamisasPossiveis)} icon={Shirt} />
@@ -381,10 +383,15 @@ export default function EstoqueCamisaria({
                 <div className="flex items-center gap-2 mb-3 flex-wrap" style={{ fontSize: 12, color: TEXT_MUTED }}>
                   {item.precoVendaCamisa ? (
                     <span>
-                      Preço de venda/camisa <strong style={{ color: INK }}>{brl(item.precoVendaCamisa)}</strong>
+                      Preço de venda/camisa (fixo) <strong style={{ color: INK }}>{brl(item.precoVendaCamisa)}</strong>
+                    </span>
+                  ) : precoVendaMedioPorTecido(pedidos, item.codigo) != null ? (
+                    <span>
+                      Preço médio já vendido <strong style={{ color: INK }}>{brl(precoVendaMedioPorTecido(pedidos, item.codigo))}</strong>{" "}
+                      (calculado sozinho pelas vendas — só trave um valor fixo se quiser)
                     </span>
                   ) : (
-                    <span>Sem preço de venda fixo (usa margem padrão pra estimar)</span>
+                    <span>Nunca vendido ainda (usa margem padrão pra estimar até ter histórico)</span>
                   )}
                   <button
                     onClick={() => {
