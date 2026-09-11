@@ -11,7 +11,7 @@ import {
   LINE,
   TEXT_MUTED,
 } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, diasEsperaCliente, diasProducaoReal, fmtData } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, mediaEsperaCliente } from "../lib/helpers";
 
 // Dias de produção pura (máquina/trabalho manual), sem prova nem
 // espera — vem das horas de desenvolvimento da planilha de parâmetros
@@ -141,11 +141,7 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, custoA
   // esse controle entrou no ar (os pedidos históricos importados não
   // têm esse detalhe: a planilha antiga só guardava uma data por etapa,
   // sem separar quando a peça ficou pronta de quando o cliente veio).
-  const comEsperaCliente = useMemo(() => entregues.map((p) => diasEsperaCliente(p)).filter((d) => d > 0), [entregues]);
-  const mediaEsperaCliente = useMemo(
-    () => (comEsperaCliente.length ? Math.round(comEsperaCliente.reduce((s, v) => s + v, 0) / comEsperaCliente.length) : null),
-    [comEsperaCliente]
-  );
+  const mediaEsperaClienteValor = useMemo(() => mediaEsperaCliente(entregues), [entregues]);
 
   // Referência = produção pura (horas de desenvolvimento) + gargalo
   // típico (melhor resultado real já registrado menos a produção pura)
@@ -353,7 +349,7 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, custoA
         <StatCard label="Média geral de produção" value={mediaGeral !== null ? `${mediaGeral}d` : "—"} icon={Timer} />
         {maisRapido && <StatCard label="Mais rápida em média" value={`${maisRapido.chave} · ${maisRapido.valor}d`} icon={Zap} />}
         {maisLento && <StatCard label="Mais demorada em média" value={`${maisLento.chave} · ${maisLento.valor}d`} icon={Clock} />}
-        <StatCard label="Espera média por prova" value={mediaEsperaCliente !== null ? `${mediaEsperaCliente}d` : "—"} icon={Hourglass} />
+        <StatCard label="Espera média por prova" value={mediaEsperaClienteValor !== null ? `${mediaEsperaClienteValor}d` : "—"} icon={Hourglass} />
         <StatCard
           label="Taxa de retrabalho"
           value={taxaRetrabalho !== null ? `${taxaRetrabalho}%` : "—"}
@@ -364,7 +360,7 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, custoA
           <StatCard label="Margem média por peça" value={brl(margemResumo.media)} icon={Wallet} />
         )}
       </div>
-      {mediaEsperaCliente === null && (
+      {mediaEsperaClienteValor === null && (
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: -16, marginBottom: 20 }}>
           "Espera média por prova" é uma métrica nova: só conta peças pausadas com o motivo "aguardando prova" a partir de agora — os pedidos históricos importados não têm esse detalhe registrado.
         </div>

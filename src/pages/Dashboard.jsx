@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Gift, PackageCheck, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Gift, Hourglass, PackageCheck, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
 import DoacoesPorAno from "../components/DoacoesPorAno";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, fmtData, hojeISO, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, diasAte, fmtData, hojeISO, mediaEsperaCliente, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
 import CentralAlertas from "../components/CentralAlertas";
 import { supabase } from "../supabaseClient";
 
@@ -71,6 +71,13 @@ export default function Dashboard({ pedidos, pecas, despesas, estoqueTecidos, ir
   // Tempo médio de produção, separado por tipo de cliente (novo vs recompra).
   const { novos: tempoMedioNovos, recompra: tempoMedioRecompra } = temposMediosProducao(pedidos);
 
+  // Quanto tempo em média um cliente demora pra vir fazer a prova depois
+  // de pausado o pedido (motivo "cliente_prova") — dá embasamento pra
+  // responder "quanto tempo demora uma prova" (só entram pedidos já
+  // entregues, com pelo menos uma pausa desse motivo já encerrada).
+  const entreguesComData = pedidos.filter((p) => p.status === "Entregue" && p.dataEntrega);
+  const esperaMediaProva = mediaEsperaCliente(entreguesComData);
+
   // Alertas de outras abas, reunidos aqui pra dar uma visão única do que
   // precisa de atenção sem precisar entrar em cada uma.
   const pecasAtrasadas = (pecas || []).filter((p) => p.status !== "Entregue" && p.previsaoEntrega && diasAte(p.previsaoEntrega) < 0).length;
@@ -106,8 +113,14 @@ export default function Dashboard({ pedidos, pecas, despesas, estoqueTecidos, ir
         <StatCard label="Margem estimada" value={brl(margem)} icon={TrendingUp} />
         <StatCard label="Tempo médio — cliente novo" value={tempoMedioNovos !== null ? `${tempoMedioNovos}d` : "—"} icon={Timer} />
         <StatCard label="Tempo médio — recompra" value={tempoMedioRecompra !== null ? `${tempoMedioRecompra}d` : "—"} icon={Timer} />
+        <StatCard label="Espera média por prova" value={esperaMediaProva !== null ? `${esperaMediaProva}d` : "—"} icon={Hourglass} />
         <StatCard label="Doações" value={doacoes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0)} icon={Gift} />
       </div>
+      {esperaMediaProva === null && (
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: -20, marginBottom: 20 }}>
+          "Espera média por prova" é uma métrica nova: só conta pedidos pausados com o motivo "cliente_prova" a partir de agora — pedidos antigos não têm esse detalhe registrado.
+        </div>
+      )}
 
       <TempoProducaoPorMes lista={pedidos} titulo="Tempo médio de produção por mês — Camisaria" />
       <DoacoesPorAno doacoes={doacoes} quantidadeFn={(p) => parseFloat(p.quantidade) || 0} titulo="Doações por ano — Camisaria" />
