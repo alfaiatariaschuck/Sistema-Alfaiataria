@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Card } from "./ui";
-import { BRASS, INK, STATUS_SEM_VENDA_ALFAIATARIA, TEXT_MUTED } from "../lib/constants";
+import { BRASS, INK, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
 
 // Mesma paleta camisaria/alfaiataria dos outros gráficos do sistema
 // (Faturamento por mês, Peças vendidas por ano).
@@ -34,7 +34,7 @@ function calcularQuantidadePorMes(pedidos, pecas, meses) {
     mapa.get(mes).camisaria += parseFloat(p.quantidade) || 0;
   });
   (pecas || []).forEach((p) => {
-    if (STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) || !p.dataPedido) return;
+    if (TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) || !p.dataPedido) return;
     const mes = p.dataPedido.slice(0, 7);
     if (!mapa.has(mes)) return;
     mapa.get(mes).alfaiataria += 1;

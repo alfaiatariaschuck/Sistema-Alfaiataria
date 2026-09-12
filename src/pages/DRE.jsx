@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ChevronLeft, ChevronRight, Info, Layers, Scale, Scissors, Shirt, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Card, PageTitle, StatCard } from "../components/ui";
-import { BRASS, INK, LINE, STATUS_SEM_VENDA_ALFAIATARIA, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS, INK, LINE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { custoEquipeMensal } from "../lib/custoEquipe";
 import { custoCompartilhadoRateado } from "../lib/custoFixoMensal";
@@ -189,7 +189,7 @@ export default function DRE({ pedidos, pecas, despesas = [], equipe = [], custoA
     const pecasMes = (pecas || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesSelecionado);
 
     const receitaCamisaria = pedidosMes.filter((p) => p.status !== "Doação").reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
-    const receitaAlfaiataria = pecasMes.filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status)).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+    const receitaAlfaiataria = pecasMes.filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida)).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
 
     const maoDeObraCamisaria = pedidosMes.reduce((s, p) => s + (parseFloat(p.pagoFabiana?.valor) || 0), 0);
     const tecidoCamisaria = pedidosMes.reduce((s, p) => s + custoTecidoDe(p.tecidos), 0);

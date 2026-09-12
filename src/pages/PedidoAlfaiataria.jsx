@@ -20,6 +20,7 @@ import {
   ORIGENS_CLIENTE,
   PECA_SECOES,
   STATUS_ALFAIATARIA,
+  TIPOS_SAIDA_PECA,
   TEXT_MUTED,
   TIPOS_PECA,
   inputStyle,
@@ -224,6 +225,16 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
                   <option key={s}>{s}</option>
                 ))}
               </select>
+            </Field>
+            <Field label="Tipo">
+              <select style={inputStyle} value={novaPeca.tipoSaida} onChange={(e) => setNovaPeca({ ...novaPeca, tipoSaida: e.target.value })}>
+                {TIPOS_SAIDA_PECA.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+              {novaPeca.tipoSaida !== "Venda" && (
+                <span style={{ fontSize: 10, color: TEXT_MUTED }}>Não conta como faturamento/venda, mas o custo de produção continua contando normal.</span>
+              )}
             </Field>
             <Field label="Valor devido ao Icaro (R$)">
               <input

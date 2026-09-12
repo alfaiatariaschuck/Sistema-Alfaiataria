@@ -128,6 +128,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
                   {p.tecidoChegou ? <PackageCheck size={14} /> : <Package size={14} />}
                 </span>
                 <Pill text={p.status} style={STATUS_STYLE[p.status]} />
+                {p.tipoSaida && p.tipoSaida !== "Venda" && <Pill text={p.tipoSaida} style={STATUS_STYLE[p.tipoSaida]} />}
                 <ChevronRight size={16} color={TEXT_MUTED} />
               </div>
             </button>

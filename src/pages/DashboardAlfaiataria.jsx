@@ -3,13 +3,17 @@ import { AlertTriangle, CheckCircle2, Clock, Gift, Phone, Scissors, Target, Time
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
 import DoacoesPorAno from "../components/DoacoesPorAno";
-import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_SEM_VENDA_ALFAIATARIA, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
+import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData, hojeISO, tempoMedioProducaoGenerico } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_ICARO = "telefone_icaro";
 const CHAVE_META = "meta_vendas_alfaiataria";
-const STATUS_PAINEL = STATUS_ALFAIATARIA.filter((s) => s !== "Pronto" && !STATUS_SEM_VENDA_ALFAIATARIA.includes(s));
+// "Doação"/Permuta/Uso próprio não são mais status (são tipo de saída,
+// campo à parte) — status hoje é só etapa de produção, então não precisa
+// mais filtrar nada daqui além de "Pronto" (que nem existe em
+// STATUS_ALFAIATARIA, mas o filtro fica por segurança).
+const STATUS_PAINEL = STATUS_ALFAIATARIA.filter((s) => s !== "Pronto");
 const VERMELHO = "#9C4A1E";
 
 export default function DashboardAlfaiataria({ pecas, irPara }) {
@@ -29,8 +33,8 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
   // Doação/Permuta/Uso próprio não contam como venda pro cliente, mas o
   // custo de produção (Icaro) continua contando normal — a peça foi feita
   // do mesmo jeito.
-  const naoDoacao = (p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status);
-  const doacoes = pecas.filter((p) => p.status === "Doação");
+  const naoDoacao = (p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida);
+  const doacoes = pecas.filter((p) => p.tipoSaida === "Doação");
   const abertas = pecas.filter((p) => p.status !== "Entregue" && naoDoacao(p));
   const totalGeral = pecas.reduce((s, p) => s + (parseFloat(p.valorTotal) || 0), 0);
   const pagoGeral = pecas.reduce((s, p) => s + (parseFloat(p.pago) || 0), 0);

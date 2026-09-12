@@ -32,18 +32,23 @@ export const STATUS_ALFAIATARIA = [
   "Finalização",
   "Entregue Parcial",
   "Entregue",
-  "Doação",
-  "Permuta",
-  "Uso próprio",
 ];
 
-// Status de Alfaiataria que consomem tecido/mão de obra de verdade mas não
-// são venda pra cliente pagante — não contam em faturamento, quantidade
+// Tipo de saída da peça de Alfaiataria — separado da etapa de produção
+// (status) de propósito: uma peça em permuta/doação/uso próprio passa
+// pelas MESMAS etapas (Molde, Corte, Provas...) que uma venda normal, só
+// que no fim ninguém paga por ela. Antes isso virava um "status" à parte
+// (Doação substituindo a etapa), o que escondia em que pé da produção a
+// peça estava — por isso agora é um campo próprio, independente.
+export const TIPOS_SAIDA_PECA = ["Venda", "Doação", "Permuta", "Uso próprio"];
+
+// Tipos de saída que consomem tecido/mão de obra de verdade mas não são
+// venda pra cliente pagante — não contam em faturamento, quantidade
 // vendida nem meta, mas o custo de produção continua contando normal (a
 // peça foi feita do mesmo jeito). "Doação" é presente dado a alguém,
 // "Permuta" é troca por outro bem/serviço (sem dinheiro entrando) e "Uso
 // próprio" é o dono usando pra ele mesmo.
-export const STATUS_SEM_VENDA_ALFAIATARIA = ["Doação", "Permuta", "Uso próprio"];
+export const TIPOS_SAIDA_SEM_VENDA = ["Doação", "Permuta", "Uso próprio"];
 
 export const STATUS_STYLE = {
   "Aguardando Produção": { bg: "#F6E3D9", fg: "#9C4A1E" },

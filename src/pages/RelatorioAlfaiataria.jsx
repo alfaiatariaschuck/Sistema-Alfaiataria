@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { AlertCircle, CheckCircle2, Download, FileText, Package, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
-import { FORMAS_PAGAMENTO, PAG_STYLE, STATUS_SEM_VENDA_ALFAIATARIA, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { FORMAS_PAGAMENTO, PAG_STYLE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
 
 export default function RelatorioAlfaiataria({ pecas }) {
@@ -11,7 +11,7 @@ export default function RelatorioAlfaiataria({ pecas }) {
   const [status, setStatus] = useState(null);
 
   const filtrados = pecas
-    .filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status))
+    .filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida))
     .filter((p) => {
       if (!p.dataPedido) return false;
       if (dataIni && p.dataPedido < dataIni) return false;

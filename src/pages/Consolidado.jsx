@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ChevronRight, Download, Package, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
-import { FORMAS_PAGAMENTO, LINE, LINHA_STYLE, PAG_STYLE, STATUS_SEM_VENDA_ALFAIATARIA, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
+import { FORMAS_PAGAMENTO, LINE, LINHA_STYLE, PAG_STYLE, TIPOS_SAIDA_SEM_VENDA, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, fmtData, valorRecebidoEfetivo } from "../lib/helpers";
 
 // statusPagamento aqui já reflete pagamento dividido (entrada recebida +
@@ -74,7 +74,7 @@ function montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase) {
     });
 
   const trajes = pecas
-    .filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status))
+    .filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida))
     .map((p) => {
       const valor = parseFloat(p.valorVenda) || 0;
       const { pendente, status } = statusEValorPendente(p, valor, p.statusPagamentoVenda || "Pendente");
@@ -95,6 +95,7 @@ function montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase) {
         pendente,
         formaPagamento: p.formaPagamento,
         status: p.status,
+        tipoSaida: p.tipoSaida,
         origemId: p.id,
       };
     });
@@ -297,6 +298,7 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
                 </span>
                 <Pill text={l.statusPagamento} style={PAG_STYLE[l.statusPagamento]} />
                 <Pill text={l.status} style={STATUS_STYLE[l.status] || { bg: "#EDEAE0", fg: "#2A3B4D" }} />
+                {l.tipoSaida && l.tipoSaida !== "Venda" && <Pill text={l.tipoSaida} style={STATUS_STYLE[l.tipoSaida]} />}
                 {clicavel && <ChevronRight size={16} color={TEXT_MUTED} />}
               </div>
             </div>

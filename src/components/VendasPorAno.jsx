@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Card } from "./ui";
-import { BRASS, INK, LINE, STATUS_SEM_VENDA_ALFAIATARIA, TEXT_MUTED } from "../lib/constants";
+import { BRASS, INK, LINE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
 
 // Mesma cor da "recompra" (BRASS) já usada em todo o sistema; as outras
 // duas são só pra esse gráfico — pra distinguir camisas x alfaiataria x
@@ -24,7 +24,7 @@ function calcularVendasPorAno(clientesEnriquecidos) {
       bucket(p.dataPedido.slice(0, 4)).camisas += parseFloat(p.quantidade) || 0;
     });
     (c.pecas || []).forEach((p) => {
-      if (!p.dataPedido || STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status)) return;
+      if (!p.dataPedido || TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida)) return;
       bucket(p.dataPedido.slice(0, 4)).alfaiataria += 1;
     });
     (c.historico || []).forEach((h) => {

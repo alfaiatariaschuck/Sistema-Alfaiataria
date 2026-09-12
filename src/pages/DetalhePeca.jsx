@@ -25,6 +25,7 @@ import {
   MEDIDAS_ALFAIATARIA,
   PECA_SECOES,
   STATUS_ALFAIATARIA,
+  TIPOS_SAIDA_PECA,
   STATUS_STYLE,
   TEXT_MUTED,
   inputStyle,
@@ -113,6 +114,7 @@ export default function DetalhePeca({
           <div className="flex items-center gap-2">
             <EditarNomeCliente clienteId={p.clienteId} nome={p.cliente} onRenomear={onRenomearCliente} />
             <Pill text={p.status} style={STATUS_STYLE[p.status]} />
+            {p.tipoSaida && p.tipoSaida !== "Venda" && <Pill text={p.tipoSaida} style={STATUS_STYLE[p.tipoSaida]} />}
             {p.medidasNovas && <Pill text="⚠ Medidas Novas" style={{ bg: "#F6E3D9", fg: "#9C4A1E" }} />}
             {!p.enviadoIcaro && <Pill text="📨 Não enviado pro Icaro" style={{ bg: "#DCE4EE", fg: "#2E4A6B" }} />}
           </div>
@@ -192,6 +194,16 @@ export default function DetalhePeca({
                 <option key={s}>{s}</option>
               ))}
             </select>
+          </Field>
+          <Field label="Tipo">
+            <select style={inputStyle} value={p.tipoSaida || "Venda"} onChange={(e) => set("tipoSaida", e.target.value)}>
+              {TIPOS_SAIDA_PECA.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+            {p.tipoSaida && p.tipoSaida !== "Venda" && (
+              <span style={{ fontSize: 10, color: TEXT_MUTED }}>Não conta como faturamento/venda, mas o custo de produção continua contando normal.</span>
+            )}
           </Field>
           {(PECA_SECOES[p.tipoPeca] || []).length > 1 ? (
             <Field label="Responsável por parte">
