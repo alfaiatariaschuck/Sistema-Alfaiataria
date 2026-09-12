@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { AlertTriangle, Info, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, PageTitle, StatCard } from "../components/ui";
-import { BRASS, COR_REAL, COR_REFERENCIA, TEXT_MUTED } from "../lib/constants";
+import { BRASS, COR_REAL, COR_REFERENCIA, STATUS_SEM_VENDA_ALFAIATARIA, TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO } from "../lib/helpers";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
@@ -60,7 +60,7 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
     [pedidos, mesAtualStr]
   );
   const pecasDoMes = useMemo(
-    () => (pecas || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr),
+    () => (pecas || []).filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr),
     [pecas, mesAtualStr]
   );
 
@@ -121,7 +121,7 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
           .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
           .reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0) +
         (pecas || [])
-          .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
+          .filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
           .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
       return { chave: label, a: Math.round(custoTotal), b: Math.round(receita) };
     });

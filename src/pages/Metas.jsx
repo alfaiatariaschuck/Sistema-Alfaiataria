@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Landmark, Layers, Scissors, Shirt, Target, T
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
 import MetaPorMes from "../components/MetaPorMes";
 import QuantidadePorMes from "../components/QuantidadePorMes";
-import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS, INK, LINE, STATUS_SEM_VENDA_ALFAIATARIA, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, hojeISO } from "../lib/helpers";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 import { custoMaoDeObraFabianaEfetivo, metaComMargem, pagoNoMes, pontoEquilibrioDoMes } from "../lib/custoFixoMensal";
@@ -42,7 +42,7 @@ function vendidoNoMes(pedidos, pecas, mes) {
     .filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mes)
     .reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
   const alfaiataria = (pecas || [])
-    .filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mes)
+    .filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) && (p.dataPedido || "").slice(0, 7) === mes)
     .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
   return { camisaria, alfaiataria, total: camisaria + alfaiataria };
 }
@@ -60,7 +60,7 @@ function gradePorTipo(pedidos, pecas, mes) {
       mapa.set("Camisa", atual);
     });
   (pecas || [])
-    .filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mes)
+    .filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) && (p.dataPedido || "").slice(0, 7) === mes)
     .forEach((p) => {
       const chave = p.tipoPeca || "Outro";
       const atual = mapa.get(chave) || { quantidade: 0, valor: 0 };

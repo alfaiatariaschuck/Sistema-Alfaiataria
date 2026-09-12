@@ -1,5 +1,6 @@
 import { custoAviamentoComposicao, custoTecidoDe } from "./helpers";
 import { custoEquipeMensal } from "./custoEquipe";
+import { STATUS_SEM_VENDA_ALFAIATARIA } from "./constants";
 
 // Mão de obra da camisa — usa o valor real "a pagar à Fabiana" quando já
 // preenchido; sem isso, cai pra mão de obra padrão × quantidade (mesma
@@ -48,7 +49,7 @@ export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBa
   const qtdCamisas = pedidosMes.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0);
   const ticketCamisaria = qtdCamisas > 0 ? faturamentoCamisaria / qtdCamisas : 0;
 
-  const pecasMes = (pecas || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
+  const pecasMes = (pecas || []).filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
   const qtdPecas = pecasMes.length;
   const maoDeObraPorPeca = qtdPecas > 0 ? custoEquipeMensal(equipe) / qtdPecas : 0;
   const faturamentoAlfaiataria = pecasMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
@@ -112,7 +113,7 @@ export function itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase,
       };
     });
 
-  const pecasMes = (pecas || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
+  const pecasMes = (pecas || []).filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
   const maoDeObraPorPeca = pecasMes.length > 0 ? custoEquipeMensal(equipe) / pecasMes.length : 0;
   const pecasDoMes = pecasMes.map((p) => {
     const valor = parseFloat(p.valorVenda) || 0;

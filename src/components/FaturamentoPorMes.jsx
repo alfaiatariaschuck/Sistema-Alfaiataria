@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Card } from "./ui";
-import { BRASS, INK, LINE, TEXT_MUTED } from "../lib/constants";
+import { BRASS, INK, LINE, STATUS_SEM_VENDA_ALFAIATARIA, TEXT_MUTED } from "../lib/constants";
 import { brl } from "../lib/helpers";
 
 // Mesma paleta camisaria/alfaiataria do gráfico "Peças vendidas por ano"
@@ -30,7 +30,7 @@ function calcularFaturamentoPorMes(pedidos, pecas) {
     bucket(p.dataPedido.slice(0, 7)).camisaria += valor;
   });
   (pecas || []).forEach((p) => {
-    if (p.status === "Doação" || !p.dataPedido) return;
+    if (STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) || !p.dataPedido) return;
     const valor = parseFloat(p.valorVenda) || 0;
     if (!valor) return;
     bucket(p.dataPedido.slice(0, 7)).alfaiataria += valor;

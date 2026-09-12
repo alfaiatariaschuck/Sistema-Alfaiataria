@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Card } from "./ui";
-import { INK, TEXT_MUTED } from "../lib/constants";
+import { INK, STATUS_SEM_VENDA_ALFAIATARIA, TEXT_MUTED } from "../lib/constants";
 import { brl } from "../lib/helpers";
 
 // Verde/vermelho = bateu ou não bateu a meta (mesma dupla de cor já usada
@@ -29,7 +29,7 @@ function ultimosMeses(n) {
 // Doação fica de fora — mesmo critério do resto do Metas.jsx.
 function vendidoNoMes(pedidos, pecas, mes) {
   const camisaria = pedidos.filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mes).reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
-  const alfaiataria = (pecas || []).filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mes).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+  const alfaiataria = (pecas || []).filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) && (p.dataPedido || "").slice(0, 7) === mes).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
   return camisaria + alfaiataria;
 }
 

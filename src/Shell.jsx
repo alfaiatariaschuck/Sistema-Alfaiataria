@@ -51,7 +51,7 @@ import { usePrevisoesVenda } from "./hooks/usePrevisoesVenda";
 import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
 import { useModelosCamisa, useModelosAlfaiataria } from "./hooks/useModelosCamisa";
 import { encontrarOuCriarCliente, renomearCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
-import { BRASS, CANVAS, INK, INK_SOFT } from "./lib/constants";
+import { BRASS, CANVAS, INK, INK_SOFT, STATUS_SEM_VENDA_ALFAIATARIA } from "./lib/constants";
 import { hojeISO, mediaDiasProducaoComFallback, mediaDiasProducaoPorTipo, projetarPrevisoesFilaPorEquipe } from "./lib/helpers";
 import Dashboard from "./pages/Dashboard";
 import DashboardAlfaiataria from "./pages/DashboardAlfaiataria";
@@ -224,7 +224,7 @@ export default function Shell() {
   const receitaMesAlfaiataria = useMemo(
     () =>
       (pecas || [])
-        .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
+        .filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
         .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0),
     [pecas, mesAtualStr]
   );

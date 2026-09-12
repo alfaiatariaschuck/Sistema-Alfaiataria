@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { AlertTriangle, CalendarClock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, Empty, PageTitle, StatCard } from "../components/ui";
 import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
-import { BRASS, COMPOSICAO_AVIAMENTOS, COR_REAL, COR_REFERENCIA, LINE, TEXT_MUTED } from "../lib/constants";
+import { BRASS, COMPOSICAO_AVIAMENTOS, COR_REAL, COR_REFERENCIA, LINE, STATUS_SEM_VENDA_ALFAIATARIA, TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { custoMensalDe } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
@@ -94,7 +94,7 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
   const custoTotal = custoEquipeTotal + custoEstrutura + custoProducaoTecido + custoAviamentos;
 
   const pecasDoMes = useMemo(
-    () => (pecas || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr),
+    () => (pecas || []).filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr),
     [pecas, mesAtualStr]
   );
 
@@ -165,7 +165,7 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
     }
     return meses.map(({ chaveMes, label }) => {
       const receita = (pecas || [])
-        .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
+        .filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
         .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
       return { chave: label, a: Math.round(custoTotal), b: Math.round(receita) };
     });

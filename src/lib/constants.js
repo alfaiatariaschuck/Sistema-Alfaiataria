@@ -33,7 +33,17 @@ export const STATUS_ALFAIATARIA = [
   "Entregue Parcial",
   "Entregue",
   "Doação",
+  "Permuta",
+  "Uso próprio",
 ];
+
+// Status de Alfaiataria que consomem tecido/mão de obra de verdade mas não
+// são venda pra cliente pagante — não contam em faturamento, quantidade
+// vendida nem meta, mas o custo de produção continua contando normal (a
+// peça foi feita do mesmo jeito). "Doação" é presente dado a alguém,
+// "Permuta" é troca por outro bem/serviço (sem dinheiro entrando) e "Uso
+// próprio" é o dono usando pra ele mesmo.
+export const STATUS_SEM_VENDA_ALFAIATARIA = ["Doação", "Permuta", "Uso próprio"];
 
 export const STATUS_STYLE = {
   "Aguardando Produção": { bg: "#F6E3D9", fg: "#9C4A1E" },
@@ -55,6 +65,8 @@ export const STATUS_STYLE = {
   "Entregue Parcial": { bg: "#D9EEF5", fg: "#1E6E8C" },
   Entregue: { bg: "#DCE4EE", fg: "#2E4A6B" },
   Doação: { bg: "#F5DCE8", fg: "#9C2E63" },
+  Permuta: { bg: "#E1EBDD", fg: "#3E6B2E" },
+  "Uso próprio": { bg: "#E3E7F5", fg: "#3E4F96" },
 };
 
 // Etapas mostradas no link de acompanhamento público (o "rastreio" que o

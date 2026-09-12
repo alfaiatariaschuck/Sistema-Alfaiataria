@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ChevronRight, Download, Package, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
-import { FORMAS_PAGAMENTO, LINE, LINHA_STYLE, PAG_STYLE, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
+import { FORMAS_PAGAMENTO, LINE, LINHA_STYLE, PAG_STYLE, STATUS_SEM_VENDA_ALFAIATARIA, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, fmtData, valorRecebidoEfetivo } from "../lib/helpers";
 
 // statusPagamento aqui já reflete pagamento dividido (entrada recebida +
@@ -74,7 +74,7 @@ function montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase) {
     });
 
   const trajes = pecas
-    .filter((p) => p.status !== "Doação")
+    .filter((p) => !STATUS_SEM_VENDA_ALFAIATARIA.includes(p.status))
     .map((p) => {
       const valor = parseFloat(p.valorVenda) || 0;
       const { pendente, status } = statusEValorPendente(p, valor, p.statusPagamentoVenda || "Pendente");
