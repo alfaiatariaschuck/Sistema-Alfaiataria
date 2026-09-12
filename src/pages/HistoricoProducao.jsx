@@ -288,6 +288,30 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, custoA
       .slice(0, 10);
   }, [comMargem]);
 
+  // Preço médio de venda e custo médio (tecido + aviamentos + mão de obra
+  // do Ícaro) por tipo de peça — separado, não só a margem líquida, pra
+  // dar base pra decisão de crescimento (quanto custa fazer mais um de
+  // cada tipo, quanto ele rende).
+  const precoCustoPorTipo = useMemo(() => {
+    const mapa = new Map();
+    comMargem.forEach((p) => {
+      const venda = parseFloat(p.valorVenda) || 0;
+      const custo = venda - p.margem;
+      if (!mapa.has(p.tipoPeca)) mapa.set(p.tipoPeca, { vendas: [], custos: [] });
+      mapa.get(p.tipoPeca).vendas.push(venda);
+      mapa.get(p.tipoPeca).custos.push(custo);
+    });
+    return [...mapa.entries()]
+      .map(([tipo, { vendas, custos }]) => {
+        const qtd = vendas.length;
+        const precoMedio = vendas.reduce((s, v) => s + v, 0) / qtd;
+        const custoMedio = custos.reduce((s, v) => s + v, 0) / qtd;
+        const margemMedia = precoMedio - custoMedio;
+        return { tipo, qtd, precoMedio, custoMedio, margemMedia, margemPercentual: precoMedio > 0 ? (margemMedia / precoMedio) * 100 : 0 };
+      })
+      .sort((a, b) => b.qtd - a.qtd);
+  }, [comMargem]);
+
   const margemResumo = useMemo(() => {
     if (!comMargem.length) return null;
     const total = comMargem.reduce((s, p) => s + p.margem, 0);
@@ -468,10 +492,45 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, custoA
                 Margem média por tipo de peça
               </div>
               <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-                Venda menos o valor devido ao Ícaro (mão de obra) — não desconta tecido, que não é rastreado por peça. Margem bruta aproximada.
+                Venda menos o custo real (tecido + aviamentos pela composição do tipo + valor devido ao Ícaro). Margem líquida aproximada.
                 {margemResumo && ` Margem total (entregues): ${brl(margemResumo.total)}.`}
               </div>
               <BarraSimples dados={margemPorTipo} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${brl(d.valor)} de margem em média (${d.qtd} peça(s))`} />
+            </Card>
+
+            <Card style={{ padding: 20 }} className="mb-6">
+              <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+                Preço médio e custo por tipo de peça
+              </div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+                Preço de venda e custo (tecido + aviamentos + valor devido ao Ícaro) separados — base pra decidir se compensa crescer a produção de um tipo específico.
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${LINE}`, color: TEXT_MUTED, textAlign: "left" }}>
+                      <th style={{ padding: "6px 8px", fontWeight: 600 }}>Tipo</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 600 }}>Qtd</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 600 }}>Preço médio de venda</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 600 }}>Custo médio</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 600 }}>Margem média</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 600 }}>Margem %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {precoCustoPorTipo.map((r) => (
+                      <tr key={r.tipo} style={{ borderBottom: `1px solid ${LINE}` }}>
+                        <td style={{ padding: "8px", fontWeight: 600, color: INK }}>{r.tipo}</td>
+                        <td className="fx-mono" style={{ padding: "8px" }}>{r.qtd}</td>
+                        <td className="fx-mono" style={{ padding: "8px" }}>{brl(r.precoMedio)}</td>
+                        <td className="fx-mono" style={{ padding: "8px" }}>{brl(r.custoMedio)}</td>
+                        <td className="fx-mono" style={{ padding: "8px", fontWeight: 600 }}>{brl(r.margemMedia)}</td>
+                        <td className="fx-mono" style={{ padding: "8px" }}>{r.margemPercentual.toFixed(0)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </Card>
 
             <Card style={{ padding: 20 }} className="mb-6">
