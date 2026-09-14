@@ -231,6 +231,11 @@ export const MEDIDAS_ALFAIATARIA = {
       { label: "Costas", obs: "Medida da axila à axila costas" },
       { label: "Comprimento" },
       { label: "Bíceps" },
+      { label: "Altura do Tórax Dianteiro" },
+      { label: "Altura da Cintura Dianteira" },
+      { label: "Caída do Ombro" },
+      { label: "Metade da Costa" },
+      { label: "Metade da Frente" },
     ],
   },
   calca: {
