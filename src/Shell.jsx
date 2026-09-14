@@ -160,6 +160,7 @@ export default function Shell() {
     retomarPeca,
     desfazerInicioPeca,
     removerPeca,
+    reordenarProducao,
     adicionarTecido: adicionarTecidoPeca,
     atualizarTecido: atualizarTecidoPeca,
     recarregar: recarregarPecas,
@@ -944,6 +945,7 @@ export default function Shell() {
                   onPausar={pausarPeca}
                   onRetomar={retomarPeca}
                   onDesfazerInicio={desfazerInicioPeca}
+                  onReordenar={reordenarProducao}
                   mediaDiasProducao={mediaDiasProducaoAlfaiataria}
                   mediaDiasPorTipo={mediaDiasPorTipoAlfaiataria}
                   previsoesFila={previsoesFilaAlfaiataria}

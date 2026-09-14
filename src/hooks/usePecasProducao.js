@@ -8,7 +8,7 @@ import { diasEntre, hojeISO } from "../lib/helpers";
 // restrinja o resto do banco pra esse papel, essa tela nem pede esses
 // campos, então eles nunca chegam a trafegar até o navegador dele.
 const SELECT_PRODUCAO =
-  "id, cliente_id, data_pedido, previsao_entrega, previsao_manual, data_limite_evento, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, responsaveis_secoes, prioridade, situacao, medidas, caracteristicas, retrabalho, retrabalho_obs, clientes(nome), tecidos(codigo, qtd, numero, fornecedor), pedidos_alfaiataria_pausas(motivo, data_inicio, data_fim)";
+  "id, cliente_id, data_pedido, previsao_entrega, previsao_manual, data_limite_evento, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, responsaveis_secoes, prioridade, situacao, ordem_producao, medidas, caracteristicas, retrabalho, retrabalho_obs, clientes(nome), tecidos(codigo, qtd, numero, fornecedor), pedidos_alfaiataria_pausas(motivo, data_inicio, data_fim)";
 
 function rowParaPecaProducao(row) {
   return {
@@ -32,6 +32,7 @@ function rowParaPecaProducao(row) {
     responsaveisSecoes: row.responsaveis_secoes || {},
     prioridade: row.prioridade || "Normal",
     situacao: row.situacao || "Aguardando",
+    ordemProducao: row.ordem_producao ?? null,
     medidas: row.medidas || {},
     caracteristicas: row.caracteristicas || {},
     retrabalho: !!row.retrabalho,

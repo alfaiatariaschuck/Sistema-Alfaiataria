@@ -96,6 +96,7 @@ function rowParaPeca(row) {
     responsaveisSecoes: row.responsaveis_secoes || {},
     prioridade: row.prioridade || "Normal",
     situacao: row.situacao || "Aguardando",
+    ordemProducao: row.ordem_producao ?? null,
     enviadoIcaro: row.enviado_icaro === undefined ? true : !!row.enviado_icaro,
     tecidoChegou: !!row.tecido_chegou,
     medidas: row.medidas || {},
@@ -159,6 +160,7 @@ const CAMPO_PARA_COLUNA = {
   responsaveisSecoes: "responsaveis_secoes",
   prioridade: "prioridade",
   situacao: "situacao",
+  ordemProducao: "ordem_producao",
 };
 
 export function usePedidosAlfaiataria() {
@@ -374,6 +376,24 @@ export function usePedidosAlfaiataria() {
     });
   }
 
+  // Ordem manual da fila de produção — recebe os ids na ordem final
+  // desejada (depois de mover uma peça pra cima/baixo) e regrava a
+  // posição (0, 1, 2...) de todas de uma vez, pra não deixar buraco/
+  // conflito de número. Fica salvo no banco — vale igual pra quem olha
+  // como dono e pro login do Ícaro, independente de qualquer ordenação
+  // por coluna que cada um clicar na hora.
+  async function reordenarProducao(idsEmOrdem) {
+    const ordemPorId = new Map(idsEmOrdem.map((id, i) => [id, i]));
+    setPecas((prev) => prev.map((p) => (ordemPorId.has(p.id) ? { ...p, ordemProducao: ordemPorId.get(p.id) } : p)));
+    await comIndicador(async () => {
+      const resultados = await Promise.all(
+        idsEmOrdem.map((id, i) => supabase.from("pedidos_alfaiataria").update({ ordem_producao: i }).eq("id", id))
+      );
+      const erro = resultados.find((r) => r.error);
+      if (erro) setErro(erro.error.message);
+    });
+  }
+
   async function adicionarTecido(pecaId) {
     const peca = pecas.find((p) => p.id === pecaId);
     const ordem = peca ? peca.tecidos.length : 0;
@@ -425,6 +445,7 @@ export function usePedidosAlfaiataria() {
     retomarPeca,
     desfazerInicioPeca,
     removerPeca,
+    reordenarProducao,
     adicionarTecido,
     atualizarTecido,
   };

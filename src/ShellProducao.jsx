@@ -80,7 +80,22 @@ export default function ShellProducao() {
   const [pecaFicha, setPecaFicha] = useState(null);
 
   const todasAbertas = useMemo(() => pecas.filter((p) => p.status !== "Entregue"), [pecas]);
-  const abertas = todasAbertas.filter((p) => p.cliente.toLowerCase().includes(busca.toLowerCase()));
+  // Mesma ordem manual definida pelo dono (Controle de Produção) — nunca
+  // ordenada por ele ainda (ordemProducao null) cai no fim, pela fila
+  // normal (pedido mais antigo primeiro). Vale tanto na visão em tabela
+  // quanto em cards, pra não mostrar ordens diferentes dependendo de
+  // qual modo o Ícaro está usando.
+  const abertasOrdenadas = useMemo(
+    () =>
+      [...todasAbertas].sort((a, b) => {
+        if (a.ordemProducao == null && b.ordemProducao == null) return (a.dataPedido || "").localeCompare(b.dataPedido || "");
+        if (a.ordemProducao == null) return 1;
+        if (b.ordemProducao == null) return -1;
+        return a.ordemProducao - b.ordemProducao;
+      }),
+    [todasAbertas]
+  );
+  const abertas = abertasOrdenadas.filter((p) => p.cliente.toLowerCase().includes(busca.toLowerCase()));
 
   const mediaDiasPorTipo = useMemo(() => {
     const cache = new Map();

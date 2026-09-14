@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, PartyPopper, Pause, Play } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, ChevronDown, ChevronUp, PartyPopper, Pause, Play } from "lucide-react";
 import { Empty, Pill } from "./ui";
 import { BRASS, INK, LINE, STATUS_ALFAIATARIA, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { diasAte, diasProducaoReal, fmtData, previsaoEfetivaDe, previsaoEstimada, statusEvento, statusParaEtapa } from "../lib/helpers";
@@ -31,6 +31,7 @@ export default function TabelaControleProducao({
   onPausar,
   onRetomar,
   onDesfazerInicio,
+  onReordenar,
   mediaDiasPorTipo,
   previsoesFila,
 }) {
@@ -58,7 +59,18 @@ export default function TabelaControleProducao({
   );
 
   const ordenadas = useMemo(() => {
-    if (!ordenarPor) return enriquecidas;
+    if (!ordenarPor) {
+      // Ordem manual (definida pelo dono, arrastando pra cima/baixo) —
+      // vale igual pra quem vê como dono e pro login do Ícaro,
+      // independente de qualquer coluna clicada. Peça sem ordem definida
+      // ainda (nunca movida) cai no fim, pela fila normal (mais antiga primeiro).
+      return [...enriquecidas].sort((a, b) => {
+        if (a.ordemProducao == null && b.ordemProducao == null) return b.diasFila - a.diasFila;
+        if (a.ordemProducao == null) return 1;
+        if (b.ordemProducao == null) return -1;
+        return a.ordemProducao - b.ordemProducao;
+      });
+    }
     return [...enriquecidas].sort((a, b) => {
       let av = a[ordenarPor];
       let bv = b[ordenarPor];
@@ -84,8 +96,28 @@ export default function TabelaControleProducao({
     }
   }
 
+  // Move uma peça pra cima/baixo na ordem manual — só faz sentido
+  // enquanto nenhuma coluna estiver ordenando por cima (senão a posição
+  // na tela não bate com a ordem manual de verdade).
+  function mover(pecaId, direcao) {
+    const idx = ordenadas.findIndex((p) => p.id === pecaId);
+    const novoIdx = idx + direcao;
+    if (idx === -1 || novoIdx < 0 || novoIdx >= ordenadas.length) return;
+    const nova = [...ordenadas];
+    [nova[idx], nova[novoIdx]] = [nova[novoIdx], nova[idx]];
+    onReordenar?.(nova.map((p) => p.id));
+  }
+
   return (
     <div style={{ overflowX: "auto" }}>
+      {podeEditarAtribuicao && onReordenar && ordenarPor && (
+        <div className="flex items-center gap-2 px-3 py-2" style={{ fontSize: 11, color: TEXT_MUTED, borderBottom: `1px solid ${LINE}` }}>
+          Ordenando por coluna — as setas de mover ficam escondidas até você voltar pra ordem manual.
+          <button onClick={() => setOrdenarPor(null)} style={{ color: BRASS, fontWeight: 600 }}>
+            voltar pra ordem manual
+          </button>
+        </div>
+      )}
       <table style={{ minWidth: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
           <tr style={{ borderBottom: `1px solid ${LINE}`, background: "#F7F4EC" }}>
@@ -122,7 +154,23 @@ export default function TabelaControleProducao({
               p.statusEvento === "atrasado" ? "#FBE1D6" : p.statusEvento === "risco" ? "#FCEFC7" : undefined;
             return (
               <tr key={p.id} style={{ borderBottom: `1px solid ${LINE}`, background: corLinhaEvento }} className="fx-row-hover">
-                <td style={{ padding: "12px", color: TEXT_MUTED }}>{i + 1}</td>
+                <td style={{ padding: "12px", color: TEXT_MUTED }}>
+                  {podeEditarAtribuicao && onReordenar && !ordenarPor ? (
+                    <div className="flex items-center gap-1">
+                      <span>{i + 1}</span>
+                      <div className="flex flex-col">
+                        <button onClick={() => mover(p.id, -1)} disabled={i === 0} style={{ color: i === 0 ? "#C9C2B0" : BRASS, lineHeight: 0 }} title="Mover pra cima">
+                          <ChevronUp size={13} />
+                        </button>
+                        <button onClick={() => mover(p.id, 1)} disabled={i === ordenadas.length - 1} style={{ color: i === ordenadas.length - 1 ? "#C9C2B0" : BRASS, lineHeight: 0 }} title="Mover pra baixo">
+                          <ChevronDown size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    i + 1
+                  )}
+                </td>
                 <td onClick={() => onAbrir && onAbrir(p.id)} style={{ padding: "12px", cursor: onAbrir ? "pointer" : "default", whiteSpace: "nowrap" }}>
                   <div className="flex items-center gap-1.5">
                     <span style={{ fontWeight: 600 }}>{p.cliente || "Sem nome"}</span>

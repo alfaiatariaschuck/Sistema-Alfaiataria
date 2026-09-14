@@ -14,6 +14,7 @@ export default function ControleProducao({
   onPausar,
   onRetomar,
   onDesfazerInicio,
+  onReordenar,
   mediaDiasProducao,
   mediaDiasPorTipo,
   previsoesFila,
@@ -44,6 +45,7 @@ export default function ControleProducao({
           onPausar={onPausar}
           onRetomar={onRetomar}
           onDesfazerInicio={onDesfazerInicio}
+          onReordenar={onReordenar}
           mediaDiasPorTipo={mediaDiasPorTipo}
           previsoesFila={previsoesFila}
         />
