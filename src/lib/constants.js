@@ -139,6 +139,7 @@ export const CATEGORIAS_DESPESA = [
   "Comissões",
   "Pró-labore",
   "Plano de Saúde",
+  "Contador",
   "Investimento",
   "Outros",
 ];
