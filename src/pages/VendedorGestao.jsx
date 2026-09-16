@@ -9,6 +9,7 @@ import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 import { useVendedores } from "../hooks/useVendedores";
 import SimuladorComissao from "../components/SimuladorComissao";
 import FunilVendas from "../components/FunilVendas";
+import AgendaComercial from "../components/AgendaComercial";
 import { calcularComissao } from "../lib/comissao";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -598,6 +599,9 @@ export default function VendedorGestao({
             podeEditar={false}
             tituloCompacto={`Funil de Vendas — ${v.nome}`}
           />
+          <div className="mt-4">
+            <AgendaComercial vendedorId={v.id} podeEditar={false} tituloCompacto={`Agenda Comercial — ${v.nome}`} />
+          </div>
         </div>
       ))}
     </div>
