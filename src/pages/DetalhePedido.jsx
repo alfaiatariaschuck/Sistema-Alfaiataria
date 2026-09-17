@@ -218,6 +218,9 @@ export default function DetalhePedido({
             <Field label="Previsão de entrega">
               <input type="date" style={inputStyle} value={p.previsaoEntrega} onChange={(e) => set("previsaoEntrega", e.target.value)} />
             </Field>
+            <Field label="Vendedor">
+              <input style={inputStyle} value={p.vendedor || ""} onChange={(e) => set("vendedor", e.target.value)} />
+            </Field>
             <Field label="Quantidade (total de camisas do pedido)">
               <input
                 type="number"
