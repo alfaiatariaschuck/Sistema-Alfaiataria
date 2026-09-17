@@ -13,14 +13,18 @@ const VERMELHO = "#9C4A1E";
 const DIAS_LIMITE = 40;
 const STATUS_ATIVOS = STATUS.filter((s) => s !== "Entregue");
 
-export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo = "Pedidos", nomeCronograma = "Tales", ...acoes }) {
+export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo = "Pedidos", nomeCronograma = "Tales", incluirEntregues = false, ...acoes }) {
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState(new Set());
   const [mostrarCronograma, setMostrarCronograma] = useState(false);
+  const opcoesStatus = incluirEntregues ? STATUS : STATUS_ATIVOS;
 
   // Pedidos entregues saem daqui — ficam no histórico da aba Entregues.
+  // Exceção: telas que precisam ver TODOS os pedidos de uma pessoa (ex:
+  // "Pedidos Deivid") passam incluirEntregues, senão um pedido já
+  // entregue simplesmente "sumia" dessa visão específica.
   const filtrados = pedidos
-    .filter((p) => p.status !== "Entregue")
+    .filter((p) => incluirEntregues || p.status !== "Entregue")
     .filter((p) => {
       const bateBusca = p.cliente.toLowerCase().includes(busca.toLowerCase());
       const bateStatus = statusFiltro.size === 0 || statusFiltro.has(p.status);
@@ -69,7 +73,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
         </button>
       </div>
       <div className="mb-4">
-        <FiltroStatusMulti opcoes={STATUS_ATIVOS} estilos={STATUS_STYLE} selecionados={statusFiltro} onChange={setStatusFiltro} />
+        <FiltroStatusMulti opcoes={opcoesStatus} estilos={STATUS_STYLE} selecionados={statusFiltro} onChange={setStatusFiltro} />
       </div>
 
       {mostrarCronograma && <CronogramaImprimivel itens={pedidosAbertos} onFechar={() => setMostrarCronograma(false)} />}

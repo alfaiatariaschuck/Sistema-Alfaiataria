@@ -911,6 +911,7 @@ export default function Shell() {
                   pedidos={pedidos.filter((p) => (p.vendedor || "").trim().toLowerCase() === "deivid")}
                   titulo="Pedidos Deivid"
                   nomeCronograma="Deivid"
+                  incluirEntregues
                   selecionado={selecionado}
                   setSelecionado={setSelecionado}
                   {...acoesPedido}
