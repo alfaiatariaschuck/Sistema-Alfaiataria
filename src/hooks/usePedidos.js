@@ -17,7 +17,7 @@ export function pedidoVazio() {
     origemCliente: "",
     indicadoPor: "",
     indicadoPorCpf: "",
-    vendedor: "",
+    vendedor: "Tales",
     dataPedido: new Date().toISOString().slice(0, 10),
     previsaoEntrega: "",
     dataEntrega: "",
