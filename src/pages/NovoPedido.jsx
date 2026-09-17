@@ -270,12 +270,21 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
           </div>
 
           <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${LINE}` }}>
+            <Field label="Costureira">
+              <select style={{ ...inputStyle, maxWidth: 200 }} value={p.costureira} onChange={(e) => set("costureira", e.target.value)}>
+                {["Fabiana", "Milena"].map((nome) => (
+                  <option key={nome} value={nome}>
+                    {nome}
+                  </option>
+                ))}
+              </select>
+            </Field>
             <div className="fx-serif mb-2" style={{ fontSize: 14, fontWeight: 600 }}>
-              Valor a pagar à Fabiana
+              Valor a pagar à {p.costureira}
             </div>
             <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
               Coloque aqui o valor total do pedido inteiro (todas as {p.quantidade || 1} camisas) — já vem
-              preenchido sozinho (mão de obra padrão × quantidade); edite se o combinado com a Fabi for diferente.
+              preenchido sozinho (mão de obra padrão × quantidade); edite se o combinado com a {p.costureira} for diferente.
               Se só parte for pra produção agora (ex: 1 pra prova), preencha "Qtd. camisas já em produção" abaixo —
               o Contas a Pagar recebe só a fração proporcional; o resto entra sozinho quando você aumentar essa
               quantidade.
@@ -308,7 +317,7 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
               </div>
             )}
             <CampoPagamento
-              labelValor="Valor Fabiana (R$)"
+              labelValor={`Valor ${p.costureira} (R$)`}
               labelPago="Pago"
               valor={p.pagoFabiana.valor}
               statusPagamento={p.pagoFabiana.statusPagamento}

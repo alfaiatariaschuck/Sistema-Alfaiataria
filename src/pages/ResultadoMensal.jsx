@@ -175,7 +175,7 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra (equipe + Fabiana)</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra (equipe + costureiras)</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>{brl(custoEquipeAtelie + custoMaoDeObraFabiana)}</div>
           </div>
           <div>

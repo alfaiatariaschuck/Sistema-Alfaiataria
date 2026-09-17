@@ -83,7 +83,7 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
         </select>
         <span style={{ fontSize: 11, color: TEXT_MUTED }}>
           Custo e margem usam o tecido e aviamento já lançados em cada pedido/peça. Mão de obra: na camisaria é o
-          valor a pagar à Fabiana; na alfaiataria é o rateio do custo mensal da equipe (Equipe) pela quantidade de
+          valor a pagar à costureira; na alfaiataria é o rateio do custo mensal da equipe (Equipe) pela quantidade de
           peças do mês, já que Ícaro e freelancers são pagos por mês/diária, não por peça pronta.
         </span>
       </div>

@@ -90,8 +90,11 @@ import BuscaGlobal from "./components/BuscaGlobal";
 
 const NAV = [
   { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true, grupo: "Camisaria" },
+  { id: "painel-camisaria-fabiana", label: "Painel Camisaria Fabiana", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
+  { id: "painel-camisaria-milena", label: "Painel Camisaria Milena", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true, grupo: "Camisaria" },
   { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true, grupo: "Camisaria" },
+  { id: "pedidos-deivid", label: "Pedidos Deivid", icon: ClipboardList, primary: false, grupo: "Camisaria" },
   { id: "modelos-camisa", label: "Tecidos de Camisa", icon: Shirt, primary: false, grupo: "Camisaria" },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false, grupo: "Camisaria" },
   { id: "custos-camisaria", label: "Custos da Camisaria", icon: PiggyBank, primary: false, grupo: "Camisaria" },
@@ -438,10 +441,11 @@ export default function Shell() {
       }
       return;
     }
+    const nomeCosteira = pedido.costureira || "Fabiana";
     await criarDespesa({
-      descricao: `Mão de obra Fabiana — ${pedido.cliente}`,
+      descricao: `Mão de obra ${nomeCosteira} — ${pedido.cliente}`,
       categoria: "Salários",
-      fornecedor: "Fabi",
+      fornecedor: nomeCosteira,
       valor: valorParaDespesa,
       frete: 0,
       vencimento: hojeISO(),
@@ -846,6 +850,34 @@ export default function Shell() {
                   irParaTab={setTab}
                 />
               )}
+              {tab === "painel-camisaria-fabiana" && (
+                <Dashboard
+                  pedidos={pedidos.filter((p) => (p.costureira || "Fabiana") === "Fabiana")}
+                  pecas={pecas}
+                  despesas={despesas}
+                  estoqueTecidos={estoqueTecidos}
+                  irPara={irPara}
+                  irParaTab={setTab}
+                  eyebrow="Visão geral — camisaria"
+                  titulo="Painel Camisaria Fabiana"
+                  nomeCosteira="Fabiana"
+                  mostrarExtras={false}
+                />
+              )}
+              {tab === "painel-camisaria-milena" && (
+                <Dashboard
+                  pedidos={pedidos.filter((p) => p.costureira === "Milena")}
+                  pecas={pecas}
+                  despesas={despesas}
+                  estoqueTecidos={estoqueTecidos}
+                  irPara={irPara}
+                  irParaTab={setTab}
+                  eyebrow="Visão geral — camisaria"
+                  titulo="Painel Camisaria Milena"
+                  nomeCosteira="Milena"
+                  mostrarExtras={false}
+                />
+              )}
               {tab === "novo" && (
                 <NovoPedido
                   onSalvar={salvarNovoPedido}
@@ -874,6 +906,15 @@ export default function Shell() {
                 />
               )}
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
+              {tab === "pedidos-deivid" && (
+                <Pedidos
+                  pedidos={pedidos.filter((p) => p.vendedor === "Deivid")}
+                  titulo="Pedidos Deivid"
+                  selecionado={selecionado}
+                  setSelecionado={setSelecionado}
+                  {...acoesPedido}
+                />
+              )}
               {tab === "modelos-camisa" && (
                 <ModelosCamisa
                   modelos={modelosCamisa}

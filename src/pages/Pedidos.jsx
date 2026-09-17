@@ -13,7 +13,7 @@ const VERMELHO = "#9C4A1E";
 const DIAS_LIMITE = 40;
 const STATUS_ATIVOS = STATUS.filter((s) => s !== "Entregue");
 
-export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes }) {
+export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo = "Pedidos", ...acoes }) {
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState(new Set());
   const [mostrarCronograma, setMostrarCronograma] = useState(false);
@@ -47,7 +47,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, ...acoes
 
   return (
     <div>
-      <PageTitle eyebrow={`${filtrados.length} pedido(s) · ${totalCamisasFiltradas} camisa(s)`} title="Pedidos" />
+      <PageTitle eyebrow={`${filtrados.length} pedido(s) · ${totalCamisasFiltradas} camisa(s)`} title={titulo} />
       <PendenciasFabiana pedidos={pedidos} onDefinirValorPorCamisaFabiana={acoes.onDefinirValorPorCamisaFabiana} onSelecionar={setSelecionado} />
       <OutrasPendencias pedidos={pedidos} onSelecionar={setSelecionado} />
       <div className="flex flex-wrap items-center gap-2 mb-4">

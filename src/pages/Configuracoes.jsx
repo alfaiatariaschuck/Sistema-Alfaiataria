@@ -6,6 +6,7 @@ import { brl, hojeISO } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_FABI = "telefone_fabi";
+const CHAVE_MILENA = "telefone_milena";
 const CHAVE_ICARO = "telefone_icaro";
 const CHAVE_SUMIDO = "cliente_sumido_meses";
 const CHAVE_META_CAMISARIA = "meta_vendas_camisaria";
@@ -26,6 +27,7 @@ const CHAVE_ALIQUOTA_IMPOSTO = "aliquota_imposto_pct";
 
 export default function Configuracoes({ despesas = [], onCriarDespesa }) {
   const [telFabi, setTelFabi] = useState("");
+  const [telMilena, setTelMilena] = useState("");
   const [telIcaro, setTelIcaro] = useState("");
   const [sumidoMeses, setSumidoMeses] = useState("6");
   const [metaCamisaria, setMetaCamisaria] = useState("");
@@ -53,6 +55,7 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
         .select("chave, valor")
         .in("chave", [
           CHAVE_FABI,
+          CHAVE_MILENA,
           CHAVE_ICARO,
           CHAVE_SUMIDO,
           CHAVE_META_CAMISARIA,
@@ -73,6 +76,7 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
         ]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_FABI) setTelFabi(row.valor || "");
+        if (row.chave === CHAVE_MILENA) setTelMilena(row.valor || "");
         if (row.chave === CHAVE_ICARO) setTelIcaro(row.valor || "");
         if (row.chave === CHAVE_SUMIDO) setSumidoMeses(row.valor || "6");
         if (row.chave === CHAVE_META_CAMISARIA) setMetaCamisaria(row.valor || "");
@@ -99,6 +103,7 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
     setSalvo(null);
     const { error } = await supabase.from("config").upsert([
       { chave: CHAVE_FABI, valor: telFabi },
+      { chave: CHAVE_MILENA, valor: telMilena },
       { chave: CHAVE_ICARO, valor: telIcaro },
       { chave: CHAVE_SUMIDO, valor: sumidoMeses },
       { chave: CHAVE_META_CAMISARIA, valor: metaCamisaria },
@@ -185,7 +190,7 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
           Contatos de produção
         </div>
         <p style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 16 }}>
-          Configure aqui uma vez o WhatsApp da Fabi e do Icaro — as fichas de produção (Pedido Camisas e
+          Configure aqui uma vez o WhatsApp da Fabi, da Milena e do Icaro — as fichas de produção (Pedido Camisas e
           Pedido Alfaiataria) já usam esses números automaticamente, sem precisar digitar de novo toda vez.
         </p>
         {carregando ? (
@@ -194,6 +199,9 @@ export default function Configuracoes({ despesas = [], onCriarDespesa }) {
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
             <Field label="WhatsApp da Fabi (camisas)">
               <input style={inputStyle} placeholder="Ex: 51999998888" value={telFabi} onChange={(e) => setTelFabi(e.target.value)} />
+            </Field>
+            <Field label="WhatsApp da Milena (camisas)">
+              <input style={inputStyle} placeholder="Ex: 51999996666" value={telMilena} onChange={(e) => setTelMilena(e.target.value)} />
             </Field>
             <Field label="WhatsApp do Icaro (alfaiataria)">
               <input style={inputStyle} placeholder="Ex: 51999997777" value={telIcaro} onChange={(e) => setTelIcaro(e.target.value)} />

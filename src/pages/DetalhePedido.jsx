@@ -382,8 +382,17 @@ export default function DetalhePedido({
               </select>
             </Field>
             <div className="mt-3">
+              <Field label="Costureira">
+                <select style={{ ...inputStyle, maxWidth: 200 }} value={p.costureira || "Fabiana"} onChange={(e) => set("costureira", e.target.value)}>
+                  {["Fabiana", "Milena"].map((nome) => (
+                    <option key={nome} value={nome}>
+                      {nome}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <div className="fx-serif mb-2" style={{ fontSize: 13, fontWeight: 600 }}>
-                Valor a pagar à Fabiana
+                Valor a pagar à {p.costureira || "Fabiana"}
               </div>
               <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
                 Valor total do pedido inteiro (todas as {p.quantidade || 1} camisas). Se só parte for pra produção
@@ -428,14 +437,14 @@ export default function DetalhePedido({
               ) : (
                 !p.pagoFabiana.valor && (
                   <div className="mb-3 px-3 py-2" style={{ background: "#F6E3D9", color: "#9C4A1E", borderRadius: 6, fontSize: 12 }}>
-                    Sem "Valor Fabiana" preenchido, a despesa dela <strong>não é lançada automaticamente</strong> em
+                    Sem "Valor {p.costureira || "Fabiana"}" preenchido, a despesa dela <strong>não é lançada automaticamente</strong> em
                     Contas a Pagar ao marcar "Em Produção" — pedidos lançados pelo vendedor não têm esse campo, então
                     chegam sempre em branco. Preencha "Valor por camisa" acima (recomendado) ou o total abaixo.
                   </div>
                 )
               )}
               <CampoPagamento
-                labelValor="Valor Fabiana (R$)"
+                labelValor={`Valor ${p.costureira || "Fabiana"} (R$)`}
                 labelPago="Pago"
                 valor={p.pagoFabiana.valor}
                 statusPagamento={p.pagoFabiana.statusPagamento}

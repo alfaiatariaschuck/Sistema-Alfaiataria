@@ -185,14 +185,14 @@ export default function FluxoDeCaixa({ pedidos, pecas, irParaPedido, irParaPeca 
         />
         <StatCard label="Recebido do mês" value={brl(recebidoDoMes)} icon={Wallet} />
         <StatCard label="A receber (pendente do mês)" value={brl(receberPendenteDoMes)} icon={Clock} />
-        <StatCard label="Pago à produção do mês (Fabi + Icaro)" value={brl(pagoDoMes)} icon={Wallet} />
+        <StatCard label="Pago à produção do mês (costureiras + Icaro)" value={brl(pagoDoMes)} icon={Wallet} />
         <StatCard label="A pagar (pendente do mês)" value={brl(pagarPendenteDoMes)} icon={Clock} />
         <StatCard label="Saldo do mês (recebido − pago à produção)" value={brl(saldoDoMes)} icon={CheckCircle2} accent={saldoDoMes >= 0 ? "#2C6E31" : "#9C4A1E"} />
       </div>
       <div className="flex items-start gap-2 mb-8 p-3" style={{ background: "#F3EEDF", borderRadius: 8, fontSize: 12, color: TEXT_MUTED }}>
         <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
-          Esse "saldo do mês" é só a fatia da produção (o que os clientes pagam menos o que se paga à Fabi/Ícaro) —
+          Esse "saldo do mês" é só a fatia da produção (o que os clientes pagam menos o que se paga às costureiras/Ícaro) —
           não inclui aluguel, pró-labore, material de fornecedor nem as outras despesas. Pro saldo completo do
           negócio, incluindo tudo isso, olha o <strong>Saldo projetado</strong> em Contas a Pagar.
         </div>
@@ -268,7 +268,7 @@ export default function FluxoDeCaixa({ pedidos, pecas, irParaPedido, irParaPeca 
 
         <Card style={{ padding: 20 }}>
           <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
-            A pagar à produção (Fabi + Ícaro) — {nomeDoMes(mesSelecionado)}
+            A pagar à produção (costureiras + Ícaro) — {nomeDoMes(mesSelecionado)}
           </div>
           {pagarDoMes.length === 0 && <Empty texto="Nada lançado nesse mês." />}
           {pagarDoMes.map((p) => (

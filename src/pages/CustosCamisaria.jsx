@@ -164,7 +164,7 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
           Quanto preciso faturar esse mês
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Meta = custo próprio da camisaria + fatia rateada do compartilhado (com a projeção da Fabiana, se estiver
+          Meta = custo próprio da camisaria + fatia rateada do compartilhado (com a projeção da mão de obra, se estiver
           marcada acima), já somando o imposto (alíquota de {(parseFloat(aliquotaImposto) || 0).toFixed(1)}% sobre o
           faturamento — não sobra pra cobrir custo, então a meta já vem maior pra sobrar o suficiente depois do
           imposto). {diasRestantes} dia(s) restam no mês.
@@ -237,13 +237,13 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
           Composição do custo próprio da camisaria
         </div>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-          Só o que é específico da linha de camisaria: valor pago à Fabiana pelos pedidos do mês + aluguel/luz da loja
+          Só o que é específico da linha de camisaria: valor pago às costureiras pelos pedidos do mês + aluguel/luz da loja
           + tecido dos pedidos (pelo valor/metro cadastrado em Compras) + aviamentos (botões, entretela, embalagem —
           cadastrados em Aviamentos, peça-base "Camisa"). Não inclui os custos compartilhados da empresa (acima).
         </div>
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra — pago à Fabiana {usarProjecaoFabiana ? "(projetado)" : "(real até agora)"}</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra — pago às costureiras {usarProjecaoFabiana ? "(projetado)" : "(real até agora)"}</div>
             <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: usarProjecaoFabiana ? BRASS : undefined }}>{brl(custoMaoDeObraEfetivo)}</div>
           </div>
           <div>
@@ -268,10 +268,10 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
               onChange={(e) => setUsarProjecaoFabiana(e.target.checked)}
               style={{ width: 15, height: 15, accentColor: BRASS }}
             />
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Projetar mão de obra da Fabiana com base no mês passado</span>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Projetar mão de obra das costureiras com base no mês passado</span>
           </label>
           <span style={{ fontSize: 11, color: TEXT_MUTED }}>
-            Pago a ela até agora esse mês: <strong>{brl(custoMaoDeObra)}</strong> · Pago mês passado inteiro: <strong>{brl(custoMaoDeObraMesAnterior)}</strong>
+            Pago a elas até agora esse mês: <strong>{brl(custoMaoDeObra)}</strong> · Pago mês passado inteiro: <strong>{brl(custoMaoDeObraMesAnterior)}</strong>
             {" — "}como você paga ao longo do mês, cedo no mês o valor real ainda está incompleto; a projeção usa o total do mês anterior como estimativa até fechar o mês.
           </span>
         </div>

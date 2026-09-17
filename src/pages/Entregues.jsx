@@ -67,7 +67,7 @@ export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
         <div className="mb-4 p-4" style={{ background: "#F6E3D9", border: "1px solid #E0A583", borderRadius: 8 }}>
           <div className="flex items-center gap-2 mb-2" style={{ color: "#9C4A1E", fontWeight: 700, fontSize: 13 }}>
             <AlertTriangle size={16} />
-            {pedidosSemPagarFabi.length} pedido(s) entregue(s) sem baixa de pagamento pra Fabiana
+            {pedidosSemPagarFabi.length} pedido(s) entregue(s) sem baixa de pagamento pra costureira
           </div>
           <div className="flex flex-col gap-1">
             {pedidosSemPagarFabi.map((p) => (
@@ -78,7 +78,7 @@ export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
                 style={{ fontSize: 12, color: "#7A3A18", textAlign: "left", padding: "3px 0" }}
               >
                 <span>
-                  {p.cliente} · entregue {fmtData(p.dataEntrega || p.dataPedido)} · {p.quantidade} un
+                  {p.cliente} · {p.costureira || "Fabiana"} · entregue {fmtData(p.dataEntrega || p.dataPedido)} · {p.quantidade} un
                 </span>
                 <span className="fx-mono" style={{ fontWeight: 700 }}>
                   {p.valorFabiana === 0 ? "sem valor lançado" : `falta ${brl(p.pendenteFabiana)}`}

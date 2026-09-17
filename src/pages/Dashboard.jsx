@@ -4,6 +4,7 @@ import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
 import DoacoesPorAno from "../components/DoacoesPorAno";
+import ComparativoCosteiras from "../components/ComparativoCosteiras";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData, hojeISO, mediaEsperaCliente, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
 import CentralAlertas from "../components/CentralAlertas";
@@ -13,8 +14,20 @@ const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação");
 const VERMELHO = "#9C4A1E";
 const CHAVE_META = "meta_vendas_camisaria";
 
-export default function Dashboard({ pedidos, pecas, despesas, estoqueTecidos, irPara, irParaTab }) {
+export default function Dashboard({
+  pedidos,
+  pecas,
+  despesas,
+  estoqueTecidos,
+  irPara,
+  irParaTab,
+  eyebrow = "Visão geral — camisaria",
+  titulo = "Painel Camisaria",
+  nomeCosteira = null,
+  mostrarExtras = true,
+}) {
   const [meta, setMeta] = useState(null);
+  const nomeCosteiraLabel = nomeCosteira || "costureiras";
 
   useEffect(() => {
     (async () => {
@@ -92,7 +105,7 @@ export default function Dashboard({ pedidos, pecas, despesas, estoqueTecidos, ir
 
   return (
     <div>
-      <PageTitle eyebrow="Visão geral — camisaria" title="Painel Camisaria" />
+      <PageTitle eyebrow={eyebrow} title={titulo} />
 
       <CentralAlertas
         pedidosAtrasados={atrasados.length}
@@ -108,8 +121,8 @@ export default function Dashboard({ pedidos, pecas, despesas, estoqueTecidos, ir
         <StatCard label="Entregue parcial" value={camisasEntregues} icon={PackageCheck} />
         <StatCard label="Saldo a entregar" value={saldoAEntregar} icon={Shirt} />
         <StatCard label="Pedidos atrasados" value={atrasados.length} icon={AlertTriangle} accent={atrasados.length > 0 ? VERMELHO : undefined} />
-        <StatCard label="Pago à Fabiana" value={brl(somaFabPaga)} icon={CheckCircle2} />
-        <StatCard label="Devido à Fabiana" value={brl(somaFab)} icon={Wallet} />
+        <StatCard label={`Pago à ${nomeCosteiraLabel}`} value={brl(somaFabPaga)} icon={CheckCircle2} />
+        <StatCard label={`Devido à ${nomeCosteiraLabel}`} value={brl(somaFab)} icon={Wallet} />
         <StatCard label="Margem estimada" value={brl(margem)} icon={TrendingUp} />
         <StatCard label="Tempo médio — cliente novo" value={tempoMedioNovos !== null ? `${tempoMedioNovos}d` : "—"} icon={Timer} />
         <StatCard label="Tempo médio — recompra" value={tempoMedioRecompra !== null ? `${tempoMedioRecompra}d` : "—"} icon={Timer} />
@@ -122,12 +135,15 @@ export default function Dashboard({ pedidos, pecas, despesas, estoqueTecidos, ir
         </div>
       )}
 
-      <TempoProducaoPorMes lista={pedidos} titulo="Tempo médio de produção por mês — Camisaria" />
-      <DoacoesPorAno doacoes={doacoes} quantidadeFn={(p) => parseFloat(p.quantidade) || 0} titulo="Doações por ano — Camisaria" />
+      <TempoProducaoPorMes lista={pedidos} titulo={`Tempo médio de produção por mês — ${titulo}`} />
 
-      <AniversariantesDoMes />
+      {mostrarExtras && !nomeCosteira && <ComparativoCosteiras pedidos={pedidos} />}
 
-      {meta > 0 && (
+      {mostrarExtras && <DoacoesPorAno doacoes={doacoes} quantidadeFn={(p) => parseFloat(p.quantidade) || 0} titulo="Doações por ano — Camisaria" />}
+
+      {mostrarExtras && <AniversariantesDoMes />}
+
+      {mostrarExtras && meta > 0 && (
         <Card style={{ padding: 20 }} className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">

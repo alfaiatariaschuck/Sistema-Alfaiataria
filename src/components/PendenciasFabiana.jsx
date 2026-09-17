@@ -46,11 +46,11 @@ export default function PendenciasFabiana({ pedidos, onDefinirValorPorCamisaFabi
       <div className="flex items-center gap-2 mb-2">
         <AlertTriangle size={16} color={VERMELHO} />
         <strong style={{ color: VERMELHO, fontSize: 14 }}>
-          {pendentes.length} pedido(s) sem valor da Fabiana lançado
+          {pendentes.length} pedido(s) sem valor de mão de obra lançado
         </strong>
       </div>
       <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 12 }}>
-        Sem esse valor, a despesa dela não sai sozinha em Contas a Pagar ao marcar "Em Produção". Preencha o valor
+        Sem esse valor, a despesa da costureira não sai sozinha em Contas a Pagar ao marcar "Em Produção". Preencha o valor
         por camisa de cada um abaixo e clique em Lançar — o total (valor × quantidade) e a despesa saem sozinhos.
       </div>
       <div className="flex flex-col gap-2">
@@ -59,7 +59,7 @@ export default function PendenciasFabiana({ pedidos, onDefinirValorPorCamisaFabi
             <button type="button" onClick={() => onSelecionar(p.id)} className="text-left" style={{ fontSize: 13 }}>
               <strong style={{ color: INK }}>{p.cliente || "Sem nome"}</strong>{" "}
               <span style={{ color: TEXT_MUTED }}>
-                · {p.quantidade || 0} un · {p.status}
+                · {p.costureira || "Fabiana"} · {p.quantidade || 0} un · {p.status}
               </span>
             </button>
             <div className="flex items-center gap-2">

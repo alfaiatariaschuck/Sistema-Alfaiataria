@@ -6,17 +6,21 @@ import { finalDaMedida, fmtData, hojeISO } from "../lib/helpers";
 import { imprimirComNome } from "../lib/imprimirFicha";
 import { supabase } from "../supabaseClient";
 
-const CHAVE_TELEFONE = "telefone_fabi";
+const CHAVE_TELEFONE_FABI = "telefone_fabi";
+const CHAVE_TELEFONE_MILENA = "telefone_milena";
 
 export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }) {
   const [telefone, setTelefone] = useState("");
+  const nomeCosteira = p.costureira === "Milena" ? "Milena" : "Fabi";
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_TELEFONE).maybeSingle();
+      const chave = p.costureira === "Milena" ? CHAVE_TELEFONE_MILENA : CHAVE_TELEFONE_FABI;
+      const { data } = await supabase.from("config").select("valor").eq("chave", chave).maybeSingle();
       if (data?.valor) setTelefone(data.valor);
+      else setTelefone("");
     })();
-  }, []);
+  }, [p.costureira]);
 
   function imprimir() {
     imprimirComNome(`Ficha - ${p.cliente || "cliente"}`);
@@ -71,7 +75,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
   function abrirWhatsapp() {
     const digitos = telefone.replace(/\D/g, "");
     const mensagem = encodeURIComponent(
-      `Oi Fabi! Segue a ficha de produção do pedido de ${p.cliente || "cliente"}. ` +
+      `Oi ${nomeCosteira}! Segue a ficha de produção do pedido de ${p.cliente || "cliente"}. ` +
         `Salvei o PDF aqui — vou anexar em seguida nesta conversa. 🧵`
     );
     const url = digitos ? `https://wa.me/${digitos}?text=${mensagem}` : `https://wa.me/?text=${mensagem}`;
@@ -89,7 +93,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
         <div style={{ background: "#FFF", borderRadius: 10, padding: 16, marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: "#16212E" }}>Opção mais simples (funciona em qualquer lugar)</div>
           <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 8 }}>
-            Toque no botão, o texto da ficha já aparece selecionado — é só tocar em "Copiar" no menu que surge, e colar no WhatsApp da Fabi.
+            Toque no botão, o texto da ficha já aparece selecionado — é só tocar em "Copiar" no menu que surge, e colar no WhatsApp da {nomeCosteira}.
           </div>
           <button
             onClick={() => setMostrarTexto((v) => !v)}
@@ -118,7 +122,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
             </div>
           ) : (
             <div style={{ fontSize: 12, color: "#9C4A1E", marginBottom: 10 }}>
-              Número da Fabi ainda não configurado — configure uma vez em <strong>Configurações</strong> no menu, e não precisa digitar de novo.
+              Número da {nomeCosteira} ainda não configurado — configure uma vez em <strong>Configurações</strong> no menu, e não precisa digitar de novo.
             </div>
           )}
           <div className="flex flex-wrap gap-2">
@@ -195,7 +199,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
             <tr>
               <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Medida</th>
               <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Tirei (cm)</th>
-              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Final p/ Fabi (cm)</th>
+              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Final p/ {nomeCosteira} (cm)</th>
             </tr>
           </thead>
           <tbody>

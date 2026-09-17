@@ -273,7 +273,7 @@ function ControleBaixaPorCamisa({ despesa, pedido, onAtualizarValorPago }) {
 // antigas primeiro — quem entrou em produção primeiro é pago primeiro —
 // e cada despesa individual continua acessível em "ver detalhes" pra
 // quando precisar editar ou conferir um pedido específico.
-function ContaFabiAgrupada({ despesas, pedidos, onAtualizarValorPago, onAtualizarVencimentoDespesa, renderLinha }) {
+function ContaFabiAgrupada({ despesas, pedidos, onAtualizarValorPago, onAtualizarVencimentoDespesa, renderLinha, titulo = "Fabi — mão de obra" }) {
   const [aberto, setAberto] = useState(false);
   const ordenadas = [...despesas].sort((a, b) => (a.vencimento || "").localeCompare(b.vencimento || ""));
   // Vencimento único pra conta inteira — em vez de mudar pedido por
@@ -314,7 +314,7 @@ function ContaFabiAgrupada({ despesas, pedidos, onAtualizarValorPago, onAtualiza
     <div className="mb-3 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>Fabi — mão de obra</div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>{titulo}</div>
           <div style={{ fontSize: 11, color: atrasada ? VERMELHO : TEXT_MUTED }}>
             {despesas.length} pedido{despesas.length > 1 ? "s" : ""} em aberto{atrasada ? " · tem vencimento atrasado" : ""}
           </div>
@@ -557,6 +557,14 @@ export default function ContasAPagar({
   // linha por cliente, só "Fabi — N camisas a pagar" no total.
   const despesasFabiJanela = despesasJanela.filter((d) => d.pedidoId);
   const despesasJanelaSemFabi = despesasJanela.filter((d) => !d.pedidoId);
+  // Separado por costureira (Fabiana/Milena) — hoje só existe Fabiana na
+  // prática, mas assim que um pedido virar Milena a conta dela já nasce
+  // separada, em vez de aparecer misturada dentro de "Fabi — mão de obra".
+  const despesasPorCosteira = despesasFabiJanela.reduce((acc, d) => {
+    const nome = pedidos.find((p) => p.id === d.pedidoId)?.costureira || "Fabiana";
+    (acc[nome] = acc[nome] || []).push(d);
+    return acc;
+  }, {});
   const receberJanela = receberComPrevisao.filter((p) => dentroDaJanela(p.dataRef));
   const previsoesJanela = previsoes.filter((p) => dentroDaJanela(p.dataEsperada));
 
@@ -1413,15 +1421,17 @@ export default function ContasAPagar({
 
           {despesasJanela.length === 0 && <Empty texto={verTudo ? "Nenhuma despesa pendente." : "Nada vencendo no período selecionado."} />}
 
-          {despesasFabiJanela.length > 0 && (
+          {Object.entries(despesasPorCosteira).map(([nome, despesasDaCosteira]) => (
             <ContaFabiAgrupada
-              despesas={despesasFabiJanela}
+              key={nome}
+              titulo={`${nome === "Milena" ? "Milena" : "Fabi"} — mão de obra`}
+              despesas={despesasDaCosteira}
               pedidos={pedidos}
               onAtualizarValorPago={onAtualizarValorPago}
               onAtualizarVencimentoDespesa={onAtualizarVencimentoDespesa}
               renderLinha={renderDespesaRow}
             />
-          )}
+          ))}
 
           {despesasJanelaSemFabi.map((d) => renderDespesaRow(d))}
 

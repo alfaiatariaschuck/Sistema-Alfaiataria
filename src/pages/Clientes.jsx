@@ -600,7 +600,7 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
               )}
               {devidoFabiana > 0 && (
                 <div className="mb-1" style={{ fontSize: 12, color: "#9C4A1E" }}>
-                  Devendo à Fabiana: <strong>{brl(devidoFabiana)}</strong>
+                  Devendo por mão de obra (camisaria): <strong>{brl(devidoFabiana)}</strong>
                 </div>
               )}
               {devidoIcaro > 0 && (
