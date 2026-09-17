@@ -107,13 +107,15 @@ export default function Dashboard({
     <div>
       <PageTitle eyebrow={eyebrow} title={titulo} />
 
-      <CentralAlertas
-        pedidosAtrasados={atrasados.length}
-        pecasAtrasadas={pecasAtrasadas}
-        despesasAtrasadas={despesasAtrasadas}
-        estoqueBaixo={estoqueBaixo}
-        irParaTab={irParaTab}
-      />
+      {mostrarExtras && (
+        <CentralAlertas
+          pedidosAtrasados={atrasados.length}
+          pecasAtrasadas={pecasAtrasadas}
+          despesasAtrasadas={despesasAtrasadas}
+          estoqueBaixo={estoqueBaixo}
+          irParaTab={irParaTab}
+        />
+      )}
 
       <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         <StatCard label="Total de clientes" value={new Set(pedidos.map((p) => p.cliente.trim().toLowerCase())).size} icon={Users} />
