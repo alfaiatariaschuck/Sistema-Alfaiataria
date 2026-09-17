@@ -9,7 +9,7 @@ const DIAS_LIMITE = 40;
 // Relatório pra Fabi se organizar na produção: pedidos de camisa em aberto,
 // do mais antigo (mais urgente) pro mais novo — igual à ordem que já usamos
 // na tela de Pedidos, só que impresso/exportável em PDF pra mandar pra ela.
-export default function CronogramaImprimivel({ itens, onFechar }) {
+export default function CronogramaImprimivel({ itens, onFechar, nomePara = "Fabi" }) {
   function imprimir() {
     imprimirComNome(`Cronograma de Produção - Camisaria - ${fmtData(hojeISO())}`);
   }
@@ -42,7 +42,7 @@ export default function CronogramaImprimivel({ itens, onFechar }) {
           <div className="fx-serif" style={{ fontSize: 22, fontWeight: 700, letterSpacing: 1 }}>
             SCHUCK ALFAIATARIA
           </div>
-          <div style={{ fontSize: 13, color: "#555", marginTop: 2 }}>Cronograma de Produção — Camisaria (pra Fabi)</div>
+          <div style={{ fontSize: 13, color: "#555", marginTop: 2 }}>Cronograma de Produção — Camisaria (pra {nomePara})</div>
           <div style={{ fontSize: 12, color: "#555" }}>
             Do mais antigo (mais urgente) pro mais novo · gerado em {fmtData(hojeISO())}
           </div>

@@ -908,8 +908,9 @@ export default function Shell() {
               {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
               {tab === "pedidos-deivid" && (
                 <Pedidos
-                  pedidos={pedidos.filter((p) => p.vendedor === "Deivid")}
+                  pedidos={pedidos.filter((p) => (p.vendedor || "").trim().toLowerCase() === "deivid")}
                   titulo="Pedidos Deivid"
+                  nomeCronograma="Deivid"
                   selecionado={selecionado}
                   setSelecionado={setSelecionado}
                   {...acoesPedido}

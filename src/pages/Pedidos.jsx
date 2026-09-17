@@ -13,7 +13,7 @@ const VERMELHO = "#9C4A1E";
 const DIAS_LIMITE = 40;
 const STATUS_ATIVOS = STATUS.filter((s) => s !== "Entregue");
 
-export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo = "Pedidos", ...acoes }) {
+export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo = "Pedidos", nomeCronograma = "Tales", ...acoes }) {
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState(new Set());
   const [mostrarCronograma, setMostrarCronograma] = useState(false);
@@ -65,7 +65,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
           className="flex items-center gap-2"
           style={{ background: "transparent", border: "1px solid #E4DECF", color: "#16212E", padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
         >
-          <CalendarClock size={15} /> Cronograma pra Fabi
+          <CalendarClock size={15} /> Cronograma {nomeCronograma}
         </button>
       </div>
       <div className="mb-4">
