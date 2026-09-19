@@ -281,7 +281,7 @@ export function usePedidosAlfaiataria() {
     // precisa virar null igual já fazíamos pros campos numéricos.
     const CAMPOS_DATA = ["dataPedido", "previsaoEntrega", "dataLimiteEvento", "dataEntrega", "dataInicioProducao", "dataPausaInicio"];
     const valorFinal = CAMPOS_NUMERICOS.includes(campo)
-      ? (valor === "" ? null : Number(valor))
+      ? (valor === "" ? (campo === "pago" ? 0 : null) : Number(valor))
       : CAMPOS_DATA.includes(campo)
         ? (valor === "" ? null : valor)
         : valor;
