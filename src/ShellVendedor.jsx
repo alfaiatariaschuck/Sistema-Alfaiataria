@@ -28,9 +28,9 @@ export default function ShellVendedor() {
 
   async function salvar(p) {
     const { clienteId } = await criarPedido(p);
-    // Se o cliente já tiver dados pessoais cadastrados, a gravação é
-    // barrada pelo RLS (o vendedor só pode criar, não sobrescrever) e
-    // falha em silêncio — não impede o pedido de ter sido lançado.
+    // Ele pode escrever por cima mesmo se o cliente já tiver dados
+    // pessoais (schema_v79) — mas continua sem conseguir LER o que já
+    // está cadastrado, então isso é sempre uma gravação "às cegas".
     await salvarDadosPessoaisCliente(clienteId, p.dadosPessoais);
     await recarregarNomesClientes();
   }

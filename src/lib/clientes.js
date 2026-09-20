@@ -130,7 +130,7 @@ export async function salvarDadosPessoaisCliente(clienteId, dados) {
   );
   if (!temAlgo) return;
 
-  await supabase.from("clientes_dados_pessoais").upsert({
+  const { error } = await supabase.from("clientes_dados_pessoais").upsert({
     cliente_id: clienteId,
     tipo_pessoa: dados.tipoPessoa || "PF",
     telefone: dados.telefone || null,
@@ -146,4 +146,5 @@ export async function salvarDadosPessoaisCliente(clienteId, dados) {
     consentimento_em: dados.consentimento ? new Date().toISOString().slice(0, 10) : null,
     atualizado_em: new Date().toISOString(),
   });
+  if (error) throw error;
 }

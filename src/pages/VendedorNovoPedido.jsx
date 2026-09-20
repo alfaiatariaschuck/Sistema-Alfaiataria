@@ -302,7 +302,7 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
           <CampoDadosPessoais
             value={dadosPessoais}
             onChange={setDadosPessoais}
-            notaAcesso="Você pode cadastrar esses dados agora, ao lançar o pedido — mas só uma vez. Depois de salvo, só o dono do ateliê consegue ver ou alterar (nem você consegue editar de novo)."
+            notaAcesso="Você pode preencher esses dados a cada pedido, mesmo que o cliente já tenha cadastro — mas só o dono do ateliê consegue ver o que já está salvo (você não consegue consultar depois)."
           />
         </Card>
 
