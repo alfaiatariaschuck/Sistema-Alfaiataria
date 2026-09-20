@@ -375,6 +375,9 @@ export default function DetalhePedido({
             labelFormaRestante="2ª forma de pagamento"
           />
           <TaxaCartaoRecebido valorVenda={p.aReceber.valor} valorLiquidoRecebido={p.valorLiquidoRecebido} onChange={(v) => set("valorLiquidoRecebido", v)} />
+          <Field label="Data para cobrar (aparece em Contas a Receber)">
+            <input type="date" style={inputStyle} value={p.dataCobranca || ""} onChange={(e) => set("dataCobranca", e.target.value)} />
+          </Field>
           <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
             <Field label="Forma de pagamento">
               <select style={inputStyle} value={p.formaPagamento || ""} onChange={(e) => set("formaPagamento", e.target.value)}>

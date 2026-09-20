@@ -84,6 +84,7 @@ import PlanosAssinatura from "./pages/PlanosAssinatura";
 import Configuracoes from "./pages/Configuracoes";
 import EstoqueCamisaria from "./pages/EstoqueCamisaria";
 import ContasAPagar from "./pages/ContasAPagar";
+import ContasAReceber from "./pages/ContasAReceber";
 import Metas from "./pages/Metas";
 import VendedorGestao from "./pages/VendedorGestao";
 import BuscaGlobal from "./components/BuscaGlobal";
@@ -122,6 +123,7 @@ const NAV = [
   { id: "resultado-mensal", label: "Resultado do Mês", icon: Scale, primary: false, grupo: "Geral" },
   { id: "metas", label: "Metas", icon: Target, primary: false, grupo: "Geral" },
   { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false, grupo: "Geral" },
+  { id: "contas-a-receber", label: "Contas a Receber", icon: Wallet, primary: false, grupo: "Geral" },
 
   { id: "equipe", label: "Equipe", icon: Users2, primary: false, grupo: "Sistema" },
   { id: "fornecedores", label: "Fornecedores", icon: ShoppingCart, primary: false, grupo: "Sistema" },
@@ -951,6 +953,17 @@ export default function Shell() {
                   onRemoverPrevisao={removerPrevisao}
                   onCriarNota={criarNota}
                   onRemoverNota={removerNota}
+                  irParaPedido={irPara}
+                  irParaPeca={irParaPeca}
+                />
+              )}
+              {tab === "contas-a-receber" && (
+                <ContasAReceber
+                  pedidos={pedidos}
+                  pecas={pecas}
+                  onAtualizarPedidoCampo={atualizarCampo}
+                  onAtualizarPedidoSubcampo={atualizarSubcampo}
+                  onAtualizarPecaCampo={atualizarCampoPeca}
                   irParaPedido={irPara}
                   irParaPeca={irParaPeca}
                 />

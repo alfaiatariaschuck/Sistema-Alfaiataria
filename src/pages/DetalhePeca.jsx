@@ -475,6 +475,9 @@ export default function DetalhePeca({
           labelFormaRestante="2ª forma de pagamento"
         />
         <TaxaCartaoRecebido valorVenda={p.valorVenda} valorLiquidoRecebido={p.valorLiquidoRecebido} onChange={(v) => set("valorLiquidoRecebido", v)} />
+        <Field label="Data para cobrar (aparece em Contas a Receber)">
+          <input type="date" style={inputStyle} value={p.dataCobranca || ""} onChange={(e) => set("dataCobranca", e.target.value)} />
+        </Field>
       </Card>
 
       {(PECA_SECOES[p.tipoPeca] || []).length > 0 && (
