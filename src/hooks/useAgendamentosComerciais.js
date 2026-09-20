@@ -75,5 +75,15 @@ export function useAgendamentosComerciais(vendedorId) {
     if (error) setErro(error.message);
   }
 
-  return { agendamentos, loading, erro, limparErro: () => setErro(null), recarregar, criarAgendamento, atualizarStatus, removerAgendamento };
+  // Edita um campo (cliente/data/hora/observação) de um agendamento já
+  // existente — antes só dava pra criar novo ou mudar status, sem jeito
+  // de corrigir um reagendamento que passou batido.
+  async function atualizarCampo(id, campo, valor) {
+    setAgendamentos((prev) => prev.map((a) => (a.id === id ? { ...a, [campo]: valor } : a)));
+    const valorFinal = campo === "hora" || campo === "observacao" ? valor || null : valor;
+    const { error } = await supabase.from("agendamentos_comerciais").update({ [campo]: valorFinal }).eq("id", id);
+    if (error) setErro(error.message);
+  }
+
+  return { agendamentos, loading, erro, limparErro: () => setErro(null), recarregar, criarAgendamento, atualizarStatus, atualizarCampo, removerAgendamento };
 }

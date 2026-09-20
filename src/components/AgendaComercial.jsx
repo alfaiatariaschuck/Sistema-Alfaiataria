@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Plus, Trash2, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Pencil, Plus, Trash2, Undo2, X } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill } from "./ui";
 import CampoAutocomplete from "./CampoAutocomplete";
 import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
@@ -24,7 +24,9 @@ function agendaVazia() {
 // acompanhar conforme o vendedor vai agendando) — mesma "cara" nos dois
 // lados, só muda o que cada um pode mexer (igual TabelaControleProducao).
 export default function AgendaComercial({ vendedorId, podeEditar = false, nomesClientes = [], tituloCompacto }) {
-  const { agendamentos, loading, erro, criarAgendamento, atualizarStatus, removerAgendamento } = useAgendamentosComerciais(vendedorId);
+  const { agendamentos, loading, erro, criarAgendamento, atualizarStatus, atualizarCampo, removerAgendamento } = useAgendamentosComerciais(vendedorId);
+  const [editando, setEditando] = useState(null);
+  const [edicao, setEdicao] = useState(agendaVazia());
   const hoje = hojeISO();
   const hojeInicial = new Date(hoje + "T00:00:00");
   const [mes, setMes] = useState(hojeInicial.getMonth());
@@ -58,6 +60,29 @@ export default function AgendaComercial({ vendedorId, podeEditar = false, nomesC
       setNovo(agendaVazia());
       setMostrarForm(false);
     }
+  }
+
+  // Corrige um reagendamento que passou batido — edita o campo que
+  // precisar (data, hora, cliente, observação) num agendamento que já
+  // existe, sem precisar apagar e criar de novo.
+  function abrirEdicao(a) {
+    if (editando === a.id) {
+      setEditando(null);
+      return;
+    }
+    setEditando(a.id);
+    setEdicao({ cliente: a.cliente, data: a.data, hora: a.hora || "", observacao: a.observacao || "" });
+  }
+
+  async function salvarEdicao(id) {
+    if (!edicao.cliente.trim() || !edicao.data) return;
+    await Promise.all([
+      atualizarCampo(id, "cliente", edicao.cliente.trim()),
+      atualizarCampo(id, "data", edicao.data),
+      atualizarCampo(id, "hora", edicao.hora),
+      atualizarCampo(id, "observacao", edicao.observacao),
+    ]);
+    setEditando(null);
   }
 
   return (
@@ -204,35 +229,71 @@ export default function AgendaComercial({ vendedorId, podeEditar = false, nomesC
         {!loading && listados.length === 0 && <Empty texto={diaSelecionado ? "Nenhum agendamento nesse dia." : "Nenhum agendamento futuro ainda."} />}
         {!loading &&
           listados.map((a) => (
-            <div key={a.id} className="flex items-center justify-between py-2.5" style={{ borderBottom: `1px solid ${LINE}` }}>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>{a.cliente}</span>
-                  <Pill text={a.status} style={STATUS_STYLE_AGENDA[a.status]} />
+            <div key={a.id} className="py-2.5" style={{ borderBottom: `1px solid ${LINE}` }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>{a.cliente}</span>
+                    <Pill text={a.status} style={STATUS_STYLE_AGENDA[a.status]} />
+                  </div>
+                  <div style={{ fontSize: 11, color: TEXT_MUTED }}>
+                    {fmtData(a.data)}
+                    {a.hora ? ` às ${a.hora}` : ""}
+                    {a.observacao ? ` · ${a.observacao}` : ""}
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  {fmtData(a.data)}
-                  {a.hora ? ` às ${a.hora}` : ""}
-                  {a.observacao ? ` · ${a.observacao}` : ""}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {a.status === "Agendado" && (
-                  <>
-                    <button onClick={() => atualizarStatus(a.id, "Realizado")} title="Marcar como realizado">
-                      <CheckCircle2 size={16} color={VERDE} />
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {a.status === "Agendado" && (
+                    <>
+                      <button onClick={() => atualizarStatus(a.id, "Realizado")} title="Marcar como realizado">
+                        <CheckCircle2 size={16} color={VERDE} />
+                      </button>
+                      <button onClick={() => atualizarStatus(a.id, "Cancelado")} title="Cancelar">
+                        <X size={16} color={VERMELHO} />
+                      </button>
+                    </>
+                  )}
+                  {a.status !== "Agendado" && (
+                    <button onClick={() => atualizarStatus(a.id, "Agendado")} title="Reabrir — volta pra Agendado">
+                      <Undo2 size={15} color={BRASS} />
                     </button>
-                    <button onClick={() => atualizarStatus(a.id, "Cancelado")} title="Cancelar">
-                      <X size={16} color={VERMELHO} />
-                    </button>
-                  </>
-                )}
-                {podeEditar && (
-                  <button onClick={() => removerAgendamento(a.id)} title="Excluir">
-                    <Trash2 size={14} color={VERMELHO} />
+                  )}
+                  <button onClick={() => abrirEdicao(a)} title="Editar data/hora/observação">
+                    <Pencil size={14} color={TEXT_MUTED} />
                   </button>
-                )}
+                  {podeEditar && (
+                    <button onClick={() => removerAgendamento(a.id)} title="Excluir">
+                      <Trash2 size={14} color={VERMELHO} />
+                    </button>
+                  )}
+                </div>
               </div>
+              {editando === a.id && (
+                <div className="mt-2 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
+                  <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+                    <Field label="Cliente">
+                      <CampoAutocomplete value={edicao.cliente} onChange={(v) => setEdicao({ ...edicao, cliente: v })} opcoes={nomesClientes} />
+                    </Field>
+                    <Field label="Data">
+                      <input type="date" style={inputStyle} value={edicao.data} onChange={(e) => setEdicao({ ...edicao, data: e.target.value })} />
+                    </Field>
+                    <Field label="Hora (opcional)">
+                      <input type="time" style={inputStyle} value={edicao.hora} onChange={(e) => setEdicao({ ...edicao, hora: e.target.value })} />
+                    </Field>
+                  </div>
+                  <Field label="Observação (opcional)">
+                    <input style={inputStyle} value={edicao.observacao} onChange={(e) => setEdicao({ ...edicao, observacao: e.target.value })} />
+                  </Field>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button onClick={() => salvarEdicao(a.id)} style={{ background: INK, color: "#FFF", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+                      Salvar
+                    </button>
+                    <button onClick={() => setEditando(null)} style={{ color: TEXT_MUTED, fontSize: 12 }}>
+                      cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
       </Card>
