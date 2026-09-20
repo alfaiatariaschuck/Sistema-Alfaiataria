@@ -9,18 +9,21 @@ import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, ORIGENS_CLIENTE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
+import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 
 // Ficha de pedido enxuta pro vendedor: mesma coisa que a ficha completa
 // de Pedido Camisas, mas sem os campos que não são da alçada dele —
-// valor pago à Fabiana (custo interno) e Plano de Assinatura (decisão
+// valor pago à costureira (custo interno) e Plano de Assinatura (decisão
 // do dono). O nome do vendedor vem travado do login, não é editável.
 export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVendedor, pedidos }) {
+  const { maoDeObraPadrao } = useConfigPrecoCamisa();
   const [p, setP] = useState({ ...pedidoVazio(), vendedor: nomeVendedor || "" });
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
   const [confirmado, setConfirmado] = useState(false);
   const [previsaoAuto, setPrevisaoAuto] = useState(null);
+  const [valorMaoDeObraAuto, setValorMaoDeObraAuto] = useState(null);
   const temposMedios = useMemo(() => temposMediosProducao(pedidos || []), [pedidos]);
   const indicadorJaCadastrado = (nomesClientes || []).some((n) => n.trim().toLowerCase() === p.indicadoPor.trim().toLowerCase());
 
@@ -75,6 +78,24 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
     setPrevisaoAuto(sugestao);
     // eslint-disable-next-line
   }, [p.cliente]);
+
+  // Preenche sozinho o valor de mão de obra da costureira (mão de obra
+  // padrão × quantidade) — campo invisível pra ele (não é da alçada do
+  // vendedor), só pra o pedido já chegar pro Tales com esse custo certo,
+  // sem depender de alguém preencher na mão depois.
+  useEffect(() => {
+    const maoDeObraNum = parseFloat(maoDeObraPadrao) || 0;
+    const qtd = parseFloat(p.quantidade) || 0;
+    const sugestao = maoDeObraNum > 0 && qtd > 0 ? (maoDeObraNum * qtd).toFixed(2) : null;
+    if (!sugestao) return;
+    setP((prev) => {
+      const aindaEhSugestao = prev.pagoFabiana.valor === "" || prev.pagoFabiana.valor === valorMaoDeObraAuto;
+      if (!aindaEhSugestao) return prev;
+      return { ...prev, pagoFabiana: { ...prev.pagoFabiana, valor: sugestao } };
+    });
+    setValorMaoDeObraAuto(sugestao);
+    // eslint-disable-next-line
+  }, [p.quantidade, maoDeObraPadrao]);
 
   async function submeter(e) {
     e.preventDefault();
