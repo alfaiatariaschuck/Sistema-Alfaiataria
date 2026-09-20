@@ -19,10 +19,11 @@ function agendaVazia() {
 }
 
 // Agenda comercial — calendário do mês + lista dos próximos agendamentos.
-// Usado tanto no login do vendedor (podeEditar: lança/edita/exclui) quanto
-// no login do dono (só leitura + marcar Realizado/Cancelado, pra
-// acompanhar conforme o vendedor vai agendando) — mesma "cara" nos dois
-// lados, só muda o que cada um pode mexer (igual TabelaControleProducao).
+// Usada tanto no login do vendedor quanto no do dono, na agenda de cada
+// vendedor — os dois conseguem lançar/editar/excluir (RLS: schema_v77
+// já dava esse acesso ao dono, só faltava o botão). Serve pra ele
+// acompanhar em tempo real e também incluir compromissos que quer que o
+// vendedor participe junto, sem precisar avisar por fora do sistema.
 export default function AgendaComercial({ vendedorId, podeEditar = false, nomesClientes = [], tituloCompacto }) {
   const { agendamentos, loading, erro, criarAgendamento, atualizarStatus, atualizarCampo, removerAgendamento } = useAgendamentosComerciais(vendedorId);
   const [editando, setEditando] = useState(null);

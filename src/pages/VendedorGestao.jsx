@@ -606,7 +606,12 @@ export default function VendedorGestao({
             tituloCompacto={`Funil de Vendas — ${v.nome}`}
           />
           <div className="mt-4">
-            <AgendaComercial vendedorId={v.id} podeEditar={false} tituloCompacto={`Agenda Comercial — ${v.nome}`} />
+            <AgendaComercial
+              vendedorId={v.id}
+              podeEditar
+              nomesClientes={clientesBase.map((c) => c.nome)}
+              tituloCompacto={`Agenda Comercial — ${v.nome}`}
+            />
           </div>
         </div>
       ))}
