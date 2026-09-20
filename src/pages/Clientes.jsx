@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Download, LayoutGrid, Megaphone, Plus, Search, Table2, TrendingUp, UserPlus } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill } from "../components/ui";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
@@ -11,7 +11,7 @@ import VincularIndicador from "../components/VincularIndicador";
 import { BRASS, BRASS_SOFT, INK, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { brl, fmtData, hojeISO, mesesDesde, valorRecebidoEfetivo } from "../lib/helpers";
 import { useVendedores } from "../hooks/useVendedores";
-import { definirDonoCarteira } from "../lib/clientes";
+import { definirDonoCarteira, mesclarClientes, similaridadeNomes } from "../lib/clientes";
 import { supabase } from "../supabaseClient";
 
 const NOME_DONO = "Tales";
@@ -83,9 +83,90 @@ function SeletorCarteira({ clienteId, donoCarteiraId, vendedores, onMudou }) {
   );
 }
 
+// Uma linha de "isso pode ser a mesma pessoa" — mostra quantos registros
+// (pedidos + peças) cada nome tem, pra dar uma pista de qual dos dois é
+// o cadastro "de verdade", e deixa escolher qual fica com um clique.
+// Mesclar é definitivo (apaga o outro cadastro), por isso sempre
+// confirma antes.
+function ParDuplicado({ par, onMesclar }) {
+  const [mesclando, setMesclando] = useState(false);
+  const [erro, setErro] = useState(null);
+  const registros = (c) => c.pedidos.length + c.pecas.length + (c.historico?.length || 0);
+
+  async function mesclar(manter, apagar) {
+    const ok = window.confirm(
+      `Mesclar "${apagar.nome}" dentro de "${manter.nome}"?\n\nTodos os pedidos, peças e histórico de "${apagar.nome}" passam a ficar em "${manter.nome}", e "${apagar.nome}" é apagado.\n\nEssa ação não pode ser desfeita.`
+    );
+    if (!ok) return;
+    setMesclando(true);
+    setErro(null);
+    try {
+      await onMesclar(manter.id, apagar.id);
+    } catch (e) {
+      setErro("Não consegui mesclar (" + e.message + ").");
+    } finally {
+      setMesclando(false);
+    }
+  }
+
+  return (
+    <div className="py-2.5" style={{ borderBottom: `1px solid ${LINE}` }}>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div style={{ fontSize: 12 }}>
+          <strong>{par.a.nome}</strong> <span style={{ color: TEXT_MUTED }}>({registros(par.a)} registro{registros(par.a) === 1 ? "" : "s"})</span>
+          {"  ×  "}
+          <strong>{par.b.nome}</strong> <span style={{ color: TEXT_MUTED }}>({registros(par.b)} registro{registros(par.b) === 1 ? "" : "s"})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={mesclando}
+            onClick={() => mesclar(par.a, par.b)}
+            style={{ background: BRASS_SOFT, color: BRASS, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, opacity: mesclando ? 0.6 : 1 }}
+          >
+            Manter "{par.a.nome}"
+          </button>
+          <button
+            type="button"
+            disabled={mesclando}
+            onClick={() => mesclar(par.b, par.a)}
+            style={{ background: BRASS_SOFT, color: BRASS, padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, opacity: mesclando ? 0.6 : 1 }}
+          >
+            Manter "{par.b.nome}"
+          </button>
+        </div>
+      </div>
+      {erro && (
+        <div style={{ fontSize: 11, color: VERMELHO, marginTop: 4 }}>{erro}</div>
+      )}
+    </div>
+  );
+}
+
 export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastrar, recarregarClientes }) {
   const { vendedores } = useVendedores();
   const nomesClientesLista = clientes.map((c) => c.nome);
+  const [mostrarDuplicados, setMostrarDuplicados] = useState(true);
+
+  // Varre todos os pares de clientes atrás de nome parecido (não igual)
+  // — mesmo cálculo usado no aviso ao lançar pedido, só que aqui olhando
+  // pra base inteira de uma vez, pra pegar duplicidade que já passou
+  // batida antes desse aviso existir.
+  const duplicadosPossiveis = useMemo(() => {
+    const pares = [];
+    for (let i = 0; i < clientes.length; i++) {
+      for (let j = i + 1; j < clientes.length; j++) {
+        const score = similaridadeNomes(clientes[i].nome, clientes[j].nome);
+        if (score >= 0.5) pares.push({ a: clientes[i], b: clientes[j], score });
+      }
+    }
+    return pares.sort((x, y) => y.score - x.score);
+  }, [clientes]);
+
+  async function handleMesclarClientes(idManter, idApagar) {
+    await mesclarClientes(idManter, idApagar);
+    await recarregarClientes();
+  }
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [limiteMeses, setLimiteMeses] = useState(6);
@@ -306,6 +387,28 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
   return (
     <div>
       <PageTitle eyebrow={`${listados.length} de ${clientes.length} clientes`} title="Clientes" />
+
+      {duplicadosPossiveis.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <button type="button" className="flex items-center justify-between w-full mb-1" onClick={() => setMostrarDuplicados((v) => !v)}>
+            <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+              Possíveis clientes duplicados ({duplicadosPossiveis.length})
+            </div>
+            <span style={{ fontSize: 11, color: BRASS, fontWeight: 600 }}>{mostrarDuplicados ? "ocultar ▲" : "ver ▼"}</span>
+          </button>
+          {mostrarDuplicados && (
+            <>
+              <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
+                Nomes parecidos que podem ser a mesma pessoa cadastrada duas vezes (erro de digitação, por exemplo). Confira antes de mesclar —
+                a ação apaga o cadastro escolhido como duplicado e não pode ser desfeita.
+              </div>
+              {duplicadosPossiveis.map((par) => (
+                <ParDuplicado key={`${par.a.id}-${par.b.id}`} par={par} onMesclar={handleMesclarClientes} />
+              ))}
+            </>
+          )}
+        </Card>
+      )}
 
       <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
         <EstatCard label="Clientes na lista" valor={filtrados.length} />
