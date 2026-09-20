@@ -1,13 +1,72 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Printer } from "lucide-react";
-import { DESC_LABELS, MEDIDA_LABELS, inputStyle, rotuloMedida } from "../lib/constants";
+import { DESC_LABELS, INK, MEDIDA_LABELS, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, fmtData, hojeISO } from "../lib/helpers";
 import { imprimirComNome } from "../lib/imprimirFicha";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_FABI = "telefone_fabi";
 const CHAVE_TELEFONE_MILENA = "telefone_milena";
+
+const TABELA_ESTILO = { width: "100%", borderCollapse: "collapse", border: `2px solid ${INK}`, fontSize: 14 };
+const CELULA_ESTILO = { border: `1px solid ${INK}`, padding: "5px 11px", textAlign: "left" };
+const CABECALHO_ESTILO = { ...CELULA_ESTILO, background: INK, color: "#F5F1E8", fontSize: 11.5, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" };
+
+// Bloco de "destaque" no topo da ficha (status, prazo, quantidade...) —
+// tamanho de célula de planilha, bem maior que o texto corrido, pra dar
+// pra ler de relance sem precisar aproximar o olho da folha.
+function CelulaDestaque({ label, valor, destaque, ultima, valorFontSize = 19 }) {
+  return (
+    <div style={{ padding: "6px 10px 6px", borderRight: ultima ? "none" : `1px solid ${INK}`, background: destaque ? "#F3E9D8" : "#FFF" }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: destaque ? "#7A5A2E" : "#6B7280", marginBottom: 4 }}>
+        {label}
+      </div>
+      <div className="fx-serif" style={{ fontSize: valorFontSize, fontWeight: 600, color: destaque ? "#A9793E" : INK, lineHeight: 1.15 }}>
+        {valor}
+      </div>
+    </div>
+  );
+}
+
+function TituloSecao({ children, primeira }) {
+  return (
+    <div className="fx-serif" style={{ fontSize: 17, fontWeight: 600, margin: primeira ? "0 0 4px" : "8px 0 4px", paddingBottom: 4, borderBottom: `2px solid ${INK}` }}>
+      {children}
+    </div>
+  );
+}
+
+// Metade da tabela de medidas — em duas colunas lado a lado, não numa
+// lista corrida só, pra caber tudo numa folha A4 mesmo com letra maior.
+function TabelaMedidas({ labels, medidas, nomeCosteira }) {
+  return (
+    <table style={TABELA_ESTILO}>
+      <thead>
+        <tr>
+          <th style={CABECALHO_ESTILO}>Medida</th>
+          <th style={CABECALHO_ESTILO}>Tirei</th>
+          <th style={CABECALHO_ESTILO}>Final p/ {nomeCosteira}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {labels.map((label, i) => {
+          const bruto = medidas[label];
+          const fin = finalDaMedida(label, bruto);
+          return (
+            <tr key={label} style={{ background: i % 2 === 0 ? "#F7F5EF" : "#FFF" }}>
+              <td style={{ ...CELULA_ESTILO, fontWeight: 700 }}>{rotuloMedida(label)}</td>
+              <td style={{ ...CELULA_ESTILO, fontFamily: "'IBM Plex Mono', monospace" }}>{bruto !== "" && bruto != null ? `${bruto} cm` : "—"}</td>
+              <td style={{ ...CELULA_ESTILO, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", background: "#F3E9D8", color: "#6B4A1E" }}>
+                {fin !== null ? `${fin} cm` : "—"}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
 
 export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }) {
   const [telefone, setTelefone] = useState("");
@@ -150,109 +209,85 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
         </div>
       </div>
 
-      <div id="ficha-print" style={{ background: "#FFF", maxWidth: 720, margin: "0 auto 40px", padding: 40, color: "#111", fontFamily: "'Inter', sans-serif" }}>
-        <div style={{ borderBottom: "2px solid #111", paddingBottom: 12, marginBottom: 20 }}>
-          <div className="fx-serif" style={{ fontSize: 22, fontWeight: 700 }}>
-            Ficha de Produção — Camisa
-          </div>
-          <div style={{ fontSize: 12, color: "#555" }}>Gerado em {fmtData(hojeISO())}</div>
+      <div id="ficha-print" style={{ background: "#FFF", maxWidth: 720, margin: "0 auto 40px", padding: 40, color: INK, fontFamily: "'Inter', sans-serif" }}>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#A9793E" }}>
+          Schuck Alfaiataria · Ficha de Produção — Camisaria
         </div>
-
-        <div className="grid gap-2 mb-3" style={{ gridTemplateColumns: "1fr 1fr", fontSize: 13 }}>
-          <div>
-            <strong>Cliente:</strong> {p.cliente || "—"}
+        <div
+          className="flex items-baseline justify-between flex-wrap gap-3"
+          style={{ borderBottom: `3px solid ${INK}`, paddingBottom: 10, margin: "8px 0 3px" }}
+        >
+          <div className="fx-serif" style={{ fontSize: 38, fontWeight: 600, lineHeight: 1.05 }}>
+            {p.cliente || "Sem nome"}
           </div>
-          <div>
-            <strong>Status:</strong> {p.status}
-          </div>
-          <div>
-            <strong>Data do pedido:</strong> {fmtData(p.dataPedido)}
-          </div>
-          <div>
-            <strong>Previsão de entrega:</strong> {fmtData(p.previsaoEntrega)}
-          </div>
-          <div>
-            <strong>Quantidade:</strong> {p.quantidade}
-          </div>
-          <div>
-            <strong>Vendedor:</strong> {p.vendedor || "—"}
-          </div>
+          {p.recompra && (
+            <span style={{ background: "#F3E9DA", color: "#7A5A2E", border: "1px solid #A9793E", borderRadius: 999, padding: "5px 14px", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap" }}>
+              ↻ Recompra
+            </span>
+          )}
         </div>
-
-        {p.recompra && (
-          <div style={{ background: "#F3E9DA", border: "1px solid #A9793E", borderRadius: 6, padding: "8px 12px", marginBottom: 12, fontSize: 12, fontWeight: 600, color: "#7A5A2E" }}>
-            ↻ Cliente de recompra — já fez pedido antes
-          </div>
-        )}
+        <div className="flex justify-between flex-wrap gap-2" style={{ fontSize: 12, color: "#6B7280", marginBottom: 12 }}>
+          <span>Gerado em {fmtData(hojeISO())}</span>
+          <span>
+            Ficha para: <strong style={{ color: INK }}>{nomeCosteira}</strong>
+          </span>
+        </div>
 
         {p.medidasNovas && (
-          <div style={{ background: "#FBE1D6", border: "2px solid #9C4A1E", borderRadius: 6, padding: "10px 14px", marginBottom: 20, fontSize: 14, fontWeight: 700, color: "#9C4A1E" }}>
+          <div style={{ background: "#FBE1D6", border: "2px solid #9C4A1E", borderRadius: 8, padding: "6px 14px", marginBottom: 8, fontSize: 14, fontWeight: 700, color: "#9C4A1E" }}>
             ⚠ MEDIDAS NOVAS — cliente atualizou as medidas, NÃO usar a medida do pedido anterior
           </div>
         )}
 
-        <div className="fx-serif mb-2" style={{ fontSize: 15, fontWeight: 700, borderBottom: "1px solid #ccc", paddingBottom: 4 }}>
-          Medidas (cm)
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: "repeat(5, 1fr)", border: `2px solid ${INK}`, borderRadius: 6, overflow: "hidden", marginBottom: 14 }}
+        >
+          <CelulaDestaque label="Status" valor={p.status} />
+          <CelulaDestaque label="Data do pedido" valor={fmtData(p.dataPedido)} />
+          <CelulaDestaque label="Previsão entrega" valor={fmtData(p.previsaoEntrega)} destaque />
+          <CelulaDestaque label="Quantidade" valor={`${p.quantidade} un`} destaque />
+          <CelulaDestaque label="Vendedor" valor={p.vendedor || "—"} valorFontSize={16} ultima />
         </div>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 20 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Medida</th>
-              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Tirei (cm)</th>
-              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Final p/ {nomeCosteira} (cm)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {MEDIDA_LABELS.map((label, i) => {
-              const bruto = p.medidas[label];
-              const fin = finalDaMedida(label, bruto);
-              return (
-                <tr key={label} style={{ background: i % 2 === 0 ? "#F7F5EF" : "#FFF" }}>
-                  <td style={{ padding: "5px 8px", fontWeight: 600 }}>{rotuloMedida(label)}</td>
-                  <td style={{ padding: "5px 8px" }}>{bruto !== "" && bruto != null ? `${bruto} cm` : "—"}</td>
-                  <td style={{ padding: "5px 8px", fontWeight: 600 }}>{fin !== null ? `${fin} cm` : "—"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
 
-        <div className="fx-serif mb-2" style={{ fontSize: 15, fontWeight: 700, borderBottom: "1px solid #ccc", paddingBottom: 4 }}>
-          Características
+        <TituloSecao primeira>Medidas (cm)</TituloSecao>
+        <div className="grid gap-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
+          <TabelaMedidas labels={MEDIDA_LABELS.slice(0, Math.ceil(MEDIDA_LABELS.length / 2))} medidas={p.medidas} nomeCosteira={nomeCosteira} />
+          <TabelaMedidas labels={MEDIDA_LABELS.slice(Math.ceil(MEDIDA_LABELS.length / 2))} medidas={p.medidas} nomeCosteira={nomeCosteira} />
         </div>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 20 }}>
+
+        <TituloSecao>Características</TituloSecao>
+        <table style={TABELA_ESTILO}>
           <tbody>
             {DESC_LABELS.map((label, i) => (
               <tr key={label} style={{ background: i % 2 === 0 ? "#F7F5EF" : "#FFF" }}>
-                <td style={{ padding: "5px 8px", fontWeight: 600, width: "40%" }}>{label}</td>
-                <td style={{ padding: "5px 8px" }}>{p.descricao[label] || "—"}</td>
+                <td style={{ ...CELULA_ESTILO, fontWeight: 700, width: "38%" }}>{label}</td>
+                <td style={CELULA_ESTILO}>{p.descricao[label] || "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div className="fx-serif mb-2" style={{ fontSize: 15, fontWeight: 700, borderBottom: "1px solid #ccc", paddingBottom: 4 }}>
-          Tecido
-        </div>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 20 }}>
+        <TituloSecao>Tecido</TituloSecao>
+        <table style={TABELA_ESTILO}>
           <thead>
             <tr>
-              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Código</th>
-              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Qtd</th>
-              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Observação</th>
+              <th style={CABECALHO_ESTILO}>Código</th>
+              <th style={CABECALHO_ESTILO}>Qtd</th>
+              <th style={CABECALHO_ESTILO}>Observação</th>
             </tr>
           </thead>
           <tbody>
             {p.tecidos.filter((t) => t.codigo).map((t, i) => (
-              <tr key={i}>
-                <td style={{ padding: "5px 8px" }}>{t.codigo}</td>
-                <td style={{ padding: "5px 8px" }}>{t.qtd}</td>
-                <td style={{ padding: "5px 8px" }}>{t.numero || "—"}</td>
+              <tr key={i} style={{ background: i % 2 === 0 ? "#F7F5EF" : "#FFF" }}>
+                <td style={CELULA_ESTILO}>{t.codigo}</td>
+                <td style={CELULA_ESTILO}>{t.qtd}</td>
+                <td style={CELULA_ESTILO}>{t.numero || "—"}</td>
               </tr>
             ))}
             {p.tecidos.filter((t) => t.codigo).length === 0 && (
               <tr>
-                <td colSpan={3} style={{ padding: "5px 8px", color: "#888" }}>
+                <td colSpan={3} style={{ ...CELULA_ESTILO, color: "#888" }}>
                   Nenhum tecido informado.
                 </td>
               </tr>
@@ -262,10 +297,10 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
 
         {p.observacoes && (
           <>
-            <div className="fx-serif mb-2" style={{ fontSize: 15, fontWeight: 700, borderBottom: "1px solid #ccc", paddingBottom: 4 }}>
-              Observações
+            <TituloSecao>Observações</TituloSecao>
+            <div style={{ fontSize: 13.5, lineHeight: 1.4, whiteSpace: "pre-wrap", border: `2px solid ${INK}`, padding: "6px 10px", background: "#F7F5EF" }}>
+              {p.observacoes}
             </div>
-            <div style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>{p.observacoes}</div>
           </>
         )}
       </div>
