@@ -66,6 +66,7 @@ function estatisticasDe(lista, custoAviamentosPorPecaBase, maoDeObraPadrao, aliq
     ticketMedio: vendidos.length > 0 ? valor / vendidos.length : 0,
     novos: vendidos.filter((p) => !p.recompra).length,
     recompra: vendidos.filter((p) => p.recompra).length,
+    planoAssinatura: lista.filter((p) => p.origemPlanoId).length,
     custo,
     margem,
     margemPercentual: valor > 0 ? (margem / valor) * 100 : null,
@@ -349,6 +350,7 @@ export default function VendedorGestao({
                   { label: "Ticket médio", campo: "ticketMedio", fmt: brl },
                   { label: "Clientes novos", campo: "novos", fmt: (v) => String(v) },
                   { label: "Recompra", campo: "recompra", fmt: (v) => String(v) },
+                  { label: "Plano de assinatura", campo: "planoAssinatura", fmt: (v) => String(v) },
                   { label: "Custo estimado", campo: "custo", fmt: brl },
                   { label: "Margem (R$)", campo: "margem", fmt: brl, destaque: true },
                   { label: "Margem (%)", campo: "margemPercentual", fmt: (v) => (v == null ? "—" : `${v.toFixed(0)}%`), destaque: true },
@@ -397,6 +399,7 @@ export default function VendedorGestao({
                 <StatCard label="Ticket médio" value={brl(stats.ticketMedio)} icon={TrendingUp} />
                 <StatCard label="Clientes novos" value={String(stats.novos)} icon={UserPlus} />
                 <StatCard label="Recompra" value={String(stats.recompra)} icon={Repeat} />
+                <StatCard label="Plano de assinatura" value={String(stats.planoAssinatura)} icon={ClipboardList} />
                 <StatCard
                   label="Margem"
                   value={`${brl(stats.margem)}${stats.margemPercentual != null ? ` (${stats.margemPercentual.toFixed(0)}%)` : ""}`}
