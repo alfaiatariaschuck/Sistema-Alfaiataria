@@ -94,7 +94,7 @@ const NAV = [
   { id: "painel-camisaria-fabiana", label: "Painel Camisaria Fabiana", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
   { id: "painel-camisaria-milena", label: "Painel Camisaria Milena", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true, grupo: "Camisaria" },
-  { id: "pedidos", label: "Pedidos", icon: ClipboardList, primary: true, grupo: "Camisaria" },
+  { id: "pedidos", label: "Pedidos Tales", icon: ClipboardList, primary: true, grupo: "Camisaria" },
   { id: "pedidos-deivid", label: "Pedidos Deivid", icon: ClipboardList, primary: false, grupo: "Camisaria" },
   { id: "modelos-camisa", label: "Tecidos de Camisa", icon: Shirt, primary: false, grupo: "Camisaria" },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false, grupo: "Camisaria" },
@@ -907,7 +907,15 @@ export default function Shell() {
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                 />
               )}
-              {tab === "pedidos" && <Pedidos pedidos={pedidos} selecionado={selecionado} setSelecionado={setSelecionado} {...acoesPedido} />}
+              {tab === "pedidos" && (
+                <Pedidos
+                  pedidos={pedidos.filter((p) => p.costureira !== "Milena")}
+                  titulo="Pedidos Tales"
+                  selecionado={selecionado}
+                  setSelecionado={setSelecionado}
+                  {...acoesPedido}
+                />
+              )}
               {tab === "pedidos-deivid" && (
                 <Pedidos
                   pedidos={pedidos.filter((p) => (p.vendedor || "").trim().toLowerCase().includes("deivid"))}
