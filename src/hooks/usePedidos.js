@@ -65,6 +65,7 @@ function rowParaPedido(row) {
     clienteId: row.cliente_id,
     criadoPor: row.criado_por || null,
     vendedorAtribuidoId: row.vendedor_atribuido_id || null,
+    origemPlanoId: row.origem_plano_id || null,
     cliente: row.clientes?.nome || "",
     vendedor: row.vendedor || "",
     dataPedido: row.data_pedido,

@@ -5,6 +5,7 @@ import { CampoPagamento } from "../components/CampoPagamento";
 import CampoDadosPessoais, { dadosPessoaisVazio } from "../components/CampoDadosPessoais";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import CampoAutocomplete from "../components/CampoAutocomplete";
+import AvisoClienteParecido from "../components/AvisoClienteParecido";
 import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, INK, INK_SOFT, LINE, MEDIDA_LABELS, ORIGENS_CLIENTE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido } from "../lib/helpers";
@@ -130,6 +131,7 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
             <Field label="Cliente">
               <CampoAutocomplete value={p.cliente} onChange={(v) => set("cliente", v)} opcoes={nomesClientes} placeholder="Nome do cliente" required />
+              <AvisoClienteParecido nome={p.cliente} nomesClientes={nomesClientes} onEscolher={(nome) => set("cliente", nome)} />
             </Field>
             <Field label="Tipo de cliente">
               <div className="flex gap-2">

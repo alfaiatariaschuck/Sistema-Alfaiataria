@@ -442,6 +442,9 @@ export default function VendedorGestao({
                   {fmtData(p.dataPedido)} · {p.quantidade} un
                   {p.status !== "Doação" && <> · margem {brl(margem)}</>}
                 </div>
+                {p.origemPlanoId && (
+                  <div style={{ fontSize: 11, color: BRASS, fontWeight: 600, marginTop: 2 }}>📅 Plano de assinatura</div>
+                )}
               </button>
               <div className="flex items-center gap-3">
                 {vendedores.length > 0 && (

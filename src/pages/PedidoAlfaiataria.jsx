@@ -7,6 +7,7 @@ import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
 import CampoAutocomplete from "../components/CampoAutocomplete";
+import AvisoClienteParecido from "../components/AvisoClienteParecido";
 import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import {
   BRASS,
@@ -155,6 +156,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
                 opcoes={nomesClientes || []}
                 required
               />
+              <AvisoClienteParecido nome={novaPeca.cliente} nomesClientes={nomesClientes} onEscolher={(nome) => setNovaPeca({ ...novaPeca, cliente: nome })} />
             </Field>
             <Field label="Como chegou até a Schuck">
               <select style={inputStyle} value={novaPeca.origemCliente} onChange={(e) => setNovaPeca({ ...novaPeca, origemCliente: e.target.value })}>

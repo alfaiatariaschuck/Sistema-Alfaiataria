@@ -13,6 +13,115 @@ export async function renomearCliente(clienteId, novoNome) {
   if (error) throw error;
 }
 
+// Todos os bigramas (pares de letras seguidas) de uma string, minúscula
+// e sem espaço nas pontas — base do coeficiente de Dice abaixo, no
+// mesmo espírito da similarity() do pg_trgm usada em
+// consulta_clientes_duplicados.sql, só que rodando no navegador.
+function bigramas(str) {
+  const s = (str || "").trim().toLowerCase();
+  const pares = [];
+  for (let i = 0; i < s.length - 1; i++) pares.push(s.slice(i, i + 2));
+  return pares;
+}
+
+function dice(x, y) {
+  const bx = bigramas(x);
+  const by = [...bigramas(y)];
+  if (bx.length === 0 || by.length === 0) return 0;
+  let comuns = 0;
+  bx.forEach((bg) => {
+    const idx = by.indexOf(bg);
+    if (idx !== -1) {
+      comuns++;
+      by.splice(idx, 1);
+    }
+  });
+  return (2 * comuns) / (bigramas(x).length + bigramas(y).length);
+}
+
+// Quão parecidas duas strings são, de 0 (nada) a 1 (idênticas) — conta
+// quantos bigramas as duas têm em comum. Só cai pra comparar apenas a
+// primeira palavra quando um dos dois nomes é uma palavra só (o caso do
+// "Gabrr" sem sobrenome nenhum) — comparar sempre só o primeiro nome
+// faria dois clientes normais com o mesmo primeiro nome (ex: "João
+// Silva" x "João Pedro") aparecerem como duplicados, o que é ruído, não
+// aviso de verdade.
+export function similaridadeNomes(a, b) {
+  const palavras = (s) => (s || "").trim().split(/\s+/).filter(Boolean);
+  const palavrasA = palavras(a);
+  const palavrasB = palavras(b);
+  if (palavrasA.length === 1 || palavrasB.length === 1) {
+    return Math.max(dice(a, b), dice(palavrasA[0] || "", palavrasB[0] || ""));
+  }
+  return dice(a, b);
+}
+
+const LIMIAR_NOME_PARECIDO = 0.5;
+
+// Acha, numa lista de nomes já cadastrados, o mais parecido com o nome
+// digitado — ignora nome idêntico (isso já vira o mesmo cliente
+// sozinho, sem risco de duplicidade) e só devolve algo acima do limiar,
+// senão vira aviso demais pra nome que só por acaso começa igual.
+export function nomeParecidoExistente(nomeDigitado, listaNomes) {
+  const nome = (nomeDigitado || "").trim();
+  if (nome.length < 3) return null;
+  const nomeNormalizado = nome.toLowerCase();
+  let melhor = null;
+  (listaNomes || []).forEach((existente) => {
+    if (existente.trim().toLowerCase() === nomeNormalizado) return;
+    const score = similaridadeNomes(nome, existente);
+    if (score >= LIMIAR_NOME_PARECIDO && (!melhor || score > melhor.score)) {
+      melhor = { nome: existente, score };
+    }
+  });
+  return melhor;
+}
+
+// Mesclagem de cliente duplicado, direto do app — mesma lógica que
+// antes só dava pra rodar via SQL manual: transfere pedidos, peças de
+// alfaiataria, plano de assinatura, histórico de vendas, anotações e
+// indicações do cadastro "a apagar" pro "a manter", completa os dados
+// pessoais que estiverem faltando, e por fim apaga o duplicado.
+export async function mesclarClientes(idManter, idApagar) {
+  if (!idManter || !idApagar || idManter === idApagar) throw new Error("Selecione dois clientes diferentes.");
+
+  async function mover(tabela, coluna = "cliente_id") {
+    const { error } = await supabase.from(tabela).update({ [coluna]: idManter }).eq(coluna, idApagar);
+    if (error) throw error;
+  }
+
+  await mover("pedidos");
+  await mover("pedidos_alfaiataria");
+  await mover("historico_vendas");
+  await mover("planos_assinatura");
+  await mover("clientes_historico");
+  await mover("clientes", "indicado_por_cliente_id");
+
+  // Dados pessoais: só completa no cadastro certo o que estiver vazio —
+  // nunca sobrescreve algo que já tinha valor.
+  const { data: dadosApagar } = await supabase.from("clientes_dados_pessoais").select("*").eq("cliente_id", idApagar).maybeSingle();
+  if (dadosApagar) {
+    const { data: dadosManter } = await supabase.from("clientes_dados_pessoais").select("*").eq("cliente_id", idManter).maybeSingle();
+    if (dadosManter) {
+      const completado = { ...dadosApagar, ...dadosManter };
+      Object.keys(completado).forEach((k) => {
+        if (dadosManter[k] === null || dadosManter[k] === "") completado[k] = dadosApagar[k];
+      });
+      delete completado.cliente_id;
+      const { error } = await supabase.from("clientes_dados_pessoais").update(completado).eq("cliente_id", idManter);
+      if (error) throw error;
+    } else {
+      const { cliente_id, ...resto } = dadosApagar;
+      const { error } = await supabase.from("clientes_dados_pessoais").insert({ cliente_id: idManter, ...resto });
+      if (error) throw error;
+    }
+    await supabase.from("clientes_dados_pessoais").delete().eq("cliente_id", idApagar);
+  }
+
+  const { error: erroDelete } = await supabase.from("clientes").delete().eq("id", idApagar);
+  if (erroDelete) throw erroDelete;
+}
+
 // Cliente novo criado pelo login de um vendedor entra automaticamente na
 // carteira dele (foi ele quem prospectou/atendeu) — o dono pode
 // transferir depois em Clientes. Criado pelo dono, fica sem carteira
