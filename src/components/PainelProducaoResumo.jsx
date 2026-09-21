@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, CalendarDays, CheckCircle2, Clock, Eye, Flame, PackageCheck, Scissors, Target, Timer, UserCheck } from "lucide-react";
+import { AlertTriangle, CalendarDays, CheckCircle2, Clock, Eye, Flame, PackageCheck, Scissors, Timer, TrendingDown, UserCheck } from "lucide-react";
 import { Card, StatCard } from "./ui";
 import { BRASS, TEXT_MUTED } from "../lib/constants";
 import { fmtData, hojeISO, previsaoEfetivaDe, previsaoEstimada } from "../lib/helpers";
@@ -46,7 +46,7 @@ function PontoMelhoriaLinha({ ponto, onBater, onDesfazer }) {
             onClick={() => onBater(ponto.id, nota)}
             style={{ background: "#EDEAE0", color: BRASS, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}
           >
-            Bati essa meta
+            Marcar como resolvido
           </button>
         </div>
       )}
@@ -175,11 +175,11 @@ export default function PainelProducaoResumo({ pecas, equipe, mediaDiasProducao,
       {pontos.length > 0 && (
         <Card style={{ padding: 16 }} className="mb-6">
           <div className="flex items-center gap-1.5" style={{ marginBottom: 4 }}>
-            <Target size={14} color={BRASS} />
+            <TrendingDown size={14} color={BRASS} />
             <span style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, textTransform: "uppercase" }}>Pontos de melhoria na produção</span>
           </div>
           <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>
-            Meta: voltar de ~32h pra ~23,5h por peça (Costume/Traje). Marca aqui quando resolver um desses gargalos.
+            Referência: de ~32h pra ~23,5h por peça (Costume/Traje). Marca aqui quando resolver um desses gargalos.
           </div>
           {pontos.map((ponto) => (
             <PontoMelhoriaLinha key={ponto.id} ponto={ponto} onBater={marcarComoBatido} onDesfazer={desfazerBatido} />

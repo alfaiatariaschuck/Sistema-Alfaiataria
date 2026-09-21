@@ -7,10 +7,10 @@ import { useAtividadesComerciais } from "../hooks/useAtividadesComerciais";
 const VERDE = "#2C6E31";
 const VERMELHO = "#9C4A1E";
 
-// Meta semanal de referência do Manual de Vendas Schuck ("Rotina
-// Semanal") — só orientativa, não trava nada.
-const META_CONTATOS = "40–50";
-const META_FECHAMENTOS = "3–5";
+// Referência semanal do Manual de Vendas Schuck ("Rotina Semanal") — só
+// orientativa, não trava nada.
+const REFERENCIA_CONTATOS = "40–50";
+const REFERENCIA_FECHAMENTOS = "3–5";
 
 const HISTORICO_SEMANAS = 8;
 
@@ -142,8 +142,8 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
   }, [semana, pedidos, atividades]);
 
   const linhas = [
-    { campo: "contatos", label: "Contatos", meta: META_CONTATOS, icon: Phone },
-    { campo: "agendamentos", label: "Agendamentos", meta: null, icon: CalendarCheck },
+    { campo: "contatos", label: "Contatos", referencia: REFERENCIA_CONTATOS, icon: Phone },
+    { campo: "agendamentos", label: "Agendamentos", referencia: null, icon: CalendarCheck },
   ];
 
   return (
@@ -223,19 +223,19 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
             : "Contatos e agendamentos são registrados pelo próprio vendedor — fechamentos e as taxas de conversão vêm dos pedidos fechados."}
         </div>
         <div className="grid gap-4 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
-          {linhas.map(({ campo, label, meta, icon: Icon }) =>
+          {linhas.map(({ campo, label, referencia, icon: Icon }) =>
             podeEditar ? (
               <div key={campo}>
                 <div className="flex items-center gap-1.5" style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>
-                  <Icon size={12} /> {label} {meta && <span>(meta {meta})</span>}
+                  <Icon size={12} /> {label} {referencia && <span>(referência {referencia})</span>}
                 </div>
                 <input type="number" min="0" step="1" style={inputStyle} value={editando[campo]} onChange={(e) => setCampo(campo, e.target.value)} />
               </div>
             ) : (
-              <StatCard key={campo} label={meta ? `${label} (meta ${meta})` : label} value={String(loading ? "…" : editando[campo])} icon={Icon} />
+              <StatCard key={campo} label={referencia ? `${label} (referência ${referencia})` : label} value={String(loading ? "…" : editando[campo])} icon={Icon} />
             )
           )}
-          <StatCard label={`Fechamentos (meta ${META_FECHAMENTOS})`} value={String(fechamentosSemana)} icon={HandCoins} accent={fechamentosSemana > 0 ? VERDE : undefined} />
+          <StatCard label={`Fechamentos (referência ${REFERENCIA_FECHAMENTOS})`} value={String(fechamentosSemana)} icon={HandCoins} accent={fechamentosSemana > 0 ? VERDE : undefined} />
           <StatCard
             label="Taxa Contato → Agendamento"
             value={taxaContatoAgendamento != null ? `${taxaContatoAgendamento.toFixed(0)}%` : "—"}
