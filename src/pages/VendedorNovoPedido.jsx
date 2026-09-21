@@ -34,6 +34,12 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
   function setMedida(label, valor) {
     setP((prev) => ({ ...prev, medidas: { ...prev.medidas, [label]: valor } }));
   }
+  // Recompra, mas o cliente mudou de corpo (emagreceu, engordou etc.) —
+  // marca o pedido pra ficha destacar isso pra costureira (senão ela
+  // pode usar a medida antiga sem saber que mudou).
+  function marcarMedidasNovas() {
+    setP((prev) => ({ ...prev, medidasNovas: !prev.medidasNovas }));
+  }
   function setDesc(label, valor) {
     setP((prev) => ({ ...prev, descricao: { ...prev.descricao, [label]: valor } }));
   }
@@ -253,9 +259,33 @@ export default function VendedorNovoPedido({ onSalvar, nomesClientes, nomeVended
         </Card>
 
         <Card style={{ padding: 20 }} className="mb-5">
-          <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
-            Medidas (cm)
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <div className="fx-serif" style={{ fontSize: 16, fontWeight: 600 }}>
+              Medidas (cm)
+            </div>
+            {p.recompra && (
+              <button
+                type="button"
+                onClick={marcarMedidasNovas}
+                style={{
+                  background: p.medidasNovas ? "#9C4A1E" : "#EDEAE0",
+                  color: p.medidasNovas ? "#FFF" : INK_SOFT,
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  fontWeight: 600,
+                  fontSize: 12,
+                }}
+              >
+                {p.medidasNovas ? "⚠ Medidas novas — tirando de novo" : "Medidas Novas"}
+              </button>
+            )}
           </div>
+          {p.medidasNovas && (
+            <div className="mb-3 px-3 py-2" style={{ background: "#F6E3D9", color: "#9C4A1E", borderRadius: 6, fontSize: 12 }}>
+              As medidas do pedido anterior continuam preenchidas — corrija abaixo só o que mudou. Isso vai aparecer
+              em destaque na ficha da costureira.
+            </div>
+          )}
           <ControleVozMedidas onMedida={setMedida} />
           <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
             {MEDIDA_LABELS.map((label) => {
