@@ -9,6 +9,7 @@ const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
 const CHAVE_CAIXA = "caixa_atual";
 const CHAVE_SOMAR_TECIDO = "somar_tecido_pendente";
+const CHAVE_SOMAR_PREVISAO = "somar_previsao_venda";
 const MESES_HISTORICO_FRETE = 6;
 
 // Total de uma despesa = valor do produto/serviço + frete (quando tiver).
@@ -432,6 +433,7 @@ export default function ContasAPagar({
   const [desfazerRecente, setDesfazerRecente] = useState(null);
   const [mostrarPagas, setMostrarPagas] = useState(false);
   const [somarTecidoPendente, setSomarTecidoPendente] = useState(false);
+  const [somarPrevisaoVenda, setSomarPrevisaoVenda] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -441,6 +443,10 @@ export default function ContasAPagar({
     (async () => {
       const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_SOMAR_TECIDO).maybeSingle();
       setSomarTecidoPendente(data?.valor === "true");
+    })();
+    (async () => {
+      const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_SOMAR_PREVISAO).maybeSingle();
+      setSomarPrevisaoVenda(data?.valor === "true");
     })();
   }, []);
 
@@ -456,6 +462,15 @@ export default function ContasAPagar({
     const novo = !somarTecidoPendente;
     setSomarTecidoPendente(novo);
     await supabase.from("config").upsert({ chave: CHAVE_SOMAR_TECIDO, valor: novo ? "true" : "false" });
+  }
+
+  // Mesma lógica do tecido pendente — previsão de venda é uma
+  // expectativa, ainda não é um pedido de verdade, então fica de fora
+  // do saldo/falta faturar até você decidir contar com ela.
+  async function alternarSomarPrevisaoVenda() {
+    const novo = !somarPrevisaoVenda;
+    setSomarPrevisaoVenda(novo);
+    await supabase.from("config").upsert({ chave: CHAVE_SOMAR_PREVISAO, valor: novo ? "true" : "false" });
   }
 
   const hoje = hojeISO();
@@ -569,7 +584,11 @@ export default function ContasAPagar({
   const previsoesJanela = previsoes.filter((p) => dentroDaJanela(p.dataEsperada));
 
   const totalDespesas = despesasJanela.reduce((s, d) => s + Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)), 0);
-  const totalReceita = receberJanela.reduce((s, p) => s + p.pendente, 0) + previsoesJanela.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
+  const totalPrevisoesJanela = previsoesJanela.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
+  // Previsão de venda é uma expectativa (ainda não é pedido de verdade),
+  // então só entra no total se o interruptor abaixo estiver ligado —
+  // mesmo princípio do tecido pendente de compra.
+  const totalReceita = receberJanela.reduce((s, p) => s + p.pendente, 0) + (somarPrevisaoVenda ? totalPrevisoesJanela : 0);
   const caixaNum = parseFloat(caixaAtual) || 0;
 
   // Tecido ainda não comprado (pedidos + peças, ver aba Compras) — já
@@ -1256,6 +1275,25 @@ export default function ContasAPagar({
           </Card>
         </button>
         <StatCard label="A receber no período" value={brl(totalReceita)} icon={TrendingUp} accent={VERDE} />
+        <button
+          type="button"
+          onClick={alternarSomarPrevisaoVenda}
+          title={somarPrevisaoVenda ? "Clica pra parar de somar" : "Clica pra somar no saldo projetado/falta faturar"}
+          style={{ textAlign: "left", cursor: "pointer" }}
+        >
+          <Card style={{ padding: 16, border: somarPrevisaoVenda ? "1px solid #8FB89A" : undefined }}>
+            <div className="flex items-center justify-between mb-2">
+              <span style={{ fontSize: 12, color: TEXT_MUTED, fontWeight: 600 }}>Previsão de venda (no período)</span>
+              <TrendingUp size={15} color={somarPrevisaoVenda ? VERDE : TEXT_MUTED} />
+            </div>
+            <div className="fx-serif" style={{ fontSize: 22, fontWeight: 600, color: somarPrevisaoVenda ? VERDE : INK }}>
+              {brl(totalPrevisoesJanela)}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: somarPrevisaoVenda ? VERDE : TEXT_MUTED, marginTop: 4 }}>
+              {somarPrevisaoVenda ? "✓ somando no saldo — clica pra parar" : "não está somando — clica pra somar"}
+            </div>
+          </Card>
+        </button>
         <StatCard label="Saldo projetado" value={brl(saldo)} icon={Wallet} accent={saldo < 0 ? VERMELHO : VERDE} />
         <StatCard label="Falta faturar" value={brl(faltaFaturar)} icon={TrendingUp} accent={faltaFaturar > 0 ? VERMELHO : VERDE} />
       </div>
