@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { CalendarCheck, ChevronLeft, ChevronRight, Compass, HandCoins, Percent, Phone } from "lucide-react";
 import { Card, PageTitle, StatCard } from "./ui";
 import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { domingoDe, segundaFeiraDe, semanaSeguinteDe } from "../lib/helpers";
 import { useAtividadesComerciais } from "../hooks/useAtividadesComerciais";
 
 const VERDE = "#2C6E31";
@@ -24,26 +25,9 @@ const REFERENCIA_CARTEIRA = [
   { mes: 12, clientes: 150 },
 ];
 
-function segundaFeiraDe(dataISO) {
-  const d = new Date(dataISO + "T00:00:00");
-  const diaSemana = d.getDay();
-  const diff = diaSemana === 0 ? -6 : 1 - diaSemana;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
-function domingoDe(segundaISO) {
-  const d = new Date(segundaISO + "T00:00:00");
-  d.setDate(d.getDate() + 6);
-  return d.toISOString().slice(0, 10);
-}
 function semanaAnteriorDe(segundaISO) {
   const d = new Date(segundaISO + "T00:00:00");
   d.setDate(d.getDate() - 7);
-  return d.toISOString().slice(0, 10);
-}
-function semanaSeguinteDe(segundaISO) {
-  const d = new Date(segundaISO + "T00:00:00");
-  d.setDate(d.getDate() + 7);
   return d.toISOString().slice(0, 10);
 }
 function fmtDataCurta(iso) {

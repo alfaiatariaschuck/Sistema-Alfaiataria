@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, HelpCircle, Pencil, PiggyBank, Plus, Trash2, TrendingDown, TrendingUp, Undo2, Wallet, X } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, HelpCircle, Pencil, PiggyBank, Plus, Repeat, Trash2, TrendingDown, TrendingUp, Undo2, Wallet, X } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, CATEGORIAS_DESPESA, FORNECEDORES_TECIDO, INK, LINE, LINHA_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, fmtData, hojeISO, metragemParaNumero, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, domingoDe, fmtData, hojeISO, metragemParaNumero, segundaFeiraDe, semanaSeguinteDe, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const VERMELHO = "#9C4A1E";
@@ -367,6 +367,102 @@ function ContaFabiAgrupada({ despesas, pedidos, onAtualizarValorPago, onAtualiza
   );
 }
 
+// Formata "22/09" a partir de um ISO — mais compacto que fmtData (sem
+// ano) pro eixo do gráfico e pros rótulos de semana.
+function fmtDataCurtaISO(iso) {
+  const [, m, d] = iso.split("-");
+  return `${d}/${m}`;
+}
+
+// Gráfico de fluxo de caixa projetado — uma linha só (saldo acumulado),
+// verde acima de zero e vermelha abaixo, pra responder de cara "vou
+// ficar no vermelho em algum momento das próximas semanas?". Rótulo
+// só no primeiro ponto, no último e em quem cruza o zero — o resto do
+// detalhe (o que compõe cada semana) mora na lista logo abaixo.
+function GraficoFluxoCaixa({ semanas }) {
+  if (!semanas || semanas.length === 0) return null;
+  const W = 720;
+  const H = 220;
+  const PAD_L = 8;
+  const PAD_R = 8;
+  const PAD_TOP = 28;
+  const PAD_BOTTOM = 28;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_TOP - PAD_BOTTOM;
+
+  const valores = semanas.map((s) => s.saldoAcumulado);
+  const minVal = Math.min(0, ...valores);
+  const maxVal = Math.max(0, ...valores);
+  const folga = Math.max(1, (maxVal - minVal) * 0.18);
+  const escalaMin = minVal - folga;
+  const escalaMax = maxVal + folga;
+  const escala = escalaMax - escalaMin || 1;
+
+  const x = (i) => PAD_L + (i / (semanas.length - 1 || 1)) * plotW;
+  const y = (v) => PAD_TOP + plotH - ((v - escalaMin) / escala) * plotH;
+  const yZero = y(0);
+
+  const pontos = semanas.map((s, i) => ({ ...s, cx: x(i), cy: y(s.saldoAcumulado) }));
+
+  // Quais pontos ganham rótulo direto: o primeiro, o último, e qualquer
+  // um em que o sinal muda em relação ao anterior (cruzou o zero).
+  const indicesRotulados = new Set([0, pontos.length - 1]);
+  pontos.forEach((p, i) => {
+    if (i === 0) return;
+    const anterior = pontos[i - 1];
+    if ((anterior.saldoAcumulado < 0) !== (p.saldoAcumulado < 0)) indicesRotulados.add(i);
+  });
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }} role="img" aria-label="Saldo projetado, semana a semana">
+      {/* linha de referência zero */}
+      <line x1={PAD_L} y1={yZero} x2={W - PAD_R} y2={yZero} stroke={TEXT_MUTED} strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
+      <text x={PAD_L} y={yZero - 5} fontSize="9" fill={TEXT_MUTED} fontFamily="'IBM Plex Mono', monospace">
+        R$ 0
+      </text>
+
+      {/* segmentos coloridos pelo sinal do ponto médio */}
+      {pontos.slice(1).map((p, idx) => {
+        const anterior = pontos[idx];
+        const meio = (anterior.saldoAcumulado + p.saldoAcumulado) / 2;
+        const cor = meio >= 0 ? VERDE : VERMELHO;
+        return <line key={idx} x1={anterior.cx} y1={anterior.cy} x2={p.cx} y2={p.cy} stroke={cor} strokeWidth="2.5" strokeLinecap="round" />;
+      })}
+
+      {/* pontos + rótulos seletivos */}
+      {pontos.map((p, i) => {
+        const cor = p.saldoAcumulado >= 0 ? VERDE : VERMELHO;
+        const rotulado = indicesRotulados.has(i);
+        return (
+          <g key={i}>
+            <circle cx={p.cx} cy={p.cy} r={rotulado ? 4 : 2.5} fill={cor} stroke="#FFF" strokeWidth="1.5">
+              <title>
+                Semana de {fmtDataCurtaISO(p.inicio)}: saldo projetado {brl(p.saldoAcumulado)}
+              </title>
+            </circle>
+            {rotulado && (
+              <text
+                x={p.cx}
+                y={p.cy < H / 2 ? p.cy + 16 : p.cy - 9}
+                textAnchor={i === 0 ? "start" : i === pontos.length - 1 ? "end" : "middle"}
+                fontSize="10.5"
+                fontWeight="700"
+                fill={cor}
+                fontFamily="'IBM Plex Mono', monospace"
+              >
+                {brl(p.saldoAcumulado)}
+              </text>
+            )}
+            <text x={p.cx} y={H - 8} textAnchor="middle" fontSize="9" fill={TEXT_MUTED}>
+              {fmtDataCurtaISO(p.inicio)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 export default function ContasAPagar({
   pedidos,
   pecas,
@@ -523,6 +619,7 @@ export default function ContasAPagar({
           pendente: Math.max(0, valor - recebido),
           temPrevisao: !!p.previsaoEntrega,
           dataRef: p.previsaoEntrega || p.dataPedido,
+          dataCobranca: p.dataCobranca || null,
         };
       })
       .filter((x) => x.pendente > 0),
@@ -538,6 +635,7 @@ export default function ContasAPagar({
           pendente: Math.max(0, valor - recebido),
           temPrevisao: !!p.previsaoEntrega,
           dataRef: p.previsaoEntrega || p.dataPedido,
+          dataCobranca: p.dataCobranca || null,
         };
       })
       .filter((x) => x.pendente > 0),
@@ -615,6 +713,43 @@ export default function ContasAPagar({
   // preciso pra cobrir tudo isso com o caixa que tenho.
   const saldo = caixaNum + totalReceita - totalDespesas - tecidoPendente;
   const faltaFaturar = Math.max(0, totalDespesas + tecidoPendente - caixaNum - totalReceita);
+
+  // Contas fixas do mês — despesas recorrentes ainda em aberto. Como
+  // marcar uma como paga já lança sozinha a ocorrência do mês seguinte,
+  // em qualquer momento só existe UMA pendente de cada conta fixa — dá
+  // o "piso" de gasto mensal, separado do resto (fornecedor pontual,
+  // tecido etc).
+  const despesasFixas = despesasPendentes.filter((d) => d.recorrente);
+  const totalDespesasFixas = despesasFixas.reduce((s, d) => s + Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)), 0);
+
+  // Projeção de fluxo de caixa — semana a semana, daqui pra frente (o
+  // que já está atrasado mora em "Atrasados", não entra aqui de novo).
+  // Recebível usa a data de cobrança quando tiver — é o que você de
+  // fato marcou pra cobrar; sem ela, cai na previsão de entrega, que já
+  // era a referência usada no restante desta tela.
+  const SEMANAS_PROJECAO = 8;
+  const semanasProjecao = (() => {
+    const semanas = [];
+    let cursor = segundaFeiraDe(hoje);
+    let saldoAcumulado = caixaNum - tecidoPendente;
+    for (let i = 0; i < SEMANAS_PROJECAO; i++) {
+      const fim = domingoDe(cursor);
+      const despesasSemana = despesasPendentes.filter((d) => d.vencimento >= cursor && d.vencimento <= fim);
+      const receberSemana = receberPendente.filter((p) => {
+        const ref = p.dataCobranca || p.dataRef;
+        return ref && ref >= cursor && ref <= fim;
+      });
+      const previsoesSemana = somarPrevisaoVenda ? previsoes.filter((p) => p.dataEsperada >= cursor && p.dataEsperada <= fim) : [];
+      const totalSai = despesasSemana.reduce((s, d) => s + Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)), 0);
+      const totalEntra =
+        receberSemana.reduce((s, p) => s + p.pendente, 0) + previsoesSemana.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
+      const saldoSemana = totalEntra - totalSai;
+      saldoAcumulado += saldoSemana;
+      semanas.push({ inicio: cursor, fim, despesasSemana, receberSemana, previsoesSemana, totalSai, totalEntra, saldoSemana, saldoAcumulado });
+      cursor = semanaSeguinteDe(cursor);
+    }
+    return semanas;
+  })();
 
   // Quanto devo por fornecedor — despesas em aberto (não só a janela de 14
   // dias) + tecido marcado como urgente (com preço já cadastrado), pra dar
@@ -1311,6 +1446,130 @@ export default function ContasAPagar({
           {erro}
         </div>
       )}
+
+      <div className="grid gap-6 mb-6" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
+        <Card style={{ padding: 20 }}>
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Saldo projetado — próximas {SEMANAS_PROJECAO} semanas
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
+            Caixa atual + o que entra − o que sai, semana a semana{somarTecidoPendente ? " (já descontando o tecido pendente)" : ""}
+            {somarPrevisaoVenda ? " (contando com a previsão de venda)" : ""}. Detalhe de cada semana na lista ao lado.
+          </div>
+          <GraficoFluxoCaixa semanas={semanasProjecao} />
+        </Card>
+
+        <Card style={{ padding: 20 }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <Repeat size={14} color={BRASS} />
+            <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+              Contas fixas do mês
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+            O que se repete todo mês, separado do resto — pra você ver o piso de gasto fixo de cara.
+          </div>
+          {despesasFixas.length === 0 && <Empty texto="Nenhuma despesa recorrente em aberto." />}
+          {despesasFixas.map((d) => (
+            <div key={d.id} className="flex items-center justify-between py-1.5" style={{ borderBottom: `1px solid ${LINE}`, fontSize: 12.5 }}>
+              <span style={{ fontWeight: 600 }}>{d.descricao}</span>
+              <span className="fx-mono" style={{ fontWeight: 700, color: INK }}>
+                {brl(Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)))}
+              </span>
+            </div>
+          ))}
+          {despesasFixas.length > 0 && (
+            <div className="flex items-center justify-between" style={{ marginTop: 10, paddingTop: 10, borderTop: `2px solid ${INK}` }}>
+              <span style={{ fontSize: 12, fontWeight: 700 }}>Total fixo do mês</span>
+              <span className="fx-mono" style={{ fontSize: 17, fontWeight: 700, color: VERMELHO }}>
+                {brl(totalDespesasFixas)}
+              </span>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <Card style={{ padding: 20 }} className="mb-6">
+        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+          Semana a semana
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+          Clique numa semana pra ver o que tem nela. A semana atual já vem aberta.
+        </div>
+        {semanasProjecao.map((s, i) => {
+          const rotuloRelativo = i === 0 ? "Semana atual" : i === 1 ? "Próxima semana" : `Em ${i} semanas`;
+          const itens = [
+            ...s.despesasSemana.map((d) => ({
+              key: `d-${d.id}`,
+              nome: d.descricao,
+              meta: `vence ${fmtData(d.vencimento)}${d.recorrente ? " · recorrente" : ""}`,
+              valor: -Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)),
+              recorrente: d.recorrente,
+            })),
+            ...s.receberSemana.map((p) => ({
+              key: `r-${p.tipo}-${p.id}`,
+              nome: p.nome,
+              meta: `cobrar em ${fmtData(p.dataCobranca || p.dataRef)} · ${p.tipo === "camisa" ? "Camisaria" : "Alfaiataria"}`,
+              valor: p.pendente,
+            })),
+            ...s.previsoesSemana.map((p) => ({
+              key: `p-${p.id}`,
+              nome: p.descricao || "Previsão de venda",
+              meta: `esperado ${fmtData(p.dataEsperada)}`,
+              valor: parseFloat(p.valor) || 0,
+            })),
+          ].sort((a, b) => b.valor - a.valor);
+          return (
+            <details key={s.inicio} open={i === 0} style={{ border: `1px solid ${LINE}`, borderRadius: 8, marginBottom: 8, overflow: "hidden" }}>
+              <summary
+                className="flex items-center justify-between flex-wrap gap-2"
+                style={{ padding: "10px 14px", cursor: "pointer", listStyle: "none" }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: BRASS, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                    {rotuloRelativo}
+                  </div>
+                  {fmtDataCurtaISO(s.inicio)} – {fmtDataCurtaISO(s.fim)}
+                </div>
+                <div className="flex items-center gap-3 fx-mono" style={{ fontSize: 12, fontWeight: 700 }}>
+                  <span style={{ color: VERMELHO }}>− {brl(s.totalSai)}</span>
+                  <span style={{ color: VERDE }}>+ {brl(s.totalEntra)}</span>
+                  <span
+                    style={{
+                      padding: "3px 9px",
+                      borderRadius: 999,
+                      fontSize: 11.5,
+                      background: s.saldoSemana >= 0 ? "#DCEBDD" : "#F6E3D9",
+                      color: s.saldoSemana >= 0 ? VERDE : VERMELHO,
+                    }}
+                  >
+                    saldo {s.saldoSemana >= 0 ? "+" : "−"}
+                    {brl(Math.abs(s.saldoSemana))}
+                  </span>
+                </div>
+              </summary>
+              <div style={{ padding: itens.length ? "0 14px 12px" : 0, borderTop: itens.length ? `1px solid ${LINE}` : "none" }}>
+                {itens.length === 0 && <div style={{ fontSize: 12, color: TEXT_MUTED, padding: "10px 0" }}>Nada previsto nessa semana ainda.</div>}
+                {itens.map((it) => (
+                  <div key={it.key} className="flex items-center justify-between py-1.5" style={{ borderBottom: `1px solid ${LINE}`, gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="flex items-center gap-1.5" style={{ fontSize: 12.5, fontWeight: 600 }}>
+                        {it.nome}
+                        {it.recorrente && <Pill text="↻ recorrente" style={{ bg: "#EFE1CC", fg: BRASS }} />}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: TEXT_MUTED }}>{it.meta}</div>
+                    </div>
+                    <span className="fx-mono" style={{ fontSize: 12, fontWeight: 700, color: it.valor >= 0 ? VERDE : VERMELHO, whiteSpace: "nowrap" }}>
+                      {it.valor >= 0 ? "+ " : "− "}
+                      {brl(Math.abs(it.valor))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          );
+        })}
+      </Card>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <Card style={{ padding: 20 }}>

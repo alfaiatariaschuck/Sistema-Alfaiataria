@@ -210,6 +210,26 @@ export function somarDias(iso, dias) {
   return d.toISOString().slice(0, 10);
 }
 
+// Segunda-feira da semana de uma data (ISO) — base pra agrupar qualquer
+// lista por semana (Funil de Vendas, projeção de fluxo de caixa).
+export function segundaFeiraDe(dataISO) {
+  const d = new Date(dataISO + "T00:00:00");
+  const diaSemana = d.getDay();
+  const diff = diaSemana === 0 ? -6 : 1 - diaSemana;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+export function domingoDe(segundaISO) {
+  const d = new Date(segundaISO + "T00:00:00");
+  d.setDate(d.getDate() + 6);
+  return d.toISOString().slice(0, 10);
+}
+export function semanaSeguinteDe(segundaISO) {
+  const d = new Date(segundaISO + "T00:00:00");
+  d.setDate(d.getDate() + 7);
+  return d.toISOString().slice(0, 10);
+}
+
 function mediaDiasEntrega(lista) {
   return lista.length ? Math.round(lista.reduce((s, p) => s + (diasProducaoRealPedido(p) || 0), 0) / lista.length) : null;
 }
