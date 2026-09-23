@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, FileText, Gauge, LayoutGrid, LogOut, Ruler, Search, Table2 } from "lucide-react";
+import { AlertTriangle, BarChart3, Check, ChevronDown, ChevronUp, FileText, Gauge, LayoutGrid, LogOut, Pencil, Ruler, Search, Table2 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePecasProducao } from "./hooks/usePecasProducao";
 import { useEquipeProducao } from "./hooks/useEquipeProducao";
@@ -51,6 +51,38 @@ function ResumoMedidas({ medidas, tipoPeca }) {
   );
 }
 
+// Mesmas seções/campos do ResumoMedidas, mas editável — o Ícaro corrige ou
+// completa uma medida direto na tela dele, sem precisar pedir pro Tales.
+// Mostra todos os campos da seção (não só os já preenchidos) pra dar pra
+// completar o que falta.
+function EditorMedidas({ medidas, tipoPeca, onAlterar }) {
+  const secoes = PECA_SECOES[tipoPeca] || [];
+  return (
+    <>
+      {secoes.map((secKey) => {
+        const sec = MEDIDAS_ALFAIATARIA[secKey];
+        return (
+          <div key={secKey} className="mb-3">
+            <div style={{ fontSize: 11, fontWeight: 600, color: BRASS, marginBottom: 4 }}>{sec.titulo}</div>
+            <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
+              {sec.campos.map((c) => (
+                <div key={c.label}>
+                  <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>{c.label}</div>
+                  <input
+                    style={{ ...inputStyle, padding: "5px 8px", fontSize: 12 }}
+                    defaultValue={medidas?.[secKey]?.[c.label] || ""}
+                    onBlur={(e) => onAlterar(secKey, c.label, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 // App enxuto pro Ícaro: só as peças de alfaiataria em produção — sem
 // valores, sem dados pessoais de cliente, sem nenhuma outra aba. Ele só
 // avança o status (etapa), marca quando começou a produzir de verdade e
@@ -70,11 +102,13 @@ export default function ShellProducao() {
     retomar,
     desfazerInicio,
     atualizarObservacaoProducao,
+    atualizarMedidas,
     atualizarRetrabalho,
   } = usePecasProducao();
   const { equipe } = useEquipeProducao();
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
+  const [editandoMedidas, setEditandoMedidas] = useState(null);
   const [visualizacao, setVisualizacao] = useState("tabela");
   const [pagina, setPagina] = useState("producao");
   const [pecaFicha, setPecaFicha] = useState(null);
@@ -463,7 +497,29 @@ export default function ShellProducao() {
                         ))}
                       </div>
                     )}
-                    <ResumoMedidas medidas={p.medidas} tipoPeca={p.tipoPeca} />
+                    <div className="flex items-center justify-between mb-1">
+                      <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED }}>Medidas</div>
+                      <button
+                        onClick={() => setEditandoMedidas(editandoMedidas === p.id ? null : p.id)}
+                        className="flex items-center gap-1"
+                        style={{ color: BRASS, fontSize: 11, fontWeight: 600 }}
+                      >
+                        {editandoMedidas === p.id ? (
+                          <>
+                            <Check size={12} /> Concluir edição
+                          </>
+                        ) : (
+                          <>
+                            <Pencil size={12} /> Editar medidas
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    {editandoMedidas === p.id ? (
+                      <EditorMedidas medidas={p.medidas} tipoPeca={p.tipoPeca} onAlterar={(secKey, label, valor) => atualizarMedidas(p.id, secKey, label, valor)} />
+                    ) : (
+                      <ResumoMedidas medidas={p.medidas} tipoPeca={p.tipoPeca} />
+                    )}
                     <div className="mb-3">
                       <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Sua observação</div>
                       <textarea

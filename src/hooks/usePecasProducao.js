@@ -104,6 +104,15 @@ export function usePecasProducao() {
     await supabase.from("pedidos_alfaiataria").update({ observacoes_producao: texto }).eq("id", id);
   }
 
+  // Ícaro corrigindo/preenchendo uma medida direto na tela dele — precisou
+  // de um ajuste que só percebeu na hora, sem precisar pedir pro Tales mexer.
+  async function atualizarMedidas(id, secKey, label, valor) {
+    const pecaAtual = pecas.find((p) => p.id === id);
+    const medidas = { ...(pecaAtual?.medidas || {}), [secKey]: { ...(pecaAtual?.medidas?.[secKey] || {}), [label]: valor } };
+    setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, medidas } : p)));
+    await supabase.from("pedidos_alfaiataria").update({ medidas }).eq("id", id);
+  }
+
   // Marca que a peça precisou de ajuste extra (não caiu bem na prova,
   // precisou refazer alguma parte) — o Ícaro é quem percebe isso na
   // hora, então ele mesmo registra.
@@ -136,6 +145,7 @@ export function usePecasProducao() {
     retomar,
     desfazerInicio,
     atualizarObservacaoProducao,
+    atualizarMedidas,
     atualizarRetrabalho,
   };
 }
