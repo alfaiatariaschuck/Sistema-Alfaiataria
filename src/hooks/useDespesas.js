@@ -70,26 +70,36 @@ export function useDespesas() {
     recarregar();
   }, [recarregar]);
 
-  async function criarDespesa({ descricao, categoria, fornecedor, valor, frete, vencimento, recorrente, linha, valorCamisaria, valorAlfaiataria, pedidoId, quantidadeCamisas }) {
+  // jaPago/dataPagamento (opcionais) — usado pelo Agente Conciliador pra
+  // registrar direto como pago um gasto que ele viu sair do banco (senão
+  // ia entrar como "Pendente" e contar dobrado no que falta pagar).
+  async function criarDespesa({ descricao, categoria, fornecedor, valor, frete, vencimento, recorrente, linha, valorCamisaria, valorAlfaiataria, pedidoId, quantidadeCamisas, jaPago, dataPagamento }) {
     return comIndicador(async () => {
-      const { error } = await supabase.from("despesas").insert({
-        descricao,
-        categoria: categoria || null,
-        fornecedor: fornecedor || null,
-        valor: Number(valor) || 0,
-        frete: Number(frete) || 0,
-        valor_pago: 0,
-        vencimento,
-        recorrente: !!recorrente,
-        status: "Pendente",
-        linha: linha || null,
-        valor_camisaria: valorCamisaria === "" || valorCamisaria == null ? null : Number(valorCamisaria),
-        valor_alfaiataria: valorAlfaiataria === "" || valorAlfaiataria == null ? null : Number(valorAlfaiataria),
-        pedido_id: pedidoId || null,
-        quantidade_camisas: quantidadeCamisas || null,
-      });
+      const total = (Number(valor) || 0) + (Number(frete) || 0);
+      const { data, error } = await supabase
+        .from("despesas")
+        .insert({
+          descricao,
+          categoria: categoria || null,
+          fornecedor: fornecedor || null,
+          valor: Number(valor) || 0,
+          frete: Number(frete) || 0,
+          valor_pago: jaPago ? total : 0,
+          data_pagamento: jaPago ? dataPagamento || hojeISO() : null,
+          vencimento,
+          recorrente: !!recorrente,
+          status: jaPago ? "Pago" : "Pendente",
+          linha: linha || null,
+          valor_camisaria: valorCamisaria === "" || valorCamisaria == null ? null : Number(valorCamisaria),
+          valor_alfaiataria: valorAlfaiataria === "" || valorAlfaiataria == null ? null : Number(valorAlfaiataria),
+          pedido_id: pedidoId || null,
+          quantidade_camisas: quantidadeCamisas || null,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
       await recarregar();
+      return data.id;
     });
   }
 

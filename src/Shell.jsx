@@ -1052,7 +1052,16 @@ export default function Shell() {
                 <Cerebro notas={notasCerebro} onCriar={criarNotaCerebro} onAtualizarCampo={atualizarCampoNotaCerebro} onRemover={removerNotaCerebro} />
               )}
               {tab === "agente-conciliador" && (
-                <AgenteConciliador despesas={despesas} pedidos={pedidos} pecas={pecas} pedidosSapatos={pedidosSapatos} />
+                <AgenteConciliador
+                  despesas={despesas}
+                  pedidos={pedidos}
+                  pecas={pecas}
+                  pedidosSapatos={pedidosSapatos}
+                  onMarcarDespesaPaga={atualizarValorPagoDespesa}
+                  onCriarDespesa={criarDespesa}
+                  onAtualizarSubcampoPedido={atualizarSubcampo}
+                  onAtualizarCampoPeca={atualizarCampoPeca}
+                />
               )}
               {tab === "controle-producao" && !loadingPecas && (
                 <ControleProducao

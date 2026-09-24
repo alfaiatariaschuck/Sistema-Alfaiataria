@@ -67,7 +67,7 @@ function normalizarNome(s) {
   return (s || "")
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/\p{Diacritic}/gu, "")
     .replace(/[^a-z0-9]/g, "");
 }
 
@@ -100,7 +100,19 @@ function acharMelhorMatch(linha, candidatos) {
   return { ...melhor, confiancaBaixa: melhor.pontoNome < 0.35 };
 }
 
-function LinhaResultado({ linha, match, cor }) {
+function BotaoAcao({ onClick, feito, texto, textoFeito }) {
+  if (feito) return <span style={{ fontSize: 11, color: VERDE, fontWeight: 600, whiteSpace: "nowrap" }}>✓ {textoFeito}</span>;
+  return (
+    <button
+      onClick={onClick}
+      style={{ background: "#EDEAE0", color: "#16212E", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}
+    >
+      {texto}
+    </button>
+  );
+}
+
+function LinhaResultado({ linha, match, cor, acao }) {
   return (
     <div className="flex items-center justify-between gap-3 p-2" style={{ borderBottom: `1px solid ${LINE}` }}>
       <div style={{ minWidth: 0 }}>
@@ -117,23 +129,61 @@ function LinhaResultado({ linha, match, cor }) {
         )}
         {!match && <div style={{ fontSize: 11, color: TEXT_MUTED }}>Não achei nada parecido no sistema — pode ser um lançamento faltando, ou algo pessoal (PF).</div>}
       </div>
-      <div className="fx-mono" style={{ fontSize: 13, fontWeight: 700, color: cor, whiteSpace: "nowrap" }}>
-        {brl(linha.valor)}
+      <div className="flex items-center gap-3 flex-shrink-0">
+        {acao}
+        <div className="fx-mono" style={{ fontSize: 13, fontWeight: 700, color: cor, whiteSpace: "nowrap" }}>
+          {brl(linha.valor)}
+        </div>
       </div>
     </div>
   );
 }
 
-export default function AgenteConciliador({ despesas, pedidos, pecas, pedidosSapatos }) {
+export default function AgenteConciliador({
+  despesas,
+  pedidos,
+  pecas,
+  pedidosSapatos,
+  onMarcarDespesaPaga,
+  onCriarDespesa,
+  onAtualizarSubcampoPedido,
+  onAtualizarCampoPeca,
+}) {
   const [textoSaidas, setTextoSaidas] = useState("");
   const [textoEntradas, setTextoEntradas] = useState("");
   const [resultado, setResultado] = useState(null);
+  // Feedback visual de "já cliquei nisso" — o resultado é uma foto do
+  // momento da conciliação, então a ação muda o banco mas não o texto
+  // "no sistema consta como X" da linha (só reconciliando de novo pra
+  // atualizar isso). O check aqui é só pra não deixar clicar 2x.
+  const [processados, setProcessados] = useState(new Set());
+
+  function marcarProcessado(chave) {
+    setProcessados((prev) => new Set(prev).add(chave));
+  }
+
+  async function marcarDespesaPaga(match, linha) {
+    await onMarcarDespesaPaga(match.id, match.valor, linha.data);
+    marcarProcessado(`despesa-${match.id}`);
+  }
+
+  async function registrarDespesaFaltando(linha) {
+    await onCriarDespesa({ descricao: linha.descricao, valor: linha.valor, vencimento: linha.data, jaPago: true, dataPagamento: linha.data });
+    marcarProcessado(`saida-${linha.data}-${linha.descricao}-${linha.valor}`);
+  }
+
+  async function marcarRecebido(match) {
+    if (match.tipo === "Camisaria") await onAtualizarSubcampoPedido(match.id, "aReceber", "statusPagamento", "Recebido");
+    else if (match.tipo === "Alfaiataria") await onAtualizarCampoPeca(match.id, "statusPagamentoVenda", "Recebido");
+    marcarProcessado(`entrada-${match.tipo}-${match.id}`);
+  }
 
   const candidatosSaida = useMemo(
     () =>
       (despesas || [])
         .filter((d) => totalDespesa(d) > 0)
         .map((d) => ({
+          id: d.id,
           nome: d.fornecedor || d.descricao,
           valor: d.status === "Pago" && parseFloat(d.valorPago) > 0 ? parseFloat(d.valorPago) : totalDespesa(d),
           dataRef: d.dataPagamento || d.vencimento,
@@ -146,6 +196,7 @@ export default function AgenteConciliador({ despesas, pedidos, pecas, pedidosSap
     const doCamisa = (pedidos || [])
       .filter((p) => parseFloat(p.aReceber?.valor) > 0)
       .map((p) => ({
+        id: p.id,
         tipo: "Camisaria",
         nome: p.cliente,
         valor: parseFloat(p.aReceber.valor) || 0,
@@ -155,6 +206,7 @@ export default function AgenteConciliador({ despesas, pedidos, pecas, pedidosSap
     const daPeca = (pecas || [])
       .filter((p) => parseFloat(p.valorVenda) > 0)
       .map((p) => ({
+        id: p.id,
         tipo: "Alfaiataria",
         nome: p.cliente,
         valor: parseFloat(p.valorVenda) || 0,
@@ -164,6 +216,7 @@ export default function AgenteConciliador({ despesas, pedidos, pecas, pedidosSap
     const doSapato = (pedidosSapatos || [])
       .filter((p) => parseFloat(p.valorVenda) > 0)
       .map((p) => ({
+        id: p.id,
         tipo: "Sapatos",
         nome: p.cliente,
         valor: parseFloat(p.valorVenda) || 0,
@@ -201,7 +254,9 @@ export default function AgenteConciliador({ despesas, pedidos, pecas, pedidosSap
         <p style={{ fontSize: 13, color: "#2A3B4D", lineHeight: 1.6 }}>
           Cole abaixo as linhas do seu extrato (uma por linha: <strong>data, descrição e valor</strong> — separados por
           tab, se colar direto do Excel, ou por dois espaços). Não precisa de IA nem de chave de API pra isso — é
-          comparação direta com o que já está no sistema, tudo roda aqui no navegador, nada sai daqui.
+          comparação direta com o que já está no sistema, tudo roda aqui no navegador, nada sai daqui. Depois de
+          conciliar, cada linha que precisar de uma ação (marcar como pago/recebido, registrar despesa que faltava)
+          já vem com um botão — clica ali e o sistema atualiza sozinho, sem precisar ir procurar em outra tela.
         </p>
       </Card>
 
@@ -247,7 +302,24 @@ export default function AgenteConciliador({ despesas, pedidos, pecas, pedidosSap
             {resultado.saidasBatendo.length === 0 ? (
               <Empty texto="Nenhuma." />
             ) : (
-              resultado.saidasBatendo.map((r, i) => <LinhaResultado key={i} linha={r.linha} match={r.match} cor={VERMELHO} />)
+              resultado.saidasBatendo.map((r, i) => (
+                <LinhaResultado
+                  key={i}
+                  linha={r.linha}
+                  match={r.match}
+                  cor={VERMELHO}
+                  acao={
+                    r.match.status !== "Pago" && (
+                      <BotaoAcao
+                        onClick={() => marcarDespesaPaga(r.match, r.linha)}
+                        feito={processados.has(`despesa-${r.match.id}`)}
+                        texto="Marcar como pago"
+                        textoFeito="marcado"
+                      />
+                    )
+                  }
+                />
+              ))
             )}
           </Card>
 
@@ -258,7 +330,25 @@ export default function AgenteConciliador({ despesas, pedidos, pecas, pedidosSap
             {resultado.saidasSemMatch.length === 0 ? (
               <Empty texto="Nenhuma — tudo que saiu bate com o sistema." />
             ) : (
-              resultado.saidasSemMatch.map((linha, i) => <LinhaResultado key={i} linha={linha} match={null} cor={VERMELHO} />)
+              resultado.saidasSemMatch.map((linha, i) => {
+                const chave = `saida-${linha.data}-${linha.descricao}-${linha.valor}`;
+                return (
+                  <LinhaResultado
+                    key={i}
+                    linha={linha}
+                    match={null}
+                    cor={VERMELHO}
+                    acao={
+                      <BotaoAcao
+                        onClick={() => registrarDespesaFaltando(linha)}
+                        feito={processados.has(chave)}
+                        texto="Registrar despesa"
+                        textoFeito="registrada"
+                      />
+                    }
+                  />
+                );
+              })
             )}
           </Card>
 
@@ -269,7 +359,25 @@ export default function AgenteConciliador({ despesas, pedidos, pecas, pedidosSap
             {resultado.entradasBatendo.length === 0 ? (
               <Empty texto="Nenhuma." />
             ) : (
-              resultado.entradasBatendo.map((r, i) => <LinhaResultado key={i} linha={r.linha} match={r.match} cor={VERDE} />)
+              resultado.entradasBatendo.map((r, i) => (
+                <LinhaResultado
+                  key={i}
+                  linha={r.linha}
+                  match={r.match}
+                  cor={VERDE}
+                  acao={
+                    r.match.status !== "Recebido" &&
+                    r.match.tipo !== "Sapatos" && (
+                      <BotaoAcao
+                        onClick={() => marcarRecebido(r.match)}
+                        feito={processados.has(`entrada-${r.match.tipo}-${r.match.id}`)}
+                        texto="Marcar como recebido"
+                        textoFeito="marcado"
+                      />
+                    )
+                  }
+                />
+              ))
             )}
           </Card>
 
