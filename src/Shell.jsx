@@ -75,6 +75,7 @@ import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import PainelSapatos from "./pages/PainelSapatos";
 import PedidoSapatos from "./pages/PedidoSapatos";
 import Cerebro from "./pages/Cerebro";
+import AgenteConciliador from "./pages/AgenteConciliador";
 import ControleProducao from "./pages/ControleProducao";
 import Equipe from "./pages/Equipe";
 import Fornecedores from "./pages/Fornecedores";
@@ -136,6 +137,7 @@ const NAV = [
   { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false, grupo: "Geral" },
   { id: "contas-a-receber", label: "Contas a Receber", icon: Wallet, primary: false, grupo: "Geral" },
   { id: "cerebro", label: "Cérebro", icon: Brain, primary: false, grupo: "Geral" },
+  { id: "agente-conciliador", label: "Agente Conciliador", icon: GitCompare, primary: false, grupo: "Geral" },
 
   { id: "equipe", label: "Equipe", icon: Users2, primary: false, grupo: "Sistema" },
   { id: "fornecedores", label: "Fornecedores", icon: ShoppingCart, primary: false, grupo: "Sistema" },
@@ -1048,6 +1050,9 @@ export default function Shell() {
               )}
               {tab === "cerebro" && (
                 <Cerebro notas={notasCerebro} onCriar={criarNotaCerebro} onAtualizarCampo={atualizarCampoNotaCerebro} onRemover={removerNotaCerebro} />
+              )}
+              {tab === "agente-conciliador" && (
+                <AgenteConciliador despesas={despesas} pedidos={pedidos} pecas={pecas} pedidosSapatos={pedidosSapatos} />
               )}
               {tab === "controle-producao" && !loadingPecas && (
                 <ControleProducao
