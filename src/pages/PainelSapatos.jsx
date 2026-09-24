@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { CheckCircle2, Footprints, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, FileText, Footprints, Plus, Trash2 } from "lucide-react";
 import { Card, Empty, Pill, StatCard, PageTitle } from "../components/ui";
 import { BRASS, LINE, STATUS_SAPATOS, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { hojeISO } from "../lib/helpers";
+import FichaImprimivelSapatos from "./FichaImprimivelSapatos";
 
 const VERDE = "#2C6E31";
 const VENDEDORES = ["Tales", "Deivid"];
@@ -109,6 +110,7 @@ export default function PainelSapatos({ pedidos, modelos, onAtualizarCampo, onRe
     [pedidos, mesAtual]
   );
   const personalizados = (pedidos || []).filter((p) => p.personalizacao.trim());
+  const [pedidoFicha, setPedidoFicha] = useState(null);
 
   return (
     <div>
@@ -185,9 +187,14 @@ export default function PainelSapatos({ pedidos, modelos, onAtualizarCampo, onRe
                       />
                     </td>
                     <td style={{ padding: "8px", borderBottom: `1px solid ${LINE}` }}>
-                      <button onClick={() => onRemoverPedido(p.id)} title="Remover">
-                        <Trash2 size={14} color={TEXT_MUTED} />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setPedidoFicha(p)} title="Ficha para a fábrica">
+                          <FileText size={14} color={BRASS} />
+                        </button>
+                        <button onClick={() => onRemoverPedido(p.id)} title="Remover">
+                          <Trash2 size={14} color={TEXT_MUTED} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -201,6 +208,8 @@ export default function PainelSapatos({ pedidos, modelos, onAtualizarCampo, onRe
         <ComparativoVendedores pedidos={pedidos} />
         <CatalogoModelos modelos={modelos} onAdicionar={onAdicionarModelo} onAtualizar={onAtualizarModelo} onRemover={onRemoverModelo} />
       </div>
+
+      {pedidoFicha && <FichaImprimivelSapatos pedido={pedidoFicha} onFechar={() => setPedidoFicha(null)} />}
     </div>
   );
 }
