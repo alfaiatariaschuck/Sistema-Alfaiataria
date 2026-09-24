@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ClipboardList,
   FileText,
+  Footprints,
   Gauge,
   GitCompare,
   Layers,
@@ -38,6 +39,8 @@ import {
 import { useAuth } from "./contexts/AuthContext";
 import { usePedidos } from "./hooks/usePedidos";
 import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
+import { usePedidosSapatos } from "./hooks/usePedidosSapatos";
+import { useModelosSapatos } from "./hooks/useModelosSapatos";
 import { usePlanosAssinatura } from "./hooks/usePlanosAssinatura";
 import { useNomesClientes } from "./hooks/useNomesClientes";
 import { useHistoricoVendas } from "./hooks/useHistoricoVendas";
@@ -67,6 +70,8 @@ import Entregues from "./pages/Entregues";
 import Backup from "./pages/Backup";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
+import PainelSapatos from "./pages/PainelSapatos";
+import PedidoSapatos from "./pages/PedidoSapatos";
 import ControleProducao from "./pages/ControleProducao";
 import Equipe from "./pages/Equipe";
 import Fornecedores from "./pages/Fornecedores";
@@ -111,6 +116,9 @@ const NAV = [
   { id: "tecidos-alfaiataria", label: "Tecidos Alfaiataria", icon: Ruler, primary: false, grupo: "Alfaiataria" },
   { id: "relatorio-alfaiataria", label: "Relatório Alfaiataria", icon: FileText, primary: false, grupo: "Alfaiataria" },
 
+  { id: "painel-sapatos", label: "Painel Sapatos", icon: Footprints, primary: true, grupo: "Sapatos" },
+  { id: "novo-pedido-sapatos", label: "Novo Pedido Sapatos", icon: Plus, primary: true, grupo: "Sapatos" },
+
   { id: "compras", label: "Compras", icon: ShoppingCart, primary: true, grupo: "Geral" },
   { id: "estoque-camisaria", label: "Estoque de Tecido", icon: PackageCheck, primary: false, grupo: "Geral" },
   { id: "entregues", label: "Entregues", icon: Archive, primary: false, grupo: "Geral" },
@@ -131,7 +139,7 @@ const NAV = [
   { id: "backup", label: "Backup", icon: ShieldCheck, primary: false, grupo: "Sistema" },
   { id: "config", label: "Configurações", icon: Settings, primary: false, grupo: "Sistema" },
 ];
-const GRUPOS_NAV = ["Camisaria", "Alfaiataria", "Geral", "Sistema"];
+const GRUPOS_NAV = ["Camisaria", "Alfaiataria", "Sapatos", "Geral", "Sistema"];
 const NAV_PRIMARIA = NAV.filter((n) => n.primary);
 const NAV_SECUNDARIA = NAV.filter((n) => !n.primary);
 
@@ -170,6 +178,15 @@ export default function Shell() {
     atualizarTecido: atualizarTecidoPeca,
     recarregar: recarregarPecas,
   } = usePedidosAlfaiataria();
+
+  const {
+    pedidos: pedidosSapatos,
+    loading: loadingPedidosSapatos,
+    criarPedido: criarPedidoSapato,
+    atualizarCampo: atualizarCampoPedidoSapato,
+    removerPedido: removerPedidoSapato,
+  } = usePedidosSapatos();
+  const { modelos: modelosSapatos, adicionarModelo: adicionarModeloSapato, atualizarModelo: atualizarModeloSapato, removerModelo: removerModeloSapato } = useModelosSapatos();
 
   const {
     planos,
@@ -317,6 +334,13 @@ export default function Shell() {
     await salvarDadosPessoaisCliente(clienteId, p.dadosPessoais);
     await recarregarNomesClientes();
     irParaPeca(id);
+  }
+
+  async function salvarNovoPedidoSapato(p) {
+    const { clienteId } = await criarPedidoSapato(p);
+    await salvarDadosPessoaisCliente(clienteId, p.dadosPessoais);
+    await recarregarNomesClientes();
+    setTab("painel-sapatos");
   }
 
   async function salvarNovoPlano(p) {
@@ -1001,6 +1025,20 @@ export default function Shell() {
               )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
                 <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={setSelecionadaPeca} {...acoesPeca} />
+              )}
+              {tab === "painel-sapatos" && !loadingPedidosSapatos && (
+                <PainelSapatos
+                  pedidos={pedidosSapatos}
+                  modelos={modelosSapatos}
+                  onAtualizarCampo={atualizarCampoPedidoSapato}
+                  onRemoverPedido={removerPedidoSapato}
+                  onAdicionarModelo={adicionarModeloSapato}
+                  onAtualizarModelo={atualizarModeloSapato}
+                  onRemoverModelo={removerModeloSapato}
+                />
+              )}
+              {tab === "novo-pedido-sapatos" && (
+                <PedidoSapatos onCriar={salvarNovoPedidoSapato} nomesClientes={nomesClientes} modelos={modelosSapatos} />
               )}
               {tab === "controle-producao" && !loadingPecas && (
                 <ControleProducao

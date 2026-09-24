@@ -34,6 +34,11 @@ export const STATUS_ALFAIATARIA = [
   "Entregue",
 ];
 
+// Fluxo de status do pedido de sapatos (parceria com fornecedor externo) —
+// bem mais simples que a produção própria: o Tales só acompanha o pedido
+// passando pelo fornecedor até chegar e ser entregue/retirado.
+export const STATUS_SAPATOS = ["Pedido registrado", "Enviado ao fornecedor", "A caminho", "Chegou (retirar)", "Entregue"];
+
 // Tipo de saída da peça de Alfaiataria — separado da etapa de produção
 // (status) de propósito: uma peça em permuta/doação/uso próprio passa
 // pelas MESMAS etapas (Molde, Corte, Provas...) que uma venda normal, só
