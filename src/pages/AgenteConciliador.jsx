@@ -3,6 +3,7 @@ import { CheckCircle2, GitCompare, HelpCircle, XCircle } from "lucide-react";
 import { Card, Empty, PageTitle } from "../components/ui";
 import { LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
+import { similaridadeNomes } from "../lib/clientes";
 
 const VERDE = "#2C6E31";
 const VERMELHO = "#9C4A1E";
@@ -62,19 +63,41 @@ function diffDias(a, b) {
   return Math.abs((new Date(a + "T00:00:00") - new Date(b + "T00:00:00")) / 86400000);
 }
 
+function normalizarNome(s) {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+// Pontua o quanto a descrição do banco parece com o nome/fornecedor do
+// sistema — primeiro tenta "um contém o outro" já sem acento/espaço/
+// pontuação (pega "Ícaro" em "Icaro De Oliveira Fadrique", ou "Dab Dab"
+// em "Tecidos Raphael Dabdab Ltda"), senão cai pro comparador de
+// bigramas já usado em Clientes.jsx pra achar duplicata.
+function pontuarNome(descricaoBanco, nomeSistema) {
+  const a = normalizarNome(descricaoBanco);
+  const b = normalizarNome(nomeSistema);
+  if (!a || !b) return 0;
+  if (a.includes(b) || b.includes(a)) return 1;
+  return similaridadeNomes(descricaoBanco, nomeSistema);
+}
+
 // Entre os candidatos dentro da tolerância de valor e da janela de dias,
-// fica com o de data mais próxima — critério simples e previsível (sem
-// IA), fácil de auditar se um dia o match parecer estranho.
+// o nome é quem decide — valor+data sozinhos não bastam (dois
+// fornecedores/clientes podem ter o mesmo valor no mesmo período, e aí
+// "a data mais próxima" pode escolher o errado). Data só desempata entre
+// nomes igualmente parecidos.
 function acharMelhorMatch(linha, candidatos) {
-  let melhor = null;
-  for (const c of candidatos) {
-    if (!c.dataRef) continue;
-    if (Math.abs(c.valor - linha.valor) > TOLERANCIA_VALOR) continue;
-    const dias = diffDias(linha.data, c.dataRef);
-    if (dias > JANELA_DIAS) continue;
-    if (!melhor || dias < melhor.dias) melhor = { ...c, dias };
-  }
-  return melhor;
+  const naFaixa = candidatos
+    .filter((c) => c.dataRef && Math.abs(c.valor - linha.valor) <= TOLERANCIA_VALOR)
+    .map((c) => ({ ...c, dias: diffDias(linha.data, c.dataRef), pontoNome: pontuarNome(linha.descricao, c.nome) }))
+    .filter((c) => c.dias <= JANELA_DIAS);
+  if (naFaixa.length === 0) return null;
+  naFaixa.sort((a, b) => b.pontoNome - a.pontoNome || a.dias - b.dias);
+  const melhor = naFaixa[0];
+  return { ...melhor, confiancaBaixa: melhor.pontoNome < 0.35 };
 }
 
 function LinhaResultado({ linha, match, cor }) {
@@ -85,10 +108,11 @@ function LinhaResultado({ linha, match, cor }) {
           {fmtData(linha.data)} · {linha.descricao}
         </div>
         {match && (
-          <div style={{ fontSize: 11, color: TEXT_MUTED }}>
+          <div style={{ fontSize: 11, color: match.confiancaBaixa ? VERMELHO : TEXT_MUTED }}>
             {match.tipo ? `${match.tipo} · ` : ""}
             {match.nome} — no sistema consta como <strong>{match.status}</strong>
             {match.dias > 0 ? ` · ${Math.round(match.dias)}d de diferença na data` : ""}
+            {match.confiancaBaixa ? " · ⚠ nome não bate bem, confira antes de considerar certo" : ""}
           </div>
         )}
         {!match && <div style={{ fontSize: 11, color: TEXT_MUTED }}>Não achei nada parecido no sistema — pode ser um lançamento faltando, ou algo pessoal (PF).</div>}
@@ -156,13 +180,15 @@ export default function AgenteConciliador({ despesas, pedidos, pecas, pedidosSap
     const saidasSemMatch = [];
     saidas.forEach((linha) => {
       const match = acharMelhorMatch(linha, candidatosSaida);
-      (match ? saidasBatendo : saidasSemMatch).push({ linha, match });
+      if (match) saidasBatendo.push({ linha, match });
+      else saidasSemMatch.push(linha);
     });
     const entradasBatendo = [];
     const entradasSemMatch = [];
     entradas.forEach((linha) => {
       const match = acharMelhorMatch(linha, candidatosEntrada);
-      (match ? entradasBatendo : entradasSemMatch).push({ linha, match });
+      if (match) entradasBatendo.push({ linha, match });
+      else entradasSemMatch.push(linha);
     });
     setResultado({ saidasBatendo, saidasSemMatch, entradasBatendo, entradasSemMatch });
   }
