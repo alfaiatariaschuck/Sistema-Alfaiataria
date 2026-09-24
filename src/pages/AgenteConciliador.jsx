@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { CheckCircle2, GitCompare, HelpCircle, XCircle } from "lucide-react";
-import { Card, Empty, PageTitle } from "../components/ui";
-import { LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { CheckCircle2, GitCompare, HelpCircle, Wallet, XCircle } from "lucide-react";
+import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
+import { BRASS, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData } from "../lib/helpers";
 import { similaridadeNomes } from "../lib/clientes";
 
@@ -61,6 +61,42 @@ function parseLinhas(texto) {
 
 function diffDias(a, b) {
   return Math.abs((new Date(a + "T00:00:00") - new Date(b + "T00:00:00")) / 86400000);
+}
+
+function normalizarBusca(s) {
+  return (s || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+}
+
+// Sugestão de categoria por palavra-chave — sem IA, sem lançar nada
+// sozinho, só pra você ver de cara "isso é gasto de Transporte" sem
+// precisar abrir cada lançamento. Se você quiser mesmo essa despesa no
+// sistema, lança em Contas a Pagar já com a categoria certa.
+const REGRAS_CATEGORIA = [
+  { categoria: "Transporte", palavras: ["uber", "posto", "combustive", "gasolina", "pedagio", "99pop", "taxi", "park", "estacionamento"] },
+  { categoria: "Água/Luz/Internet", palavras: ["energia", "ceee", "rge", "telefonica", "internet", "saneamento", "vivo", "claro", " tim ", "agua"] },
+  { categoria: "Aluguel", palavras: ["aluguel", "locacao", "imobiliari", "condominio"] },
+  { categoria: "Impostos", palavras: ["das simples", "simples nacional", "imposto", "tributo", "issqn"] },
+  { categoria: "Contador", palavras: ["contador", "contabeis", "contabilidade"] },
+  { categoria: "Plano de Saúde", palavras: ["unimed", "sulamerica", "amil", "plano de saude"] },
+  { categoria: "Material/Tecido avulso", palavras: ["tecido", "textil", "seda", "malha", "fios"] },
+  { categoria: "Aviamentos", palavras: ["aviamento", "botao", "ziper", "entretela", "forro"] },
+  { categoria: "Manutenção", palavras: ["manutencao", "reparo", "conserto", "maquina de costura"] },
+];
+
+// Início de palavra, não qualquer substring — "imposto" não pode cair em
+// Transporte só porque contém "posto" (de gasolina) no meio. Só ancora o
+// começo (não o fim) pra "tecido" ainda pegar "tecidos" no plural.
+function contemPalavra(texto, chave) {
+  const escapada = chave.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escapada}`, "i").test(texto);
+}
+
+function sugerirCategoria(descricao) {
+  const d = normalizarBusca(descricao);
+  for (const regra of REGRAS_CATEGORIA) {
+    if (regra.palavras.some((p) => contemPalavra(d, p))) return regra.categoria;
+  }
+  return null;
 }
 
 function normalizarNome(s) {
@@ -145,7 +181,6 @@ export default function AgenteConciliador({
   pecas,
   pedidosSapatos,
   onMarcarDespesaPaga,
-  onCriarDespesa,
   onAtualizarSubcampoPedido,
   onAtualizarCampoPeca,
 }) {
@@ -167,11 +202,6 @@ export default function AgenteConciliador({
     marcarProcessado(`despesa-${match.id}`);
   }
 
-  async function registrarDespesaFaltando(linha) {
-    await onCriarDespesa({ descricao: linha.descricao, valor: linha.valor, vencimento: linha.data, jaPago: true, dataPagamento: linha.data });
-    marcarProcessado(`saida-${linha.data}-${linha.descricao}-${linha.valor}`);
-  }
-
   async function marcarRecebido(match) {
     if (match.tipo === "Camisaria") await onAtualizarSubcampoPedido(match.id, "aReceber", "statusPagamento", "Recebido");
     else if (match.tipo === "Alfaiataria") await onAtualizarCampoPeca(match.id, "statusPagamentoVenda", "Recebido");
@@ -185,6 +215,7 @@ export default function AgenteConciliador({
         .map((d) => ({
           id: d.id,
           nome: d.fornecedor || d.descricao,
+          categoria: d.categoria || "Sem categoria",
           valor: d.status === "Pago" && parseFloat(d.valorPago) > 0 ? parseFloat(d.valorPago) : totalDespesa(d),
           dataRef: d.dataPagamento || d.vencimento,
           status: d.status,
@@ -243,7 +274,21 @@ export default function AgenteConciliador({
       if (match) entradasBatendo.push({ linha, match });
       else entradasSemMatch.push(linha);
     });
-    setResultado({ saidasBatendo, saidasSemMatch, entradasBatendo, entradasSemMatch });
+
+    // Resumo por categoria — soma tanto o que já tem categoria lançada
+    // (saída batendo) quanto o que só tem sugestão por palavra-chave
+    // (saída sem correspondência), pra você ver de cara onde o dinheiro
+    // está indo mesmo sem lançar nada novo no sistema.
+    const porCategoria = new Map();
+    const somar = (nome, valor) => porCategoria.set(nome, (porCategoria.get(nome) || 0) + valor);
+    saidasBatendo.forEach((r) => somar(r.match.categoria, r.linha.valor));
+    saidasSemMatch.forEach((linha) => somar(sugerirCategoria(linha.descricao) || "Sem categoria (sem sugestão)", linha.valor));
+    const resumoCategorias = [...porCategoria.entries()].sort((a, b) => b[1] - a[1]);
+
+    const totalDespesasPeriodo = saidas.reduce((s, l) => s + l.valor, 0);
+    const totalReceitasPeriodo = entradas.reduce((s, l) => s + l.valor, 0);
+
+    setResultado({ saidasBatendo, saidasSemMatch, entradasBatendo, entradasSemMatch, resumoCategorias, totalDespesasPeriodo, totalReceitasPeriodo });
   }
 
   return (
@@ -294,6 +339,41 @@ export default function AgenteConciliador({
       </Card>
 
       {resultado && (
+        <>
+          <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <StatCard label="Total Receitas (período colado)" value={brl(resultado.totalReceitasPeriodo)} icon={Wallet} accent={VERDE} />
+            <StatCard label="Total Despesas (período colado)" value={brl(resultado.totalDespesasPeriodo)} icon={Wallet} accent={VERMELHO} />
+          </div>
+
+          <Card style={{ padding: 20 }} className="mb-6">
+            <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
+              Despesas por categoria
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+              Soma das saídas coladas, agrupadas pela categoria já lançada no sistema (ou pela sugestão por
+              palavra-chave, quando ainda não tem lançamento correspondente).
+            </div>
+            {resultado.resumoCategorias.length === 0 ? (
+              <Empty texto="Nenhuma saída colada." />
+            ) : (
+              resultado.resumoCategorias.map(([categoria, valor], i) => (
+                <div
+                  key={categoria}
+                  className="flex items-center justify-between py-1.5"
+                  style={{ borderBottom: i < resultado.resumoCategorias.length - 1 ? `1px solid ${LINE}` : "none", fontSize: 13 }}
+                >
+                  <span style={{ fontWeight: i === 0 ? 700 : 500 }}>{categoria}</span>
+                  <span className="fx-mono" style={{ fontWeight: 700, color: BRASS }}>
+                    {brl(valor)}
+                  </span>
+                </div>
+              ))
+            )}
+          </Card>
+        </>
+      )}
+
+      {resultado && (
         <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <Card style={{ padding: 20 }}>
             <div className="fx-serif mb-3 flex items-center gap-2" style={{ fontSize: 15, fontWeight: 600 }}>
@@ -331,21 +411,14 @@ export default function AgenteConciliador({
               <Empty texto="Nenhuma — tudo que saiu bate com o sistema." />
             ) : (
               resultado.saidasSemMatch.map((linha, i) => {
-                const chave = `saida-${linha.data}-${linha.descricao}-${linha.valor}`;
+                const sugestao = sugerirCategoria(linha.descricao);
                 return (
                   <LinhaResultado
                     key={i}
                     linha={linha}
                     match={null}
                     cor={VERMELHO}
-                    acao={
-                      <BotaoAcao
-                        onClick={() => registrarDespesaFaltando(linha)}
-                        feito={processados.has(chave)}
-                        texto="Registrar despesa"
-                        textoFeito="registrada"
-                      />
-                    }
+                    acao={sugestao ? <Pill text={sugestao} /> : <span style={{ fontSize: 10, color: TEXT_MUTED }}>sem sugestão</span>}
                   />
                 );
               })

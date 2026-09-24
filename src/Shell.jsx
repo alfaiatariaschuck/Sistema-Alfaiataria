@@ -1058,7 +1058,6 @@ export default function Shell() {
                   pecas={pecas}
                   pedidosSapatos={pedidosSapatos}
                   onMarcarDespesaPaga={atualizarValorPagoDespesa}
-                  onCriarDespesa={criarDespesa}
                   onAtualizarSubcampoPedido={atualizarSubcampo}
                   onAtualizarCampoPeca={atualizarCampoPeca}
                 />

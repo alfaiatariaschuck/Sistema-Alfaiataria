@@ -153,6 +153,8 @@ export const CATEGORIAS_DESPESA = [
   "Água/Luz/Internet",
   "Impostos",
   "Material/Tecido avulso",
+  "Aviamentos",
+  "Transporte",
   "Manutenção",
   "Salários",
   "Comissões",
