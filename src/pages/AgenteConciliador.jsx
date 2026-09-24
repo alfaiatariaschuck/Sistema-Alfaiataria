@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { CheckCircle2, GitCompare, HelpCircle, Wallet, XCircle } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
-import { BRASS, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, fmtData } from "../lib/helpers";
+import { BRASS, LINE, TEXT_MUTED, TIPOS_SAIDA_SEM_VENDA, inputStyle } from "../lib/constants";
+import { brl, fmtData, hojeISO, valorRecebidoEfetivo } from "../lib/helpers";
 import { similaridadeNomes } from "../lib/clientes";
 
 const VERDE = "#2C6E31";
@@ -257,6 +257,35 @@ export default function AgenteConciliador({
     return [...doCamisa, ...daPeca, ...doSapato];
   }, [pedidos, pecas, pedidosSapatos]);
 
+  // Mesma fórmula do "Faturamento do mês" do DRE — sem sapatos, do jeito
+  // que já é lá (não deixar esse número aqui divergir do que aparece nas
+  // outras telas). "Recebido de verdade" é o mesmo total, mas só a parte
+  // já confirmada como recebida — é isso que dá pra comparar com o
+  // extrato, não o faturamento bruto.
+  function recebidoEfetivo(p, valorTotal, statusTotal) {
+    return valorRecebidoEfetivo({
+      pagamentoDividido: p.pagamentoDividido,
+      valorEntrada: p.valorEntrada,
+      statusEntrada: p.statusEntrada,
+      valorRestante: p.valorRestante,
+      statusRestante: p.statusRestante,
+      valorTotal,
+      statusTotal,
+    });
+  }
+
+  const resumoMes = useMemo(() => {
+    const mesAtual = hojeISO().slice(0, 7);
+    const pedidosMes = (pedidos || []).filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mesAtual);
+    const pecasMes = (pecas || []).filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && (p.dataPedido || "").slice(0, 7) === mesAtual);
+    const faturamento =
+      pedidosMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0) + pecasMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+    const recebido =
+      pedidosMes.reduce((s, p) => s + recebidoEfetivo(p, parseFloat(p.aReceber?.valor) || 0, p.aReceber?.statusPagamento), 0) +
+      pecasMes.reduce((s, p) => s + recebidoEfetivo(p, parseFloat(p.valorVenda) || 0, p.statusPagamentoVenda), 0);
+    return { faturamento, recebido, pendente: Math.max(0, faturamento - recebido) };
+  }, [pedidos, pecas]);
+
   function conciliar() {
     const saidas = parseLinhas(textoSaidas);
     const entradas = parseLinhas(textoEntradas);
@@ -306,6 +335,22 @@ export default function AgenteConciliador({
       </Card>
 
       <Card style={{ padding: 20 }} className="mb-6">
+        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+          Faturamento x Recebido do mês (sistema)
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 14 }}>
+          "Faturamento" é tudo que foi vendido no mês (mesmo número que aparece no DRE), independente de já ter sido
+          pago. "Recebido" é só a parte confirmada como paga/recebida no sistema — é esse que dá pra comparar com o
+          que cai no banco. A diferença entre os dois é pendência de pagamento, não erro.
+        </div>
+        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <StatCard label="Faturamento do mês" value={brl(resumoMes.faturamento)} icon={Wallet} />
+          <StatCard label="Recebido no mês" value={brl(resumoMes.recebido)} icon={Wallet} accent={VERDE} />
+          <StatCard label="Ainda pendente de pagamento" value={brl(resumoMes.pendente)} icon={Wallet} accent={VERMELHO} />
+        </div>
+      </Card>
+
+      <Card style={{ padding: 20 }} className="mb-6">
         <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Saídas do extrato (pagamentos)</div>
@@ -341,8 +386,8 @@ export default function AgenteConciliador({
       {resultado && (
         <>
           <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-            <StatCard label="Total Receitas (período colado)" value={brl(resultado.totalReceitasPeriodo)} icon={Wallet} accent={VERDE} />
-            <StatCard label="Total Despesas (período colado)" value={brl(resultado.totalDespesasPeriodo)} icon={Wallet} accent={VERMELHO} />
+            <StatCard label="Total Entradas no extrato colado" value={brl(resultado.totalReceitasPeriodo)} icon={Wallet} accent={VERDE} />
+            <StatCard label="Total Saídas no extrato colado" value={brl(resultado.totalDespesasPeriodo)} icon={Wallet} accent={VERMELHO} />
           </div>
 
           <Card style={{ padding: 20 }} className="mb-6">
