@@ -6,6 +6,7 @@ import {
   BookText,
   ChevronDown,
   ChevronRight,
+  Brain,
   ClipboardList,
   FileText,
   Footprints,
@@ -41,6 +42,7 @@ import { usePedidos } from "./hooks/usePedidos";
 import { usePedidosAlfaiataria } from "./hooks/usePedidosAlfaiataria";
 import { usePedidosSapatos } from "./hooks/usePedidosSapatos";
 import { useModelosSapatos } from "./hooks/useModelosSapatos";
+import { useNotasCerebro } from "./hooks/useNotasCerebro";
 import { usePlanosAssinatura } from "./hooks/usePlanosAssinatura";
 import { useNomesClientes } from "./hooks/useNomesClientes";
 import { useHistoricoVendas } from "./hooks/useHistoricoVendas";
@@ -72,6 +74,7 @@ import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import PainelSapatos from "./pages/PainelSapatos";
 import PedidoSapatos from "./pages/PedidoSapatos";
+import Cerebro from "./pages/Cerebro";
 import ControleProducao from "./pages/ControleProducao";
 import Equipe from "./pages/Equipe";
 import Fornecedores from "./pages/Fornecedores";
@@ -132,6 +135,7 @@ const NAV = [
   { id: "metas", label: "Metas", icon: Target, primary: false, grupo: "Geral" },
   { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false, grupo: "Geral" },
   { id: "contas-a-receber", label: "Contas a Receber", icon: Wallet, primary: false, grupo: "Geral" },
+  { id: "cerebro", label: "Cérebro", icon: Brain, primary: false, grupo: "Geral" },
 
   { id: "equipe", label: "Equipe", icon: Users2, primary: false, grupo: "Sistema" },
   { id: "fornecedores", label: "Fornecedores", icon: ShoppingCart, primary: false, grupo: "Sistema" },
@@ -187,6 +191,8 @@ export default function Shell() {
     removerPedido: removerPedidoSapato,
   } = usePedidosSapatos();
   const { modelos: modelosSapatos, adicionarModelo: adicionarModeloSapato, atualizarModelo: atualizarModeloSapato, removerModelo: removerModeloSapato } = useModelosSapatos();
+
+  const { notas: notasCerebro, criarNota: criarNotaCerebro, atualizarCampo: atualizarCampoNotaCerebro, removerNota: removerNotaCerebro } = useNotasCerebro();
 
   const {
     planos,
@@ -1039,6 +1045,9 @@ export default function Shell() {
               )}
               {tab === "novo-pedido-sapatos" && (
                 <PedidoSapatos onCriar={salvarNovoPedidoSapato} nomesClientes={nomesClientes} modelos={modelosSapatos} />
+              )}
+              {tab === "cerebro" && (
+                <Cerebro notas={notasCerebro} onCriar={criarNotaCerebro} onAtualizarCampo={atualizarCampoNotaCerebro} onRemover={removerNotaCerebro} />
               )}
               {tab === "controle-producao" && !loadingPecas && (
                 <ControleProducao

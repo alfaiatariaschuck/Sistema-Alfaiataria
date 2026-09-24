@@ -34,6 +34,20 @@ export const STATUS_ALFAIATARIA = [
   "Entregue",
 ];
 
+// Categorias sugeridas do Cérebro (base de anotações) — só sugestão
+// inicial pro datalist, o campo aceita qualquer texto novo digitado.
+export const CATEGORIAS_CEREBRO_SUGERIDAS = [
+  "Camisaria",
+  "Alfaiataria",
+  "Sapatos",
+  "Vendas",
+  "Marketing",
+  "Fornecedores",
+  "Financeiro",
+  "Equipe",
+  "Marca",
+];
+
 // Fluxo de status do pedido de sapatos (parceria com fornecedor externo) —
 // bem mais simples que a produção própria: o Tales só acompanha o pedido
 // passando pelo fornecedor até chegar e ser entregue/retirado.
