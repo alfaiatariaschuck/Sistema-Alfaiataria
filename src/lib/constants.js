@@ -154,6 +154,7 @@ export const CATEGORIAS_DESPESA = [
   "Impostos",
   "Material/Tecido avulso",
   "Aviamentos",
+  "Embalagens",
   "Transporte",
   "Frete",
   "Manutenção",
