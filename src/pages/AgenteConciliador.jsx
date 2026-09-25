@@ -79,7 +79,7 @@ const REGRAS_CATEGORIA = [
   { categoria: "Contador", palavras: ["contador", "contabeis", "contabilidade"] },
   { categoria: "Plano de Saúde", palavras: ["unimed", "sulamerica", "amil", "plano de saude"] },
   { categoria: "Material/Tecido avulso", palavras: ["tecido", "textil", "seda", "malha", "fios"] },
-  { categoria: "Aviamentos", palavras: ["aviamento", "botao", "ziper", "entretela", "forro"] },
+  { categoria: "Aviamento Camisaria", palavras: ["aviamento", "botao", "ziper", "entretela", "forro"] },
   { categoria: "Manutenção", palavras: ["manutencao", "reparo", "conserto", "maquina de costura"] },
 ];
 
