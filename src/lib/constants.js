@@ -153,7 +153,6 @@ export const CATEGORIAS_DESPESA = [
   "Água/Luz/Internet",
   "Impostos",
   "Material/Tecido avulso",
-  "Entretela",
   "Aviamentos",
   "Aviamento Camisaria",
   "Embalagens",
