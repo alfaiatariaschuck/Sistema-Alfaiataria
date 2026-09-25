@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Brain,
+  Calculator,
   ClipboardList,
   FileText,
   Footprints,
@@ -76,6 +77,7 @@ import PainelSapatos from "./pages/PainelSapatos";
 import PedidoSapatos from "./pages/PedidoSapatos";
 import Cerebro from "./pages/Cerebro";
 import AgenteConciliador from "./pages/AgenteConciliador";
+import Contabilidade from "./pages/Contabilidade";
 import ControleProducao from "./pages/ControleProducao";
 import Equipe from "./pages/Equipe";
 import Fornecedores from "./pages/Fornecedores";
@@ -134,6 +136,7 @@ const NAV = [
   { id: "dre", label: "DRE", icon: BookText, primary: false, grupo: "Geral" },
   { id: "resultado-mensal", label: "Resultado do Mês", icon: Scale, primary: false, grupo: "Geral" },
   { id: "metas", label: "Metas", icon: Target, primary: false, grupo: "Geral" },
+  { id: "contabilidade", label: "Contabilidade", icon: Calculator, primary: true, grupo: "Geral" },
   { id: "contas-a-pagar", label: "Contas a Pagar", icon: Receipt, primary: false, grupo: "Geral" },
   { id: "contas-a-receber", label: "Contas a Receber", icon: Wallet, primary: false, grupo: "Geral" },
   { id: "cerebro", label: "Cérebro", icon: Brain, primary: false, grupo: "Geral" },
@@ -1004,6 +1007,16 @@ export default function Shell() {
                   onAtualizarPedidoCampo={atualizarCampo}
                   onAtualizarPedidoSubcampo={atualizarSubcampo}
                   onAtualizarPecaCampo={atualizarCampoPeca}
+                  irParaPedido={irPara}
+                  irParaPeca={irParaPeca}
+                />
+              )}
+              {tab === "contabilidade" && (
+                <Contabilidade
+                  pedidos={pedidos}
+                  pecas={pecas}
+                  pedidosSapatos={pedidosSapatos}
+                  despesas={despesas}
                   irParaPedido={irPara}
                   irParaPeca={irParaPeca}
                 />

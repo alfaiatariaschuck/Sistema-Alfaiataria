@@ -75,6 +75,7 @@ function rowParaPeca(row) {
     valorVenda: row.valor_venda ?? "",
     valorLiquidoRecebido: row.valor_liquido_recebido ?? "",
     statusPagamentoVenda: row.status_pagamento_venda || "Pendente",
+    dataRecebimento: row.data_recebimento || "",
     pagamentoDividido: !!row.pagamento_dividido,
     valorEntrada: row.valor_entrada ?? "",
     statusEntrada: row.status_entrada || "Pendente",
@@ -144,6 +145,7 @@ const CAMPO_PARA_COLUNA = {
   valorVenda: "valor_venda",
   valorLiquidoRecebido: "valor_liquido_recebido",
   statusPagamentoVenda: "status_pagamento_venda",
+  dataRecebimento: "data_recebimento",
   pagamentoDividido: "pagamento_dividido",
   valorEntrada: "valor_entrada",
   statusEntrada: "status_entrada",
@@ -265,6 +267,10 @@ export function usePedidosAlfaiataria() {
     // Produção" — senão a peça fica com início lançado mas ainda
     // aparecendo como "Aguardando", o que não faz sentido.
     const marcarEmProducao = campo === "dataInicioProducao" && valor && pecaAtual && pecaAtual.situacao === "Aguardando";
+    // Mesmo carimbo de "quando entrou" que já existe pro pagamento da
+    // Fabiana e pra despesa paga — aqui do lado da venda pro cliente.
+    const marcarRecebimento = campo === "statusPagamentoVenda" && valor === "Recebido" && pecaAtual?.statusPagamentoVenda !== "Recebido";
+    const desmarcarRecebimento = campo === "statusPagamentoVenda" && valor !== "Recebido" && pecaAtual?.statusPagamentoVenda === "Recebido";
     // Editar a previsão de entrega diretamente é um ato deliberado — a
     // partir daqui ela vira "manual" (trava, não acompanha mais a fila/
     // equipe sozinha). Limpar o campo devolve pro automático.
@@ -273,6 +279,7 @@ export function usePedidosAlfaiataria() {
       ...(marcarEntrega ? { dataEntrega: hojeISO() } : {}),
       ...(marcarEmProducao ? { situacao: "Em Produção" } : {}),
       ...(campo === "previsaoEntrega" ? { previsaoManual: !!valor } : {}),
+      ...(marcarRecebimento ? { dataRecebimento: hojeISO() } : desmarcarRecebimento ? { dataRecebimento: "" } : {}),
     };
 
     setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
@@ -293,6 +300,8 @@ export function usePedidosAlfaiataria() {
       const update = { [coluna]: valorFinal };
       if (campo === "previsaoEntrega") update.previsao_manual = !!valor;
       if (marcarEntrega) update.data_entrega = patch.dataEntrega;
+      if (marcarRecebimento) update.data_recebimento = patch.dataRecebimento;
+      if (desmarcarRecebimento) update.data_recebimento = null;
       if (marcarEmProducao) update.situacao = "Em Produção";
       const { error } = await supabase.from("pedidos_alfaiataria").update(update).eq("id", pecaId);
       if (error) setErro(error.message);

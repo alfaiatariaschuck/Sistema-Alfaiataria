@@ -76,6 +76,7 @@ function rowParaPedido(row) {
     status: row.status,
     qtEntregue: row.qt_entregue,
     aReceber: { valor: row.valor_receber ?? "", statusPagamento: row.status_pagamento_receber },
+    dataRecebimento: row.data_recebimento || "",
     valorLiquidoRecebido: row.valor_liquido_recebido ?? "",
     pagamentoDividido: !!row.pagamento_dividido,
     valorEntrada: row.valor_entrada ?? "",
@@ -357,8 +358,18 @@ export function usePedidos() {
     });
   }
 
+  // Carimba (ou limpa) data_recebimento quando o pagamento do cliente vira
+  // "Recebido" — mesma ideia da data_pagamento das despesas, mas do lado
+  // da receita. É o que permite montar um livro-caixa por mês de verdade
+  // (antes só existia data do pedido/vencimento, nunca "quando entrou").
   async function atualizarSubcampo(pedidoId, grupo, sub, valor) {
-    setPedidos((prev) => prev.map((p) => (p.id === pedidoId ? { ...p, [grupo]: { ...p[grupo], [sub]: valor } } : p)));
+    const pedidoAtual = pedidos.find((p) => p.id === pedidoId);
+    const jaEraRecebido = pedidoAtual?.aReceber?.statusPagamento === "Recebido";
+    const marcarRecebimento = grupo === "aReceber" && sub === "statusPagamento" && valor === "Recebido" && !jaEraRecebido;
+    const desmarcarRecebimento = grupo === "aReceber" && sub === "statusPagamento" && valor !== "Recebido" && jaEraRecebido;
+    const patchRecebimento = marcarRecebimento ? { dataRecebimento: hojeISO() } : desmarcarRecebimento ? { dataRecebimento: "" } : {};
+
+    setPedidos((prev) => prev.map((p) => (p.id === pedidoId ? { ...p, [grupo]: { ...p[grupo], [sub]: valor }, ...patchRecebimento } : p)));
     const MAPA_COLUNA = {
       aReceber: { valor: "valor_receber", statusPagamento: "status_pagamento_receber" },
       pagoFabiana: { valor: "valor_pago_fabiana", statusPagamento: "status_pagamento_fabiana", qtdCamisas: "qtd_camisas_fabiana" },
@@ -368,7 +379,10 @@ export function usePedidos() {
     const valorFinal = ehNumerico ? (valor === "" ? null : Number(valor)) : valor;
     await comIndicador(async () => {
       if (!coluna) return;
-      const { error } = await supabase.from("pedidos").update({ [coluna]: valorFinal }).eq("id", pedidoId);
+      const update = { [coluna]: valorFinal };
+      if (marcarRecebimento) update.data_recebimento = hojeISO();
+      if (desmarcarRecebimento) update.data_recebimento = null;
+      const { error } = await supabase.from("pedidos").update(update).eq("id", pedidoId);
       if (error) setErro(error.message);
     });
   }
