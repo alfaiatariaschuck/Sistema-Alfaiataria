@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { BookText, ChevronLeft, ChevronRight, Info, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
 import FaturamentoPorMes from "../components/FaturamentoPorMes";
-import { BRASS, INK, LINE, TEXT_MUTED, TIPOS_SAIDA_SEM_VENDA } from "../lib/constants";
+import { BRASS, CATEGORIAS_DESPESA, INK, LINE, TEXT_MUTED, TIPOS_SAIDA_SEM_VENDA, inputStyle } from "../lib/constants";
 import { brl, fmtData, hojeISO } from "../lib/helpers";
 
 const VERDE = "#2C6E31";
@@ -28,7 +28,7 @@ function totalDespesa(d) {
   return (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
 }
 
-export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas, irParaPedido, irParaPeca }) {
+export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas, onAtualizarDespesa, irParaPedido, irParaPeca }) {
   const mesRealAtual = hojeISO().slice(0, 7);
   const [mesSelecionado, setMesSelecionado] = useState(mesRealAtual);
   const ehMesAtual = mesSelecionado === mesRealAtual;
@@ -177,11 +177,27 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
               </summary>
               <div className="pb-2 pl-3">
                 {itens.map((d) => (
-                  <div key={d.id} className="flex items-center justify-between py-1" style={{ fontSize: 12 }}>
+                  <div key={d.id} className="flex items-center justify-between gap-2 py-1 flex-wrap" style={{ fontSize: 12 }}>
                     <span style={{ color: TEXT_MUTED }}>
                       {fmtData(d.dataPagamento)} · {d.fornecedor || d.descricao}
                     </span>
-                    <span className="fx-mono">{brl(totalDespesa(d))}</span>
+                    <div className="flex items-center gap-2">
+                      <select
+                        style={{ ...inputStyle, padding: "3px 6px", fontSize: 11, width: 150 }}
+                        value={d.categoria || ""}
+                        onChange={(e) => onAtualizarDespesa && onAtualizarDespesa(d.id, { ...d, categoria: e.target.value })}
+                      >
+                        <option value="">— sem categoria —</option>
+                        {CATEGORIAS_DESPESA.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="fx-mono" style={{ whiteSpace: "nowrap" }}>
+                        {brl(totalDespesa(d))}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>

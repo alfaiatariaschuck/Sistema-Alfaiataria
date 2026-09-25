@@ -1017,6 +1017,7 @@ export default function Shell() {
                   pecas={pecas}
                   pedidosSapatos={pedidosSapatos}
                   despesas={despesas}
+                  onAtualizarDespesa={atualizarDespesa}
                   irParaPedido={irPara}
                   irParaPeca={irParaPeca}
                 />
