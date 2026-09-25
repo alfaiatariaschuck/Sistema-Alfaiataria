@@ -64,13 +64,25 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
     return pedidosMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0) + pecasMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
   }, [pedidos, pecas, mesSelecionado]);
 
+  // Guarda a lista de despesas de cada categoria, não só a soma — é o
+  // que permite abrir "o que tem dentro desse Outros de R$X" direto na
+  // tela, sem precisar me perguntar toda vez.
   const despesasPorCategoria = useMemo(() => {
     const mapa = new Map();
     despesasPagasDoMes.forEach((d) => {
       const cat = d.categoria || "Sem categoria";
-      mapa.set(cat, (mapa.get(cat) || 0) + totalDespesa(d));
+      if (!mapa.has(cat)) mapa.set(cat, { total: 0, itens: [] });
+      const bucket = mapa.get(cat);
+      bucket.total += totalDespesa(d);
+      bucket.itens.push(d);
     });
-    return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
+    return [...mapa.entries()]
+      .map(([categoria, { total, itens }]) => ({
+        categoria,
+        total,
+        itens: [...itens].sort((a, b) => b.dataPagamento.localeCompare(a.dataPagamento)),
+      }))
+      .sort((a, b) => b.total - a.total);
   }, [despesasPagasDoMes]);
 
   const livroDoMes = useMemo(() => {
@@ -153,17 +165,27 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
         {despesasPorCategoria.length === 0 ? (
           <Empty texto="Nenhuma despesa paga nesse mês." />
         ) : (
-          despesasPorCategoria.map(([categoria, valor], i) => (
-            <div
-              key={categoria}
-              className="flex items-center justify-between py-1.5"
-              style={{ borderBottom: i < despesasPorCategoria.length - 1 ? `1px solid ${LINE}` : "none", fontSize: 13 }}
-            >
-              <span style={{ fontWeight: i === 0 ? 700 : 500 }}>{categoria}</span>
-              <span className="fx-mono" style={{ fontWeight: 700, color: VERMELHO }}>
-                {brl(valor)}
-              </span>
-            </div>
+          despesasPorCategoria.map(({ categoria, total, itens }, i) => (
+            <details key={categoria} style={{ borderBottom: i < despesasPorCategoria.length - 1 ? `1px solid ${LINE}` : "none" }}>
+              <summary className="flex items-center justify-between py-1.5" style={{ fontSize: 13, cursor: "pointer" }}>
+                <span style={{ fontWeight: i === 0 ? 700 : 500 }}>
+                  {categoria} <span style={{ color: TEXT_MUTED, fontWeight: 400 }}>({itens.length})</span>
+                </span>
+                <span className="fx-mono" style={{ fontWeight: 700, color: VERMELHO }}>
+                  {brl(total)}
+                </span>
+              </summary>
+              <div className="pb-2 pl-3">
+                {itens.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between py-1" style={{ fontSize: 12 }}>
+                    <span style={{ color: TEXT_MUTED }}>
+                      {fmtData(d.dataPagamento)} · {d.fornecedor || d.descricao}
+                    </span>
+                    <span className="fx-mono">{brl(totalDespesa(d))}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
           ))
         )}
       </Card>
