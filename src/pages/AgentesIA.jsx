@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Sparkles, Wallet } from "lucide-react";
+import { Package, Sparkles, Wallet } from "lucide-react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { BRASS, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, somarDias } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, mediaCamisasVendidasPorMes, somarDias } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
@@ -23,12 +23,12 @@ function totalDespesaLinha(d) {
   return (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
 }
 
-export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPorPecaBase }) {
+export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPorPecaBase, estoqueTecidos }) {
   const [metaProLabore, setMetaProLabore] = useState("40000");
   const [metaLucro, setMetaLucro] = useState("10000");
   const [caixaAtual, setCaixaAtual] = useState("");
   const [carregandoConfig, setCarregandoConfig] = useState(true);
-  const { margemPadrao: margemPadraoCamisaria } = useConfigPrecoCamisa();
+  const { margemPadrao: margemPadraoCamisaria, metragemPadrao } = useConfigPrecoCamisa();
 
   useEffect(() => {
     (async () => {
@@ -137,6 +137,59 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       setErroPrecificacao(e.message);
     } finally {
       setCarregandoPrecificacao(false);
+    }
+  }
+
+  // ---------- Agente de Estoque ----------
+  // Cruza o estoque de tecido já comprado (parado, mas pago) com o ritmo
+  // de venda real, pra saber quantos meses esse estoque ainda cobre — e
+  // quanto isso "alivia" o caixa nesse período, já que produzir com
+  // tecido já pago não gera nova saída de dinheiro pra comprar mais.
+  const resumoEstoque = useMemo(() => {
+    const itens = estoqueTecidos || [];
+    const valorTotalEstoque = itens.reduce((s, e) => s + e.saldoMetros * (e.valorMetro || 0), 0);
+    const metragemNum = parseFloat(String(metragemPadrao).replace(",", ".")) || 1.5;
+    const totalCamisasPossiveis = itens.reduce((s, e) => s + Math.floor(e.saldoMetros / metragemNum), 0);
+    const mediaMensalVendas = mediaCamisasVendidasPorMes(pedidos, 2);
+    const mesesDeEstoque = mediaMensalVendas > 0 ? totalCamisasPossiveis / mediaMensalVendas : null;
+
+    // Gasto médio mensal com compra de tecido avulso nos últimos 3 meses
+    // fechados (exclui o mês atual, ainda incompleto) — referência de
+    // quanto normalmente sai de caixa pra repor estoque.
+    const tresMesesAnteriores = [1, 2, 3].map((n) => mesesAntesDe(mesAtual, n));
+    const gastoTecidoUltimos3Meses = (despesas || [])
+      .filter((d) => d.status === "Pago" && d.categoria === "Material/Tecido avulso" && tresMesesAnteriores.includes((d.dataPagamento || "").slice(0, 7)))
+      .reduce((s, d) => s + totalDespesaLinha(d), 0);
+
+    return {
+      valorTotalEstoque,
+      totalCamisasPossiveis,
+      mediaMensalVendas: Math.round(mediaMensalVendas * 10) / 10,
+      mesesDeEstoque: mesesDeEstoque !== null ? Math.round(mesesDeEstoque * 10) / 10 : null,
+      mediaGastoMensalTecido: gastoTecidoUltimos3Meses / 3,
+      itensComSaldo: itens.filter((e) => e.saldoMetros > 0).length,
+    };
+  }, [estoqueTecidos, pedidos, despesas, metragemPadrao, mesAtual]);
+
+  const [respostaEstoque, setRespostaEstoque] = useState(null);
+  const [carregandoEstoque, setCarregandoEstoque] = useState(false);
+  const [erroEstoque, setErroEstoque] = useState(null);
+
+  async function gerarEstoque() {
+    setCarregandoEstoque(true);
+    setErroEstoque(null);
+    setRespostaEstoque(null);
+    try {
+      const resposta = await chamarAgenteIA("estoque", {
+        ...resumoEstoque,
+        valorTotalEstoque: resumoEstoque.valorTotalEstoque.toFixed(2),
+        mediaGastoMensalTecido: resumoEstoque.mediaGastoMensalTecido.toFixed(2),
+      });
+      setRespostaEstoque(resposta);
+    } catch (e) {
+      setErroEstoque(e.message);
+    } finally {
+      setCarregandoEstoque(false);
     }
   }
 
@@ -264,6 +317,58 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
         {respostaPrecificacao && (
           <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.6, background: "#F3EEDF", borderRadius: 8, padding: 16 }}>
             {respostaPrecificacao}
+          </div>
+        )}
+      </Card>
+
+      <Card style={{ padding: 20 }} className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Package size={16} color={BRASS} />
+          <div className="fx-serif" style={{ fontSize: 16, fontWeight: 600 }}>
+            Agente de Estoque
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
+          Analisa quanto tempo o estoque de tecido já comprado ainda cobre a produção, e o que isso significa pro caixa.
+        </div>
+
+        <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Valor em estoque</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(resumoEstoque.valorTotalEstoque)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Camisas possíveis</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{resumoEstoque.totalCamisasPossiveis}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Média vendida/mês</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{resumoEstoque.mediaMensalVendas}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Meses de estoque</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{resumoEstoque.mesesDeEstoque ?? "—"}</div>
+          </div>
+        </div>
+
+        <button
+          onClick={gerarEstoque}
+          disabled={carregandoEstoque}
+          style={{ background: BRASS, color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, opacity: carregandoEstoque ? 0.7 : 1, marginBottom: 16 }}
+        >
+          {carregandoEstoque ? "Analisando…" : "Gerar análise"}
+        </button>
+
+        {resumoEstoque.itensComSaldo === 0 && (
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+            Nenhum tecido com saldo em metros cadastrado — a análise pode ficar incompleta.
+          </div>
+        )}
+
+        {erroEstoque && <div style={{ color: "#9C4A1E", fontSize: 12, marginBottom: 12 }}>{erroEstoque}</div>}
+        {respostaEstoque && (
+          <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.6, background: "#F3EEDF", borderRadius: 8, padding: 16 }}>
+            {respostaEstoque}
           </div>
         )}
       </Card>

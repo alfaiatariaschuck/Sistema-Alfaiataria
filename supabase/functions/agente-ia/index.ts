@@ -93,6 +93,29 @@ Total em aberto nos próximos 30 dias: R$ ${d.totalProximosVencimentos}
 
 Com base nisso, como está a saúde financeira e o que precisa de atenção?`,
   },
+  estoque: {
+    system:
+      "Você é um consultor de estoque e caixa pra um ateliê de camisaria sob medida no Brasil (Schuck Alfaiataria). " +
+      "Responda em português do Brasil, direto e prático. O dono comprou um lote grande de tecido adiantado e quer entender " +
+      "quanto tempo esse estoque ainda cobre a produção, e o que isso significa pro caixa — enquanto ele estiver produzindo " +
+      "com tecido já pago, ele NÃO precisa desembolsar de novo pra comprar mais tecido, o que libera caixa nesse período " +
+      "(comparado ao gasto mensal histórico com compra de tecido avulso). Não invente dado que não foi passado; se algo " +
+      "estiver faltando ou parecer estranho (ex: estoque muito baixo, ritmo de venda zerado), diga isso claramente. " +
+      "SEMPRE termine a resposta com uma seção \"## Recomendações\": de 2 a 4 ações concretas e executáveis, em ordem de " +
+      "prioridade, específicas aos números recebidos (nunca conselho genérico) — por exemplo quando começar a negociar a " +
+      "próxima compra de tecido, ou como aproveitar esse período de caixa liberado.",
+    montarPergunta: (d) => `
+Valor total do estoque de tecido em casa (já pago, parado): R$ ${d.valorTotalEstoque}
+Quantidade de itens de tecido com saldo em metros: ${d.itensComSaldo}
+Total estimado de camisas que esse estoque ainda produz (baseado na metragem padrão por camisa): ${d.totalCamisasPossiveis}
+Média de camisas vendidas por mês (últimos meses fechados): ${d.mediaMensalVendas}
+Meses de estoque restante no ritmo atual de venda: ${d.mesesDeEstoque ?? "não foi possível calcular (sem histórico de venda suficiente)"}
+
+Gasto médio mensal histórico com compra de tecido avulso (últimos 3 meses fechados, categoria "Material/Tecido avulso"): R$ ${d.mediaGastoMensalTecido}
+Enquanto o estoque acima ainda cobre a produção, esse valor mensal deixa de sair do caixa pra reposição de tecido.
+
+Com base nisso, quanto tempo o caixa fica "aliviado" por não precisar comprar tecido, e o que o dono deveria fazer com isso (e quando deveria começar a se planejar pra próxima compra)?`,
+  },
 };
 
 Deno.serve(async (req: Request) => {
