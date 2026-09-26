@@ -617,7 +617,7 @@ export default function ContasAPagar({
           tipo: "camisa",
           nome: p.cliente,
           pendente: Math.max(0, valor - recebido),
-          temPrevisao: !!p.previsaoEntrega,
+          temPrevisao: !!p.previsaoEntrega || !!p.dataCobranca,
           dataRef: p.previsaoEntrega || p.dataPedido,
           dataCobranca: p.dataCobranca || null,
         };
@@ -633,7 +633,7 @@ export default function ContasAPagar({
           tipo: "peca",
           nome: p.cliente,
           pendente: Math.max(0, valor - recebido),
-          temPrevisao: !!p.previsaoEntrega,
+          temPrevisao: !!p.previsaoEntrega || !!p.dataCobranca,
           dataRef: p.previsaoEntrega || p.dataPedido,
           dataCobranca: p.dataCobranca || null,
         };
@@ -678,7 +678,13 @@ export default function ContasAPagar({
     (acc[nome] = acc[nome] || []).push(d);
     return acc;
   }, {});
-  const receberJanela = receberComPrevisao.filter((p) => dentroDaJanela(p.dataRef));
+  // Quando tem data de cobrança marcada, é ela que diz quando o dinheiro
+  // entra de verdade — usar só dataRef (entrega/pedido) fazia uma venda
+  // antiga com cobrança marcada pra daqui a poucos dias sumir dos presets
+  // de período (7/14/30 dias) e só aparecer em "Ver tudo".
+  const receberJanela = receberComPrevisao
+    .filter((p) => dentroDaJanela(p.dataCobranca || p.dataRef))
+    .sort((a, b) => (a.dataCobranca || a.dataRef).localeCompare(b.dataCobranca || b.dataRef));
   const previsoesJanela = previsoes.filter((p) => dentroDaJanela(p.dataEsperada));
 
   const totalDespesas = despesasJanela.reduce((s, d) => s + Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)), 0);
@@ -1912,7 +1918,9 @@ export default function ContasAPagar({
             >
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{p.nome}</div>
-                <div style={{ fontSize: 11, color: TEXT_MUTED }}>venda real · vence {fmtData(p.dataRef)}</div>
+                <div style={{ fontSize: 11, color: TEXT_MUTED }}>
+                  venda real · {p.dataCobranca ? "cobrança" : "vence"} {fmtData(p.dataCobranca || p.dataRef)}
+                </div>
               </div>
               <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600, color: VERDE }}>
                 {brl(p.pendente)}
