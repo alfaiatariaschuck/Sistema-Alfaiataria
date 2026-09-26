@@ -56,13 +56,18 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
   const camisariaResumo = useMemo(() => {
     const comVenda = (pedidos || []).filter((p) => p.status === "Entregue" && p.status !== "Doação" && parseFloat(p.aReceber?.valor) > 0);
     if (comVenda.length === 0) return null;
+    // Aviamento avulso da camisa (botão extra, etiqueta, embalagem) vem
+    // do catálogo cadastrado em Aviamentos — mesma fonte que Resultado
+    // do Mês já usa (custoAviamentosPorPecaBase["Camisa"], custo fixo
+    // por unidade). Sem isso, a margem ficava inflada.
+    const custoAviamentoCamisa = (custoAviamentosPorPecaBase || {})["Camisa"] || 0;
     const vendas = comVenda.map((p) => parseFloat(p.aReceber.valor) || 0);
-    const custos = comVenda.map((p) => custoTecidoDe(p.tecidos) + (parseFloat(p.pagoFabiana?.valor) || 0));
+    const custos = comVenda.map((p) => custoTecidoDe(p.tecidos) + (parseFloat(p.pagoFabiana?.valor) || 0) + custoAviamentoCamisa);
     const precoMedio = vendas.reduce((s, v) => s + v, 0) / comVenda.length;
     const custoMedio = custos.reduce((s, v) => s + v, 0) / comVenda.length;
     const qtdMesAtual = comVenda.filter((p) => (p.dataEntrega || "").slice(0, 7) === mesAtual).length;
     return { precoMedio: Math.round(precoMedio), custoMedio: Math.round(custoMedio), qtdHistorico: comVenda.length, qtdMesAtual };
-  }, [pedidos, mesAtual]);
+  }, [pedidos, mesAtual, custoAviamentosPorPecaBase]);
 
   const alfaiatariaPorTipo = useMemo(() => {
     const entregues = (pecas || []).filter((p) => p.status === "Entregue" && p.valorVenda !== "" && p.valorVenda != null);

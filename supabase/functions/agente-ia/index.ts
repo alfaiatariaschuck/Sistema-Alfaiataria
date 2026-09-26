@@ -52,7 +52,7 @@ IMPORTANTE sobre os números de peça abaixo: "preço médio"/"custo médio"/"ma
 
 Camisaria (por camisa):
 - Preço médio de venda (histórico): R$ ${d.camisaria?.precoMedio ?? "sem dado"}
-- Custo médio (histórico; tecido + mão de obra da costureira, NÃO inclui aviamento avulso da camisa): R$ ${d.camisaria?.custoMedio ?? "sem dado"}
+- Custo médio (histórico; tecido + mão de obra da costureira + aviamento avulso da camisa): R$ ${d.camisaria?.custoMedio ?? "sem dado"}
 - Margem padrão configurada pelo dono: ${d.camisaria?.margemPadraoConfig ?? "não configurada"}%
 - Quantidade entregue ESTE MÊS: ${d.camisaria?.qtdMesAtual ?? 0} (histórico total considerado: ${d.camisaria?.qtdHistorico ?? 0} camisa(s))
 
