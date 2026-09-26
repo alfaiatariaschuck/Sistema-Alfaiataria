@@ -82,7 +82,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
               className="w-full flex items-center justify-between px-5 py-3.5 text-left"
               style={{
                 borderBottom: i < filtradas.length - 1 ? `1px solid ${LINE}` : "none",
-                background: p.tecidoChegou ? "#EAF3EA" : semTecido ? "#FBE1D6" : naoEnviado ? "#FFF9E8" : "transparent",
+                background: p.tecidoChegou ? "#EAF3EA" : semTecido ? "#FBE1D6" : "transparent",
               }}
             >
               <div>
