@@ -22,6 +22,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
   const [busca, setBusca] = useState("");
   const [filtroPagamento, setFiltroPagamento] = useState("Todos");
   const [statusFiltro, setStatusFiltro] = useState(new Set());
+  const [marcandoTodos, setMarcandoTodos] = useState(false);
 
   // Peças entregues saem daqui — ficam no histórico da aba Entregues.
   const filtradas = pecas
@@ -37,6 +38,27 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
 
   if (atual) {
     return <DetalhePeca peca={atual} onVoltar={() => setSelecionada(null)} {...acoes} />;
+  }
+
+  // Campo novo — toda peça antiga nasce "sem tecido" (nunca foi marcada),
+  // então sem essa limpeza única a tela toda fica vermelha e o destaque
+  // perde o sentido. Marca de uma vez só o que já está com tecido na real.
+  const semTecidoFiltradas = filtradas.filter((p) => !p.tecidoChegou && p.status !== "Entregue");
+
+  async function marcarTecidoEmTodosFiltrados() {
+    if (semTecidoFiltradas.length === 0) return;
+    const ok = window.confirm(
+      `Marcar "tecido em casa" pras ${semTecidoFiltradas.length} peça(s) filtradas na tela? Use só pras que já têm tecido de verdade — as que realmente faltam, deixe sem marcar.`
+    );
+    if (!ok) return;
+    setMarcandoTodos(true);
+    try {
+      for (const p of semTecidoFiltradas) {
+        await acoes.onCampo(p.id, "tecidoChegou", true);
+      }
+    } finally {
+      setMarcandoTodos(false);
+    }
   }
 
   return (
@@ -58,6 +80,27 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
           <option>Parcial</option>
           <option>Pago</option>
         </select>
+        {semTecidoFiltradas.length > 0 && (
+          <button
+            onClick={marcarTecidoEmTodosFiltrados}
+            disabled={marcandoTodos}
+            className="flex items-center gap-2"
+            style={{
+              background: "transparent",
+              border: `1px solid ${VERMELHO}`,
+              color: VERMELHO,
+              padding: "8px 14px",
+              borderRadius: 8,
+              fontWeight: 600,
+              fontSize: 13,
+              opacity: marcandoTodos ? 0.6 : 1,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <PackageCheck size={15} />
+            {marcandoTodos ? "Marcando…" : `Já tenho tecido destas (${semTecidoFiltradas.length})`}
+          </button>
+        )}
       </div>
       <div className="mb-4">
         <FiltroStatusMulti opcoes={STATUS_ATIVOS} estilos={STATUS_STYLE} selecionados={statusFiltro} onChange={setStatusFiltro} />

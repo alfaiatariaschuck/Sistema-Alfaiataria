@@ -17,6 +17,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState(new Set());
   const [mostrarCronograma, setMostrarCronograma] = useState(false);
+  const [marcandoTodos, setMarcandoTodos] = useState(false);
   const opcoesStatus = incluirEntregues ? STATUS : STATUS_ATIVOS;
 
   // Pedidos entregues saem daqui — ficam no histórico da aba Entregues.
@@ -49,6 +50,28 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
     .filter((p) => p.status !== "Entregue" && p.status !== "Doação")
     .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
 
+  // Pedido "sem tecido" é um campo novo — todo pedido antigo nasce assim
+  // (nunca foi marcado), então sem essa limpeza única a tela toda vinha
+  // vermelha e o destaque perdia o sentido. Marca de uma vez só o que já
+  // está com tecido na real, aí só os pedidos novos ficam em vermelho.
+  const semTecidoFiltrados = filtrados.filter((p) => !p.tecidoChegou && p.status !== "Entregue" && p.status !== "Doação");
+
+  async function marcarTecidoEmTodosFiltrados() {
+    if (semTecidoFiltrados.length === 0) return;
+    const ok = window.confirm(
+      `Marcar "tecido em casa" pros ${semTecidoFiltrados.length} pedido(s) filtrados na tela? Use só pros que já têm tecido de verdade — os que realmente faltam, deixe sem marcar.`
+    );
+    if (!ok) return;
+    setMarcandoTodos(true);
+    try {
+      for (const p of semTecidoFiltrados) {
+        await acoes.onCampo(p.id, "tecidoChegou", true);
+      }
+    } finally {
+      setMarcandoTodos(false);
+    }
+  }
+
   return (
     <div>
       <PageTitle eyebrow={`${filtrados.length} pedido(s) · ${totalCamisasFiltradas} camisa(s)`} title={titulo} />
@@ -71,6 +94,26 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
         >
           <CalendarClock size={15} /> Cronograma {nomeCronograma}
         </button>
+        {semTecidoFiltrados.length > 0 && (
+          <button
+            onClick={marcarTecidoEmTodosFiltrados}
+            disabled={marcandoTodos}
+            className="flex items-center gap-2"
+            style={{
+              background: "transparent",
+              border: `1px solid ${VERMELHO}`,
+              color: VERMELHO,
+              padding: "8px 14px",
+              borderRadius: 8,
+              fontWeight: 600,
+              fontSize: 13,
+              opacity: marcandoTodos ? 0.6 : 1,
+            }}
+          >
+            <PackageCheck size={15} />
+            {marcandoTodos ? "Marcando…" : `Já tenho tecido destes (${semTecidoFiltrados.length})`}
+          </button>
+        )}
       </div>
       <div className="mb-4">
         <FiltroStatusMulti opcoes={opcoesStatus} estilos={STATUS_STYLE} selecionados={statusFiltro} onChange={setStatusFiltro} />
