@@ -28,10 +28,20 @@ function totalDespesa(d) {
   return (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
 }
 
+// Sem acento e minúsculo, pra "fabi" achar "Fabiana" e "Ícaro" achar "icaro"
+// mesmo com a grafia inconsistente que às vezes é digitada.
+function normalizarBusca(s) {
+  return (s || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas, onAtualizarDespesa, irParaPedido, irParaPeca }) {
   const mesRealAtual = hojeISO().slice(0, 7);
   const [mesSelecionado, setMesSelecionado] = useState(mesRealAtual);
   const ehMesAtual = mesSelecionado === mesRealAtual;
+  const [buscaPessoa, setBuscaPessoa] = useState("");
 
   // Janela de 3 meses (mesSelecionado + 2 anteriores) em vez de mês
   // único — útil enquanto meses mais antigos ainda têm dado incompleto
@@ -106,6 +116,30 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
       }))
       .sort((a, b) => b.total - a.total);
   }, [despesasPagasDoMes]);
+
+  // Filtra por fornecedor/descrição (ex: "fabi" pra achar só os
+  // lançamentos dela, mesmo estando ora como "Fabi" ora "Fabiana") — pra
+  // dar pra conferir o total pago a uma pessoa contra o extrato bancário
+  // sem precisar somar na mão linha por linha.
+  const buscaNormalizada = normalizarBusca(buscaPessoa);
+  const despesasPorCategoriaFiltrado = useMemo(() => {
+    if (!buscaNormalizada) return despesasPorCategoria;
+    return despesasPorCategoria
+      .map(({ categoria, itens }) => {
+        const itensFiltrados = itens.filter((d) => normalizarBusca(d.fornecedor || d.descricao).includes(buscaNormalizada));
+        return { categoria, itens: itensFiltrados, total: itensFiltrados.reduce((s, d) => s + totalDespesa(d), 0) };
+      })
+      .filter(({ itens }) => itens.length > 0);
+  }, [despesasPorCategoria, buscaNormalizada]);
+
+  const totalFiltrado = useMemo(
+    () => despesasPorCategoriaFiltrado.reduce((s, { total }) => s + total, 0),
+    [despesasPorCategoriaFiltrado]
+  );
+  const qtdFiltrada = useMemo(
+    () => despesasPorCategoriaFiltrado.reduce((s, { itens }) => s + itens.length, 0),
+    [despesasPorCategoriaFiltrado]
+  );
 
   const livroDoMes = useMemo(() => {
     const linhas = [
@@ -203,11 +237,25 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
         <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
           Despesas por categoria — {rotuloPeriodo}
         </div>
-        {despesasPorCategoria.length === 0 ? (
-          <Empty texto="Nenhuma despesa paga nesse mês." />
+        <div className="mb-3">
+          <input
+            style={inputStyle}
+            placeholder="Buscar por pessoa/fornecedor/descrição (ex: fabi, zonzo, markbel)…"
+            value={buscaPessoa}
+            onChange={(e) => setBuscaPessoa(e.target.value)}
+          />
+          {buscaNormalizada && (
+            <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: 6 }}>
+              {qtdFiltrada} lançamento{qtdFiltrada !== 1 ? "s" : ""} encontrado{qtdFiltrada !== 1 ? "s" : ""} · total{" "}
+              <strong style={{ color: VERMELHO }}>{brl(totalFiltrado)}</strong>
+            </div>
+          )}
+        </div>
+        {despesasPorCategoriaFiltrado.length === 0 ? (
+          <Empty texto={buscaNormalizada ? "Nenhum lançamento encontrado com essa busca." : "Nenhuma despesa paga nesse mês."} />
         ) : (
-          despesasPorCategoria.map(({ categoria, total, itens }, i) => (
-            <details key={categoria} style={{ borderBottom: i < despesasPorCategoria.length - 1 ? `1px solid ${LINE}` : "none" }}>
+          despesasPorCategoriaFiltrado.map(({ categoria, total, itens }, i) => (
+            <details key={categoria} open={!!buscaNormalizada} style={{ borderBottom: i < despesasPorCategoriaFiltrado.length - 1 ? `1px solid ${LINE}` : "none" }}>
               <summary className="flex items-center justify-between py-1.5" style={{ fontSize: 13, cursor: "pointer" }}>
                 <span style={{ fontWeight: i === 0 ? 700 : 500 }}>
                   {categoria} <span style={{ color: TEXT_MUTED, fontWeight: 400 }}>({itens.length})</span>
