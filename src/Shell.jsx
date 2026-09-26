@@ -885,6 +885,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   irPara={irPara}
                   irParaTab={setTab}
+                  onMarcarTecidoChegou={(id, atual) => atualizarCampoPedido(id, "tecidoChegou", !atual)}
                 />
               )}
               {tab === "painel-camisaria-fabiana" && (
@@ -895,6 +896,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   irPara={irPara}
                   irParaTab={setTab}
+                  onMarcarTecidoChegou={(id, atual) => atualizarCampoPedido(id, "tecidoChegou", !atual)}
                   eyebrow="Visão geral — camisaria"
                   titulo="Painel Camisaria Fabiana"
                   nomeCosteira="Fabiana"
@@ -909,6 +911,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   irPara={irPara}
                   irParaTab={setTab}
+                  onMarcarTecidoChegou={(id, atual) => atualizarCampoPedido(id, "tecidoChegou", !atual)}
                   eyebrow="Visão geral — camisaria"
                   titulo="Painel Camisaria Milena"
                   nomeCosteira="Milena"

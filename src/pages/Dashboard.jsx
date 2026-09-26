@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Gift, Hourglass, PackageCheck, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Gift, Hourglass, Package, PackageCheck, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
@@ -21,6 +21,7 @@ export default function Dashboard({
   estoqueTecidos,
   irPara,
   irParaTab,
+  onMarcarTecidoChegou,
   eyebrow = "Visão geral — camisaria",
   titulo = "Painel Camisaria",
   nomeCosteira = null,
@@ -40,6 +41,11 @@ export default function Dashboard({
   const naoDoacao = (p) => p.status !== "Doação";
   const doacoes = pedidos.filter((p) => p.status === "Doação");
   const abertos = pedidos.filter((p) => p.status !== "Entregue" && naoDoacao(p));
+
+  // Fichas em aberto sem tecido em casa — é o que dá visibilidade rápida
+  // de quais pedidos ainda dependem de comprar/receber tecido antes de
+  // poder produzir, importante com bastante rotatividade de pedido.
+  const semTecido = abertos.filter((p) => !p.tecidoChegou);
 
   // pagoFabiana.statusPagamento só vira "Pago" quando as DUAS partes de um
   // pagamento dividido estão pagas — por isso usamos valorRecebidoEfetivo
@@ -164,6 +170,38 @@ export default function Dashboard({
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 6 }}>
             {vendidoNoMes >= meta ? "Meta batida! 🎉" : `Faltam ${brl(meta - vendidoNoMes)} pra bater a meta.`}
           </div>
+        </Card>
+      )}
+
+      {semTecido.length > 0 && (
+        <Card style={{ padding: 20, border: `1px solid ${VERMELHO}` }} className="mb-6">
+          <div className="fx-serif mb-3 flex items-center gap-2" style={{ fontSize: 16, fontWeight: 600, color: VERMELHO }}>
+            <Package size={16} /> Sem tecido em casa ({semTecido.length})
+          </div>
+          {semTecido.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between gap-2 py-2.5 flex-wrap"
+              style={{ borderBottom: `1px solid ${LINE}` }}
+            >
+              <button onClick={() => irPara(p.id)} className="text-left" style={{ flex: 1, minWidth: 140 }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</div>
+                <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  Pedido {fmtData(p.dataPedido)} · {p.quantidade || 0} un · {p.status}
+                </div>
+              </button>
+              {onMarcarTecidoChegou && (
+                <button
+                  type="button"
+                  onClick={() => onMarcarTecidoChegou(p.id, p.tecidoChegou)}
+                  className="flex items-center gap-1.5"
+                  style={{ background: "#F6E3D9", color: VERMELHO, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                >
+                  <Package size={13} /> Marcar tecido como chegado
+                </button>
+              )}
+            </div>
+          ))}
         </Card>
       )}
 

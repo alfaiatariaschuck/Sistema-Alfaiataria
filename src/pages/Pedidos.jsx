@@ -88,6 +88,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
           const diasAberto = p.dataPedido ? -diasAte(p.dataPedido) : 0;
           const atrasado40 = diasAberto > DIAS_LIMITE && p.status !== "Entregue" && p.status !== "Doação";
           const naoEnviado = !p.enviadoFabi;
+          const semTecido = !p.tecidoChegou && p.status !== "Entregue" && p.status !== "Doação";
           return (
           <button
             key={p.id}
@@ -95,7 +96,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
             className="w-full flex items-center justify-between px-5 py-3.5 text-left"
             style={{
               borderBottom: i < filtrados.length - 1 ? `1px solid ${LINE}` : "none",
-              background: p.tecidoChegou ? "#EAF3EA" : naoEnviado ? "#FFF9E8" : "transparent",
+              background: p.tecidoChegou ? "#EAF3EA" : semTecido ? "#FBE1D6" : naoEnviado ? "#FFF9E8" : "transparent",
             }}
           >
             <div>
@@ -138,8 +139,8 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
                   width: 26,
                   height: 26,
                   borderRadius: 6,
-                  background: p.tecidoChegou ? "#DCEBDD" : "#EDEAE0",
-                  color: p.tecidoChegou ? "#2C6E31" : TEXT_MUTED,
+                  background: p.tecidoChegou ? "#DCEBDD" : semTecido ? "#F6E3D9" : "#EDEAE0",
+                  color: p.tecidoChegou ? "#2C6E31" : semTecido ? VERMELHO : TEXT_MUTED,
                   flexShrink: 0,
                 }}
               >

@@ -74,6 +74,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
           const diasAberto = p.dataPedido ? -diasAte(p.dataPedido) : 0;
           const atrasada = diasAberto > DIAS_LIMITE;
           const etapa = statusParaEtapa("alfaiataria", p.status);
+          const semTecido = !p.tecidoChegou && p.status !== "Entregue";
           return (
             <button
               key={p.id}
@@ -81,7 +82,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
               className="w-full flex items-center justify-between px-5 py-3.5 text-left"
               style={{
                 borderBottom: i < filtradas.length - 1 ? `1px solid ${LINE}` : "none",
-                background: p.tecidoChegou ? "#EAF3EA" : naoEnviado ? "#FFF9E8" : "transparent",
+                background: p.tecidoChegou ? "#EAF3EA" : semTecido ? "#FBE1D6" : naoEnviado ? "#FFF9E8" : "transparent",
               }}
             >
               <div>
@@ -120,8 +121,8 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
                     width: 26,
                     height: 26,
                     borderRadius: 6,
-                    background: p.tecidoChegou ? "#DCEBDD" : "#EDEAE0",
-                    color: p.tecidoChegou ? "#2C6E31" : TEXT_MUTED,
+                    background: p.tecidoChegou ? "#DCEBDD" : semTecido ? "#F6E3D9" : "#EDEAE0",
+                    color: p.tecidoChegou ? "#2C6E31" : semTecido ? VERMELHO : TEXT_MUTED,
                     flexShrink: 0,
                   }}
                 >
