@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { AlertTriangle, CalendarClock, ChevronRight, Package, PackageCheck, Search } from "lucide-react";
+import { AlertTriangle, CalendarClock, ChevronRight, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
-import { LINE, STATUS, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { diasAte, fmtData, statusTecidoPedido } from "../lib/helpers";
+import { LINE, STATUS, STATUS_STYLE, STATUS_TECIDO, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { diasAte, fmtData } from "../lib/helpers";
 import DetalhePedido from "./DetalhePedido";
 import CronogramaImprimivel from "./CronogramaImprimivel";
 import PendenciasFabiana from "../components/PendenciasFabiana";
@@ -50,31 +50,23 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
     .filter((p) => p.status !== "Entregue" && p.status !== "Doação")
     .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
 
-  // Tecido é campo novo (por item, "comprado") — todo pedido antigo nasce
-  // sem nenhum item marcado, então sem essa limpeza única a tela toda
-  // vinha destacada e o aviso perdia o sentido. Marca de uma vez só o que
-  // já está com tecido na real, aí só os pedidos que realmente faltam
-  // continuam sinalizados.
-  const naoTotalFiltrados = filtrados.filter((p) => statusTecidoPedido(p.tecidos) !== "total" && p.status !== "Entregue" && p.status !== "Doação");
+  // Status de tecido é campo novo e manual — todo pedido antigo nasce
+  // "aguardando" (nunca foi definido), então sem essa limpeza única a
+  // tela toda vinha laranja e o aviso perdia o sentido. Marca de uma vez
+  // só o que já está com tecido na real, aí só os pedidos que realmente
+  // faltam continuam sinalizados.
+  const naoCompletosFiltrados = filtrados.filter((p) => p.statusTecido !== "completo" && p.status !== "Entregue" && p.status !== "Doação");
 
   async function marcarTecidoEmTodosFiltrados() {
-    if (naoTotalFiltrados.length === 0) return;
+    if (naoCompletosFiltrados.length === 0) return;
     const ok = window.confirm(
-      `Marcar tecido completo pros ${naoTotalFiltrados.length} pedido(s) filtrados na tela? Use só pros que já têm tecido de verdade — os que realmente faltam, deixe sem marcar.`
+      `Marcar tecido completo pros ${naoCompletosFiltrados.length} pedido(s) filtrados na tela? Use só pros que já têm tecido de verdade — os que realmente faltam, deixe sem marcar.`
     );
     if (!ok) return;
     setMarcandoTodos(true);
     try {
-      for (const p of naoTotalFiltrados) {
-        const itens = p.tecidos || [];
-        if (itens.length === 0) {
-          const novoId = await acoes.onAddTecido(p.id);
-          if (novoId) await acoes.onTecido(p.id, novoId, "comprado", true);
-          continue;
-        }
-        for (const t of itens) {
-          if (!t.comprado) await acoes.onTecido(p.id, t.id, "comprado", true);
-        }
+      for (const p of naoCompletosFiltrados) {
+        await acoes.onCampo(p.id, "statusTecido", "completo");
       }
     } finally {
       setMarcandoTodos(false);
@@ -103,7 +95,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
         >
           <CalendarClock size={15} /> Cronograma {nomeCronograma}
         </button>
-        {naoTotalFiltrados.length > 0 && (
+        {naoCompletosFiltrados.length > 0 && (
           <button
             onClick={marcarTecidoEmTodosFiltrados}
             disabled={marcandoTodos}
@@ -119,8 +111,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
               opacity: marcandoTodos ? 0.6 : 1,
             }}
           >
-            <PackageCheck size={15} />
-            {marcandoTodos ? "Marcando…" : `Já tenho tecido destes (${naoTotalFiltrados.length})`}
+            {marcandoTodos ? "Marcando…" : `Já tenho tecido destes (${naoCompletosFiltrados.length})`}
           </button>
         )}
       </div>
@@ -140,10 +131,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
           const diasAberto = p.dataPedido ? -diasAte(p.dataPedido) : 0;
           const atrasado40 = diasAberto > DIAS_LIMITE && p.status !== "Entregue" && p.status !== "Doação";
           const naoEnviado = !p.enviadoFabi;
-          const statusTecido = statusTecidoPedido(p.tecidos);
-          const tecidoTotal = statusTecido === "total";
-          const tecidoParcial = statusTecido === "parcial";
-          const compradosCount = (p.tecidos || []).filter((t) => t.comprado).length;
+          const tecido = STATUS_TECIDO.find((s) => s.valor === (p.statusTecido || "aguardando")) || STATUS_TECIDO[0];
           return (
           <div
             key={p.id}
@@ -159,7 +147,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
             className="w-full flex items-center justify-between px-5 py-3.5 text-left cursor-pointer"
             style={{
               borderBottom: i < filtrados.length - 1 ? `1px solid ${LINE}` : "none",
-              background: naoEnviado ? "#F6E3D9" : tecidoTotal ? "transparent" : "#FCEFC7",
+              background: naoEnviado ? "#F6E3D9" : tecido.bg,
             }}
           >
             <div>
@@ -190,44 +178,31 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
                 text={`${diasAberto}d em produção`}
                 style={{ bg: atrasado40 ? "#F6E3D9" : "#EDEAE0", fg: atrasado40 ? VERMELHO : TEXT_MUTED }}
               />
-              <button
-                type="button"
-                title={
-                  (p.tecidos || []).length === 0
-                    ? "Pedido sem tecido cadastrado (veio do Excel, por ex.) — toque pra marcar como tecido comprado mesmo assim"
-                    : tecidoTotal
-                    ? "Tecido completo — toque pra desmarcar tudo"
-                    : "Toque pra marcar todos os tecidos deste pedido como comprados"
-                }
-                onClick={async (e) => {
+              <select
+                value={p.statusTecido || "aguardando"}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => {
                   e.stopPropagation();
-                  const itens = p.tecidos || [];
-                  if (itens.length === 0) {
-                    const novoId = await acoes.onAddTecido(p.id);
-                    if (novoId) await acoes.onTecido(p.id, novoId, "comprado", true);
-                    return;
-                  }
-                  const novoValor = !tecidoTotal;
-                  itens.forEach((t) => acoes.onTecido(p.id, t.id, "comprado", novoValor));
+                  acoes.onCampo(p.id, "statusTecido", e.target.value);
                 }}
-                className="flex items-center gap-1.5"
+                title="Status do tecido — marque manualmente"
                 style={{
                   padding: "6px 10px",
                   borderRadius: 6,
-                  background: tecidoTotal ? "#DCEBDD" : tecidoParcial ? "#FCEFC7" : "#EDEAE0",
-                  color: tecidoTotal ? "#2C6E31" : tecidoParcial ? "#8A6A0C" : TEXT_MUTED,
+                  border: "none",
+                  background: tecido.bg === "transparent" ? "#EDEAE0" : tecido.bg,
+                  color: tecido.fg,
                   fontWeight: 600,
                   fontSize: 12,
                   flexShrink: 0,
                 }}
               >
-                {tecidoTotal ? <PackageCheck size={14} /> : <Package size={14} />}
-                {tecidoTotal
-                  ? "Tecido completo"
-                  : tecidoParcial
-                  ? `Parcial ${compradosCount}/${(p.tecidos || []).length}`
-                  : "Marcar tecido comprado"}
-              </button>
+                {STATUS_TECIDO.map((s) => (
+                  <option key={s.valor} value={s.valor}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
               <Pill text={p.status} style={STATUS_STYLE[p.status]} />
               <ChevronRight size={16} color={TEXT_MUTED} />
             </div>

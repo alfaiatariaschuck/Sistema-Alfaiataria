@@ -589,22 +589,6 @@ export default function Shell() {
     }
   }
 
-  // Atalho pro Dashboard/painéis — marca de uma vez todos os tecidos do
-  // pedido como comprados, sem precisar abrir o pedido item por item.
-  // Pedidos vindos do Excel podem não ter nenhum tecido cadastrado ainda
-  // — nesse caso cria um item já marcado, em vez de não fazer nada.
-  async function marcarTecidoCompradoPedido(pedido) {
-    const itens = pedido.tecidos || [];
-    if (itens.length === 0) {
-      const novoId = await adicionarTecido(pedido.id);
-      if (novoId) await atualizarTecido(pedido.id, novoId, "comprado", true);
-      return;
-    }
-    for (const t of itens) {
-      if (!t.comprado) await atualizarTecido(pedido.id, t.id, "comprado", true);
-    }
-  }
-
   // Cobre o caso de preencher/corrigir "Valor a pagar à Fabiana" DEPOIS
   // que o pedido já estava em produção (na hora da mudança de status
   // esse valor ainda estava vazio, então não tinha o que lançar) — ao
@@ -901,7 +885,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   irPara={irPara}
                   irParaTab={setTab}
-                  onMarcarTecidoComprado={marcarTecidoCompradoPedido}
+                  onMarcarTecido={(id, valor) => atualizarCampoPedido(id, "statusTecido", valor)}
                 />
               )}
               {tab === "painel-camisaria-fabiana" && (
@@ -912,7 +896,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   irPara={irPara}
                   irParaTab={setTab}
-                  onMarcarTecidoComprado={marcarTecidoCompradoPedido}
+                  onMarcarTecido={(id, valor) => atualizarCampoPedido(id, "statusTecido", valor)}
                   eyebrow="Visão geral — camisaria"
                   titulo="Painel Camisaria Fabiana"
                   nomeCosteira="Fabiana"
@@ -927,7 +911,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   irPara={irPara}
                   irParaTab={setTab}
-                  onMarcarTecidoComprado={marcarTecidoCompradoPedido}
+                  onMarcarTecido={(id, valor) => atualizarCampoPedido(id, "statusTecido", valor)}
                   eyebrow="Visão geral — camisaria"
                   titulo="Painel Camisaria Milena"
                   nomeCosteira="Milena"

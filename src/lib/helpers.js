@@ -193,18 +193,6 @@ export function valorRecebidoEfetivo({ pagamentoDividido, valorEntrada, statusEn
   return statusTotal === labelPago ? parseFloat(valorTotal) || 0 : 0;
 }
 
-// Status de tecido do pedido, calculado item a item (cada tecido tem seu
-// próprio "comprado") — "total" só quando todos os itens estão comprados,
-// "parcial" quando pelo menos um está, "nenhum" quando nenhum está (ou o
-// pedido nem tem tecido cadastrado ainda).
-export function statusTecidoPedido(tecidos) {
-  const itens = tecidos || [];
-  const compradosCount = itens.filter((t) => t.comprado).length;
-  if (itens.length > 0 && compradosCount === itens.length) return "total";
-  if (compradosCount > 0) return "parcial";
-  return "nenhum";
-}
-
 // Preço de referência (R$/metro) de um código já cadastrado no Estoque
 // de Tecido — usado pra pré-preencher o "valor por metro" na ficha do
 // pedido sozinho, sem precisar redigitar o mesmo valor toda vez que o

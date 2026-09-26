@@ -17,6 +17,15 @@ export const COR_REAL = "#2a78d6";
 
 export const STATUS = ["Aguardando Produção", "Em Produção", "Prova", "Pronto", "Entregue Parcial", "Entregue", "Doação"];
 
+// Status de tecido manual (3 etapas), controlado pelo Tales/equipe por
+// pedido — não é calculado sozinho, é uma escolha direta. "aguardando"
+// vem primeiro porque é o estado inicial de todo pedido novo.
+export const STATUS_TECIDO = [
+  { valor: "aguardando", label: "Aguardando tecido", bg: "#FBDCC0", fg: "#A65A12" },
+  { valor: "parcial", label: "Tecido parcial", bg: "#FCEFC7", fg: "#8A6A0C" },
+  { valor: "completo", label: "Tecido completo", bg: "transparent", fg: "#2C6E31" },
+];
+
 // Alfaiataria tem etapas próprias, mais granulares (corte, provas,
 // ajustes, acabamento) — usadas no formulário/detalhe da peça e no
 // acompanhamento público do cliente.

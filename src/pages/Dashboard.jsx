@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Gift, Hourglass, Package, PackageCheck, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Gift, Hourglass, Package, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
 import DoacoesPorAno from "../components/DoacoesPorAno";
 import ComparativoCosteiras from "../components/ComparativoCosteiras";
-import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, fmtData, hojeISO, mediaEsperaCliente, statusTecidoPedido, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
+import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, STATUS_TECIDO, TEXT_MUTED } from "../lib/constants";
+import { brl, diasAte, fmtData, hojeISO, mediaEsperaCliente, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
 import CentralAlertas from "../components/CentralAlertas";
 import { supabase } from "../supabaseClient";
 
@@ -21,7 +21,7 @@ export default function Dashboard({
   estoqueTecidos,
   irPara,
   irParaTab,
-  onMarcarTecidoComprado,
+  onMarcarTecido,
   eyebrow = "Visão geral — camisaria",
   titulo = "Painel Camisaria",
   nomeCosteira = null,
@@ -42,11 +42,11 @@ export default function Dashboard({
   const doacoes = pedidos.filter((p) => p.status === "Doação");
   const abertos = pedidos.filter((p) => p.status !== "Entregue" && naoDoacao(p));
 
-  // Fichas em aberto com tecido incompleto (parcial ou nenhum item
-  // comprado ainda) — dá visibilidade rápida de quais pedidos ainda
+  // Fichas em aberto com tecido incompleto (status manual "aguardando"
+  // ou "parcial") — dá visibilidade rápida de quais pedidos ainda
   // dependem de comprar/receber tecido antes de poder produzir,
   // importante com bastante rotatividade de pedido.
-  const semTecido = abertos.filter((p) => statusTecidoPedido(p.tecidos) !== "total");
+  const semTecido = abertos.filter((p) => (p.statusTecido || "aguardando") !== "completo");
 
   // pagoFabiana.statusPagamento só vira "Pago" quando as DUAS partes de um
   // pagamento dividido estão pagas — por isso usamos valorRecebidoEfetivo
@@ -180,8 +180,7 @@ export default function Dashboard({
             <Package size={16} /> Tecido incompleto ({semTecido.length})
           </div>
           {semTecido.map((p) => {
-            const compradosCount = (p.tecidos || []).filter((t) => t.comprado).length;
-            const totalItens = (p.tecidos || []).length;
+            const tecido = STATUS_TECIDO.find((s) => s.valor === (p.statusTecido || "aguardando")) || STATUS_TECIDO[0];
             return (
             <div
               key={p.id}
@@ -192,18 +191,30 @@ export default function Dashboard({
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</div>
                 <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                   Pedido {fmtData(p.dataPedido)} · {p.quantidade || 0} un · {p.status}
-                  {totalItens > 0 ? ` · tecido ${compradosCount}/${totalItens}` : ""}
                 </div>
               </button>
-              {onMarcarTecidoComprado && (
-                <button
-                  type="button"
-                  onClick={() => onMarcarTecidoComprado(p)}
-                  className="flex items-center gap-1.5"
-                  style={{ background: "#FCEFC7", color: "#8A6A0C", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+              {onMarcarTecido && (
+                <select
+                  value={p.statusTecido || "aguardando"}
+                  onChange={(e) => onMarcarTecido(p.id, e.target.value)}
+                  title="Status do tecido — marque manualmente"
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: tecido.bg === "transparent" ? "#EDEAE0" : tecido.bg,
+                    color: tecido.fg,
+                    fontWeight: 600,
+                    fontSize: 12,
+                    flexShrink: 0,
+                  }}
                 >
-                  <Package size={13} /> Marcar tecido comprado
-                </button>
+                  {STATUS_TECIDO.map((s) => (
+                    <option key={s.valor} value={s.valor}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
             );

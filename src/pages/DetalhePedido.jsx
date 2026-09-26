@@ -15,8 +15,8 @@ import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import HistoricoCliente from "../components/HistoricoCliente";
 import VincularIndicador from "../components/VincularIndicador";
 import EditarNomeCliente from "../components/EditarNomeCliente";
-import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, statusTecidoPedido, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
+import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, STATUS_TECIDO, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
+import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
@@ -160,32 +160,26 @@ export default function DetalhePedido({
         >
           {p.enviadoFabi ? "↺ Marcar como não enviado" : "✓ Marcar como enviado pra Fabi"}
         </button>
-        <button
-          type="button"
-          onClick={async () => {
-            const itens = p.tecidos || [];
-            if (itens.length === 0) {
-              const novoId = await onAddTecido(p.id);
-              if (novoId) await onTecido(p.id, novoId, "comprado", true);
-              return;
-            }
-            const tecidoTotal = statusTecidoPedido(p.tecidos) === "total";
-            const novoValor = !tecidoTotal;
-            itens.forEach((t) => onTecido(p.id, t.id, "comprado", novoValor));
-          }}
+        <select
+          value={p.statusTecido || "aguardando"}
+          onChange={(e) => set("statusTecido", e.target.value)}
           className="flex items-center gap-2"
           style={{
-            background: statusTecidoPedido(p.tecidos) === "total" ? "#DCEBDD" : "transparent",
-            border: `1px solid ${statusTecidoPedido(p.tecidos) === "total" ? "#2C6E31" : LINE}`,
-            color: statusTecidoPedido(p.tecidos) === "total" ? "#2C6E31" : INK_SOFT,
+            background: (STATUS_TECIDO.find((s) => s.valor === (p.statusTecido || "aguardando")) || STATUS_TECIDO[0]).bg,
+            border: `1px solid ${LINE}`,
+            color: (STATUS_TECIDO.find((s) => s.valor === (p.statusTecido || "aguardando")) || STATUS_TECIDO[0]).fg,
             padding: "9px 14px",
             borderRadius: 8,
             fontWeight: 600,
             fontSize: 13,
           }}
         >
-          {statusTecidoPedido(p.tecidos) === "total" ? "📦 Tecido completo" : "Marcar tecido comprado (todos os itens)"}
-        </button>
+          {STATUS_TECIDO.map((s) => (
+            <option key={s.valor} value={s.valor}>
+              {s.label}
+            </option>
+          ))}
+        </select>
         <CopiarDadosContabilidade
           clienteId={p.clienteId}
           nomeCliente={p.cliente}

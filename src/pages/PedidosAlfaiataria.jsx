@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { ChevronRight, Package, PackageCheck, Search } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
-import { BRASS, BRASS_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { diasAte, fmtData, statusParaEtapa, statusTecidoPedido } from "../lib/helpers";
+import { BRASS, BRASS_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, STATUS_TECIDO, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { diasAte, fmtData, statusParaEtapa } from "../lib/helpers";
 import DetalhePeca from "./DetalhePeca";
 
 function statusPagamentoDe(p) {
@@ -40,30 +40,22 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
     return <DetalhePeca peca={atual} onVoltar={() => setSelecionada(null)} {...acoes} />;
   }
 
-  // Tecido é campo novo (por item, "comprado") — toda peça antiga nasce
-  // sem nenhum item marcado, então sem essa limpeza única a tela toda
-  // fica destacada e o aviso perde o sentido. Marca de uma vez só o que
-  // já está com tecido na real.
-  const naoTotalFiltradas = filtradas.filter((p) => statusTecidoPedido(p.tecidos) !== "total" && p.status !== "Entregue");
+  // Status de tecido é campo novo e manual — toda peça antiga nasce
+  // "aguardando" (nunca foi definido), então sem essa limpeza única a
+  // tela toda fica laranja e o aviso perde o sentido. Marca de uma vez
+  // só o que já está com tecido na real.
+  const naoCompletasFiltradas = filtradas.filter((p) => p.statusTecido !== "completo" && p.status !== "Entregue");
 
   async function marcarTecidoEmTodosFiltrados() {
-    if (naoTotalFiltradas.length === 0) return;
+    if (naoCompletasFiltradas.length === 0) return;
     const ok = window.confirm(
-      `Marcar tecido completo pras ${naoTotalFiltradas.length} peça(s) filtradas na tela? Use só pras que já têm tecido de verdade — as que realmente faltam, deixe sem marcar.`
+      `Marcar tecido completo pras ${naoCompletasFiltradas.length} peça(s) filtradas na tela? Use só pras que já têm tecido de verdade — as que realmente faltam, deixe sem marcar.`
     );
     if (!ok) return;
     setMarcandoTodos(true);
     try {
-      for (const p of naoTotalFiltradas) {
-        const itens = p.tecidos || [];
-        if (itens.length === 0) {
-          const novoId = await acoes.onAddTecido(p.id);
-          if (novoId) await acoes.onTecido(p.id, novoId, "comprado", true);
-          continue;
-        }
-        for (const t of itens) {
-          if (!t.comprado) await acoes.onTecido(p.id, t.id, "comprado", true);
-        }
+      for (const p of naoCompletasFiltradas) {
+        await acoes.onCampo(p.id, "statusTecido", "completo");
       }
     } finally {
       setMarcandoTodos(false);
@@ -89,7 +81,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
           <option>Parcial</option>
           <option>Pago</option>
         </select>
-        {naoTotalFiltradas.length > 0 && (
+        {naoCompletasFiltradas.length > 0 && (
           <button
             onClick={marcarTecidoEmTodosFiltrados}
             disabled={marcandoTodos}
@@ -106,8 +98,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
               whiteSpace: "nowrap",
             }}
           >
-            <PackageCheck size={15} />
-            {marcandoTodos ? "Marcando…" : `Já tenho tecido destas (${naoTotalFiltradas.length})`}
+            {marcandoTodos ? "Marcando…" : `Já tenho tecido destas (${naoCompletasFiltradas.length})`}
           </button>
         )}
       </div>
@@ -126,10 +117,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
           const diasAberto = p.dataPedido ? -diasAte(p.dataPedido) : 0;
           const atrasada = diasAberto > DIAS_LIMITE;
           const etapa = statusParaEtapa("alfaiataria", p.status);
-          const statusTecido = statusTecidoPedido(p.tecidos);
-          const tecidoTotal = statusTecido === "total";
-          const tecidoParcial = statusTecido === "parcial";
-          const compradosCount = (p.tecidos || []).filter((t) => t.comprado).length;
+          const tecido = STATUS_TECIDO.find((s) => s.valor === (p.statusTecido || "aguardando")) || STATUS_TECIDO[0];
           return (
             <div
               key={p.id}
@@ -145,7 +133,7 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
               className="w-full flex items-center justify-between px-5 py-3.5 text-left cursor-pointer"
               style={{
                 borderBottom: i < filtradas.length - 1 ? `1px solid ${LINE}` : "none",
-                background: naoEnviado ? "#F6E3D9" : tecidoTotal ? "transparent" : "#FCEFC7",
+                background: naoEnviado ? "#F6E3D9" : tecido.bg,
               }}
             >
               <div>
@@ -172,44 +160,31 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
                   text={`${diasAberto}d em produção`}
                   style={{ bg: atrasada ? "#F6E3D9" : "#EDEAE0", fg: atrasada ? VERMELHO : TEXT_MUTED }}
                 />
-                <button
-                  type="button"
-                  title={
-                    (p.tecidos || []).length === 0
-                      ? "Peça sem tecido cadastrado (veio do Excel, por ex.) — toque pra marcar como tecido comprado mesmo assim"
-                      : tecidoTotal
-                      ? "Tecido completo — toque pra desmarcar tudo"
-                      : "Toque pra marcar todos os tecidos desta peça como comprados"
-                  }
-                  onClick={async (e) => {
+                <select
+                  value={p.statusTecido || "aguardando"}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
                     e.stopPropagation();
-                    const itens = p.tecidos || [];
-                    if (itens.length === 0) {
-                      const novoId = await acoes.onAddTecido(p.id);
-                      if (novoId) await acoes.onTecido(p.id, novoId, "comprado", true);
-                      return;
-                    }
-                    const novoValor = !tecidoTotal;
-                    itens.forEach((t) => acoes.onTecido(p.id, t.id, "comprado", novoValor));
+                    acoes.onCampo(p.id, "statusTecido", e.target.value);
                   }}
-                  className="flex items-center gap-1.5"
+                  title="Status do tecido — marque manualmente"
                   style={{
                     padding: "6px 10px",
                     borderRadius: 6,
-                    background: tecidoTotal ? "#DCEBDD" : tecidoParcial ? "#FCEFC7" : "#EDEAE0",
-                    color: tecidoTotal ? "#2C6E31" : tecidoParcial ? "#8A6A0C" : TEXT_MUTED,
+                    border: "none",
+                    background: tecido.bg === "transparent" ? "#EDEAE0" : tecido.bg,
+                    color: tecido.fg,
                     fontWeight: 600,
                     fontSize: 12,
                     flexShrink: 0,
                   }}
                 >
-                  {tecidoTotal ? <PackageCheck size={14} /> : <Package size={14} />}
-                  {tecidoTotal
-                    ? "Tecido completo"
-                    : tecidoParcial
-                    ? `Parcial ${compradosCount}/${(p.tecidos || []).length}`
-                    : "Marcar tecido comprado"}
-                </button>
+                  {STATUS_TECIDO.map((s) => (
+                    <option key={s.valor} value={s.valor}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
                 <Pill text={p.status} style={STATUS_STYLE[p.status]} />
                 {p.tipoSaida && p.tipoSaida !== "Venda" && <Pill text={p.tipoSaida} style={STATUS_STYLE[p.tipoSaida]} />}
                 <ChevronRight size={16} color={TEXT_MUTED} />

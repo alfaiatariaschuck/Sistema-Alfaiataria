@@ -52,6 +52,7 @@ export function pedidoVazio() {
     enviadoFabi: false,
     medidasNovas: false,
     tecidoChegou: false,
+    statusTecido: "aguardando",
     pausado: false,
     dataPausaInicio: "",
     diasPausados: 0,
@@ -117,6 +118,7 @@ function rowParaPedido(row) {
     enviadoFabi: row.enviado_fabi === undefined ? true : !!row.enviado_fabi,
     medidasNovas: !!row.medidas_novas,
     tecidoChegou: !!row.tecido_chegou,
+    statusTecido: row.status_tecido || "aguardando",
     pausado: !!row.pausado,
     dataPausaInicio: row.data_pausa_inicio || "",
     diasPausados: row.dias_pausados || 0,
@@ -166,6 +168,7 @@ const CAMPO_PARA_COLUNA = {
   enviadoFabi: "enviado_fabi",
   medidasNovas: "medidas_novas",
   tecidoChegou: "tecido_chegou",
+  statusTecido: "status_tecido",
 };
 
 export function usePedidos() {
@@ -243,6 +246,7 @@ export function usePedidos() {
           enviado_fabi: false,
           medidas_novas: !!p.medidasNovas,
           tecido_chegou: false,
+          status_tecido: "aguardando",
         })
         .select("id")
         .single();

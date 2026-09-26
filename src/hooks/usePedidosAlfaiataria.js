@@ -45,6 +45,7 @@ export function pecaVazia() {
     situacao: "Aguardando",
     enviadoIcaro: false,
     tecidoChegou: false,
+    statusTecido: "aguardando",
     // medidas fica agrupada por seção — { corpo: { label: valor }, calca: {...}, colete: {...} }
     medidas: {},
     caracteristicas: {},
@@ -102,6 +103,7 @@ function rowParaPeca(row) {
     ordemProducao: row.ordem_producao ?? null,
     enviadoIcaro: row.enviado_icaro === undefined ? true : !!row.enviado_icaro,
     tecidoChegou: !!row.tecido_chegou,
+    statusTecido: row.status_tecido || "aguardando",
     medidas: row.medidas || {},
     caracteristicas: row.caracteristicas || {},
     tecidos: (row.tecidos || [])
@@ -154,6 +156,7 @@ const CAMPO_PARA_COLUNA = {
   observacoes: "observacoes",
   enviadoIcaro: "enviado_icaro",
   tecidoChegou: "tecido_chegou",
+  statusTecido: "status_tecido",
   medidas: "medidas",
   caracteristicas: "caracteristicas",
   medidasNovas: "medidas_novas",
@@ -232,6 +235,7 @@ export function usePedidosAlfaiataria() {
           enviado_icaro: false,
           medidas_novas: !!p.medidasNovas,
           tecido_chegou: false,
+          status_tecido: "aguardando",
         })
         .select("id")
         .single();

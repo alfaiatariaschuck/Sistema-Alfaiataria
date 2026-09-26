@@ -27,10 +27,11 @@ import {
   STATUS_ALFAIATARIA,
   TIPOS_SAIDA_PECA,
   STATUS_STYLE,
+  STATUS_TECIDO,
   TEXT_MUTED,
   inputStyle,
 } from "../lib/constants";
-import { brl, diasEsperaCliente, diasProducaoReal, fmtData, hojeISO, previsaoEfetivaDe, previsaoEstimada, statusDividido, statusEvento, statusParaEtapa, statusTecidoPedido, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
+import { brl, diasEsperaCliente, diasProducaoReal, fmtData, hojeISO, previsaoEfetivaDe, previsaoEstimada, statusDividido, statusEvento, statusParaEtapa, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
@@ -153,32 +154,26 @@ export default function DetalhePeca({
         >
           {p.enviadoIcaro ? "↺ Marcar como não enviado" : "✓ Marcar como enviado pro Icaro"}
         </button>
-        <button
-          type="button"
-          onClick={async () => {
-            const itens = p.tecidos || [];
-            if (itens.length === 0) {
-              const novoId = await onAddTecido(p.id);
-              if (novoId) await onTecido(p.id, novoId, "comprado", true);
-              return;
-            }
-            const tecidoTotal = statusTecidoPedido(p.tecidos) === "total";
-            const novoValor = !tecidoTotal;
-            itens.forEach((t) => onTecido(p.id, t.id, "comprado", novoValor));
-          }}
+        <select
+          value={p.statusTecido || "aguardando"}
+          onChange={(e) => set("statusTecido", e.target.value)}
           className="flex items-center gap-2"
           style={{
-            background: statusTecidoPedido(p.tecidos) === "total" ? "#DCEBDD" : "transparent",
-            border: `1px solid ${statusTecidoPedido(p.tecidos) === "total" ? "#2C6E31" : LINE}`,
-            color: statusTecidoPedido(p.tecidos) === "total" ? "#2C6E31" : TEXT_MUTED,
+            background: (STATUS_TECIDO.find((s) => s.valor === (p.statusTecido || "aguardando")) || STATUS_TECIDO[0]).bg,
+            border: `1px solid ${LINE}`,
+            color: (STATUS_TECIDO.find((s) => s.valor === (p.statusTecido || "aguardando")) || STATUS_TECIDO[0]).fg,
             padding: "9px 14px",
             borderRadius: 8,
             fontWeight: 600,
             fontSize: 13,
           }}
         >
-          {statusTecidoPedido(p.tecidos) === "total" ? "📦 Tecido completo" : "Marcar tecido comprado (todos os itens)"}
-        </button>
+          {STATUS_TECIDO.map((s) => (
+            <option key={s.valor} value={s.valor}>
+              {s.label}
+            </option>
+          ))}
+        </select>
         <CopiarDadosContabilidade
           clienteId={p.clienteId}
           nomeCliente={p.cliente}
