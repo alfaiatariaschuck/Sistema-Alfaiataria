@@ -26,6 +26,7 @@ import {
   Ruler,
   Scale,
   Shirt,
+  Sparkles,
   Target,
   Scissors,
   Settings,
@@ -77,6 +78,7 @@ import PainelSapatos from "./pages/PainelSapatos";
 import PedidoSapatos from "./pages/PedidoSapatos";
 import Cerebro from "./pages/Cerebro";
 import AgenteConciliador from "./pages/AgenteConciliador";
+import AgentesIA from "./pages/AgentesIA";
 import Contabilidade from "./pages/Contabilidade";
 import ControleProducao from "./pages/ControleProducao";
 import Equipe from "./pages/Equipe";
@@ -141,6 +143,7 @@ const NAV = [
   { id: "contas-a-receber", label: "Contas a Receber", icon: Wallet, primary: false, grupo: "Geral" },
   { id: "cerebro", label: "Cérebro", icon: Brain, primary: false, grupo: "Geral" },
   { id: "agente-conciliador", label: "Agente Conciliador", icon: GitCompare, primary: false, grupo: "Geral" },
+  { id: "agentes-ia", label: "Agentes de IA", icon: Sparkles, primary: false, grupo: "Geral" },
 
   { id: "equipe", label: "Equipe", icon: Users2, primary: false, grupo: "Sistema" },
   { id: "fornecedores", label: "Fornecedores", icon: ShoppingCart, primary: false, grupo: "Sistema" },
@@ -1107,6 +1110,9 @@ export default function Shell() {
                   onAtualizarSubcampoPedido={atualizarSubcampo}
                   onAtualizarCampoPeca={atualizarCampoPeca}
                 />
+              )}
+              {tab === "agentes-ia" && (
+                <AgentesIA pedidos={pedidos} pecas={pecas} despesas={despesas} custoAviamentosPorPecaBase={custoPorPecaBase} />
               )}
               {tab === "controle-producao" && !loadingPecas && (
                 <ControleProducao
