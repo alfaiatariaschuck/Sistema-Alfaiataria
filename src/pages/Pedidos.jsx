@@ -139,10 +139,18 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
           const tecidoParcial = statusTecido === "parcial";
           const compradosCount = (p.tecidos || []).filter((t) => t.comprado).length;
           return (
-          <button
+          <div
             key={p.id}
+            role="button"
+            tabIndex={0}
             onClick={() => setSelecionado(p.id)}
-            className="w-full flex items-center justify-between px-5 py-3.5 text-left"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setSelecionado(p.id);
+              }
+            }}
+            className="w-full flex items-center justify-between px-5 py-3.5 text-left cursor-pointer"
             style={{
               borderBottom: i < filtrados.length - 1 ? `1px solid ${LINE}` : "none",
               background: naoEnviado ? "#F6E3D9" : tecidoTotal ? "transparent" : "#FCEFC7",
@@ -178,7 +186,14 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
               />
               <button
                 type="button"
-                title={tecidoTotal ? "Tecido completo — toque pra desmarcar tudo" : "Toque pra marcar todos os tecidos deste pedido como comprados"}
+                disabled={(p.tecidos || []).length === 0}
+                title={
+                  (p.tecidos || []).length === 0
+                    ? "Esse pedido ainda não tem tecido cadastrado — abra o pedido pra adicionar"
+                    : tecidoTotal
+                    ? "Tecido completo — toque pra desmarcar tudo"
+                    : "Toque pra marcar todos os tecidos deste pedido como comprados"
+                }
                 onClick={(e) => {
                   e.stopPropagation();
                   const novoValor = !tecidoTotal;
@@ -193,6 +208,8 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
                   fontWeight: 600,
                   fontSize: 12,
                   flexShrink: 0,
+                  opacity: (p.tecidos || []).length === 0 ? 0.5 : 1,
+                  cursor: (p.tecidos || []).length === 0 ? "not-allowed" : "pointer",
                 }}
               >
                 {tecidoTotal ? <PackageCheck size={14} /> : <Package size={14} />}
@@ -205,7 +222,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
               <Pill text={p.status} style={STATUS_STYLE[p.status]} />
               <ChevronRight size={16} color={TEXT_MUTED} />
             </div>
-          </button>
+          </div>
           );
         })}
       </Card>
