@@ -8,9 +8,10 @@ import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_META_PROLABORE = "meta_pro_labore";
+const CHAVE_META_LUCRO = "meta_lucro";
 const CHAVE_CAIXA = "caixa_atual";
 
-const CATEGORIAS_VARIAVEIS_POR_PECA = ["Material/Tecido avulso", "Aviamento Alfaiataria", "Aviamento Camisaria", "Pró-labore"];
+const CATEGORIAS_VARIAVEIS_POR_PECA = ["Material/Tecido avulso", "Aviamento Alfaiataria", "Aviamento Camisaria", "Pró-labore", "Dívida Antiga/Renegociação"];
 
 function mesesAntesDe(mesStr, n) {
   const [ano, mes] = mesStr.split("-").map(Number);
@@ -24,15 +25,17 @@ function totalDespesaLinha(d) {
 
 export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPorPecaBase }) {
   const [metaProLabore, setMetaProLabore] = useState("40000");
+  const [metaLucro, setMetaLucro] = useState("10000");
   const [caixaAtual, setCaixaAtual] = useState("");
   const [carregandoConfig, setCarregandoConfig] = useState(true);
   const { margemPadrao: margemPadraoCamisaria } = useConfigPrecoCamisa();
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_META_PROLABORE, CHAVE_CAIXA]);
+      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_META_PROLABORE, CHAVE_META_LUCRO, CHAVE_CAIXA]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_META_PROLABORE) setMetaProLabore(row.valor || "40000");
+        if (row.chave === CHAVE_META_LUCRO) setMetaLucro(row.valor || "10000");
         if (row.chave === CHAVE_CAIXA) setCaixaAtual(row.valor || "");
       });
       setCarregandoConfig(false);
@@ -42,6 +45,11 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
   async function salvarMetaProLabore(valor) {
     setMetaProLabore(valor);
     await supabase.from("config").upsert({ chave: CHAVE_META_PROLABORE, valor });
+  }
+
+  async function salvarMetaLucro(valor) {
+    setMetaLucro(valor);
+    await supabase.from("config").upsert({ chave: CHAVE_META_LUCRO, valor });
   }
 
   // ---------- Agente de Precificação ----------
@@ -192,6 +200,8 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       const resposta = await chamarAgenteIA("financeiro", {
         ...resumoFinanceiroMes,
         caixaAtual: parseFloat(caixaAtual) || 0,
+        metaProLabore,
+        metaLucro,
         receitaRecebida: resumoFinanceiroMes.receitaRecebida.toFixed(2),
         despesasPagas: resumoFinanceiroMes.despesasPagas.toFixed(2),
         saldoMes: resumoFinanceiroMes.saldoMes.toFixed(2),
@@ -265,9 +275,10 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
             Agente Financeiro
           </div>
         </div>
-        <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
           <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-            Parecer sobre {modoTrimestreFinanceiro ? "os últimos 3 meses" : "o mês atual"} (regime de caixa) e os vencimentos dos próximos 30 dias.
+            Parecer sobre {modoTrimestreFinanceiro ? "os últimos 3 meses" : "o mês atual"} (regime de caixa), os vencimentos dos próximos 30 dias, e o progresso rumo a
+            pró-labore + lucro de {brl((parseFloat(metaProLabore) || 0) + (parseFloat(metaLucro) || 0))}.
           </div>
           <button
             onClick={() => setModoTrimestreFinanceiro((v) => !v)}
@@ -283,6 +294,27 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
           >
             {modoTrimestreFinanceiro ? "✓ últimos 3 meses" : "ver últimos 3 meses"}
           </button>
+        </div>
+
+        <div className="flex items-end gap-3 mb-4 flex-wrap">
+          <Field label="Meta de pró-labore mensal (R$)">
+            <input
+              type="number"
+              style={{ ...inputStyle, maxWidth: 160 }}
+              value={metaProLabore}
+              onChange={(e) => salvarMetaProLabore(e.target.value)}
+              disabled={carregandoConfig}
+            />
+          </Field>
+          <Field label="Meta de lucro mensal (R$)">
+            <input
+              type="number"
+              style={{ ...inputStyle, maxWidth: 160 }}
+              value={metaLucro}
+              onChange={(e) => salvarMetaLucro(e.target.value)}
+              disabled={carregandoConfig}
+            />
+          </Field>
         </div>
 
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>

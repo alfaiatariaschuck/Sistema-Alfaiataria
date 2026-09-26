@@ -70,9 +70,14 @@ Com base nisso, a precificação atual sustenta a meta de pró-labore ESTE MÊS?
       "Cada recomendação tem que ser específica aos dados recebidos nesta análise — cite a categoria, o valor ou o vencimento exato envolvido — nunca conselho " +
       "genérico de educação financeira (nada de \"controle seus gastos\" ou \"tenha uma reserva de emergência\" sem ligar isso a um número real que você recebeu). " +
       "Se identificar um problema (ex: saldo negativo, vencimento concentrado), a recomendação tem que dizer o que fazer sobre ESSE problema específico, com foco em execução " +
-      "(o que fazer, quando, e o efeito esperado) — pense como alguém que vai executar aquilo essa semana, não como quem está só descrevendo a situação.",
+      "(o que fazer, quando, e o efeito esperado) — pense como alguém que vai executar aquilo essa semana, não como quem está só descrevendo a situação. " +
+      "SEMPRE avalie o saldo do período contra a meta combinada (pró-labore + lucro) que foi passada — diga explicitamente se o saldo em caixa deste período, sozinho, cobriria " +
+      "essa meta, e se não, o tamanho exato do gap em reais. Isso é regime de caixa, então não confunda com margem de venda — é sobre dinheiro que realmente entrou/saiu.",
     montarPergunta: (d) => `
 Período de referência (pode ser um único mês ou uma janela de meses somados — leia com atenção qual dos dois é): ${d.mes}
+Meta de pró-labore mensal do dono: R$ ${d.metaProLabore}
+Meta de lucro mensal do dono (além do pró-labore): R$ ${d.metaLucro}
+Meta combinada (pró-labore + lucro) que o saldo em caixa do período precisaria cobrir: R$ ${(parseFloat(d.metaProLabore) || 0) + (parseFloat(d.metaLucro) || 0)}
 Caixa atual informado pelo dono: R$ ${d.caixaAtual}
 Receita recebida no período: R$ ${d.receitaRecebida}
 Despesas pagas no período: R$ ${d.despesasPagas}

@@ -176,6 +176,7 @@ export const CATEGORIAS_DESPESA = [
   "Sistemas",
   "Marketing",
   "Investimento",
+  "Dívida Antiga/Renegociação",
   "Outros",
 ];
 
