@@ -4,6 +4,7 @@ import { Card, Field, PageTitle } from "../components/ui";
 import { BRASS, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, somarDias } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
+import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_META_PROLABORE = "meta_pro_labore";
@@ -25,6 +26,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
   const [metaProLabore, setMetaProLabore] = useState("40000");
   const [caixaAtual, setCaixaAtual] = useState("");
   const [carregandoConfig, setCarregandoConfig] = useState(true);
+  const { margemPadrao: margemPadraoCamisaria } = useConfigPrecoCamisa();
 
   useEffect(() => {
     (async () => {
@@ -119,7 +121,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
         metaProLabore,
         mesReferencia: mesAtual,
         custosFixosMes: custosFixosMesAtual.toFixed(2),
-        camisaria: camisariaResumo,
+        camisaria: camisariaResumo ? { ...camisariaResumo, margemPadraoConfig: margemPadraoCamisaria } : null,
         alfaiataria: alfaiatariaPorTipo,
       });
       setRespostaPrecificacao(resposta);
