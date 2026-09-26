@@ -158,6 +158,13 @@ export default function Shell() {
   const [selecionado, setSelecionado] = useState(null);
   const [erroAutomacao, setErroAutomacao] = useState(null);
   const [selecionadaPeca, setSelecionadaPeca] = useState(null);
+  // Guarda de qual aba veio o clique que abriu o pedido/peça (ex: veio do
+  // Dashboard, de Contas a Pagar etc.) — assim o botão "voltar" dentro do
+  // pedido consegue te devolver pra aba de origem, e não só fechar pro
+  // "Pedidos" genérico. Fica null quando a navegação foi direto na
+  // própria lista (aí não tem "aba de origem" real, só fecha o detalhe).
+  const [tabAntesDoPedido, setTabAntesDoPedido] = useState(null);
+  const [tabAntesDaPeca, setTabAntesDaPeca] = useState(null);
   const [mostrarMais, setMostrarMais] = useState(false);
   // Só o grupo da aba atual começa aberto — os outros ficam recolhidos pra
   // lateral não ficar gigante; abrir/fechar não muda a aba selecionada.
@@ -309,12 +316,34 @@ export default function Shell() {
   }, [pedidos, pecas, clientesBase, historicoVendas, clientesComTelefone]);
 
   function irPara(id) {
+    setTabAntesDoPedido(tab);
     setTab("pedidos");
     setSelecionado(id);
   }
 
+  // Passa no lugar de setSelecionado pras telas de Pedidos — fechar o
+  // detalhe (id null) devolve pra aba de onde a navegação veio, quando
+  // ela veio de fora (irPara). Abrir um pedido (id preenchido) funciona
+  // igual antes.
+  function fecharOuAbrirPedido(id) {
+    if (id === null && tabAntesDoPedido) {
+      setTab(tabAntesDoPedido);
+      setTabAntesDoPedido(null);
+    }
+    setSelecionado(id);
+  }
+
   function irParaPeca(id) {
+    setTabAntesDaPeca(tab);
     setTab("pedidos-alfaiataria");
+    setSelecionadaPeca(id);
+  }
+
+  function fecharOuAbrirPeca(id) {
+    if (id === null && tabAntesDaPeca) {
+      setTab(tabAntesDaPeca);
+      setTabAntesDaPeca(null);
+    }
     setSelecionadaPeca(id);
   }
 
@@ -950,7 +979,7 @@ export default function Shell() {
                   pedidos={pedidos.filter((p) => p.costureira !== "Milena")}
                   titulo="Pedidos Tales"
                   selecionado={selecionado}
-                  setSelecionado={setSelecionado}
+                  setSelecionado={fecharOuAbrirPedido}
                   {...acoesPedido}
                 />
               )}
@@ -961,7 +990,7 @@ export default function Shell() {
                   nomeCronograma="Deivid"
                   incluirEntregues
                   selecionado={selecionado}
-                  setSelecionado={setSelecionado}
+                  setSelecionado={fecharOuAbrirPedido}
                   {...acoesPedido}
                 />
               )}
@@ -1049,7 +1078,7 @@ export default function Shell() {
                 />
               )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
-                <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={setSelecionadaPeca} {...acoesPeca} />
+                <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={fecharOuAbrirPeca} {...acoesPeca} />
               )}
               {tab === "painel-sapatos" && !loadingPedidosSapatos && (
                 <PainelSapatos
