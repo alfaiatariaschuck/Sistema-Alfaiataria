@@ -141,6 +141,20 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
     [despesasPorCategoriaFiltrado]
   );
 
+  // Agrupado por data — é o formato que dá pra comparar linha a linha
+  // com o extrato bancário (que também é um lançamento por dia), em vez
+  // de ter que somar os R$120 avulsos na mão pra bater com o total do dia.
+  const totalPorDataFiltrado = useMemo(() => {
+    if (!buscaNormalizada) return [];
+    const mapa = new Map();
+    despesasPorCategoriaFiltrado.forEach(({ itens }) => {
+      itens.forEach((d) => {
+        mapa.set(d.dataPagamento, (mapa.get(d.dataPagamento) || 0) + totalDespesa(d));
+      });
+    });
+    return [...mapa.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [despesasPorCategoriaFiltrado, buscaNormalizada]);
+
   const livroDoMes = useMemo(() => {
     const linhas = [
       ...despesasPagasDoMes.map((d) => ({
@@ -248,6 +262,20 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
             <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: 6 }}>
               {qtdFiltrada} lançamento{qtdFiltrada !== 1 ? "s" : ""} encontrado{qtdFiltrada !== 1 ? "s" : ""} · total{" "}
               <strong style={{ color: VERMELHO }}>{brl(totalFiltrado)}</strong>
+            </div>
+          )}
+          {totalPorDataFiltrado.length > 0 && (
+            <div className="mt-2 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 6 }}>
+                Total por dia (pra comparar linha a linha com o extrato bancário):
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {totalPorDataFiltrado.map(([data, total]) => (
+                  <span key={data} className="fx-mono" style={{ fontSize: 12 }}>
+                    {fmtData(data)}: <strong>{brl(total)}</strong>
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
