@@ -589,6 +589,14 @@ export default function Shell() {
     }
   }
 
+  // Atalho pro Dashboard/painéis — marca de uma vez todos os tecidos do
+  // pedido como comprados, sem precisar abrir o pedido item por item.
+  async function marcarTecidoCompradoPedido(pedido) {
+    for (const t of pedido.tecidos || []) {
+      if (!t.comprado) await atualizarTecido(pedido.id, t.id, "comprado", true);
+    }
+  }
+
   // Cobre o caso de preencher/corrigir "Valor a pagar à Fabiana" DEPOIS
   // que o pedido já estava em produção (na hora da mudança de status
   // esse valor ainda estava vazio, então não tinha o que lançar) — ao
@@ -885,7 +893,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   irPara={irPara}
                   irParaTab={setTab}
-                  onMarcarTecidoChegou={(id, atual) => atualizarCampoPedido(id, "tecidoChegou", !atual)}
+                  onMarcarTecidoComprado={marcarTecidoCompradoPedido}
                 />
               )}
               {tab === "painel-camisaria-fabiana" && (
@@ -896,7 +904,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   irPara={irPara}
                   irParaTab={setTab}
-                  onMarcarTecidoChegou={(id, atual) => atualizarCampoPedido(id, "tecidoChegou", !atual)}
+                  onMarcarTecidoComprado={marcarTecidoCompradoPedido}
                   eyebrow="Visão geral — camisaria"
                   titulo="Painel Camisaria Fabiana"
                   nomeCosteira="Fabiana"
@@ -911,7 +919,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   irPara={irPara}
                   irParaTab={setTab}
-                  onMarcarTecidoChegou={(id, atual) => atualizarCampoPedido(id, "tecidoChegou", !atual)}
+                  onMarcarTecidoComprado={marcarTecidoCompradoPedido}
                   eyebrow="Visão geral — camisaria"
                   titulo="Painel Camisaria Milena"
                   nomeCosteira="Milena"

@@ -16,7 +16,7 @@ import HistoricoCliente from "../components/HistoricoCliente";
 import VincularIndicador from "../components/VincularIndicador";
 import EditarNomeCliente from "../components/EditarNomeCliente";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
+import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, statusTecidoPedido, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
@@ -162,19 +162,23 @@ export default function DetalhePedido({
         </button>
         <button
           type="button"
-          onClick={() => set("tecidoChegou", !p.tecidoChegou)}
+          onClick={() => {
+            const tecidoTotal = statusTecidoPedido(p.tecidos) === "total";
+            const novoValor = !tecidoTotal;
+            (p.tecidos || []).forEach((t) => onTecido(p.id, t.id, "comprado", novoValor));
+          }}
           className="flex items-center gap-2"
           style={{
-            background: p.tecidoChegou ? "#DCEBDD" : "transparent",
-            border: `1px solid ${p.tecidoChegou ? "#2C6E31" : LINE}`,
-            color: p.tecidoChegou ? "#2C6E31" : INK_SOFT,
+            background: statusTecidoPedido(p.tecidos) === "total" ? "#DCEBDD" : "transparent",
+            border: `1px solid ${statusTecidoPedido(p.tecidos) === "total" ? "#2C6E31" : LINE}`,
+            color: statusTecidoPedido(p.tecidos) === "total" ? "#2C6E31" : INK_SOFT,
             padding: "9px 14px",
             borderRadius: 8,
             fontWeight: 600,
             fontSize: 13,
           }}
         >
-          {p.tecidoChegou ? "📦 Tecido chegou" : "Marcar tecido como chegado"}
+          {statusTecidoPedido(p.tecidos) === "total" ? "📦 Tecido completo" : "Marcar tecido comprado (todos os itens)"}
         </button>
         <CopiarDadosContabilidade
           clienteId={p.clienteId}

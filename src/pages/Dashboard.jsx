@@ -6,7 +6,7 @@ import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
 import DoacoesPorAno from "../components/DoacoesPorAno";
 import ComparativoCosteiras from "../components/ComparativoCosteiras";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, fmtData, hojeISO, mediaEsperaCliente, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, diasAte, fmtData, hojeISO, mediaEsperaCliente, statusTecidoPedido, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
 import CentralAlertas from "../components/CentralAlertas";
 import { supabase } from "../supabaseClient";
 
@@ -21,7 +21,7 @@ export default function Dashboard({
   estoqueTecidos,
   irPara,
   irParaTab,
-  onMarcarTecidoChegou,
+  onMarcarTecidoComprado,
   eyebrow = "Visão geral — camisaria",
   titulo = "Painel Camisaria",
   nomeCosteira = null,
@@ -42,10 +42,11 @@ export default function Dashboard({
   const doacoes = pedidos.filter((p) => p.status === "Doação");
   const abertos = pedidos.filter((p) => p.status !== "Entregue" && naoDoacao(p));
 
-  // Fichas em aberto sem tecido em casa — é o que dá visibilidade rápida
-  // de quais pedidos ainda dependem de comprar/receber tecido antes de
-  // poder produzir, importante com bastante rotatividade de pedido.
-  const semTecido = abertos.filter((p) => !p.tecidoChegou);
+  // Fichas em aberto com tecido incompleto (parcial ou nenhum item
+  // comprado ainda) — dá visibilidade rápida de quais pedidos ainda
+  // dependem de comprar/receber tecido antes de poder produzir,
+  // importante com bastante rotatividade de pedido.
+  const semTecido = abertos.filter((p) => statusTecidoPedido(p.tecidos) !== "total");
 
   // pagoFabiana.statusPagamento só vira "Pago" quando as DUAS partes de um
   // pagamento dividido estão pagas — por isso usamos valorRecebidoEfetivo
@@ -174,11 +175,14 @@ export default function Dashboard({
       )}
 
       {semTecido.length > 0 && (
-        <Card style={{ padding: 20, border: `1px solid ${VERMELHO}` }} className="mb-6">
-          <div className="fx-serif mb-3 flex items-center gap-2" style={{ fontSize: 16, fontWeight: 600, color: VERMELHO }}>
-            <Package size={16} /> Sem tecido em casa ({semTecido.length})
+        <Card style={{ padding: 20, border: `1px solid #8A6A0C` }} className="mb-6">
+          <div className="fx-serif mb-3 flex items-center gap-2" style={{ fontSize: 16, fontWeight: 600, color: "#8A6A0C" }}>
+            <Package size={16} /> Tecido incompleto ({semTecido.length})
           </div>
-          {semTecido.map((p) => (
+          {semTecido.map((p) => {
+            const compradosCount = (p.tecidos || []).filter((t) => t.comprado).length;
+            const totalItens = (p.tecidos || []).length;
+            return (
             <div
               key={p.id}
               className="flex items-center justify-between gap-2 py-2.5 flex-wrap"
@@ -188,20 +192,22 @@ export default function Dashboard({
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</div>
                 <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                   Pedido {fmtData(p.dataPedido)} · {p.quantidade || 0} un · {p.status}
+                  {totalItens > 0 ? ` · tecido ${compradosCount}/${totalItens}` : ""}
                 </div>
               </button>
-              {onMarcarTecidoChegou && (
+              {onMarcarTecidoComprado && (
                 <button
                   type="button"
-                  onClick={() => onMarcarTecidoChegou(p.id, p.tecidoChegou)}
+                  onClick={() => onMarcarTecidoComprado(p)}
                   className="flex items-center gap-1.5"
-                  style={{ background: "#F6E3D9", color: VERMELHO, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                  style={{ background: "#FCEFC7", color: "#8A6A0C", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, flexShrink: 0 }}
                 >
-                  <Package size={13} /> Marcar tecido como chegado
+                  <Package size={13} /> Marcar tecido comprado
                 </button>
               )}
             </div>
-          ))}
+            );
+          })}
         </Card>
       )}
 

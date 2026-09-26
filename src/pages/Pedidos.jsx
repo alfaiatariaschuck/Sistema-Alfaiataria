@@ -3,7 +3,7 @@ import { AlertTriangle, CalendarClock, ChevronRight, Package, PackageCheck, Sear
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
 import { LINE, STATUS, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { diasAte, fmtData } from "../lib/helpers";
+import { diasAte, fmtData, statusTecidoPedido } from "../lib/helpers";
 import DetalhePedido from "./DetalhePedido";
 import CronogramaImprimivel from "./CronogramaImprimivel";
 import PendenciasFabiana from "../components/PendenciasFabiana";
@@ -50,22 +50,25 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
     .filter((p) => p.status !== "Entregue" && p.status !== "Doação")
     .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
 
-  // Pedido "sem tecido" é um campo novo — todo pedido antigo nasce assim
-  // (nunca foi marcado), então sem essa limpeza única a tela toda vinha
-  // vermelha e o destaque perdia o sentido. Marca de uma vez só o que já
-  // está com tecido na real, aí só os pedidos novos ficam em vermelho.
-  const semTecidoFiltrados = filtrados.filter((p) => !p.tecidoChegou && p.status !== "Entregue" && p.status !== "Doação");
+  // Tecido é campo novo (por item, "comprado") — todo pedido antigo nasce
+  // sem nenhum item marcado, então sem essa limpeza única a tela toda
+  // vinha destacada e o aviso perdia o sentido. Marca de uma vez só o que
+  // já está com tecido na real, aí só os pedidos que realmente faltam
+  // continuam sinalizados.
+  const naoTotalFiltrados = filtrados.filter((p) => statusTecidoPedido(p.tecidos) !== "total" && p.status !== "Entregue" && p.status !== "Doação");
 
   async function marcarTecidoEmTodosFiltrados() {
-    if (semTecidoFiltrados.length === 0) return;
+    if (naoTotalFiltrados.length === 0) return;
     const ok = window.confirm(
-      `Marcar "tecido em casa" pros ${semTecidoFiltrados.length} pedido(s) filtrados na tela? Use só pros que já têm tecido de verdade — os que realmente faltam, deixe sem marcar.`
+      `Marcar tecido completo pros ${naoTotalFiltrados.length} pedido(s) filtrados na tela? Use só pros que já têm tecido de verdade — os que realmente faltam, deixe sem marcar.`
     );
     if (!ok) return;
     setMarcandoTodos(true);
     try {
-      for (const p of semTecidoFiltrados) {
-        await acoes.onCampo(p.id, "tecidoChegou", true);
+      for (const p of naoTotalFiltrados) {
+        for (const t of p.tecidos || []) {
+          if (!t.comprado) await acoes.onTecido(p.id, t.id, "comprado", true);
+        }
       }
     } finally {
       setMarcandoTodos(false);
@@ -94,15 +97,15 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
         >
           <CalendarClock size={15} /> Cronograma {nomeCronograma}
         </button>
-        {semTecidoFiltrados.length > 0 && (
+        {naoTotalFiltrados.length > 0 && (
           <button
             onClick={marcarTecidoEmTodosFiltrados}
             disabled={marcandoTodos}
             className="flex items-center gap-2"
             style={{
               background: "transparent",
-              border: `1px solid ${VERMELHO}`,
-              color: VERMELHO,
+              border: `1px solid #8A6A0C`,
+              color: "#8A6A0C",
               padding: "8px 14px",
               borderRadius: 8,
               fontWeight: 600,
@@ -111,7 +114,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
             }}
           >
             <PackageCheck size={15} />
-            {marcandoTodos ? "Marcando…" : `Já tenho tecido destes (${semTecidoFiltrados.length})`}
+            {marcandoTodos ? "Marcando…" : `Já tenho tecido destes (${naoTotalFiltrados.length})`}
           </button>
         )}
       </div>
@@ -131,7 +134,10 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
           const diasAberto = p.dataPedido ? -diasAte(p.dataPedido) : 0;
           const atrasado40 = diasAberto > DIAS_LIMITE && p.status !== "Entregue" && p.status !== "Doação";
           const naoEnviado = !p.enviadoFabi;
-          const semTecido = !p.tecidoChegou && p.status !== "Entregue" && p.status !== "Doação";
+          const statusTecido = statusTecidoPedido(p.tecidos);
+          const tecidoTotal = statusTecido === "total";
+          const tecidoParcial = statusTecido === "parcial";
+          const compradosCount = (p.tecidos || []).filter((t) => t.comprado).length;
           return (
           <button
             key={p.id}
@@ -139,7 +145,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
             className="w-full flex items-center justify-between px-5 py-3.5 text-left"
             style={{
               borderBottom: i < filtrados.length - 1 ? `1px solid ${LINE}` : "none",
-              background: p.tecidoChegou ? "#EAF3EA" : semTecido ? "#FBE1D6" : "transparent",
+              background: naoEnviado ? "#F6E3D9" : tecidoTotal ? "transparent" : "#FCEFC7",
             }}
           >
             <div>
@@ -172,24 +178,29 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
               />
               <button
                 type="button"
-                title={p.tecidoChegou ? "Tecido já chegou — toque pra desmarcar" : "Tecido ainda não chegou — toque quando chegar"}
+                title={tecidoTotal ? "Tecido completo — toque pra desmarcar tudo" : "Toque pra marcar todos os tecidos deste pedido como comprados"}
                 onClick={(e) => {
                   e.stopPropagation();
-                  acoes.onCampo(p.id, "tecidoChegou", !p.tecidoChegou);
+                  const novoValor = !tecidoTotal;
+                  (p.tecidos || []).forEach((t) => acoes.onTecido(p.id, t.id, "comprado", novoValor));
                 }}
                 className="flex items-center gap-1.5"
                 style={{
                   padding: "6px 10px",
                   borderRadius: 6,
-                  background: p.tecidoChegou ? "#DCEBDD" : semTecido ? "#F6E3D9" : "#EDEAE0",
-                  color: p.tecidoChegou ? "#2C6E31" : semTecido ? VERMELHO : TEXT_MUTED,
+                  background: tecidoTotal ? "#DCEBDD" : tecidoParcial ? "#FCEFC7" : "#EDEAE0",
+                  color: tecidoTotal ? "#2C6E31" : tecidoParcial ? "#8A6A0C" : TEXT_MUTED,
                   fontWeight: 600,
                   fontSize: 12,
                   flexShrink: 0,
                 }}
               >
-                {p.tecidoChegou ? <PackageCheck size={14} /> : <Package size={14} />}
-                {p.tecidoChegou ? "Tem tecido" : "Falta tecido"}
+                {tecidoTotal ? <PackageCheck size={14} /> : <Package size={14} />}
+                {tecidoTotal
+                  ? "Tecido completo"
+                  : tecidoParcial
+                  ? `Parcial ${compradosCount}/${(p.tecidos || []).length}`
+                  : "Marcar tecido comprado"}
               </button>
               <Pill text={p.status} style={STATUS_STYLE[p.status]} />
               <ChevronRight size={16} color={TEXT_MUTED} />
