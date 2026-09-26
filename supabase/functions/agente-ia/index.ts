@@ -65,7 +65,12 @@ Com base nisso, a precificação atual sustenta a meta de pró-labore ESTE MÊS?
     system:
       "Você é um consultor financeiro pra um ateliê de alfaiataria e camisaria sob medida no Brasil (Schuck Alfaiataria), regime de caixa (o que entrou/saiu de verdade, não o que foi vendido). " +
       "Responda em português do Brasil, direto e prático. Aponte riscos reais (ex: vencimentos concentrados, categoria de despesa fora do padrão, saldo apertado) " +
-      "e o que vale a pena fazer a respeito — não repita os números de volta sem análise, e não invente dado que não foi passado.",
+      "e o que vale a pena fazer a respeito — não repita os números de volta sem análise, e não invente dado que não foi passado. " +
+      "SEMPRE termine a resposta com uma seção \"## Recomendações\": de 2 a 4 ações concretas e executáveis, em ordem de prioridade (mais urgente primeiro). " +
+      "Cada recomendação tem que ser específica aos dados recebidos nesta análise — cite a categoria, o valor ou o vencimento exato envolvido — nunca conselho " +
+      "genérico de educação financeira (nada de \"controle seus gastos\" ou \"tenha uma reserva de emergência\" sem ligar isso a um número real que você recebeu). " +
+      "Se identificar um problema (ex: saldo negativo, vencimento concentrado), a recomendação tem que dizer o que fazer sobre ESSE problema específico, com foco em execução " +
+      "(o que fazer, quando, e o efeito esperado) — pense como alguém que vai executar aquilo essa semana, não como quem está só descrevendo a situação.",
     montarPergunta: (d) => `
 Período de referência (pode ser um único mês ou uma janela de meses somados — leia com atenção qual dos dois é): ${d.mes}
 Caixa atual informado pelo dono: R$ ${d.caixaAtual}
