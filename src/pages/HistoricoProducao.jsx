@@ -71,7 +71,7 @@ function BarraVendasEntregas({ dados }) {
 // Histórico de produção da alfaiataria: médias reais (início -> entrega,
 // já sem pausas) por tipo de peça e por responsável, com gráficos —
 // pensado pra apresentação/reunião de equipe, não pra edição de nada.
-export default function HistoricoProducao({ pecas, mostrarMargem = false, custoAviamentosPorPecaBase = {} }) {
+export default function HistoricoProducao({ pecas, mostrarMargem = false, mostrarComparativos = true, custoAviamentosPorPecaBase = {} }) {
   const entregues = useMemo(
     () => pecas.filter((p) => p.status === "Entregue" && p.dataInicioProducao && p.dataEntrega),
     [pecas]
@@ -400,7 +400,7 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, custoA
         <BarraSimples dados={porTipo} sufixoValor="d" formatarTooltip={(d) => `${d.chave}: ${d.valor} dias em média (${d.qtd} peça(s))`} />
       </Card>
 
-      {comparativo.length > 0 && (
+      {mostrarComparativos && comparativo.length > 0 && (
         <Card style={{ padding: 20 }} className="mb-6">
           <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
             Referência vs. Real por tipo de peça
@@ -441,38 +441,44 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, custoA
           <BarraSimples dados={porMes} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) entregue(s)`} />
         </Card>
 
-        <Card style={{ padding: 20 }}>
-          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-            Peças vendidas por mês
-          </div>
-          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-            Quantidade de peças vendidas por mês, desde o início (agrupada pela data do pedido — entregues ou não).
-          </div>
-          <BarraSimples dados={vendasPorMes} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) vendida(s)`} />
-        </Card>
+        {mostrarComparativos && (
+          <Card style={{ padding: 20 }}>
+            <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+              Peças vendidas por mês
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+              Quantidade de peças vendidas por mês, desde o início (agrupada pela data do pedido — entregues ou não).
+            </div>
+            <BarraSimples dados={vendasPorMes} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) vendida(s)`} />
+          </Card>
+        )}
 
-        <Card style={{ padding: 20 }}>
-          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-            Sazonalidade (vendas por mês do ano)
-          </div>
-          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-            Soma de todos os anos, por mês — mostra picos que se repetem (ex: casamentos), independente do ano exato.
-          </div>
-          <BarraSimples dados={sazonalidade} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) vendida(s) (todos os anos)`} />
-        </Card>
+        {mostrarComparativos && (
+          <Card style={{ padding: 20 }}>
+            <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+              Sazonalidade (vendas por mês do ano)
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+              Soma de todos os anos, por mês — mostra picos que se repetem (ex: casamentos), independente do ano exato.
+            </div>
+            <BarraSimples dados={sazonalidade} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) vendida(s) (todos os anos)`} />
+          </Card>
+        )}
       </div>
 
-      <Card style={{ padding: 20 }} className="mb-6">
-        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-          Vendidas vs. Entregues por mês
-        </div>
-        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-          Confronto direto, mês a mês — mostra se a produção está no ritmo das vendas. Uma peça vendida num mês pode ser entregue em outro, então não é exatamente "sobra", mas mostra a tendência.
-        </div>
-        <BarraVendasEntregas dados={vendasVsEntregasPorMes} />
-      </Card>
+      {mostrarComparativos && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Vendidas vs. Entregues por mês
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+            Confronto direto, mês a mês — mostra se a produção está no ritmo das vendas. Uma peça vendida num mês pode ser entregue em outro, então não é exatamente "sobra", mas mostra a tendência.
+          </div>
+          <BarraVendasEntregas dados={vendasVsEntregasPorMes} />
+        </Card>
+      )}
 
-      {retrabalhoPorResponsavel.length > 0 && (
+      {mostrarComparativos && retrabalhoPorResponsavel.length > 0 && (
         <Card style={{ padding: 20 }} className="mb-6">
           <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
             Retrabalho por responsável
@@ -553,16 +559,19 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, custoA
         )
       )}
 
-      <Card style={{ padding: 20 }} className="mb-6">
-        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-          Média de dias de produção por responsável
-        </div>
-        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-          Mesma métrica, agrupada por quem produziu.
-        </div>
-        <BarraSimples dados={porResponsavel} sufixoValor="d" formatarTooltip={(d) => `${d.chave}: ${d.valor} dias em média (${d.qtd} peça(s))`} />
-      </Card>
+      {mostrarComparativos && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Média de dias de produção por responsável
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
+            Mesma métrica, agrupada por quem produziu.
+          </div>
+          <BarraSimples dados={porResponsavel} sufixoValor="d" formatarTooltip={(d) => `${d.chave}: ${d.valor} dias em média (${d.qtd} peça(s))`} />
+        </Card>
+      )}
 
+      {mostrarComparativos && (
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <div className="px-5 pt-4 pb-2 fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
           Peças entregues (detalhado)
@@ -595,6 +604,7 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, custoA
           </table>
         </div>
       </Card>
+      )}
     </div>
   );
 }

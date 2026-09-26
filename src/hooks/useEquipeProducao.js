@@ -28,16 +28,23 @@ const CAMPO_PARA_COLUNA = {
 // quem está trabalhando hoje. Usado pra sugerir nomes no campo
 // Responsável e pra calcular quantas peças dá pra produzir em paralelo
 // na previsão de entrega.
-export function useEquipeProducao() {
+//
+// somenteVisaoPublica=true lê de "equipe_producao_publica" (view sem
+// tipo_remuneracao/valor_remuneracao) em vez da tabela cheia — usado no
+// login de produção (ShellProducao), que nunca precisa desses dois
+// campos pra nada e não pode receber quanto cada colega ganha. A tela
+// do dono (Equipe.jsx) sempre usa o padrão (tabela cheia).
+export function useEquipeProducao(somenteVisaoPublica = false) {
   const [equipe, setEquipe] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const recarregar = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("equipe_producao").select("*").order("nome");
+    const fonte = somenteVisaoPublica ? "equipe_producao_publica" : "equipe_producao";
+    const { data, error } = await supabase.from(fonte).select("*").order("nome");
     if (!error) setEquipe((data || []).map(rowParaMembro));
     setLoading(false);
-  }, []);
+  }, [somenteVisaoPublica]);
 
   useEffect(() => {
     recarregar();

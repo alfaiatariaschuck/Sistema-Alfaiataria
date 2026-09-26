@@ -105,7 +105,7 @@ export default function ShellProducao() {
     atualizarMedidas,
     atualizarRetrabalho,
   } = usePecasProducao();
-  const { equipe } = useEquipeProducao();
+  const { equipe } = useEquipeProducao(true);
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [editandoMedidas, setEditandoMedidas] = useState(null);
@@ -230,7 +230,7 @@ export default function ShellProducao() {
 
       {pagina === "historico" && (
         <div className="max-w-3xl mx-auto px-5 py-6">
-          <HistoricoProducao pecas={pecas} />
+          <HistoricoProducao pecas={pecas} mostrarComparativos={false} />
         </div>
       )}
 
