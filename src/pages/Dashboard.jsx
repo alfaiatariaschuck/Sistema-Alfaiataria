@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Gift, Hourglass, Package, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Gift, Hourglass, Package, PackageCheck, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
