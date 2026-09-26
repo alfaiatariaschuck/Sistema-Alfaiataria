@@ -33,21 +33,39 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
   const [mesSelecionado, setMesSelecionado] = useState(mesRealAtual);
   const ehMesAtual = mesSelecionado === mesRealAtual;
 
+  // Janela de 3 meses (mesSelecionado + 2 anteriores) em vez de mês
+  // único — útil enquanto meses mais antigos ainda têm dado incompleto
+  // (ex: pedido marcado "Recebido" antes de existir data de
+  // recebimento, ou vindo da migração do Excel). Não corrige dado
+  // faltando, só evita que ele suma de um recorte de 1 mês só.
+  const [modoTrimestre, setModoTrimestre] = useState(false);
+  const mesInicioPeriodo = modoTrimestre ? mesAnteriorDe(mesAnteriorDe(mesSelecionado)) : mesSelecionado;
+  const rotuloPeriodo = modoTrimestre ? `${nomeDoMes(mesInicioPeriodo)} a ${nomeDoMes(mesSelecionado)}` : nomeDoMes(mesSelecionado);
+
   // Livro-caixa: só entra o que já tem data de quando o dinheiro
   // realmente entrou/saiu (regime de caixa) — nada de "vendido" ou
   // "a vencer". Despesa já tinha data_pagamento; receita (pedidos/peças)
   // ganhou data_recebimento agora (schema_v84) especialmente pra isso.
   const despesasPagasDoMes = useMemo(
-    () => (despesas || []).filter((d) => d.status === "Pago" && d.dataPagamento && d.dataPagamento.slice(0, 7) === mesSelecionado),
-    [despesas, mesSelecionado]
+    () =>
+      (despesas || []).filter(
+        (d) => d.status === "Pago" && d.dataPagamento && d.dataPagamento.slice(0, 7) >= mesInicioPeriodo && d.dataPagamento.slice(0, 7) <= mesSelecionado
+      ),
+    [despesas, mesInicioPeriodo, mesSelecionado]
   );
   const recebidosCamisariaDoMes = useMemo(
-    () => (pedidos || []).filter((p) => p.aReceber?.statusPagamento === "Recebido" && p.dataRecebimento && p.dataRecebimento.slice(0, 7) === mesSelecionado),
-    [pedidos, mesSelecionado]
+    () =>
+      (pedidos || []).filter(
+        (p) => p.aReceber?.statusPagamento === "Recebido" && p.dataRecebimento && p.dataRecebimento.slice(0, 7) >= mesInicioPeriodo && p.dataRecebimento.slice(0, 7) <= mesSelecionado
+      ),
+    [pedidos, mesInicioPeriodo, mesSelecionado]
   );
   const recebidosAlfaiatariaDoMes = useMemo(
-    () => (pecas || []).filter((p) => p.statusPagamentoVenda === "Recebido" && p.dataRecebimento && p.dataRecebimento.slice(0, 7) === mesSelecionado),
-    [pecas, mesSelecionado]
+    () =>
+      (pecas || []).filter(
+        (p) => p.statusPagamentoVenda === "Recebido" && p.dataRecebimento && p.dataRecebimento.slice(0, 7) >= mesInicioPeriodo && p.dataRecebimento.slice(0, 7) <= mesSelecionado
+      ),
+    [pecas, mesInicioPeriodo, mesSelecionado]
   );
 
   const totalDespesasPagas = despesasPagasDoMes.reduce((s, d) => s + totalDespesa(d), 0);
@@ -59,10 +77,14 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
   // Faturamento do mês (competência — vendido, pago ou não) só como
   // referência ao lado do que já é caixa de verdade — mesma fórmula do DRE.
   const faturamentoDoMes = useMemo(() => {
-    const pedidosMes = (pedidos || []).filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mesSelecionado);
-    const pecasMes = (pecas || []).filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && (p.dataPedido || "").slice(0, 7) === mesSelecionado);
+    const pedidosMes = (pedidos || []).filter(
+      (p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) >= mesInicioPeriodo && (p.dataPedido || "").slice(0, 7) <= mesSelecionado
+    );
+    const pecasMes = (pecas || []).filter(
+      (p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && (p.dataPedido || "").slice(0, 7) >= mesInicioPeriodo && (p.dataPedido || "").slice(0, 7) <= mesSelecionado
+    );
     return pedidosMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0) + pecasMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
-  }, [pedidos, pecas, mesSelecionado]);
+  }, [pedidos, pecas, mesInicioPeriodo, mesSelecionado]);
 
   // Guarda a lista de despesas de cada categoria, não só a soma — é o
   // que permite abrir "o que tem dentro desse Outros de R$X" direto na
@@ -138,13 +160,32 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
             voltar pro mês atual
           </button>
         )}
+        <button
+          onClick={() => setModoTrimestre((v) => !v)}
+          style={{
+            background: modoTrimestre ? BRASS : "#EDEAE0",
+            color: modoTrimestre ? "#FFF" : INK,
+            padding: "7px 12px",
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            marginLeft: "auto",
+          }}
+        >
+          {modoTrimestre ? "✓ últimos 3 meses" : "ver últimos 3 meses"}
+        </button>
       </div>
+      {modoTrimestre && (
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: -18, marginBottom: 18 }}>
+          Somando {rotuloPeriodo}. Útil pra meses mais antigos com dado incompleto (ex: recebimento sem data registrada) — não substitui corrigir o dado em si.
+        </div>
+      )}
 
       <div className="grid gap-4 mb-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-        <StatCard label="Receita recebida no mês" value={brl(totalRecebido)} icon={TrendingUp} accent={VERDE} />
-        <StatCard label="Despesas pagas no mês" value={brl(totalDespesasPagas)} icon={TrendingDown} accent={VERMELHO} />
-        <StatCard label="Saldo do mês (caixa)" value={brl(saldoDoMes)} icon={Wallet} accent={saldoDoMes >= 0 ? VERDE : VERMELHO} />
-        <StatCard label="Faturamento do mês (vendido, pago ou não)" value={brl(faturamentoDoMes)} icon={Wallet} />
+        <StatCard label={`Receita recebida ${modoTrimestre ? "no período" : "no mês"}`} value={brl(totalRecebido)} icon={TrendingUp} accent={VERDE} />
+        <StatCard label={`Despesas pagas ${modoTrimestre ? "no período" : "no mês"}`} value={brl(totalDespesasPagas)} icon={TrendingDown} accent={VERMELHO} />
+        <StatCard label={`Saldo ${modoTrimestre ? "do período" : "do mês"} (caixa)`} value={brl(saldoDoMes)} icon={Wallet} accent={saldoDoMes >= 0 ? VERDE : VERMELHO} />
+        <StatCard label={`Faturamento ${modoTrimestre ? "do período" : "do mês"} (vendido, pago ou não)`} value={brl(faturamentoDoMes)} icon={Wallet} />
       </div>
       <div className="flex items-start gap-2 mb-6 p-3" style={{ background: "#F3EEDF", borderRadius: 8, fontSize: 12, color: TEXT_MUTED }}>
         <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -160,7 +201,7 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
-          Despesas por categoria — {nomeDoMes(mesSelecionado)}
+          Despesas por categoria — {rotuloPeriodo}
         </div>
         {despesasPorCategoria.length === 0 ? (
           <Empty texto="Nenhuma despesa paga nesse mês." />
@@ -208,7 +249,7 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
 
       <Card style={{ padding: 20 }}>
         <div className="fx-serif mb-3 flex items-center gap-2" style={{ fontSize: 15, fontWeight: 600 }}>
-          <BookText size={16} color={BRASS} /> Livro do mês — {nomeDoMes(mesSelecionado)} ({livroDoMes.length})
+          <BookText size={16} color={BRASS} /> Livro do mês — {rotuloPeriodo} ({livroDoMes.length})
         </div>
         {livroDoMes.length === 0 ? (
           <Empty texto="Nada confirmado (pago ou recebido) nesse mês ainda." />

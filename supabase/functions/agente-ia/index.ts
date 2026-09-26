@@ -67,21 +67,21 @@ Com base nisso, a precificação atual sustenta a meta de pró-labore ESTE MÊS?
       "Responda em português do Brasil, direto e prático. Aponte riscos reais (ex: vencimentos concentrados, categoria de despesa fora do padrão, saldo apertado) " +
       "e o que vale a pena fazer a respeito — não repita os números de volta sem análise, e não invente dado que não foi passado.",
     montarPergunta: (d) => `
-Mês de referência: ${d.mes}
+Período de referência (pode ser um único mês ou uma janela de meses somados — leia com atenção qual dos dois é): ${d.mes}
 Caixa atual informado pelo dono: R$ ${d.caixaAtual}
-Receita recebida no mês: R$ ${d.receitaRecebida}
-Despesas pagas no mês: R$ ${d.despesasPagas}
-Saldo do mês (recebido - pago): R$ ${d.saldoMes}
+Receita recebida no período: R$ ${d.receitaRecebida}
+Despesas pagas no período: R$ ${d.despesasPagas}
+Saldo do período (recebido - pago): R$ ${d.saldoMes}
 
-Despesas pagas no mês por categoria:
+Despesas pagas no período, por categoria:
 ${(d.despesasPorCategoria || []).map((c: any) => `- ${c.categoria}: R$ ${c.total}`).join("\n") || "nenhuma despesa paga registrada"}
 
-Contas a pagar em aberto nos próximos 30 dias:
+Contas a pagar em aberto nos próximos 30 dias (a partir de hoje, não faz parte do período de referência acima):
 ${(d.proximosVencimentos || []).map((v: any) => `- ${v.data}: ${v.descricao} — R$ ${v.valor}`).join("\n") || "nenhuma conta em aberto nos próximos 30 dias"}
 
 Total em aberto nos próximos 30 dias: R$ ${d.totalProximosVencimentos}
 
-Com base nisso, como está a saúde financeira do mês e o que precisa de atenção?`,
+Com base nisso, como está a saúde financeira e o que precisa de atenção?`,
   },
 };
 

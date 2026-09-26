@@ -11,6 +11,12 @@ const CHAVE_CAIXA = "caixa_atual";
 
 const CATEGORIAS_VARIAVEIS_POR_PECA = ["Material/Tecido avulso", "Aviamento Alfaiataria", "Aviamento Camisaria", "Pró-labore"];
 
+function mesesAntesDe(mesStr, n) {
+  const [ano, mes] = mesStr.split("-").map(Number);
+  const d = new Date(ano, mes - 1 - n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function totalDespesaLinha(d) {
   return (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
 }
@@ -121,18 +127,23 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
 
   // ---------- Agente Financeiro ----------
 
+  const [modoTrimestreFinanceiro, setModoTrimestreFinanceiro] = useState(false);
+
   const resumoFinanceiroMes = useMemo(() => {
     const mesAtual = hojeISO().slice(0, 7);
+    const mesInicioPeriodo = modoTrimestreFinanceiro ? mesesAntesDe(mesAtual, 2) : mesAtual;
     const daqui30dias = somarDias(hojeISO(), 30);
 
     const receitaCamisaria = (pedidos || [])
-      .filter((p) => p.aReceber?.statusPagamento === "Recebido" && (p.dataRecebimento || "").slice(0, 7) === mesAtual)
+      .filter((p) => p.aReceber?.statusPagamento === "Recebido" && (p.dataRecebimento || "").slice(0, 7) >= mesInicioPeriodo && (p.dataRecebimento || "").slice(0, 7) <= mesAtual)
       .reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
     const receitaAlfaiataria = (pecas || [])
-      .filter((p) => p.statusPagamentoVenda === "Recebido" && (p.dataRecebimento || "").slice(0, 7) === mesAtual)
+      .filter((p) => p.statusPagamentoVenda === "Recebido" && (p.dataRecebimento || "").slice(0, 7) >= mesInicioPeriodo && (p.dataRecebimento || "").slice(0, 7) <= mesAtual)
       .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
 
-    const despesasPagasMes = (despesas || []).filter((d) => d.status === "Pago" && (d.dataPagamento || "").slice(0, 7) === mesAtual);
+    const despesasPagasMes = (despesas || []).filter(
+      (d) => d.status === "Pago" && (d.dataPagamento || "").slice(0, 7) >= mesInicioPeriodo && (d.dataPagamento || "").slice(0, 7) <= mesAtual
+    );
     const despesasPagas = despesasPagasMes.reduce((s, d) => s + totalDespesaLinha(d), 0);
 
     const porCategoriaMapa = new Map();
@@ -152,7 +163,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
 
     const receitaRecebida = receitaCamisaria + receitaAlfaiataria;
     return {
-      mes: mesAtual,
+      mes: modoTrimestreFinanceiro ? `${mesInicioPeriodo} a ${mesAtual}` : mesAtual,
       receitaRecebida,
       despesasPagas,
       saldoMes: receitaRecebida - despesasPagas,
@@ -160,7 +171,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       proximosVencimentos,
       totalProximosVencimentos,
     };
-  }, [pedidos, pecas, despesas]);
+  }, [pedidos, pecas, despesas, modoTrimestreFinanceiro]);
 
   const [respostaFinanceiro, setRespostaFinanceiro] = useState(null);
   const [carregandoFinanceiro, setCarregandoFinanceiro] = useState(false);
@@ -247,21 +258,37 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
             Agente Financeiro
           </div>
         </div>
-        <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
-          Parecer sobre o mês atual (regime de caixa) e os vencimentos dos próximos 30 dias.
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
+          <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+            Parecer sobre {modoTrimestreFinanceiro ? "os últimos 3 meses" : "o mês atual"} (regime de caixa) e os vencimentos dos próximos 30 dias.
+          </div>
+          <button
+            onClick={() => setModoTrimestreFinanceiro((v) => !v)}
+            style={{
+              background: modoTrimestreFinanceiro ? BRASS : "#EDEAE0",
+              color: modoTrimestreFinanceiro ? "#FFF" : TEXT_MUTED,
+              padding: "6px 12px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 600,
+              flexShrink: 0,
+            }}
+          >
+            {modoTrimestreFinanceiro ? "✓ últimos 3 meses" : "ver últimos 3 meses"}
+          </button>
         </div>
 
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Recebido no mês</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Recebido {modoTrimestreFinanceiro ? "no período" : "no mês"}</div>
             <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(resumoFinanceiroMes.receitaRecebida)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Pago no mês</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Pago {modoTrimestreFinanceiro ? "no período" : "no mês"}</div>
             <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(resumoFinanceiroMes.despesasPagas)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Saldo do mês</div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Saldo {modoTrimestreFinanceiro ? "do período" : "do mês"}</div>
             <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: resumoFinanceiroMes.saldoMes >= 0 ? "#2C6E31" : "#9C4A1E" }}>
               {brl(resumoFinanceiroMes.saldoMes)}
             </div>
