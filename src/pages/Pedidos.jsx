@@ -170,25 +170,27 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
                 text={`${diasAberto}d em produção`}
                 style={{ bg: atrasado40 ? "#F6E3D9" : "#EDEAE0", fg: atrasado40 ? VERMELHO : TEXT_MUTED }}
               />
-              <span
-                role="button"
+              <button
+                type="button"
                 title={p.tecidoChegou ? "Tecido já chegou — toque pra desmarcar" : "Tecido ainda não chegou — toque quando chegar"}
                 onClick={(e) => {
                   e.stopPropagation();
                   acoes.onCampo(p.id, "tecidoChegou", !p.tecidoChegou);
                 }}
-                className="flex items-center justify-center"
+                className="flex items-center gap-1.5"
                 style={{
-                  width: 26,
-                  height: 26,
+                  padding: "6px 10px",
                   borderRadius: 6,
                   background: p.tecidoChegou ? "#DCEBDD" : semTecido ? "#F6E3D9" : "#EDEAE0",
                   color: p.tecidoChegou ? "#2C6E31" : semTecido ? VERMELHO : TEXT_MUTED,
+                  fontWeight: 600,
+                  fontSize: 12,
                   flexShrink: 0,
                 }}
               >
                 {p.tecidoChegou ? <PackageCheck size={14} /> : <Package size={14} />}
-              </span>
+                {p.tecidoChegou ? "Tem tecido" : "Falta tecido"}
+              </button>
               <Pill text={p.status} style={STATUS_STYLE[p.status]} />
               <ChevronRight size={16} color={TEXT_MUTED} />
             </div>
