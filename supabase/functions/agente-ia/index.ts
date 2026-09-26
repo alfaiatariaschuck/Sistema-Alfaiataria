@@ -118,7 +118,7 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model: "claude-sonnet-5",
-        max_tokens: 1500,
+        max_tokens: 4096,
         system: config.system,
         messages: [{ role: "user", content: config.montarPergunta(dados) }],
       }),
@@ -131,6 +131,14 @@ Deno.serve(async (req: Request) => {
 
     const anthropicData = await anthropicResp.json();
     const resposta = (anthropicData.content || []).map((b: any) => b.text || "").join("\n").trim();
+    if (!resposta) {
+      // Acontecia com max_tokens baixo demais pra pergunta mais longa (ex:
+      // Financeiro) — a IA gastava o limite "pensando" e nunca escrevia a
+      // resposta final, voltando em branco sem erro nenhum. Se acontecer
+      // de novo mesmo com o limite maior, pelo menos avisa com detalhe em
+      // vez de voltar vazio sem explicação.
+      return jsonResponse({ error: `A IA não retornou texto (motivo: ${anthropicData.stop_reason || "desconhecido"}). Tenta de novo.` }, 502);
+    }
     return jsonResponse({ resposta });
   } catch (e) {
     return jsonResponse({ error: `Erro inesperado: ${e instanceof Error ? e.message : String(e)}` }, 500);
