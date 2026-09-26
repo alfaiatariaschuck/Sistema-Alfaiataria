@@ -42,20 +42,24 @@ const AGENTES: Record<string, { system: string; montarPergunta: (dados: any) => 
       "quanto precisaria vender de cada tipo (ou reajustar de preço) pra chegar lá. Use os números exatos que foram passados, " +
       "não invente dado que não foi dado. Se um dado estiver faltando ou parecer incompleto, diga isso claramente em vez de estimar.",
     montarPergunta: (d) => `
+Mês de referência (o "este mês" abaixo): ${d.mesReferencia}
 Meta de pró-labore mensal do dono: R$ ${d.metaProLabore}
 
-Custos fixos do último mês fechado (aluguel, contador, sistemas, etc, SEM contar tecido/mão de obra por peça): R$ ${d.custosFixosMes}
+Custos fixos PAGOS neste mês (aluguel, contador, sistemas, etc, SEM contar tecido/mão de obra por peça): R$ ${d.custosFixosMes}
+Atenção: se o mês ainda está em andamento, esse número pode estar parcial (nem todo custo fixo do mês já foi pago na data de hoje) — considere isso antes de tirar conclusão definitiva.
 
-Camisaria (por camisa, médias do histórico de entregues):
-- Preço médio de venda: R$ ${d.camisaria?.precoMedio ?? "sem dado"}
-- Custo médio (tecido + mão de obra da costureira, NÃO inclui aviamento avulso da camisa): R$ ${d.camisaria?.custoMedio ?? "sem dado"}
+IMPORTANTE sobre os números de peça abaixo: "preço médio"/"custo médio"/"margem" são médias de TODO O HISTÓRICO de peças entregues (mais confiável estatisticamente), não só deste mês. "Quantidade entregue este mês" é o volume REAL do mês de referência. Pra estimar quanto esse mês está rendendo, multiplique a margem média histórica pela quantidade DESTE MÊS — nunca pela quantidade do histórico, que é de um período bem maior.
+
+Camisaria (por camisa):
+- Preço médio de venda (histórico): R$ ${d.camisaria?.precoMedio ?? "sem dado"}
+- Custo médio (histórico; tecido + mão de obra da costureira, NÃO inclui aviamento avulso da camisa): R$ ${d.camisaria?.custoMedio ?? "sem dado"}
 - Margem padrão configurada pelo dono: ${d.camisaria?.margemPadraoConfig ?? "não configurada"}%
-- Quantidade de camisas entregues consideradas: ${d.camisaria?.qtd ?? 0}
+- Quantidade entregue ESTE MÊS: ${d.camisaria?.qtdMesAtual ?? 0} (histórico total considerado: ${d.camisaria?.qtdHistorico ?? 0} camisa(s))
 
-Alfaiataria (por tipo de peça, médias do histórico de entregues, custo = tecido + aviamento da composição + valor pago ao responsável):
-${(d.alfaiataria || []).map((t: any) => `- ${t.tipo}: preço médio R$ ${t.precoMedio}, custo médio R$ ${t.custoMedio}, margem média R$ ${t.margemMedia} (${t.margemPercentual}%), ${t.qtd} peça(s) no histórico`).join("\n") || "sem peças de alfaiataria com valor de venda registrado"}
+Alfaiataria (por tipo de peça; custo = tecido + aviamento da composição + valor pago ao responsável):
+${(d.alfaiataria || []).map((t: any) => `- ${t.tipo}: preço médio histórico R$ ${t.precoMedio}, custo médio histórico R$ ${t.custoMedio}, margem média histórica R$ ${t.margemMedia} (${t.margemPercentual}%) — entregue ESTE MÊS: ${t.qtdMesAtual}, histórico total: ${t.qtdHistorico} peça(s)`).join("\n") || "sem peças de alfaiataria com valor de venda registrado"}
 
-Com base nisso, a precificação atual sustenta a meta de pró-labore? O que ajustar?`,
+Com base nisso, a precificação atual sustenta a meta de pró-labore ESTE MÊS? O que ajustar?`,
   },
   financeiro: {
     system:

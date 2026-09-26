@@ -9,14 +9,6 @@ import { supabase } from "../supabaseClient";
 const CHAVE_META_PROLABORE = "meta_pro_labore";
 const CHAVE_CAIXA = "caixa_atual";
 
-// Último mês fechado (não o atual, que ainda está em andamento e
-// distorceria "custo fixo do mês" pra baixo se for consultado cedo).
-function mesAnteriorISO() {
-  const hoje = new Date(hojeISO() + "T00:00:00");
-  const ultimoDiaMesAnterior = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
-  return `${ultimoDiaMesAnterior.getFullYear()}-${String(ultimoDiaMesAnterior.getMonth() + 1).padStart(2, "0")}`;
-}
-
 const CATEGORIAS_VARIAVEIS_POR_PECA = ["Material/Tecido avulso", "Aviamento Alfaiataria", "Aviamento Camisaria", "Pró-labore"];
 
 function totalDespesaLinha(d) {
@@ -45,6 +37,15 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
   }
 
   // ---------- Agente de Precificação ----------
+  // Mês em andamento — o dono pediu que a análise reflita o mês atual,
+  // não o mês passado. Por isso a margem/custo médio por peça usa o
+  // HISTÓRICO inteiro (mais confiável, mais dado), mas a quantidade
+  // "vendida este mês" é separada e calculada só dentro do mês atual —
+  // são coisas diferentes e não podem ser multiplicadas uma pela outra
+  // como se fosse tudo do mesmo período (foi exatamente essa mistura
+  // que o próprio agente apontou como inconsistência numa análise
+  // anterior, quando os custos fixos eram só do mês passado).
+  const mesAtual = hojeISO().slice(0, 7);
 
   const camisariaResumo = useMemo(() => {
     const comVenda = (pedidos || []).filter((p) => p.status === "Entregue" && p.status !== "Doação" && parseFloat(p.aReceber?.valor) > 0);
@@ -53,8 +54,9 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const custos = comVenda.map((p) => custoTecidoDe(p.tecidos) + (parseFloat(p.pagoFabiana?.valor) || 0));
     const precoMedio = vendas.reduce((s, v) => s + v, 0) / comVenda.length;
     const custoMedio = custos.reduce((s, v) => s + v, 0) / comVenda.length;
-    return { precoMedio: Math.round(precoMedio), custoMedio: Math.round(custoMedio), qtd: comVenda.length };
-  }, [pedidos]);
+    const qtdMesAtual = comVenda.filter((p) => (p.dataEntrega || "").slice(0, 7) === mesAtual).length;
+    return { precoMedio: Math.round(precoMedio), custoMedio: Math.round(custoMedio), qtdHistorico: comVenda.length, qtdMesAtual };
+  }, [pedidos, mesAtual]);
 
   const alfaiatariaPorTipo = useMemo(() => {
     const entregues = (pecas || []).filter((p) => p.status === "Entregue" && p.valorVenda !== "" && p.valorVenda != null);
@@ -62,34 +64,36 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     entregues.forEach((p) => {
       const venda = parseFloat(p.valorVenda) || 0;
       const custo = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + (parseFloat(p.valorTotal) || 0);
-      if (!mapa.has(p.tipoPeca)) mapa.set(p.tipoPeca, { vendas: [], custos: [] });
-      mapa.get(p.tipoPeca).vendas.push(venda);
-      mapa.get(p.tipoPeca).custos.push(custo);
+      if (!mapa.has(p.tipoPeca)) mapa.set(p.tipoPeca, { vendas: [], custos: [], qtdMesAtual: 0 });
+      const grupo = mapa.get(p.tipoPeca);
+      grupo.vendas.push(venda);
+      grupo.custos.push(custo);
+      if ((p.dataEntrega || "").slice(0, 7) === mesAtual) grupo.qtdMesAtual += 1;
     });
     return [...mapa.entries()]
-      .map(([tipo, { vendas, custos }]) => {
+      .map(([tipo, { vendas, custos, qtdMesAtual }]) => {
         const qtd = vendas.length;
         const precoMedio = vendas.reduce((s, v) => s + v, 0) / qtd;
         const custoMedio = custos.reduce((s, v) => s + v, 0) / qtd;
         const margemMedia = precoMedio - custoMedio;
         return {
           tipo,
-          qtd,
+          qtdHistorico: qtd,
+          qtdMesAtual,
           precoMedio: Math.round(precoMedio),
           custoMedio: Math.round(custoMedio),
           margemMedia: Math.round(margemMedia),
           margemPercentual: precoMedio > 0 ? Math.round((margemMedia / precoMedio) * 100) : 0,
         };
       })
-      .sort((a, b) => b.qtd - a.qtd);
-  }, [pecas, custoAviamentosPorPecaBase]);
+      .sort((a, b) => b.qtdHistorico - a.qtdHistorico);
+  }, [pecas, custoAviamentosPorPecaBase, mesAtual]);
 
-  const custosFixosMesAnterior = useMemo(() => {
-    const mesRef = mesAnteriorISO();
+  const custosFixosMesAtual = useMemo(() => {
     return (despesas || [])
-      .filter((d) => d.status === "Pago" && (d.dataPagamento || "").slice(0, 7) === mesRef && !CATEGORIAS_VARIAVEIS_POR_PECA.includes(d.categoria))
+      .filter((d) => d.status === "Pago" && (d.dataPagamento || "").slice(0, 7) === mesAtual && !CATEGORIAS_VARIAVEIS_POR_PECA.includes(d.categoria))
       .reduce((s, d) => s + totalDespesaLinha(d), 0);
-  }, [despesas]);
+  }, [despesas, mesAtual]);
 
   const [respostaPrecificacao, setRespostaPrecificacao] = useState(null);
   const [carregandoPrecificacao, setCarregandoPrecificacao] = useState(false);
@@ -102,7 +106,8 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     try {
       const resposta = await chamarAgenteIA("precificacao", {
         metaProLabore,
-        custosFixosMes: custosFixosMesAnterior.toFixed(2),
+        mesReferencia: mesAtual,
+        custosFixosMes: custosFixosMesAtual.toFixed(2),
         camisaria: camisariaResumo,
         alfaiataria: alfaiatariaPorTipo,
       });
@@ -220,9 +225,11 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
         </div>
 
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
-          Custo fixo considerado (mês passado, sem tecido/aviamento/pró-labore): {brl(custosFixosMesAnterior)}
-          {camisariaResumo ? ` · Camisaria: ${camisariaResumo.qtd} peça(s) no histórico` : " · sem histórico de camisaria com valor"}
-          {alfaiatariaPorTipo.length > 0 ? ` · Alfaiataria: ${alfaiatariaPorTipo.length} tipo(s) de peça` : " · sem histórico de alfaiataria com valor"}
+          Custo fixo pago neste mês (sem tecido/aviamento/pró-labore): {brl(custosFixosMesAtual)}
+          {camisariaResumo ? ` · Camisaria: ${camisariaResumo.qtdMesAtual} entregue(s) este mês (${camisariaResumo.qtdHistorico} no histórico)` : " · sem histórico de camisaria com valor"}
+          {alfaiatariaPorTipo.length > 0
+            ? ` · Alfaiataria: ${alfaiatariaPorTipo.reduce((s, t) => s + t.qtdMesAtual, 0)} entregue(s) este mês (${alfaiatariaPorTipo.length} tipo(s) no histórico)`
+            : " · sem histórico de alfaiataria com valor"}
         </div>
 
         {erroPrecificacao && <div style={{ color: "#9C4A1E", fontSize: 12, marginBottom: 12 }}>{erroPrecificacao}</div>}
