@@ -410,7 +410,7 @@ export function usePedidosAlfaiataria() {
   async function adicionarTecido(pecaId) {
     const peca = pecas.find((p) => p.id === pecaId);
     const ordem = peca ? peca.tecidos.length : 0;
-    await comIndicador(async () => {
+    return comIndicador(async () => {
       const { data, error } = await supabase
         .from("tecidos")
         .insert({ pedido_alfaiataria_id: pecaId, qtd: 1, comprado: false, ordem })
@@ -418,7 +418,7 @@ export function usePedidosAlfaiataria() {
         .single();
       if (error) {
         setErro(error.message);
-        return;
+        return null;
       }
       setPecas((prev) =>
         prev.map((p) =>
@@ -427,6 +427,7 @@ export function usePedidosAlfaiataria() {
             : p
         )
       );
+      return data.id;
     });
   }
 

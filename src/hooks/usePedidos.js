@@ -398,7 +398,7 @@ export function usePedidos() {
   async function adicionarTecido(pedidoId) {
     const pedido = pedidos.find((p) => p.id === pedidoId);
     const ordem = pedido ? pedido.tecidos.length : 0;
-    await comIndicador(async () => {
+    return comIndicador(async () => {
       const { data, error } = await supabase
         .from("tecidos")
         .insert({ pedido_id: pedidoId, qtd: 1, comprado: false, ordem })
@@ -406,7 +406,7 @@ export function usePedidos() {
         .single();
       if (error) {
         setErro(error.message);
-        return;
+        return null;
       }
       setPedidos((prev) =>
         prev.map((p) =>
@@ -415,6 +415,7 @@ export function usePedidos() {
             : p
         )
       );
+      return data.id;
     });
   }
 

@@ -591,8 +591,16 @@ export default function Shell() {
 
   // Atalho pro Dashboard/painéis — marca de uma vez todos os tecidos do
   // pedido como comprados, sem precisar abrir o pedido item por item.
+  // Pedidos vindos do Excel podem não ter nenhum tecido cadastrado ainda
+  // — nesse caso cria um item já marcado, em vez de não fazer nada.
   async function marcarTecidoCompradoPedido(pedido) {
-    for (const t of pedido.tecidos || []) {
+    const itens = pedido.tecidos || [];
+    if (itens.length === 0) {
+      const novoId = await adicionarTecido(pedido.id);
+      if (novoId) await atualizarTecido(pedido.id, novoId, "comprado", true);
+      return;
+    }
+    for (const t of itens) {
       if (!t.comprado) await atualizarTecido(pedido.id, t.id, "comprado", true);
     }
   }

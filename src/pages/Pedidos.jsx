@@ -66,7 +66,13 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
     setMarcandoTodos(true);
     try {
       for (const p of naoTotalFiltrados) {
-        for (const t of p.tecidos || []) {
+        const itens = p.tecidos || [];
+        if (itens.length === 0) {
+          const novoId = await acoes.onAddTecido(p.id);
+          if (novoId) await acoes.onTecido(p.id, novoId, "comprado", true);
+          continue;
+        }
+        for (const t of itens) {
           if (!t.comprado) await acoes.onTecido(p.id, t.id, "comprado", true);
         }
       }
@@ -186,18 +192,23 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
               />
               <button
                 type="button"
-                disabled={(p.tecidos || []).length === 0}
                 title={
                   (p.tecidos || []).length === 0
-                    ? "Esse pedido ainda não tem tecido cadastrado — abra o pedido pra adicionar"
+                    ? "Pedido sem tecido cadastrado (veio do Excel, por ex.) — toque pra marcar como tecido comprado mesmo assim"
                     : tecidoTotal
                     ? "Tecido completo — toque pra desmarcar tudo"
                     : "Toque pra marcar todos os tecidos deste pedido como comprados"
                 }
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
+                  const itens = p.tecidos || [];
+                  if (itens.length === 0) {
+                    const novoId = await acoes.onAddTecido(p.id);
+                    if (novoId) await acoes.onTecido(p.id, novoId, "comprado", true);
+                    return;
+                  }
                   const novoValor = !tecidoTotal;
-                  (p.tecidos || []).forEach((t) => acoes.onTecido(p.id, t.id, "comprado", novoValor));
+                  itens.forEach((t) => acoes.onTecido(p.id, t.id, "comprado", novoValor));
                 }}
                 className="flex items-center gap-1.5"
                 style={{
@@ -208,8 +219,6 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
                   fontWeight: 600,
                   fontSize: 12,
                   flexShrink: 0,
-                  opacity: (p.tecidos || []).length === 0 ? 0.5 : 1,
-                  cursor: (p.tecidos || []).length === 0 ? "not-allowed" : "pointer",
                 }}
               >
                 {tecidoTotal ? <PackageCheck size={14} /> : <Package size={14} />}

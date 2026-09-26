@@ -155,10 +155,16 @@ export default function DetalhePeca({
         </button>
         <button
           type="button"
-          onClick={() => {
+          onClick={async () => {
+            const itens = p.tecidos || [];
+            if (itens.length === 0) {
+              const novoId = await onAddTecido(p.id);
+              if (novoId) await onTecido(p.id, novoId, "comprado", true);
+              return;
+            }
             const tecidoTotal = statusTecidoPedido(p.tecidos) === "total";
             const novoValor = !tecidoTotal;
-            (p.tecidos || []).forEach((t) => onTecido(p.id, t.id, "comprado", novoValor));
+            itens.forEach((t) => onTecido(p.id, t.id, "comprado", novoValor));
           }}
           className="flex items-center gap-2"
           style={{
