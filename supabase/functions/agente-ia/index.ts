@@ -108,7 +108,7 @@ Com base nisso, como está a saúde financeira e o que precisa de atenção?`,
 Valor total do estoque de tecido em casa (já pago, parado): R$ ${d.valorTotalEstoque}
 Quantidade de itens de tecido com saldo em metros: ${d.itensComSaldo}
 Total estimado de camisas que esse estoque ainda produz (baseado na metragem padrão por camisa): ${d.totalCamisasPossiveis}
-Média de camisas vendidas por mês (últimos meses fechados): ${d.mediaMensalVendas}
+Média de camisas vendidas por mês (calculada só a partir de julho/2026 pra cá, incluindo o mês corrente mesmo incompleto — meses anteriores têm dado de lançamento não confiável, segundo o dono): ${d.mediaMensalVendas}
 Meses de estoque restante no ritmo atual de venda: ${d.mesesDeEstoque ?? "não foi possível calcular (sem histórico de venda suficiente)"}
 
 Gasto médio mensal histórico com compra de tecido avulso (últimos 3 meses fechados, categoria "Material/Tecido avulso"): R$ ${d.mediaGastoMensalTecido}

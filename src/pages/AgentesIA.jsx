@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Package, Sparkles, Wallet } from "lucide-react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { BRASS, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, mediaCamisasVendidasPorMes, somarDias } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, somarDias } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
@@ -21,6 +21,29 @@ function mesesAntesDe(mesStr, n) {
 
 function totalDespesaLinha(d) {
   return (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
+}
+
+// Pedidos lançados antes de julho/2026 têm qualidade de dado ruim (o
+// dono confirmou — foi quando passou a lançar tudo direito), então o
+// ritmo de venda pro Agente de Estoque só considera daqui pra frente,
+// incluindo o mês corrente mesmo incompleto (a pedido do dono).
+const INICIO_DADOS_CONFIAVEIS = "2026-07";
+
+function mesesEntre(mesInicio, mesFim) {
+  const [anoI, mesI] = mesInicio.split("-").map(Number);
+  const [anoF, mesF] = mesFim.split("-").map(Number);
+  const chaves = [];
+  let ano = anoI;
+  let mes = mesI;
+  while (ano < anoF || (ano === anoF && mes <= mesF)) {
+    chaves.push(`${ano}-${String(mes).padStart(2, "0")}`);
+    mes += 1;
+    if (mes > 12) {
+      mes = 1;
+      ano += 1;
+    }
+  }
+  return chaves;
 }
 
 export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPorPecaBase, estoqueTecidos }) {
@@ -150,7 +173,12 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const valorTotalEstoque = itens.reduce((s, e) => s + e.saldoMetros * (e.valorMetro || 0), 0);
     const metragemNum = parseFloat(String(metragemPadrao).replace(",", ".")) || 1.5;
     const totalCamisasPossiveis = itens.reduce((s, e) => s + Math.floor(e.saldoMetros / metragemNum), 0);
-    const mediaMensalVendas = mediaCamisasVendidasPorMes(pedidos, 2);
+
+    const mesesConfiaveis = mesesEntre(INICIO_DADOS_CONFIAVEIS, mesAtual);
+    const qtdVendidaDesdeJulho = (pedidos || [])
+      .filter((p) => p.status !== "Doação" && mesesConfiaveis.includes((p.dataPedido || "").slice(0, 7)))
+      .reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0);
+    const mediaMensalVendas = mesesConfiaveis.length > 0 ? qtdVendidaDesdeJulho / mesesConfiaveis.length : 0;
     const mesesDeEstoque = mediaMensalVendas > 0 ? totalCamisasPossiveis / mediaMensalVendas : null;
 
     // Gasto médio mensal com compra de tecido avulso nos últimos 3 meses
@@ -330,6 +358,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
         </div>
         <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
           Analisa quanto tempo o estoque de tecido já comprado ainda cobre a produção, e o que isso significa pro caixa.
+          Ritmo de venda considera só de {INICIO_DADOS_CONFIAVEIS.slice(5, 7)}/{INICIO_DADOS_CONFIAVEIS.slice(0, 4)} pra cá (mês corrente incluso).
         </div>
 
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
