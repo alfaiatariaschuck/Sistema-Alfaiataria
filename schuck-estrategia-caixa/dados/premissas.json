@@ -1,0 +1,39 @@
+{
+  "atualizado_em": "2026-09-27",
+  "saldo_inicial_01_10_2026": {"valor": 9709.81, "fonte": "Extrato BTG 24/09/2026; substituir pelo saldo real de 30/09"},
+  "camisaria": {
+    "preco_medio": {"valor": 744, "fonte": "Sistema set/26: 54.334,59 / 73"},
+    "custo_direto_unit": {"valor": 261, "inclui": "tecido + costura", "fonte": "Sistema set/26, confirmado pelo Tales"},
+    "taxas_comissao_unit": {"valor": 59.5, "fonte": "Sistema set/26: (margem - líquido) / 73"},
+    "liquido_unit": {"valor": 424},
+    "historico": [{"mes": "2026-08", "qtd": 48, "valor": 39002.52, "margem": 25937.12, "liquido": 22816.92},
+                  {"mes": "2026-09", "qtd": 73, "valor": 54334.59, "margem": 35272.31, "liquido": 30925.54}],
+    "media_3_meses_qtd": 58,
+    "capacidade_alvo_pos_expansao": 116,
+    "vendedores": ["Tales", "Deivid (em formação)"]
+  },
+  "alfaiataria": {"receita_mensal": 20000, "custo_direto_pct": 0.35, "status": "ESTIMATIVA - confirmar"},
+  "custos_fixos_mensais": {
+    "aluguel_atual": 1677.03, "aluguel_novo": 2400, "aluguel_novo_inicio": "2026-11 (a confirmar)",
+    "multi_locacoes": {"valor": 3674.63, "status": "confirmar o que é"},
+    "equipe_fixa": {"valor": 7000, "detalhe": "Ícaro R$1.000/sem + Jair R$750/sem"},
+    "luz_telefone_internet": 632.68, "plano_saude": 573.22, "contador": 400, "sistemas": 698,
+    "impostos_das": 800, "transporte_estacionamento": 1400, "marketing": 1050
+  },
+  "socio": {"retirada_fixa_mensal": 20000, "datas": [5, 20], "inclui_cartao_pessoal": true},
+  "dividas": {"emprestimo_restante": 2400, "quitar_em": "2026-10", "divida_ativa": "nenhuma (MK Tecidos quitada em set/26)"},
+  "expansao": {"valor_max": 15000, "parcelas": 6, "inicio": "2026-10", "alternativa": "pré-venda de ~35 camisas corporativas"},
+  "regras": {"pct_conta_producao": 0.41, "meta_reserva_1_meses": 1, "meta_reserva_1_valor": 38628, "meta_reserva_2_valor": 77257},
+  "politica_cobranca": "100% à vista no pedido (raramente 50/50)",
+  "categorias": {
+    "producao": ["Apa Cobranca (tecidos)", "NAP Empreendimentos (tecidos)", "Mattiuz", "Tecidos Raphael Dabdab", "M K Tecidos", "Emporio de Sedas", "Incomasa (etiquetas/embalagens)", "E F Rodrigues (capas)", "Fabiana (costura por peça)", "Transportadora Minuano"],
+    "equipe_fixa": ["Icaro De Oliveira Fadrique", "Jair Pedro Cacunga Zonzo"],
+    "vendas_comissao": ["Deivid Luis Granvilla"],
+    "imovel": ["Credito Real (aluguel)", "Multi Locacoes"],
+    "fixos": ["CEEE (luz)", "Telefonica", "Unimed", "Gerson Carvalho (contador)", "DAS Simples", "Molde Me"],
+    "marketing": ["Lucas Oliveira Costa"],
+    "investimento": ["Die Wolke (máquinas)"],
+    "retirada_socio": ["Pix para Tales Henrique Schuck Neis"],
+    "entradas_proprias": ["ALFAIATARIA SCHUCK (recebíveis de cartão / outra conta) - não é venda nova"]
+  }
+}

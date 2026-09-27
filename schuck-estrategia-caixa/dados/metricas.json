@@ -1,0 +1,21 @@
+{
+  "metas_mensais": [
+    {"mes": "2026-10", "camisas": 73,  "vendas": 74312,  "resultado": 1110,  "saldo_fim_min": 10820, "marcos": ["empréstimo quitado", "conta Produção criada", "retirada fixa ativa", "pré-venda 35 camisas"]},
+    {"mes": "2026-11", "camisas": 85,  "vendas": 83240,  "resultado": 7869,  "saldo_fim_min": 18689, "marcos": ["mudança concluída", "máquinas instaladas", "aluguel novo"]},
+    {"mes": "2026-12", "camisas": 100, "vendas": 94400,  "resultado": 14221, "saldo_fim_min": 32910, "marcos": ["mês recorde de camisas"]},
+    {"mes": "2027-01", "camisas": 80,  "vendas": 79520,  "resultado": 5751,  "saldo_fim_min": 38662, "marcos": ["Meta 1 de reserva atingida"]},
+    {"mes": "2027-02", "camisas": 90,  "vendas": 86960,  "resultado": 9986,  "saldo_fim_min": 48648, "marcos": []},
+    {"mes": "2027-03", "camisas": 110, "vendas": 101840, "resultado": 18456, "saldo_fim_min": 67105, "marcos": ["capacidade ~110 camisas/mês"]}
+  ],
+  "kpis": [
+    {"id": "saldo_banco", "nome": "Saldo no banco", "frequencia": "diária", "alerta_vermelho": "< 5000"},
+    {"id": "saldo_projetado_14d", "nome": "Saldo projetado em 14 dias", "frequencia": "semanal", "alerta_vermelho": "< 0"},
+    {"id": "conta_producao", "nome": "Saldo da conta Produção", "formula": "41% das vendas de pedidos ainda não entregues", "frequencia": "semanal", "alerta_vermelho": "abaixo do mínimo calculado"},
+    {"id": "camisas_semana", "nome": "Camisas vendidas na semana", "formula": "meta do mês / semanas do mês", "frequencia": "semanal", "alerta_amarelo": "< 80% da meta"},
+    {"id": "ticket_camisa", "nome": "Preço médio por camisa", "frequencia": "mensal", "alerta_amarelo": "< 650"},
+    {"id": "liquido_camisa", "nome": "Líquido por camisa", "frequencia": "mensal", "alerta_amarelo": "< 380"},
+    {"id": "pix_socio_fora_data", "nome": "Pix para o Tales fora dos dias 5 e 20", "frequencia": "semanal", "alerta_amarelo": "> 0"},
+    {"id": "gasto_nao_previsto", "nome": "Gasto fora das categorias previstas", "frequencia": "semanal", "alerta_amarelo": "> 1000 por lançamento"},
+    {"id": "reserva_vs_meta", "nome": "Reserva / Meta 1", "formula": "saldo livre / 38628", "frequencia": "mensal", "alerta_verde": ">= 100%"}
+  ]
+}
