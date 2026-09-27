@@ -2,7 +2,7 @@ import React from "react";
 import { Clock, PackageCheck } from "lucide-react";
 import { Card } from "./ui";
 import { TEXT_MUTED, INK } from "../lib/constants";
-import { brl, diasAte, fmtData } from "../lib/helpers";
+import { brl, diasAte, fmtData, pedidoFechado } from "../lib/helpers";
 import AvisarClienteWhatsapp from "./AvisarClienteWhatsapp";
 
 const AMARELO = "#8A6A0C";
@@ -28,7 +28,7 @@ export default function OutrasPendencias({ pedidos, onSelecionar }) {
   const prontos = (pedidos || []).filter((p) => p.status === "Pronto");
 
   const pagamentosAntigos = (pedidos || [])
-    .filter((p) => p.status !== "Entregue" && p.status !== "Doação")
+    .filter((p) => !pedidoFechado(p.status))
     .map((p) => ({ p, falta: faltaReceber(p), dias: p.dataPedido ? -diasAte(p.dataPedido) : 0 }))
     .filter((x) => x.falta > 0 && x.dias > DIAS_PAGAMENTO_ANTIGO)
     .sort((a, b) => b.dias - a.dias);

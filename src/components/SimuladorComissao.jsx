@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Calculator } from "lucide-react";
 import { Card } from "./ui";
 import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, custoTecidoDe } from "../lib/helpers";
+import { brl, custoTecidoDe, statusPedidoSemVenda } from "../lib/helpers";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 const VERMELHO = "#9C4A1E";
@@ -55,7 +55,7 @@ function mediasDeCamisas(lista, custoAviamentosPorPecaBase) {
     // não uma venda de verdade) ou sem quantidade preenchida não entra na
     // média — sem quantidade, o valor do pedido inteiro ficaria contado só
     // no numerador (dividido por 0 camisas), inflando o ticket médio.
-    .filter((p) => p.status !== "Doação" && (parseFloat(p.aReceber?.valor) || 0) > 0 && (parseFloat(p.quantidade) || 0) > 0)
+    .filter((p) => !statusPedidoSemVenda(p.status) && (parseFloat(p.aReceber?.valor) || 0) > 0 && (parseFloat(p.quantidade) || 0) > 0)
     .forEach((p) => {
       const qtd = parseFloat(p.quantidade) || 0;
       somaValor += parseFloat(p.aReceber?.valor) || 0;

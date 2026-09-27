@@ -4,7 +4,7 @@ import { Card, Empty, PageTitle, StatCard } from "../components/ui";
 import MetaPorMes from "../components/MetaPorMes";
 import QuantidadePorMes from "../components/QuantidadePorMes";
 import { BRASS, INK, LINE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, hojeISO } from "../lib/helpers";
+import { brl, hojeISO, statusPedidoSemVenda } from "../lib/helpers";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 import { custoMaoDeObraFabianaEfetivo, metaComMargem, pagoNoMes, pontoEquilibrioDoMes } from "../lib/custoFixoMensal";
 import { supabase } from "../supabaseClient";
@@ -39,7 +39,7 @@ function nomeDoMes(mesStr) {
 // nem pra projeção de faturamento.
 function vendidoNoMes(pedidos, pecas, mes) {
   const camisaria = pedidos
-    .filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mes)
+    .filter((p) => !statusPedidoSemVenda(p.status) && (p.dataPedido || "").slice(0, 7) === mes)
     .reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
   const alfaiataria = (pecas || [])
     .filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && (p.dataPedido || "").slice(0, 7) === mes)
@@ -52,7 +52,7 @@ function vendidoNoMes(pedidos, pecas, mes) {
 function gradePorTipo(pedidos, pecas, mes) {
   const mapa = new Map();
   pedidos
-    .filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mes)
+    .filter((p) => !statusPedidoSemVenda(p.status) && (p.dataPedido || "").slice(0, 7) === mes)
     .forEach((p) => {
       const atual = mapa.get("Camisa") || { quantidade: 0, valor: 0 };
       atual.quantidade += parseFloat(p.quantidade) || 0;

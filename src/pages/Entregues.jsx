@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronUp, Search } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { BRASS_SOFT, INK, LINE, STATUS_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, fmtData, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, fmtData, statusPedidoSemVenda, valorRecebidoEfetivo } from "../lib/helpers";
 
 // Histórico de entregas — uma linha por vez (toggle interno Camisaria/
 // Alfaiataria), pra não precisar de duas abas na lateral. Assim que um
@@ -14,10 +14,10 @@ export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
   const [tipo, setTipo] = useState("camisaria");
 
   const isCamisaria = tipo === "camisaria";
-  // Doação entra aqui também — já foi entregue de verdade, só não gerou
-  // receita (fica de fora do faturamento em outras contas do sistema,
-  // que já filtram por status !== "Doação").
-  const camisasEntregues = isCamisaria ? pedidos.filter((p) => p.status === "Entregue" || p.status === "Doação") : [];
+  // Doação/Entregue Uso Pessoal entram aqui também — já foram entregues
+  // de verdade, só não geraram receita (ficam de fora do faturamento em
+  // outras contas do sistema, que já filtram por statusPedidoSemVenda).
+  const camisasEntregues = isCamisaria ? pedidos.filter((p) => p.status === "Entregue" || statusPedidoSemVenda(p.status)) : [];
   const pecasEntregues = isCamisaria ? [] : pecas.filter((p) => p.status === "Entregue");
 
   const porCliente = new Map();
@@ -167,7 +167,7 @@ export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
                         Camisa · {fmtData(p.dataPedido)} · {p.quantidade} un
                       </span>
                       <div className="flex items-center gap-1.5">
-                        {p.status === "Doação" && <Pill text="Doação" style={STATUS_STYLE.Doação} />}
+                        {statusPedidoSemVenda(p.status) && <Pill text={p.status} style={STATUS_STYLE[p.status] || STATUS_STYLE.Doação} />}
                         <Pill text="Camisaria" style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />
                       </div>
                     </button>

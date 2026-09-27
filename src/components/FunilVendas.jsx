@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { CalendarCheck, ChevronLeft, ChevronRight, Compass, HandCoins, Percent, Phone } from "lucide-react";
 import { Card, PageTitle, StatCard } from "./ui";
 import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { domingoDe, segundaFeiraDe, semanaSeguinteDe } from "../lib/helpers";
+import { domingoDe, segundaFeiraDe, semanaSeguinteDe, statusPedidoSemVenda } from "../lib/helpers";
 import { useAtividadesComerciais } from "../hooks/useAtividadesComerciais";
 
 const VERDE = "#2C6E31";
@@ -87,14 +87,14 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
     const fim = domingoDe(semana);
     return (pedidos || []).filter((p) => p.dataPedido && p.dataPedido >= semana && p.dataPedido <= fim);
   }, [pedidos, semana]);
-  const fechamentosSemana = pedidosDaSemana.filter((p) => p.status !== "Doação").length;
+  const fechamentosSemana = pedidosDaSemana.filter((p) => !statusPedidoSemVenda(p.status)).length;
   const taxaContatoAgendamento = editando.contatos > 0 ? (editando.agendamentos / editando.contatos) * 100 : null;
   const taxaAgendamentoFechamento = editando.agendamentos > 0 ? (fechamentosSemana / editando.agendamentos) * 100 : null;
 
   const totalClientesCarteira = useMemo(() => {
     const ids = new Set();
     (pedidos || []).forEach((p) => {
-      if (p.status !== "Doação" && p.clienteId) ids.add(p.clienteId);
+      if (!statusPedidoSemVenda(p.status) && p.clienteId) ids.add(p.clienteId);
     });
     return ids.size;
   }, [pedidos]);
@@ -117,7 +117,7 @@ export default function FunilVendas({ vendedorId, pedidos, podeEditar = false, t
     }
     return semanas.map((s) => {
       const fim = domingoDe(s);
-      const fechamentos = (pedidos || []).filter((p) => p.dataPedido && p.dataPedido >= s && p.dataPedido <= fim && p.status !== "Doação").length;
+      const fechamentos = (pedidos || []).filter((p) => p.dataPedido && p.dataPedido >= s && p.dataPedido <= fim && !statusPedidoSemVenda(p.status)).length;
       const linha = atividades.find((a) => a.semana === s);
       const taxaCA = linha?.contatos > 0 ? (linha.agendamentos / linha.contatos) * 100 : null;
       const taxaAF = linha?.agendamentos > 0 ? (fechamentos / linha.agendamentos) * 100 : null;

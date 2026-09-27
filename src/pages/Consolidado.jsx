@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ChevronRight, Download, Package, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { FORMAS_PAGAMENTO, LINE, LINHA_STYLE, PAG_STYLE, TIPOS_SAIDA_SEM_VENDA, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, fmtData, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, fmtData, statusPedidoSemVenda, valorRecebidoEfetivo } from "../lib/helpers";
 
 // statusPagamento aqui já reflete pagamento dividido (entrada recebida +
 // restante pendente vira "Parcial", não "Pendente" com o valor inteiro).
@@ -22,7 +22,7 @@ function statusEValorPendente(p, valor, statusTotal) {
 
 function montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase) {
   const camisas = pedidos
-    .filter((p) => p.status !== "Doação" && !p.origemPlanoId)
+    .filter((p) => !statusPedidoSemVenda(p.status) && !p.origemPlanoId)
     .map((p) => {
       const valor = parseFloat(p.aReceber.valor) || 0;
       const { pendente, status } = statusEValorPendente(p, valor, p.aReceber.statusPagamento || "Pendente");

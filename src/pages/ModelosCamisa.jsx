@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Card, Empty, PageTitle } from "../components/ui";
 import { BRASS, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, hojeISO } from "../lib/helpers";
+import { brl, hojeISO, statusPedidoSemVenda } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const SEM_MODELO = "Sem tecido definido";
@@ -34,7 +34,7 @@ function montarMix(pedidos, desde) {
     mapa.set(nome, atual);
   }
   (pedidos || [])
-    .filter((p) => p.status !== "Doação" && p.dataPedido && (!desde || p.dataPedido >= desde))
+    .filter((p) => !statusPedidoSemVenda(p.status) && p.dataPedido && (!desde || p.dataPedido >= desde))
     .forEach((p) => {
       const valorTotal = parseFloat(p.aReceber?.valor) || 0;
       const linhasComNome = (p.tecidos || []).filter((t) => (t.nomenclatura || "").trim());

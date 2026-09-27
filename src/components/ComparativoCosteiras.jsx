@@ -2,7 +2,7 @@ import React from "react";
 import { GitCompare } from "lucide-react";
 import { Card } from "./ui";
 import { TEXT_MUTED, LINE, BRASS } from "../lib/constants";
-import { tempoMedioProducaoGenerico } from "../lib/helpers";
+import { statusPedidoSemVenda, tempoMedioProducaoGenerico } from "../lib/helpers";
 
 const COSTUREIRAS = ["Fabiana", "Milena"];
 
@@ -13,7 +13,7 @@ const COSTUREIRAS = ["Fabiana", "Milena"];
 // costureira = Milena ainda).
 export default function ComparativoCosteiras({ pedidos }) {
   const linhas = COSTUREIRAS.map((nome) => {
-    const doAteie = (pedidos || []).filter((p) => (p.costureira || "Fabiana") === nome && p.status !== "Doação");
+    const doAteie = (pedidos || []).filter((p) => (p.costureira || "Fabiana") === nome && !statusPedidoSemVenda(p.status));
     const entregues = doAteie.filter((p) => p.status === "Entregue");
     const qtdEntregue = entregues.reduce((s, p) => s + (parseFloat(p.qtEntregue) || 0), 0);
     const tempoMedio = tempoMedioProducaoGenerico(doAteie);

@@ -9,6 +9,23 @@ import {
   MEDIDA_REGRAS,
 } from "./constants";
 
+// Status de pedido de camisaria que já foi entregue mas não gerou
+// receita (doação ou uso pessoal do dono) — centralizado aqui porque
+// muitas telas/relatórios excluem esses pedidos do faturamento/
+// quantidade vendida, e não podem divergir sobre o que conta como
+// "sem venda". "Doação" sozinho é o valor legado (pedidos antigos);
+// os outros dois são as opções atuais, selecionáveis no status.
+export function statusPedidoSemVenda(status) {
+  return status === "Doação" || status === "Entregue Doação" || status === "Entregue Uso Pessoal";
+}
+
+// Pedido "fechado" pra fins de fila ativa: saiu da produção de vez,
+// seja porque foi vendido e entregue, seja porque foi doado/uso
+// pessoal (que também já foi entregue, só não virou venda).
+export function pedidoFechado(status) {
+  return status === "Entregue" || statusPedidoSemVenda(status);
+}
+
 export function finalDaMedida(label, mp) {
   const r = MEDIDA_REGRAS[label];
   const n = parseFloat(mp);
@@ -308,7 +325,7 @@ export function precoVendaMedioPorTecido(pedidos, codigo) {
   let somaValor = 0;
   let somaQtd = 0;
   (pedidos || []).forEach((p) => {
-    if (p.status === "Doação") return;
+    if (statusPedidoSemVenda(p.status)) return;
     const qtdPedido = parseInt(p.quantidade, 10) || 0;
     const valorPedido = parseFloat(p.aReceber?.valor) || 0;
     if (qtdPedido <= 0 || valorPedido <= 0) return;
@@ -336,7 +353,7 @@ export function mediaCamisasVendidasPorMes(pedidos, meses = 3) {
     const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
     const chaveMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     total += (pedidos || [])
-      .filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === chaveMes)
+      .filter((p) => !statusPedidoSemVenda(p.status) && (p.dataPedido || "").slice(0, 7) === chaveMes)
       .reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0);
   }
   return meses > 0 ? total / meses : 0;

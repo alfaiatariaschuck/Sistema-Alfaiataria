@@ -3,7 +3,7 @@ import { AlertTriangle, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, PageTitle, StatCard } from "../components/ui";
 import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
 import { BRASS, COR_REAL, COR_REFERENCIA, TEXT_MUTED } from "../lib/constants";
-import { brl, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
+import { brl, custoTecidoDe, hojeISO, metragemParaNumero, statusPedidoSemVenda } from "../lib/helpers";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 const MESES_HISTORICO = 6;
@@ -33,7 +33,7 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
     () => (pedidos || []).filter((p) => p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr),
     [pedidos, mesAtualStr]
   );
-  const pedidosVendidosDoMes = useMemo(() => pedidosDoMes.filter((p) => p.status !== "Doação"), [pedidosDoMes]);
+  const pedidosVendidosDoMes = useMemo(() => pedidosDoMes.filter((p) => !statusPedidoSemVenda(p.status)), [pedidosDoMes]);
 
   // Pedidos com tecido lançado mas sem valor/metro cadastrado — o custo
   // deles fica de fora da conta sem avisar, então lista quem é.
@@ -135,7 +135,7 @@ export default function CustosCamisaria({ pedidos, receitaMesOutraLinha = 0, cus
     }
     return meses.map(({ chaveMes, label }) => {
       const receita = (pedidos || [])
-        .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
+        .filter((p) => !statusPedidoSemVenda(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
         .reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
       return { chave: label, a: Math.round(custoTotal), b: Math.round(receita) };
     });

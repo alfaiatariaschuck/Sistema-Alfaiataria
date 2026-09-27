@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Card } from "./ui";
 import { BRASS, INK, LINE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
-import { brl } from "../lib/helpers";
+import { brl, statusPedidoSemVenda } from "../lib/helpers";
 
 // Mesma paleta camisaria/alfaiataria do gráfico "Peças vendidas por ano"
 // em Clientes.jsx — consistência entre os gráficos do sistema.
@@ -24,7 +24,7 @@ function calcularFaturamentoPorMes(pedidos, pecas) {
     return mapa.get(mes);
   }
   pedidos.forEach((p) => {
-    if (p.status === "Doação" || p.origemPlanoId || !p.dataPedido) return;
+    if (statusPedidoSemVenda(p.status) || p.origemPlanoId || !p.dataPedido) return;
     const valor = parseFloat(p.aReceber?.valor) || 0;
     if (!valor) return;
     bucket(p.dataPedido.slice(0, 7)).camisaria += valor;

@@ -3,7 +3,7 @@ import { BookText, ChevronLeft, ChevronRight, Info, TrendingDown, TrendingUp, Wa
 import { Card, Empty, PageTitle, StatCard } from "../components/ui";
 import FaturamentoPorMes from "../components/FaturamentoPorMes";
 import { BRASS, CATEGORIAS_DESPESA, INK, LINE, TEXT_MUTED, TIPOS_SAIDA_SEM_VENDA, inputStyle } from "../lib/constants";
-import { brl, fmtData, hojeISO } from "../lib/helpers";
+import { brl, fmtData, hojeISO, statusPedidoSemVenda } from "../lib/helpers";
 
 const VERDE = "#2C6E31";
 const VERMELHO = "#9C4A1E";
@@ -88,7 +88,7 @@ export default function Contabilidade({ pedidos, pecas, pedidosSapatos, despesas
   // referência ao lado do que já é caixa de verdade — mesma fórmula do DRE.
   const faturamentoDoMes = useMemo(() => {
     const pedidosMes = (pedidos || []).filter(
-      (p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) >= mesInicioPeriodo && (p.dataPedido || "").slice(0, 7) <= mesSelecionado
+      (p) => !statusPedidoSemVenda(p.status) && (p.dataPedido || "").slice(0, 7) >= mesInicioPeriodo && (p.dataPedido || "").slice(0, 7) <= mesSelecionado
     );
     const pecasMes = (pecas || []).filter(
       (p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && (p.dataPedido || "").slice(0, 7) >= mesInicioPeriodo && (p.dataPedido || "").slice(0, 7) <= mesSelecionado

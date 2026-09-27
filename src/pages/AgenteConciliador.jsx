@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { CheckCircle2, GitCompare, HelpCircle, Wallet, XCircle } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, LINE, TEXT_MUTED, TIPOS_SAIDA_SEM_VENDA, inputStyle } from "../lib/constants";
-import { brl, fmtData, hojeISO, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, fmtData, hojeISO, statusPedidoSemVenda, valorRecebidoEfetivo } from "../lib/helpers";
 import { similaridadeNomes } from "../lib/clientes";
 
 const VERDE = "#2C6E31";
@@ -276,7 +276,7 @@ export default function AgenteConciliador({
 
   const resumoMes = useMemo(() => {
     const mesAtual = hojeISO().slice(0, 7);
-    const pedidosMes = (pedidos || []).filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mesAtual);
+    const pedidosMes = (pedidos || []).filter((p) => !statusPedidoSemVenda(p.status) && (p.dataPedido || "").slice(0, 7) === mesAtual);
     const pecasMes = (pecas || []).filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && (p.dataPedido || "").slice(0, 7) === mesAtual);
     const faturamento =
       pedidosMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0) + pecasMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);

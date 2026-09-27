@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ClipboardList, Repeat, ShoppingBag, TrendingUp, UserPlus } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, INK, LINE, STATUS_STYLE, TEXT_MUTED } from "../lib/constants";
-import { brl, fmtData } from "../lib/helpers";
+import { brl, fmtData, statusPedidoSemVenda } from "../lib/helpers";
 import { custoCamisa } from "../lib/vendasMensais";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
@@ -52,7 +52,7 @@ function descricaoComissao(nomeVendedor, mesStr) {
 // imposto (alíquota configurada sobre o valor vendido), pra já mostrar a
 // margem líquida de verdade nessa aba, não só a margem pré-imposto.
 function estatisticasDe(lista, custoAviamentosPorPecaBase, maoDeObraPadrao, aliquotaImposto) {
-  const vendidos = lista.filter((p) => p.status !== "Doação");
+  const vendidos = lista.filter((p) => !statusPedidoSemVenda(p.status));
   const camisas = vendidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
   const valor = vendidos.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
   const custo = vendidos.reduce((s, p) => s + custoCamisa(p, custoAviamentosPorPecaBase, maoDeObraPadrao).custo, 0);
@@ -173,7 +173,7 @@ export default function VendedorGestao({
   // mês, vira "Atualizar" (ajusta o total sem mexer no que já foi pago,
   // igual já funciona pra despesa da Fabiana).
   const comissoesDoMes = vendedores.map((v) => {
-    const vendidos = pedidosDaPessoa(v.id, doMesTodos).filter((p) => p.status !== "Doação");
+    const vendidos = pedidosDaPessoa(v.id, doMesTodos).filter((p) => !statusPedidoSemVenda(p.status));
     const qtd = vendidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
     const receita = vendidos.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
     const calculo = calcularComissao(qtd, receita);
@@ -443,7 +443,7 @@ export default function VendedorGestao({
                 </div>
                 <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                   {fmtData(p.dataPedido)} · {p.quantidade} un
-                  {p.status !== "Doação" && <> · margem {brl(margem)}</>}
+                  {!statusPedidoSemVenda(p.status) && <> · margem {brl(margem)}</>}
                 </div>
                 {p.origemPlanoId && (
                   <div style={{ fontSize: 11, color: BRASS, fontWeight: 600, marginTop: 2 }}>📅 Plano de assinatura</div>

@@ -3,7 +3,7 @@ import { AlertTriangle, CalendarClock, ChevronRight, Search } from "lucide-react
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { FiltroStatusMulti } from "../components/FiltroStatusMulti";
 import { LINE, STATUS, STATUS_STYLE, STATUS_TECIDO, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { diasAte, fmtData } from "../lib/helpers";
+import { diasAte, fmtData, pedidoFechado } from "../lib/helpers";
 import DetalhePedido from "./DetalhePedido";
 import CronogramaImprimivel from "./CronogramaImprimivel";
 import PendenciasFabiana from "../components/PendenciasFabiana";
@@ -11,7 +11,7 @@ import OutrasPendencias from "../components/OutrasPendencias";
 
 const VERMELHO = "#9C4A1E";
 const DIAS_LIMITE = 40;
-const STATUS_ATIVOS = STATUS.filter((s) => s !== "Entregue");
+const STATUS_ATIVOS = STATUS.filter((s) => !pedidoFechado(s));
 
 export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo = "Pedidos", nomeCronograma = "Tales", incluirEntregues = false, ...acoes }) {
   const [busca, setBusca] = useState("");
@@ -27,7 +27,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
   // uma pessoa (ex: "Pedidos Deivid") passam incluirEntregues, senão um
   // pedido já entregue/doado simplesmente "sumia" dessa visão específica.
   const filtrados = pedidos
-    .filter((p) => incluirEntregues || (p.status !== "Entregue" && p.status !== "Doação"))
+    .filter((p) => incluirEntregues || !pedidoFechado(p.status))
     .filter((p) => {
       const bateBusca = p.cliente.toLowerCase().includes(busca.toLowerCase());
       const bateStatus = statusFiltro.size === 0 || statusFiltro.has(p.status);
@@ -49,7 +49,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
   // filtrado na tela), do mais antigo (mais urgente) pro mais novo —
   // Doação sai da lista porque não é produção pendente de verdade.
   const pedidosAbertos = pedidos
-    .filter((p) => p.status !== "Entregue" && p.status !== "Doação")
+    .filter((p) => !pedidoFechado(p.status))
     .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
 
   // Status de tecido é campo novo e manual — todo pedido antigo nasce
@@ -57,7 +57,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
   // tela toda vinha laranja e o aviso perdia o sentido. Marca de uma vez
   // só o que já está com tecido na real, aí só os pedidos que realmente
   // faltam continuam sinalizados.
-  const naoCompletosFiltrados = filtrados.filter((p) => p.statusTecido !== "completo" && p.status !== "Entregue" && p.status !== "Doação");
+  const naoCompletosFiltrados = filtrados.filter((p) => p.statusTecido !== "completo" && !pedidoFechado(p.status));
 
   async function marcarTecidoEmTodosFiltrados() {
     if (naoCompletosFiltrados.length === 0) return;
@@ -131,7 +131,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
         )}
         {filtrados.map((p, i) => {
           const diasAberto = p.dataPedido ? -diasAte(p.dataPedido) : 0;
-          const atrasado40 = diasAberto > DIAS_LIMITE && p.status !== "Entregue" && p.status !== "Doação";
+          const atrasado40 = diasAberto > DIAS_LIMITE && !pedidoFechado(p.status);
           const naoEnviado = !p.enviadoFabi;
           const tecido = STATUS_TECIDO.find((s) => s.valor === (p.statusTecido || "aguardando")) || STATUS_TECIDO[0];
           return (

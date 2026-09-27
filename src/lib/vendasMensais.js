@@ -1,4 +1,4 @@
-import { custoAviamentoComposicao, custoTecidoDe } from "./helpers";
+import { custoAviamentoComposicao, custoTecidoDe, statusPedidoSemVenda } from "./helpers";
 import { custoEquipeMensal } from "./custoEquipe";
 import { TIPOS_SAIDA_SEM_VENDA } from "./constants";
 
@@ -43,7 +43,7 @@ export function custoPeca(p, custoAviamentosPorPecaBase, maoDeObraPorPeca) {
 
 // Faturamento/custo/margem agregados de um mês (camisaria + alfaiataria).
 export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe) {
-  const pedidosMes = (pedidos || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
+  const pedidosMes = (pedidos || []).filter((p) => !statusPedidoSemVenda(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
   const faturamentoCamisaria = pedidosMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
   const custoCamisaria = pedidosMes.reduce((s, p) => s + custoCamisa(p, custoAviamentosPorPecaBase, maoDeObraPadrao).custo, 0);
   const qtdCamisas = pedidosMes.reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0);
@@ -92,7 +92,7 @@ export function metricasDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBa
 // exato por peça.
 export function itensDoMes(pedidos, pecas, chaveMes, custoAviamentosPorPecaBase, maoDeObraPadrao, equipe) {
   const camisas = (pedidos || [])
-    .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
+    .filter((p) => !statusPedidoSemVenda(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
     .map((p) => {
       const valor = parseFloat(p.aReceber?.valor) || 0;
       const { custo, estimado } = custoCamisa(p, custoAviamentosPorPecaBase, maoDeObraPadrao);

@@ -1,4 +1,4 @@
-import { custoAviamentoComposicao, custoTecidoDe } from "./helpers";
+import { custoAviamentoComposicao, custoTecidoDe, statusPedidoSemVenda } from "./helpers";
 import { custoEquipeMensal } from "./custoEquipe";
 
 // Custo próprio do ateliê (alfaiataria) no mês — mão de obra da equipe +
@@ -44,7 +44,7 @@ export function custoCamisariaDoMes({ pedidosDoMes, custoMaoDeObraFabiana, custo
   const custoEstrutura = (parseFloat(aluguel) || 0) + (parseFloat(luz) || 0);
   const custoProducaoTecido = (pedidosDoMes || []).reduce((s, p) => s + custoTecidoDe(p.tecidos), 0);
   const quantidadeVendida = (pedidosDoMes || [])
-    .filter((p) => p.status !== "Doação")
+    .filter((p) => !statusPedidoSemVenda(p.status))
     .reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0);
   const custoAviamentos = ((custoAviamentosPorPecaBase || {})["Camisa"] || 0) * quantidadeVendida;
   return (parseFloat(custoMaoDeObraFabiana) || 0) + custoEstrutura + custoProducaoTecido + custoAviamentos;

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { AlertCircle, CheckCircle2, Download, FileText, Package, Printer, Shirt, TrendingUp, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { FORMAS_PAGAMENTO, PAG_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, fmtData } from "../lib/helpers";
+import { brl, fmtData, statusPedidoSemVenda } from "../lib/helpers";
 import RelatorioImprimivel from "./RelatorioImprimivel";
 
 export default function Relatorio({ pedidos, planos }) {
@@ -16,7 +16,7 @@ export default function Relatorio({ pedidos, planos }) {
   // de emissão de plano de assinatura (esses não geram receita nova — o
   // dinheiro já foi contado na venda do plano). A venda do plano entra uma
   // vez só, na data da venda (competência), com a quantidade total do plano.
-  const pedidosProprios = pedidos.filter((p) => !p.origemPlanoId && p.status !== "Doação");
+  const pedidosProprios = pedidos.filter((p) => !p.origemPlanoId && !statusPedidoSemVenda(p.status));
   const vendasPlano = (planos || [])
     .filter((pl) => pl.dataVenda && (parseFloat(pl.valorReceber) || 0) > 0)
     .map((pl) => ({

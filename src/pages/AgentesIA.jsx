@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Package, ShieldAlert, Sparkles, Sunrise, Wallet } from "lucide-react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { BRASS, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, enriquecerCliente, fmtData, hojeISO, metragemParaNumero, somarDias } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, enriquecerCliente, fmtData, hojeISO, metragemParaNumero, pedidoFechado, somarDias, statusPedidoSemVenda } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
@@ -238,7 +238,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
 
     const mesesConfiaveis = mesesEntre(INICIO_DADOS_CONFIAVEIS, mesAtual);
     const qtdVendidaDesdeJulho = (pedidos || [])
-      .filter((p) => p.status !== "Doação" && mesesConfiaveis.includes((p.dataPedido || "").slice(0, 7)))
+      .filter((p) => !statusPedidoSemVenda(p.status) && mesesConfiaveis.includes((p.dataPedido || "").slice(0, 7)))
       .reduce((s, p) => s + (parseInt(p.quantidade, 10) || 0), 0);
     const mediaMensalVendas = mesesConfiaveis.length > 0 ? qtdVendidaDesdeJulho / mesesConfiaveis.length : 0;
     const mesesDeEstoque = mediaMensalVendas > 0 ? totalCamisasPossiveis / mediaMensalVendas : null;
@@ -493,7 +493,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const totalVencimentos7dias = vencimentos7dias.reduce((s, d) => s + totalDespesaLinha(d), 0);
 
     const pedidosAguardandoTecido = (pedidos || []).filter(
-      (p) => (p.statusTecido || "aguardando") !== "completo" && p.status !== "Entregue" && p.status !== "Doação"
+      (p) => (p.statusTecido || "aguardando") !== "completo" && !pedidoFechado(p.status)
     ).length;
 
     return {

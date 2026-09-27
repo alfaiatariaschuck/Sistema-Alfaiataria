@@ -6,11 +6,11 @@ import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
 import DoacoesPorAno from "../components/DoacoesPorAno";
 import ComparativoCosteiras from "../components/ComparativoCosteiras";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, STATUS_TECIDO, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, fmtData, hojeISO, mediaEsperaCliente, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, diasAte, fmtData, hojeISO, mediaEsperaCliente, pedidoFechado, statusPedidoSemVenda, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
 import CentralAlertas from "../components/CentralAlertas";
 import { supabase } from "../supabaseClient";
 
-const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação");
+const STATUS_PAINEL = STATUS.filter((s) => s !== "Pronto" && s !== "Doação" && s !== "Entregue Doação" && s !== "Entregue Uso Pessoal");
 const VERMELHO = "#9C4A1E";
 const CHAVE_META = "meta_vendas_camisaria";
 
@@ -36,11 +36,12 @@ export default function Dashboard({
       if (data?.valor) setMeta(parseFloat(data.valor) || null);
     })();
   }, []);
-  // Doação não conta na produção nem no faturamento — é uma peça dada,
-  // não vendida, então sai das contas de quantidade/valor do cliente.
-  const naoDoacao = (p) => p.status !== "Doação";
-  const doacoes = pedidos.filter((p) => p.status === "Doação");
-  const abertos = pedidos.filter((p) => p.status !== "Entregue" && naoDoacao(p));
+  // Doação (e Entregue Doação/Uso Pessoal) não conta na produção nem no
+  // faturamento — é uma peça dada, não vendida, então sai das contas de
+  // quantidade/valor do cliente.
+  const naoDoacao = (p) => !statusPedidoSemVenda(p.status);
+  const doacoes = pedidos.filter((p) => statusPedidoSemVenda(p.status));
+  const abertos = pedidos.filter((p) => !pedidoFechado(p.status));
 
   // Fichas em aberto com tecido incompleto (status manual "aguardando"
   // ou "parcial") — dá visibilidade rápida de quais pedidos ainda

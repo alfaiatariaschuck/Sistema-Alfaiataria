@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { AlertTriangle, Info, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, PageTitle, StatCard } from "../components/ui";
 import { BRASS, COR_REAL, COR_REFERENCIA, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, statusPedidoSemVenda } from "../lib/helpers";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 const MESES_HISTORICO = 6;
@@ -56,7 +56,7 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
   );
 
   const pedidosDoMes = useMemo(
-    () => (pedidos || []).filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr),
+    () => (pedidos || []).filter((p) => !statusPedidoSemVenda(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr),
     [pedidos, mesAtualStr]
   );
   const pecasDoMes = useMemo(
@@ -118,7 +118,7 @@ export default function ResultadoMensal({ pedidos, pecas, despesas, equipe, cust
     return meses.map(({ chaveMes, label }) => {
       const receita =
         (pedidos || [])
-          .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
+          .filter((p) => !statusPedidoSemVenda(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)
           .reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0) +
         (pecas || [])
           .filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes)

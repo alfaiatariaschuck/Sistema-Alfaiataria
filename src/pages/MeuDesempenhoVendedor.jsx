@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ClipboardList, Clock, Repeat, ShoppingBag, TrendingUp, UserPlus } from "lucide-react";
 import { Card, PageTitle, StatCard } from "../components/ui";
 import { BRASS, INK, TEXT_MUTED } from "../lib/constants";
-import { brl, temposMediosProducao } from "../lib/helpers";
+import { brl, statusPedidoSemVenda, temposMediosProducao } from "../lib/helpers";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
@@ -32,7 +32,7 @@ export default function MeuDesempenhoVendedor({ pedidos }) {
   const [mesSelecionado, setMesSelecionado] = useState(mesRealAtual);
 
   const doMes = (pedidos || []).filter((p) => (p.dataPedido || "").slice(0, 7) === mesSelecionado);
-  const doMesVendidos = doMes.filter((p) => p.status !== "Doação");
+  const doMesVendidos = doMes.filter((p) => !statusPedidoSemVenda(p.status));
 
   const qtdCamisas = doMesVendidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
   const valorVendido = doMesVendidos.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);

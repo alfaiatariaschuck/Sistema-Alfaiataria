@@ -60,7 +60,7 @@ import { useNotasVendaFutura } from "./hooks/useNotasVendaFutura";
 import { useModelosCamisa, useModelosAlfaiataria } from "./hooks/useModelosCamisa";
 import { encontrarOuCriarCliente, renomearCliente, salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT, TIPOS_SAIDA_SEM_VENDA } from "./lib/constants";
-import { hojeISO, mediaDiasProducaoComFallback, mediaDiasProducaoPorTipo, projetarPrevisoesFilaPorEquipe } from "./lib/helpers";
+import { hojeISO, mediaDiasProducaoComFallback, mediaDiasProducaoPorTipo, projetarPrevisoesFilaPorEquipe, statusPedidoSemVenda } from "./lib/helpers";
 import Dashboard from "./pages/Dashboard";
 import DashboardAlfaiataria from "./pages/DashboardAlfaiataria";
 import NovoPedido from "./pages/NovoPedido";
@@ -264,7 +264,7 @@ export default function Shell() {
   const receitaMesCamisaria = useMemo(
     () =>
       (pedidos || [])
-        .filter((p) => p.status !== "Doação" && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
+        .filter((p) => !statusPedidoSemVenda(p.status) && p.dataPedido && p.dataPedido.slice(0, 7) === mesAtualStr)
         .reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0),
     [pedidos, mesAtualStr]
   );

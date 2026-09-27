@@ -15,7 +15,11 @@ export const TEXT_MUTED = "#6B7280";
 export const COR_REFERENCIA = "#eb6834";
 export const COR_REAL = "#2a78d6";
 
-export const STATUS = ["Aguardando Produção", "Em Produção", "Prova", "Pronto", "Entregue Parcial", "Entregue", "Doação"];
+// "Doação" sozinho é valor legado (pedidos antigos importados) — pra
+// pedido novo, usar "Entregue Doação"/"Entregue Uso Pessoal": já
+// nascem fechados (saem da fila) e sem gerar receita, sem precisar de
+// dois passos (marcar Entregue e depois lembrar que era de graça).
+export const STATUS = ["Aguardando Produção", "Em Produção", "Prova", "Pronto", "Entregue Parcial", "Entregue", "Entregue Doação", "Entregue Uso Pessoal", "Doação"];
 
 // Status de tecido manual (3 etapas), controlado pelo Tales/equipe por
 // pedido — não é calculado sozinho, é uma escolha direta. "aguardando"
@@ -100,6 +104,8 @@ export const STATUS_STYLE = {
   Doação: { bg: "#F5DCE8", fg: "#9C2E63" },
   Permuta: { bg: "#E1EBDD", fg: "#3E6B2E" },
   "Uso próprio": { bg: "#E3E7F5", fg: "#3E4F96" },
+  "Entregue Doação": { bg: "#F5DCE8", fg: "#9C2E63" },
+  "Entregue Uso Pessoal": { bg: "#E3E7F5", fg: "#3E4F96" },
 };
 
 // Etapas mostradas no link de acompanhamento público (o "rastreio" que o

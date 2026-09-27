@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { AlertTriangle, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, PiggyBank } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, INK, LINE, LINHA_STYLE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, fmtData, hojeISO, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, fmtData, hojeISO, statusPedidoSemVenda, valorRecebidoEfetivo } from "../lib/helpers";
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
@@ -36,7 +36,7 @@ export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo,
   // abrir o pedido/peça inteiro.
   const itens = [
     ...(pedidos || [])
-      .filter((p) => p.status !== "Doação" && parseFloat(p.aReceber.valor) > 0)
+      .filter((p) => !statusPedidoSemVenda(p.status) && parseFloat(p.aReceber.valor) > 0)
       .map((p) => ({
         id: p.id,
         tipo: "camisa",

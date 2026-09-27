@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Calculator } from "lucide-react";
 import { Card, PageTitle } from "../components/ui";
 import { BRASS, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl } from "../lib/helpers";
+import { brl, statusPedidoSemVenda } from "../lib/helpers";
 import { BONUS_A_CADA, BONUS_A_PARTIR_DE, FAIXAS_COMISSAO, GATILHO_FIXO, calcularComissao } from "../lib/comissao";
 
 // Mesmas regras de comissão do Simulador interno (SimuladorComissao.jsx),
@@ -23,7 +23,7 @@ export default function MinhaComissaoVendedor({ pedidos }) {
   const mesAtualStr = new Date().toISOString().slice(0, 7);
 
   const { qtdReal, ticketReal } = useMemo(() => {
-    const doMes = (pedidos || []).filter((p) => p.status !== "Doação" && (p.dataPedido || "").slice(0, 7) === mesAtualStr);
+    const doMes = (pedidos || []).filter((p) => !statusPedidoSemVenda(p.status) && (p.dataPedido || "").slice(0, 7) === mesAtualStr);
     const qtd = doMes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
     const valor = doMes.reduce((s, p) => s + (parseFloat(p.aReceber?.valor) || 0), 0);
     return { qtdReal: qtd, ticketReal: qtd > 0 ? valor / qtd : TICKET_PADRAO };
