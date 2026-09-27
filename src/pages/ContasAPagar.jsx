@@ -17,6 +17,14 @@ function totalDespesa(d) {
   return (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
 }
 
+// Sem acento e minúsculo — mesmo critério da busca em Contabilidade.
+function normalizarBusca(s) {
+  return (s || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 // Até quando os presets de período (7/14/30 dias) podem enxergar — não
 // mostra conta do mês que vem antes da hora. Só relaxa esse teto quando
 // já está na última semana do mês atual (aí olhar pro mês seguinte é
@@ -483,6 +491,7 @@ export default function ContasAPagar({
   irParaPedido,
   irParaPeca,
 }) {
+  const [buscaCategoriaPagar, setBuscaCategoriaPagar] = useState("");
   const [dataIniJanela, setDataIniJanela] = useState(hojeISO());
   const [dataFimJanela, setDataFimJanela] = useState(() => {
     const limite = limiteMesAtual(hojeISO());
@@ -778,6 +787,37 @@ export default function ContasAPagar({
     }
     return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
   })();
+
+  // Quanto vence por categoria — só dentro da janela de dias selecionada
+  // acima (diferente de "por fornecedor", que é o total em aberto
+  // independente de quando vence). Guarda a lista de despesas de cada
+  // categoria, não só a soma, pra dar pra abrir "o que tem dentro".
+  const porCategoriaJanela = (() => {
+    const mapa = new Map();
+    despesasJanela.forEach((d) => {
+      const cat = d.categoria || "Sem categoria";
+      if (!mapa.has(cat)) mapa.set(cat, { total: 0, itens: [] });
+      const bucket = mapa.get(cat);
+      bucket.total += Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0));
+      bucket.itens.push(d);
+    });
+    return [...mapa.entries()]
+      .map(([categoria, { total, itens }]) => ({
+        categoria,
+        total,
+        itens: [...itens].sort((a, b) => a.vencimento.localeCompare(b.vencimento)),
+      }))
+      .sort((a, b) => b.total - a.total);
+  })();
+  const buscaCategoriaPagarNormalizada = normalizarBusca(buscaCategoriaPagar);
+  const porCategoriaJanelaFiltrado = !buscaCategoriaPagarNormalizada
+    ? porCategoriaJanela
+    : porCategoriaJanela
+        .map(({ categoria, itens }) => {
+          const itensFiltrados = itens.filter((d) => normalizarBusca(d.fornecedor || d.descricao).includes(buscaCategoriaPagarNormalizada));
+          return { categoria, itens: itensFiltrados, total: itensFiltrados.reduce((s, d) => s + Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)), 0) };
+        })
+        .filter(({ itens }) => itens.length > 0);
 
   // Quanto das despesas em aberto é de cada linha — despesas com tecido
   // discriminado (valorCamisaria/valorAlfaiataria) usam a baixa real por
@@ -1749,6 +1789,48 @@ export default function ContasAPagar({
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {porCategoriaJanela.length > 0 && (
+            <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
+              <div className="flex items-center justify-between mb-2">
+                <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED }}>
+                  QUANTO VENCE POR CATEGORIA {verTudo ? "" : "(no período selecionado)"}
+                </div>
+              </div>
+              <input
+                style={{ ...inputStyle, fontSize: 12, padding: "6px 10px", marginBottom: 8 }}
+                placeholder="Buscar por fornecedor/descrição dentro das categorias…"
+                value={buscaCategoriaPagar}
+                onChange={(e) => setBuscaCategoriaPagar(e.target.value)}
+              />
+              {porCategoriaJanelaFiltrado.length === 0 ? (
+                <div style={{ fontSize: 12, color: TEXT_MUTED }}>Nenhum lançamento encontrado com essa busca.</div>
+              ) : (
+                porCategoriaJanelaFiltrado.map(({ categoria, total, itens }) => (
+                  <details key={categoria} open={!!buscaCategoriaPagarNormalizada}>
+                    <summary className="flex items-center justify-between py-1" style={{ fontSize: 12, cursor: "pointer" }}>
+                      <span>
+                        {categoria} <span style={{ color: TEXT_MUTED, fontWeight: 400 }}>({itens.length})</span>
+                      </span>
+                      <span className="fx-mono" style={{ fontWeight: 600 }}>{brl(total)}</span>
+                    </summary>
+                    <div className="pb-1 pl-3">
+                      {itens.map((d) => (
+                        <div key={d.id} className="flex items-center justify-between gap-2 py-1 flex-wrap" style={{ fontSize: 11 }}>
+                          <span style={{ color: TEXT_MUTED }}>
+                            vence {fmtData(d.vencimento)} · {d.fornecedor || d.descricao}
+                          </span>
+                          <span className="fx-mono" style={{ whiteSpace: "nowrap" }}>
+                            {brl(Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)))}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                ))
+              )}
             </div>
           )}
 
