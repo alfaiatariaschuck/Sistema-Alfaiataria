@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Printer, X } from "lucide-react";
 import { fmtData, hojeISO, diasAte } from "../lib/helpers";
 import { imprimirComNome } from "../lib/imprimirFicha";
+import { STATUS_TECIDO } from "../lib/constants";
 
 const DIAS_LIMITE = 40;
 
@@ -71,6 +72,7 @@ export default function CronogramaImprimivel({ itens, onFechar, nomePara = "Fabi
               <th style={{ textAlign: "right", padding: "5px 8px", borderBottom: "1px solid #111" }}>Qtd</th>
               <th style={{ textAlign: "right", padding: "5px 8px", borderBottom: "1px solid #111" }}>Dias em aberto</th>
               <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Status</th>
+              <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Tecido</th>
               <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Previsão</th>
               <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #111" }}>Obs.</th>
             </tr>
@@ -79,6 +81,7 @@ export default function CronogramaImprimivel({ itens, onFechar, nomePara = "Fabi
             {itens.map((p, i) => {
               const diasAberto = -diasAte(p.dataPedido);
               const atrasado = diasAberto > DIAS_LIMITE;
+              const tecido = STATUS_TECIDO.find((s) => s.valor === (p.statusTecido || "aguardando")) || STATUS_TECIDO[0];
               return (
                 <tr key={p.id} style={{ background: i % 2 === 0 ? "#F7F5EF" : "#FFF" }}>
                   <td style={{ padding: "5px 8px" }}>{fmtData(p.dataPedido)}</td>
@@ -95,6 +98,11 @@ export default function CronogramaImprimivel({ itens, onFechar, nomePara = "Fabi
                     {diasAberto}d{atrasado ? " ⚠" : ""}
                   </td>
                   <td style={{ padding: "5px 8px" }}>{p.status}</td>
+                  <td style={{ padding: "5px 8px" }}>
+                    <span style={{ background: tecido.bg, color: tecido.fg, padding: "2px 8px", borderRadius: 999, fontWeight: 600, fontSize: 11, whiteSpace: "nowrap" }}>
+                      {tecido.label}
+                    </span>
+                  </td>
                   <td style={{ padding: "5px 8px" }}>{p.previsaoEntrega ? fmtData(p.previsaoEntrega) : "—"}</td>
                   <td style={{ padding: "5px 8px", fontSize: 11, color: "#555" }}>{p.observacoes || ""}</td>
                 </tr>
@@ -102,7 +110,7 @@ export default function CronogramaImprimivel({ itens, onFechar, nomePara = "Fabi
             })}
             {itens.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ padding: "10px 8px", color: "#888" }}>
+                <td colSpan={8} style={{ padding: "10px 8px", color: "#888" }}>
                   Nenhum pedido em aberto no momento.
                 </td>
               </tr>
