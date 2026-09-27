@@ -87,6 +87,36 @@ export function brl(v) {
   return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+// Junta camisas + peças de alfaiataria + histórico da planilha antiga
+// de um cliente (já agrupado por Shell.jsx) pra saber total comprado,
+// se já recomprou, e há quanto tempo não compra — usado em Clientes.jsx
+// (campanha de reativação) e no Agente Resumo do Dia (mesmo critério,
+// não duplicado, pra "sumido" nunca divergir entre as duas telas).
+export function enriquecerCliente(c, limiteMeses) {
+  const pecas = c.pecas || [];
+  const historico = c.historico || [];
+  const totalCamisas = (c.pedidos || []).reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
+  const totalHistorico = historico.reduce((s, h) => s + (parseFloat(h.quantidade) || 0), 0);
+  const totalComprado = totalCamisas + pecas.length + totalHistorico;
+  const todosItens = [
+    ...(c.pedidos || []).map((p) => ({ tipo: "camisa", item: p, data: p.dataPedido })),
+    ...pecas.map((p) => ({ tipo: "peca", item: p, data: p.dataPedido })),
+  ].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  const maisRecente = todosItens[0];
+  const anoPedidos = maisRecente?.data ? maisRecente.data.slice(0, 4) : null;
+  const anoHistorico = historico.length ? String(Math.max(...historico.map((h) => h.ano))) : null;
+  const anoUltimaCompra = [anoPedidos, anoHistorico].filter(Boolean).sort().reverse()[0] || null;
+  const recompra = (c.pedidos || []).length + pecas.length + historico.length > 1 || historico.some((h) => h.recompra);
+  // Pra saber se um cliente "sumiu" mesmo quando a última compra dele só
+  // existe na planilha antiga (sem data exata) — usa 31/dez do ano como
+  // referência aproximada.
+  const dataReferencia = maisRecente?.data || (anoHistorico ? `${anoHistorico}-12-31` : null);
+  const mesesSemComprar = dataReferencia ? mesesDesde(dataReferencia) : null;
+  const sumido = mesesSemComprar !== null && mesesSemComprar >= limiteMeses;
+  const anosComCompra = new Set([...todosItens.map((i) => (i.data ? i.data.slice(0, 4) : null)).filter(Boolean), ...historico.map((h) => String(h.ano))]);
+  return { ...c, historico, totalHistorico, totalComprado, anoUltimaCompra, anosComCompra, recompra, todosItens, maisRecente, mesesSemComprar, sumido };
+}
+
 // Extrai o número da metragem em texto livre (ex: "3,5m" -> 3.5) — usado
 // pra multiplicar pelo valor/metro em Compras e no custo de tecido do mês.
 export function metragemParaNumero(str) {

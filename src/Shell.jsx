@@ -1121,6 +1121,7 @@ export default function Shell() {
                   despesas={despesas}
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                   estoqueTecidos={estoqueTecidos}
+                  clientes={clientes}
                   irParaPedido={irPara}
                   irParaPeca={irParaPeca}
                 />

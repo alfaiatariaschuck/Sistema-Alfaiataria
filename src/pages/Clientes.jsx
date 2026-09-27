@@ -9,7 +9,7 @@ import VendasPorAno from "../components/VendasPorAno";
 import HistoricoCliente from "../components/HistoricoCliente";
 import VincularIndicador from "../components/VincularIndicador";
 import { BRASS, BRASS_SOFT, INK, LINE, MEDIDAS_ALFAIATARIA, PECA_SECOES, STATUS_STYLE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { brl, fmtData, hojeISO, mesesDesde, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, enriquecerCliente, fmtData, hojeISO, valorRecebidoEfetivo } from "../lib/helpers";
 import { useVendedores } from "../hooks/useVendedores";
 import { definirDonoCarteira, mesclarClientes, similaridadeNomes } from "../lib/clientes";
 import { supabase } from "../supabaseClient";
@@ -204,39 +204,15 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
 
   // Junta camisas + peças de alfaiataria pra ter a base pra filtro/campanha:
   // total comprado (unidades), se já recomprou, e o ano da última compra.
+  // A lógica em si mora em lib/helpers.js (enriquecerCliente) — compartilhada
+  // com o Agente Resumo do Dia, pra "sumido" nunca divergir entre as duas telas.
   const enriquecidos = clientes.map((c) => {
-    const pecas = c.pecas || [];
-    // "historico" vem da planilha antiga do dono (vendas de antes do app,
-    // ou nunca lançadas aqui) — só nome/quantidade/ano, sem pedido real
-    // pra abrir, então entra na conta do total comprado mas não em todosItens.
-    const historico = c.historico || [];
-    const totalCamisas = c.pedidos.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
-    const totalHistorico = historico.reduce((s, h) => s + (parseFloat(h.quantidade) || 0), 0);
-    const totalComprado = totalCamisas + pecas.length + totalHistorico;
-    const todosItens = [
-      ...c.pedidos.map((p) => ({ tipo: "camisa", item: p, data: p.dataPedido })),
-      ...pecas.map((p) => ({ tipo: "peca", item: p, data: p.dataPedido })),
-    ].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-    const maisRecente = todosItens[0];
-    const anoPedidos = maisRecente?.data ? maisRecente.data.slice(0, 4) : null;
-    const anoHistorico = historico.length ? String(Math.max(...historico.map((h) => h.ano))) : null;
-    const anoUltimaCompra = [anoPedidos, anoHistorico].filter(Boolean).sort().reverse()[0] || null;
-    const recompra = c.pedidos.length + pecas.length + historico.length > 1 || historico.some((h) => h.recompra);
-    // Pra saber se um cliente "sumiu" mesmo quando a última compra dele só
-    // existe na planilha antiga (sem data exata) — usa 31/dez do ano como
-    // referência aproximada.
-    const dataReferencia = maisRecente?.data || (anoHistorico ? `${anoHistorico}-12-31` : null);
-    const mesesSemComprar = dataReferencia ? mesesDesde(dataReferencia) : null;
-    const sumido = mesesSemComprar !== null && mesesSemComprar >= limiteMeses;
-    // TODOS os anos em que o cliente comprou (não só o mais recente) — pra
-    // filtrar "quem comprou em 2025", por exemplo, mesmo quem comprou de
-    // novo depois (senão esse cliente só aparece no ano mais recente dele).
-    const anosComCompra = new Set([...todosItens.map((i) => (i.data ? i.data.slice(0, 4) : null)).filter(Boolean), ...historico.map((h) => String(h.ano))]);
+    const enriquecido = enriquecerCliente(c, limiteMeses);
     // Marca "já mandei mensagem" da campanha — pra não mandar duas vezes
     // (e o dono avisar o Deivid quem já foi contatado, sem repetir).
     const contatadoEm = contatadosLocais[c.id] !== undefined ? contatadosLocais[c.id] : c.contatadoEm || null;
     const contatado = !!contatadoEm;
-    return { ...c, historico, totalHistorico, totalComprado, anoUltimaCompra, anosComCompra, recompra, todosItens, maisRecente, mesesSemComprar, sumido, contatadoEm, contatado };
+    return { ...enriquecido, contatadoEm, contatado };
   });
 
   const anosDisponiveis = [...new Set(enriquecidos.flatMap((c) => [...c.anosComCompra]))].sort().reverse();

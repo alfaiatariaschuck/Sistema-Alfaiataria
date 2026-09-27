@@ -168,6 +168,33 @@ Com base nisso, quanto tempo o caixa fica "aliviado" por não precisar comprar t
       return `Total de inconsistências encontradas em todas as categorias: ${d.totalAchados}\n\n${linhas.join("\n\n")}\n\nCom base nisso, o que precisa de atenção e o que corrigir primeiro?`;
     },
   },
+  resumo_dia: {
+    system:
+      "Você é um assistente executivo pra um dono de ateliê de alfaiataria e camisaria sob medida no Brasil (Schuck " +
+      "Alfaiataria) que toca o negócio praticamente sozinho. Você recebe um resumo já pronto (caixa do mês, estoque, " +
+      "vencimentos, tecido pendente, inconsistências no sistema e clientes que sumiram) — NÃO é você quem calcula nada " +
+      "disso, já vem pronto; seu trabalho é ler tudo junto e dizer, em poucas linhas, o que realmente merece atenção " +
+      "hoje, na ordem certa de prioridade (o que tem mais impacto financeiro ou mais risco de virar problema maior " +
+      "vem primeiro). Responda em português do Brasil, direto, como quem está dando um briefing rápido de bom dia — " +
+      "sem repetir os números um por um sem análise, sem enrolação, sem seção de introdução. Se algum item vier " +
+      "zerado/limpo, não gaste espaço nele. " +
+      "SEMPRE termine com uma seção \"## Prioridades de hoje\": de 2 a 4 ações concretas, em ordem, cada uma dizendo " +
+      "o que fazer e por quê — nunca conselho genérico.",
+    montarPergunta: (d) => `
+Saldo de caixa do mês (recebido - pago, regime de caixa): R$ ${d.saldoMesAtual}
+Meta combinada (pró-labore + lucro) do mês: R$ ${d.metaCombinada}
+
+Vencimentos nos próximos 7 dias: ${d.qtdVencimentos7dias} conta(s), totalizando R$ ${d.totalVencimentos7dias}
+Pedidos com tecido pendente (não completo): ${d.pedidosAguardandoTecido}
+Estoque de tecido: cobre ${d.mesesDeEstoque ?? "quantidade não calculável de"} meses de produção no ritmo atual
+
+Inconsistências operacionais detectadas no sistema (dado desalinhado, precisa correção): ${d.totalAchados}
+
+Clientes que sumiram (${d.clientesSumidos.length > 0 ? "maiores compradores primeiro" : "nenhum"}):
+${d.clientesSumidos.map((c: any) => `- ${c.nome}: ${c.totalComprado} peça(s) no histórico, ${c.mesesSemComprar} mês(es) sem comprar`).join("\n") || "nenhum cliente sumido no critério configurado"}
+
+Com base em tudo isso, o que merece minha atenção hoje?`,
+  },
 };
 
 Deno.serve(async (req: Request) => {

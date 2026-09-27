@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Package, ShieldAlert, Sparkles, Wallet } from "lucide-react";
+import { Package, ShieldAlert, Sparkles, Sunrise, Wallet } from "lucide-react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { BRASS, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, fmtData, hojeISO, metragemParaNumero, somarDias } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, enriquecerCliente, fmtData, hojeISO, metragemParaNumero, somarDias } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
@@ -10,6 +10,7 @@ import { supabase } from "../supabaseClient";
 const CHAVE_META_PROLABORE = "meta_pro_labore";
 const CHAVE_META_LUCRO = "meta_lucro";
 const CHAVE_CAIXA = "caixa_atual";
+const CHAVE_SUMIDO = "cliente_sumido_meses";
 
 const CATEGORIAS_VARIAVEIS_POR_PECA = ["Material/Tecido avulso", "Aviamento Alfaiataria", "Aviamento Camisaria", "Pró-labore", "Dívida Antiga/Renegociação"];
 
@@ -105,20 +106,22 @@ function mesesEntre(mesInicio, mesFim) {
   return chaves;
 }
 
-export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPorPecaBase, estoqueTecidos, irParaPedido, irParaPeca }) {
+export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPorPecaBase, estoqueTecidos, clientes, irParaPedido, irParaPeca }) {
   const [metaProLabore, setMetaProLabore] = useState("40000");
   const [metaLucro, setMetaLucro] = useState("10000");
   const [caixaAtual, setCaixaAtual] = useState("");
+  const [limiteMesesSumido, setLimiteMesesSumido] = useState(6);
   const [carregandoConfig, setCarregandoConfig] = useState(true);
   const { margemPadrao: margemPadraoCamisaria, metragemPadrao } = useConfigPrecoCamisa();
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_META_PROLABORE, CHAVE_META_LUCRO, CHAVE_CAIXA]);
+      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_META_PROLABORE, CHAVE_META_LUCRO, CHAVE_CAIXA, CHAVE_SUMIDO]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_META_PROLABORE) setMetaProLabore(row.valor || "40000");
         if (row.chave === CHAVE_META_LUCRO) setMetaLucro(row.valor || "10000");
         if (row.chave === CHAVE_CAIXA) setCaixaAtual(row.valor || "");
+        if (row.chave === CHAVE_SUMIDO) setLimiteMesesSumido(parseInt(row.valor, 10) || 6);
       });
       setCarregandoConfig(false);
     })();
@@ -459,12 +462,153 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     }
   }
 
+  // ---------- Agente Resumo do Dia ----------
+  // Não recalcula nada dos outros agentes — só puxa o que eles já
+  // calcularam (saldo, estoque, achados) e soma dois números rápidos
+  // que ainda não existiam em lugar nenhum (tecido pendente e
+  // vencimentos de 7 dias), pra virar uma leitura única de "o que
+  // merece atenção hoje" em vez de abrir os 4 cards um por um.
+  const clientesSumidos = useMemo(() => {
+    return (clientes || [])
+      .map((c) => enriquecerCliente(c, limiteMesesSumido))
+      .filter((c) => c.sumido && c.totalComprado > 0)
+      .sort((a, b) => b.totalComprado - a.totalComprado)
+      .slice(0, 5);
+  }, [clientes, limiteMesesSumido]);
+
+  const resumoDoDia = useMemo(() => {
+    const receitaMesAtual =
+      (pedidos || [])
+        .filter((p) => p.aReceber?.statusPagamento === "Recebido" && (p.dataRecebimento || "").slice(0, 7) === mesAtual)
+        .reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0) +
+      (pecas || [])
+        .filter((p) => p.statusPagamentoVenda === "Recebido" && (p.dataRecebimento || "").slice(0, 7) === mesAtual)
+        .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+    const despesasMesAtual = (despesas || [])
+      .filter((d) => d.status === "Pago" && (d.dataPagamento || "").slice(0, 7) === mesAtual)
+      .reduce((s, d) => s + totalDespesaLinha(d), 0);
+
+    const daqui7dias = somarDias(hojeISO(), 7);
+    const vencimentos7dias = (despesas || []).filter((d) => d.status !== "Pago" && d.vencimento >= hojeISO() && d.vencimento <= daqui7dias);
+    const totalVencimentos7dias = vencimentos7dias.reduce((s, d) => s + totalDespesaLinha(d), 0);
+
+    const pedidosAguardandoTecido = (pedidos || []).filter(
+      (p) => (p.statusTecido || "aguardando") !== "completo" && p.status !== "Entregue" && p.status !== "Doação"
+    ).length;
+
+    return {
+      saldoMesAtual: receitaMesAtual - despesasMesAtual,
+      metaCombinada: (parseFloat(metaProLabore) || 0) + (parseFloat(metaLucro) || 0),
+      mesesDeEstoque: resumoEstoque.mesesDeEstoque,
+      totalAchados: achadosOperacionais.totalAchados,
+      pedidosAguardandoTecido,
+      qtdVencimentos7dias: vencimentos7dias.length,
+      totalVencimentos7dias,
+      clientesSumidos: clientesSumidos.map((c) => ({ nome: c.nome, totalComprado: c.totalComprado, mesesSemComprar: c.mesesSemComprar })),
+    };
+  }, [pedidos, pecas, despesas, mesAtual, metaProLabore, metaLucro, resumoEstoque, achadosOperacionais, clientesSumidos]);
+
+  const [respostaResumoDia, setRespostaResumoDia] = useState(null);
+  const [carregandoResumoDia, setCarregandoResumoDia] = useState(false);
+  const [erroResumoDia, setErroResumoDia] = useState(null);
+
+  async function gerarResumoDia() {
+    setCarregandoResumoDia(true);
+    setErroResumoDia(null);
+    setRespostaResumoDia(null);
+    try {
+      const resposta = await chamarAgenteIA("resumo_dia", {
+        ...resumoDoDia,
+        saldoMesAtual: resumoDoDia.saldoMesAtual.toFixed(2),
+        metaCombinada: resumoDoDia.metaCombinada.toFixed(2),
+        totalVencimentos7dias: resumoDoDia.totalVencimentos7dias.toFixed(2),
+      });
+      setRespostaResumoDia(resposta);
+    } catch (e) {
+      setErroResumoDia(e.message);
+    } finally {
+      setCarregandoResumoDia(false);
+    }
+  }
+
   return (
     <div>
       <PageTitle eyebrow="Estratégico — só você vê" title="Agentes de IA" />
       <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 20 }}>
         Cada análise é gerada na hora, com os números reais do sistema — não fica salva em lugar nenhum além dessa tela.
       </div>
+
+      <Card style={{ padding: 20 }} className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Sunrise size={16} color={BRASS} />
+          <div className="fx-serif" style={{ fontSize: 16, fontWeight: 600 }}>
+            Resumo do Dia
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
+          Junta o que os outros agentes já sabem (caixa, estoque, inconsistências) com tecido pendente, vencimentos
+          próximos e clientes sumidos, numa leitura só — pra decidir o que atacar primeiro sem abrir tela por tela.
+        </div>
+
+        <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Saldo do mês</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: resumoDoDia.saldoMesAtual >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+              {brl(resumoDoDia.saldoMesAtual)}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Vence em 7 dias</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>
+              {brl(resumoDoDia.totalVencimentos7dias)} <span style={{ fontSize: 11, color: TEXT_MUTED }}>({resumoDoDia.qtdVencimentos7dias})</span>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Tecido pendente</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: resumoDoDia.pedidosAguardandoTecido > 0 ? "#9C4A1E" : undefined }}>
+              {resumoDoDia.pedidosAguardandoTecido} pedido(s)
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Estoque de tecido</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{resumoDoDia.mesesDeEstoque ?? "—"} meses</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Inconsistências</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: resumoDoDia.totalAchados > 0 ? "#9C4A1E" : undefined }}>
+              {resumoDoDia.totalAchados}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Clientes sumidos</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: resumoDoDia.clientesSumidos.length > 0 ? "#9C4A1E" : undefined }}>
+              {resumoDoDia.clientesSumidos.length}
+            </div>
+          </div>
+        </div>
+
+        {resumoDoDia.clientesSumidos.length > 0 && (
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
+            Maiores clientes sumidos (há {limiteMesesSumido}+ meses sem comprar):{" "}
+            {resumoDoDia.clientesSumidos.map((c) => `${c.nome} (${c.mesesSemComprar}m)`).join(", ")}
+          </div>
+        )}
+
+        <button
+          onClick={gerarResumoDia}
+          disabled={carregandoResumoDia}
+          style={{ background: BRASS, color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, opacity: carregandoResumoDia ? 0.7 : 1, marginBottom: 16 }}
+        >
+          {carregandoResumoDia ? "Analisando…" : "Gerar resumo do dia"}
+        </button>
+
+        {erroResumoDia && <div style={{ color: "#9C4A1E", fontSize: 12, marginBottom: 12 }}>{erroResumoDia}</div>}
+        {respostaResumoDia && (
+          <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.6, background: "#F3EEDF", borderRadius: 8, padding: 16 }}>
+            {respostaResumoDia}
+          </div>
+        )}
+      </Card>
 
       <Card style={{ padding: 20 }} className="mb-6">
         <div className="flex items-center gap-2 mb-1">
