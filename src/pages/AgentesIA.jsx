@@ -49,6 +49,39 @@ function resumirAchado(lista, formatarItem, limite = 6) {
   return { qtd, exemplos, restantes: Math.max(0, qtd - exemplos.length) };
 }
 
+// Lista expansível de um achado do Agente Gerente — cada item vira um
+// link clicável (abre o pedido/peça direto) quando `aoAbrir` é passado
+// e o item tem `_tipo`; senão só mostra o texto (caso de despesas e
+// estoque, que não têm tela de detalhe pra abrir a partir daqui).
+function ListaAchado({ titulo, itens, formatarLinha, aoAbrir }) {
+  if (!itens || itens.length === 0) return null;
+  return (
+    <details className="mb-2">
+      <summary style={{ fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+        {titulo} <span style={{ color: "#9C4A1E" }}>({itens.length})</span>
+      </summary>
+      <div className="pl-3 pt-1">
+        {itens.map((item, i) =>
+          aoAbrir && item._tipo && item.id ? (
+            <button
+              key={item.id}
+              onClick={() => aoAbrir(item)}
+              className="block text-left"
+              style={{ fontSize: 12, color: BRASS, padding: "2px 0", textDecoration: "underline" }}
+            >
+              {formatarLinha(item)}
+            </button>
+          ) : (
+            <div key={item.id || i} style={{ fontSize: 12, color: TEXT_MUTED, padding: "2px 0" }}>
+              {formatarLinha(item)}
+            </div>
+          )
+        )}
+      </div>
+    </details>
+  );
+}
+
 // Pedidos lançados antes de julho/2026 têm qualidade de dado ruim (o
 // dono confirmou — foi quando passou a lançar tudo direito), então o
 // ritmo de venda pro Agente de Estoque só considera daqui pra frente,
@@ -72,7 +105,7 @@ function mesesEntre(mesInicio, mesFim) {
   return chaves;
 }
 
-export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPorPecaBase, estoqueTecidos }) {
+export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPorPecaBase, estoqueTecidos, irParaPedido, irParaPeca }) {
   const [metaProLabore, setMetaProLabore] = useState("40000");
   const [metaLucro, setMetaLucro] = useState("10000");
   const [caixaAtual, setCaixaAtual] = useState("");
@@ -331,13 +364,13 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
   // mesmo padrão dos outros agentes: cálculo aqui, narração lá.
   const achadosOperacionais = useMemo(() => {
     const semValorTecidoLista = [
-      ...(pedidos || []).filter((p) => (p.tecidos || []).some((t) => metragemParaNumero(t.metragem) !== null && !parseFloat(t.valorMetro))),
-      ...(pecas || []).filter((p) => (p.tecidos || []).some((t) => metragemParaNumero(t.metragem) !== null && !parseFloat(t.valorMetro))),
+      ...(pedidos || []).filter((p) => (p.tecidos || []).some((t) => metragemParaNumero(t.metragem) !== null && !parseFloat(t.valorMetro))).map((p) => ({ ...p, _tipo: "pedido" })),
+      ...(pecas || []).filter((p) => (p.tecidos || []).some((t) => metragemParaNumero(t.metragem) !== null && !parseFloat(t.valorMetro))).map((p) => ({ ...p, _tipo: "peca" })),
     ];
 
     const recebidoSemDataLista = [
-      ...(pedidos || []).filter((p) => p.aReceber?.statusPagamento === "Recebido" && !p.dataRecebimento),
-      ...(pecas || []).filter((p) => p.statusPagamentoVenda === "Recebido" && !p.dataRecebimento),
+      ...(pedidos || []).filter((p) => p.aReceber?.statusPagamento === "Recebido" && !p.dataRecebimento).map((p) => ({ ...p, _tipo: "pedido" })),
+      ...(pecas || []).filter((p) => p.statusPagamentoVenda === "Recebido" && !p.dataRecebimento).map((p) => ({ ...p, _tipo: "peca" })),
     ];
 
     const despesaSemCategoriaLista = (despesas || []).filter((d) => d.status === "Pago" && !d.categoria);
@@ -363,9 +396,15 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       });
     });
 
+    // Pedidos com origemPlanoId são entregas mensais de um plano de
+    // assinatura já pago na venda do plano (dinheiro contado uma vez só,
+    // na origem) — não é erro esses não terem aReceber próprio, então
+    // ficam de fora desse achado (mesmo critério já usado em Relatorio.jsx).
     const entregueSemValorLista = [
-      ...(pedidos || []).filter((p) => p.status === "Entregue" && p.status !== "Doação" && !(parseFloat(p.aReceber?.valor) > 0)),
-      ...(pecas || []).filter((p) => p.status === "Entregue" && !(parseFloat(p.valorVenda) > 0)),
+      ...(pedidos || [])
+        .filter((p) => p.status === "Entregue" && p.status !== "Doação" && !p.origemPlanoId && !(parseFloat(p.aReceber?.valor) > 0))
+        .map((p) => ({ ...p, _tipo: "pedido" })),
+      ...(pecas || []).filter((p) => p.status === "Entregue" && !(parseFloat(p.valorVenda) > 0)).map((p) => ({ ...p, _tipo: "peca" })),
     ];
 
     const estoqueNegativoLista = (estoqueTecidos || []).filter((e) => e.saldoMetros < 0);
@@ -382,8 +421,21 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       estoqueNegativo: resumirAchado(estoqueNegativoLista, (e) => `${e.codigo} (${e.saldoMetros}m)`),
     };
     const totalAchados = Object.values(achados).reduce((s, a) => s + a.qtd, 0);
-    return { ...achados, totalAchados };
+    const listasCompletas = {
+      semValorTecido: semValorTecidoLista,
+      recebidoSemData: recebidoSemDataLista,
+      despesaSemCategoria: despesaSemCategoriaLista,
+      valorSuspeito: valorSuspeitoLista,
+      entregueSemValor: entregueSemValorLista,
+      estoqueNegativo: estoqueNegativoLista,
+    };
+    return { ...achados, totalAchados, listasCompletas };
   }, [pedidos, pecas, despesas, estoqueTecidos]);
+
+  function irParaItem(item) {
+    if (item._tipo === "pedido" && irParaPedido) irParaPedido(item.id);
+    else if (item._tipo === "peca" && irParaPeca) irParaPeca(item.id);
+  }
 
   const [respostaGerente, setRespostaGerente] = useState(null);
   const [carregandoGerente, setCarregandoGerente] = useState(false);
@@ -394,7 +446,11 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     setErroGerente(null);
     setRespostaGerente(null);
     try {
-      const resposta = await chamarAgenteIA("gerente", achadosOperacionais);
+      // listasCompletas é só pra UI local (expandir/clicar) — não faz
+      // sentido mandar os objetos inteiros dos pedidos/despesas pra IA,
+      // que já recebe o resumo (qtd/exemplos) dentro de cada achado.
+      const { listasCompletas, ...achadosParaIA } = achadosOperacionais;
+      const resposta = await chamarAgenteIA("gerente", achadosParaIA);
       setRespostaGerente(resposta);
     } catch (e) {
       setErroGerente(e.message);
@@ -651,6 +707,42 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
               {achadosOperacionais.estoqueNegativo.qtd}
             </div>
           </div>
+        </div>
+
+        <div className="mb-4">
+          <ListaAchado
+            titulo="Tecido sem valor/metro cadastrado"
+            itens={achadosOperacionais.listasCompletas.semValorTecido}
+            formatarLinha={(p) => p.cliente || "(sem nome)"}
+            aoAbrir={irParaItem}
+          />
+          <ListaAchado
+            titulo='"Recebido" sem data de recebimento'
+            itens={achadosOperacionais.listasCompletas.recebidoSemData}
+            formatarLinha={(p) => p.cliente || "(sem nome)"}
+            aoAbrir={irParaItem}
+          />
+          <ListaAchado
+            titulo="Despesa paga sem categoria"
+            itens={achadosOperacionais.listasCompletas.despesaSemCategoria}
+            formatarLinha={(d) => `${fmtData(d.dataPagamento)} · ${d.fornecedor || d.descricao} · ${brl(totalDespesaLinha(d))}`}
+          />
+          <ListaAchado
+            titulo="Despesa com valor fora do padrão do fornecedor"
+            itens={achadosOperacionais.listasCompletas.valorSuspeito}
+            formatarLinha={(d) => `${fmtData(d.dataPagamento)} · ${d.fornecedor || d.descricao} · ${brl(totalDespesaLinha(d))} (típico: ~${brl(d.valorTipico)})`}
+          />
+          <ListaAchado
+            titulo='"Entregue" sem valor a receber'
+            itens={achadosOperacionais.listasCompletas.entregueSemValor}
+            formatarLinha={(p) => p.cliente || "(sem nome)"}
+            aoAbrir={irParaItem}
+          />
+          <ListaAchado
+            titulo="Estoque de tecido com saldo negativo"
+            itens={achadosOperacionais.listasCompletas.estoqueNegativo}
+            formatarLinha={(e) => `${e.codigo} (${e.saldoMetros}m)`}
+          />
         </div>
 
         <button

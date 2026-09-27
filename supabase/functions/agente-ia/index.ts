@@ -149,7 +149,9 @@ Com base nisso, quanto tempo o caixa fica "aliviado" por não precisar comprar t
         },
         entregueSemValor: {
           titulo: '"Entregue" sem valor a receber preenchido',
-          contexto: "risco de receita vendida mas nunca cobrada, ou só não lançada — pedido entregue deveria ter um valor associado",
+          contexto:
+            "risco de receita vendida mas nunca cobrada, ou só não lançada — pedido entregue deveria ter um valor associado " +
+            "(entregas de plano de assinatura já foram excluídas daqui, porque nelas o dinheiro é contado uma vez só na venda do plano, não por entrega)",
         },
         estoqueNegativo: {
           titulo: "Estoque de tecido com saldo negativo",

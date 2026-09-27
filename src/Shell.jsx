@@ -1112,7 +1112,15 @@ export default function Shell() {
                 />
               )}
               {tab === "agentes-ia" && (
-                <AgentesIA pedidos={pedidos} pecas={pecas} despesas={despesas} custoAviamentosPorPecaBase={custoPorPecaBase} estoqueTecidos={estoqueTecidos} />
+                <AgentesIA
+                  pedidos={pedidos}
+                  pecas={pecas}
+                  despesas={despesas}
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
+                  estoqueTecidos={estoqueTecidos}
+                  irParaPedido={irPara}
+                  irParaPeca={irParaPeca}
+                />
               )}
               {tab === "controle-producao" && !loadingPecas && (
                 <ControleProducao
