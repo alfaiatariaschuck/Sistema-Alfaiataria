@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Package, Sparkles, Wallet } from "lucide-react";
+import { Package, ShieldAlert, Sparkles, Wallet } from "lucide-react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { BRASS, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, somarDias } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, fmtData, hojeISO, metragemParaNumero, somarDias } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
@@ -21,6 +21,32 @@ function mesesAntesDe(mesStr, n) {
 
 function totalDespesaLinha(d) {
   return (parseFloat(d.valor) || 0) + (parseFloat(d.frete) || 0);
+}
+
+// Sem acento e minúsculo — agrupa "Fabi" e "Fabiana" como o mesmo
+// fornecedor pro detector de valor fora do padrão (mesmo critério usado
+// na busca de Contabilidade).
+function normalizarNome(s) {
+  return (s || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function mediana(numeros) {
+  const s = [...numeros].sort((a, b) => a - b);
+  const meio = Math.floor(s.length / 2);
+  return s.length % 2 ? s[meio] : (s[meio - 1] + s[meio]) / 2;
+}
+
+// Resume uma lista de itens "com problema" pro payload do Agente
+// Gerente: manda só uma amostra (a IA não precisa da lista inteira pra
+// priorizar o que corrigir, e isso mantém o pedido pequeno).
+function resumirAchado(lista, formatarItem, limite = 6) {
+  const qtd = lista.length;
+  const exemplos = lista.slice(0, limite).map(formatarItem);
+  return { qtd, exemplos, restantes: Math.max(0, qtd - exemplos.length) };
 }
 
 // Pedidos lançados antes de julho/2026 têm qualidade de dado ruim (o
@@ -298,6 +324,85 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     }
   }
 
+  // ---------- Agente Gerente ----------
+  // Detecta inconsistências reais na operação de forma determinística
+  // (regras em código, não a IA "achando" problema) e manda só o
+  // resumo pro modelo priorizar e explicar o que corrigir primeiro —
+  // mesmo padrão dos outros agentes: cálculo aqui, narração lá.
+  const achadosOperacionais = useMemo(() => {
+    const semValorTecidoLista = [
+      ...(pedidos || []).filter((p) => (p.tecidos || []).some((t) => metragemParaNumero(t.metragem) !== null && !parseFloat(t.valorMetro))),
+      ...(pecas || []).filter((p) => (p.tecidos || []).some((t) => metragemParaNumero(t.metragem) !== null && !parseFloat(t.valorMetro))),
+    ];
+
+    const recebidoSemDataLista = [
+      ...(pedidos || []).filter((p) => p.aReceber?.statusPagamento === "Recebido" && !p.dataRecebimento),
+      ...(pecas || []).filter((p) => p.statusPagamentoVenda === "Recebido" && !p.dataRecebimento),
+    ];
+
+    const despesaSemCategoriaLista = (despesas || []).filter((d) => d.status === "Pago" && !d.categoria);
+
+    // Valor muito abaixo do padrão do mesmo fornecedor (é assim que o
+    // R$12 da Fabiana, que devia ser R$120, teria sido pego automático).
+    const porFornecedor = new Map();
+    (despesas || []).forEach((d) => {
+      if (d.status !== "Pago") return;
+      const chave = normalizarNome(d.fornecedor || d.descricao);
+      if (!chave) return;
+      if (!porFornecedor.has(chave)) porFornecedor.set(chave, []);
+      porFornecedor.get(chave).push(d);
+    });
+    const valorSuspeitoLista = [];
+    porFornecedor.forEach((lista) => {
+      if (lista.length < 3) return;
+      const valores = lista.map((d) => totalDespesaLinha(d));
+      const base = mediana(valores.filter((v) => v > 0));
+      if (!base) return;
+      lista.forEach((d, i) => {
+        if (valores[i] > 0 && valores[i] < base * 0.15) valorSuspeitoLista.push({ ...d, valorTipico: base });
+      });
+    });
+
+    const entregueSemValorLista = [
+      ...(pedidos || []).filter((p) => p.status === "Entregue" && p.status !== "Doação" && !(parseFloat(p.aReceber?.valor) > 0)),
+      ...(pecas || []).filter((p) => p.status === "Entregue" && !(parseFloat(p.valorVenda) > 0)),
+    ];
+
+    const estoqueNegativoLista = (estoqueTecidos || []).filter((e) => e.saldoMetros < 0);
+
+    const achados = {
+      semValorTecido: resumirAchado(semValorTecidoLista, (p) => p.cliente || "(sem nome)"),
+      recebidoSemData: resumirAchado(recebidoSemDataLista, (p) => p.cliente || "(sem nome)"),
+      despesaSemCategoria: resumirAchado(despesaSemCategoriaLista, (d) => `${fmtData(d.dataPagamento)} · ${d.fornecedor || d.descricao} · ${brl(totalDespesaLinha(d))}`),
+      valorSuspeito: resumirAchado(
+        valorSuspeitoLista,
+        (d) => `${fmtData(d.dataPagamento)} · ${d.fornecedor || d.descricao} · ${brl(totalDespesaLinha(d))} (típico: ~${brl(d.valorTipico)})`
+      ),
+      entregueSemValor: resumirAchado(entregueSemValorLista, (p) => p.cliente || "(sem nome)"),
+      estoqueNegativo: resumirAchado(estoqueNegativoLista, (e) => `${e.codigo} (${e.saldoMetros}m)`),
+    };
+    const totalAchados = Object.values(achados).reduce((s, a) => s + a.qtd, 0);
+    return { ...achados, totalAchados };
+  }, [pedidos, pecas, despesas, estoqueTecidos]);
+
+  const [respostaGerente, setRespostaGerente] = useState(null);
+  const [carregandoGerente, setCarregandoGerente] = useState(false);
+  const [erroGerente, setErroGerente] = useState(null);
+
+  async function gerarGerente() {
+    setCarregandoGerente(true);
+    setErroGerente(null);
+    setRespostaGerente(null);
+    try {
+      const resposta = await chamarAgenteIA("gerente", achadosOperacionais);
+      setRespostaGerente(resposta);
+    } catch (e) {
+      setErroGerente(e.message);
+    } finally {
+      setCarregandoGerente(false);
+    }
+  }
+
   return (
     <div>
       <PageTitle eyebrow="Estratégico — só você vê" title="Agentes de IA" />
@@ -492,6 +597,78 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
         {respostaFinanceiro && (
           <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.6, background: "#F3EEDF", borderRadius: 8, padding: 16 }}>
             {respostaFinanceiro}
+          </div>
+        )}
+      </Card>
+
+      <Card style={{ padding: 20 }} className="mt-6">
+        <div className="flex items-center gap-2 mb-1">
+          <ShieldAlert size={16} color={BRASS} />
+          <div className="fx-serif" style={{ fontSize: 16, fontWeight: 600 }}>
+            Agente Gerente
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
+          Varre pedidos, peças, despesas e estoque atrás de dado desalinhado (tecido sem valor cadastrado, "Recebido" sem
+          data, despesa sem categoria, valor fora do padrão do fornecedor, venda entregue sem valor a receber, estoque
+          negativo) e te diz o que corrigir primeiro.
+        </div>
+
+        <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Tecido sem valor/metro</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: achadosOperacionais.semValorTecido.qtd > 0 ? "#9C4A1E" : undefined }}>
+              {achadosOperacionais.semValorTecido.qtd}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>"Recebido" sem data</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: achadosOperacionais.recebidoSemData.qtd > 0 ? "#9C4A1E" : undefined }}>
+              {achadosOperacionais.recebidoSemData.qtd}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Despesa sem categoria</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: achadosOperacionais.despesaSemCategoria.qtd > 0 ? "#9C4A1E" : undefined }}>
+              {achadosOperacionais.despesaSemCategoria.qtd}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Valor fora do padrão</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: achadosOperacionais.valorSuspeito.qtd > 0 ? "#9C4A1E" : undefined }}>
+              {achadosOperacionais.valorSuspeito.qtd}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Entregue sem receber</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: achadosOperacionais.entregueSemValor.qtd > 0 ? "#9C4A1E" : undefined }}>
+              {achadosOperacionais.entregueSemValor.qtd}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>Estoque negativo</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: achadosOperacionais.estoqueNegativo.qtd > 0 ? "#9C4A1E" : undefined }}>
+              {achadosOperacionais.estoqueNegativo.qtd}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={gerarGerente}
+          disabled={carregandoGerente}
+          style={{ background: BRASS, color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, opacity: carregandoGerente ? 0.7 : 1, marginBottom: 16 }}
+        >
+          {carregandoGerente ? "Analisando…" : "Gerar diagnóstico"}
+        </button>
+
+        {achadosOperacionais.totalAchados === 0 && (
+          <div style={{ fontSize: 11, color: "#2C6E31", marginBottom: 12 }}>Nenhuma inconsistência encontrada nesses critérios agora.</div>
+        )}
+
+        {erroGerente && <div style={{ color: "#9C4A1E", fontSize: 12, marginBottom: 12 }}>{erroGerente}</div>}
+        {respostaGerente && (
+          <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.6, background: "#F3EEDF", borderRadius: 8, padding: 16 }}>
+            {respostaGerente}
           </div>
         )}
       </Card>

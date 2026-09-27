@@ -116,6 +116,56 @@ Enquanto o estoque acima ainda cobre a produção, esse valor mensal deixa de sa
 
 Com base nisso, quanto tempo o caixa fica "aliviado" por não precisar comprar tecido, e o que o dono deveria fazer com isso (e quando deveria começar a se planejar pra próxima compra)?`,
   },
+  gerente: {
+    system:
+      "Você é um gerente de operações pra um ateliê de alfaiataria e camisaria sob medida no Brasil (Schuck Alfaiataria). " +
+      "Você recebe uma lista de inconsistências JÁ DETECTADAS por regras no sistema (não é você quem encontra os problemas — " +
+      "isso já foi feito por código, de forma determinística) — seu trabalho é olhar as contagens e os exemplos, explicar em " +
+      "português simples o que cada tipo de problema significa na prática (por que importa, o que pode estar sendo afetado: " +
+      "custo escondido, receita não cobrada, relatório de caixa errado, etc) e priorizar o que corrigir primeiro, pelo impacto " +
+      "financeiro/risco, não pela ordem em que apareceu. Responda em português do Brasil, direto, sem enrolação. Não invente " +
+      "inconsistência que não foi passada, e não repita os números sem análise — se uma categoria tiver zero, pode pular ela " +
+      "ou mencionar rapidamente que está limpa. Se TODAS as categorias vierem zeradas, diga isso claramente e não invente " +
+      "problema pra preencher espaço. " +
+      "SEMPRE termine a resposta com uma seção \"## Recomendações\": de 2 a 4 ações concretas e executáveis, em ordem de " +
+      "prioridade, cada uma dizendo exatamente qual tela abrir e o que verificar/corrigir lá — nunca conselho genérico.",
+    montarPergunta: (d) => {
+      const secoes: Record<string, { titulo: string; contexto: string }> = {
+        semValorTecido: {
+          titulo: "Tecido lançado sem valor/metro cadastrado",
+          contexto: "o custo de tecido desse pedido fica de fora de qualquer cálculo de custo/margem, sem avisar — subestima o custo real",
+        },
+        recebidoSemData: {
+          titulo: '"Recebido" sem data de recebimento preenchida',
+          contexto: "esse recebimento fica invisível em qualquer relatório de caixa por período (Contabilidade, Agente Financeiro) mesmo já tendo sido pago de verdade",
+        },
+        despesaSemCategoria: {
+          titulo: "Despesa paga sem categoria",
+          contexto: "não entra em nenhum agrupamento por categoria (Contabilidade, Agente Financeiro) — vira gasto invisível na análise por tipo",
+        },
+        valorSuspeito: {
+          titulo: "Despesa com valor muito abaixo do padrão do mesmo fornecedor",
+          contexto: "provável erro de digitação (ex: um zero faltando) — o valor típico desse fornecedor está junto de cada exemplo",
+        },
+        entregueSemValor: {
+          titulo: '"Entregue" sem valor a receber preenchido',
+          contexto: "risco de receita vendida mas nunca cobrada, ou só não lançada — pedido entregue deveria ter um valor associado",
+        },
+        estoqueNegativo: {
+          titulo: "Estoque de tecido com saldo negativo",
+          contexto: "foi dada baixa em mais metros do que o sistema tinha registrado — sinal de lançamento de consumo errado ou compra não registrada",
+        },
+      };
+      const linhas = Object.entries(secoes).map(([chave, { titulo, contexto }]) => {
+        const achado = d[chave] || { qtd: 0, exemplos: [], restantes: 0 };
+        if (achado.qtd === 0) return `${titulo}: 0 (nenhum encontrado)`;
+        const listaExemplos = achado.exemplos.join("; ");
+        const sobra = achado.restantes > 0 ? ` (+${achado.restantes} outro(s) não listado(s))` : "";
+        return `${titulo}: ${achado.qtd} encontrado(s) — ${contexto}. Exemplos: ${listaExemplos}${sobra}`;
+      });
+      return `Total de inconsistências encontradas em todas as categorias: ${d.totalAchados}\n\n${linhas.join("\n\n")}\n\nCom base nisso, o que precisa de atenção e o que corrigir primeiro?`;
+    },
+  },
 };
 
 Deno.serve(async (req: Request) => {
