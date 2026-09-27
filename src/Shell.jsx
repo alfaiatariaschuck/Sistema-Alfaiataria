@@ -18,6 +18,7 @@ import {
   ListChecks,
   LogOut,
   Menu,
+  Network,
   PackageCheck,
   PieChart,
   PiggyBank,
@@ -79,6 +80,7 @@ import PedidoSapatos from "./pages/PedidoSapatos";
 import Cerebro from "./pages/Cerebro";
 import AgenteConciliador from "./pages/AgenteConciliador";
 import AgentesIA from "./pages/AgentesIA";
+import MapaRelacoes from "./pages/MapaRelacoes";
 import Contabilidade from "./pages/Contabilidade";
 import ControleProducao from "./pages/ControleProducao";
 import Equipe from "./pages/Equipe";
@@ -144,6 +146,7 @@ const NAV = [
   { id: "cerebro", label: "Cérebro", icon: Brain, primary: false, grupo: "Geral" },
   { id: "agente-conciliador", label: "Agente Conciliador", icon: GitCompare, primary: false, grupo: "Geral" },
   { id: "agentes-ia", label: "Agentes de IA", icon: Sparkles, primary: false, grupo: "Geral" },
+  { id: "mapa-relacoes", label: "Mapa de Relações", icon: Network, primary: false, grupo: "Geral" },
 
   { id: "equipe", label: "Equipe", icon: Users2, primary: false, grupo: "Sistema" },
   { id: "fornecedores", label: "Fornecedores", icon: ShoppingCart, primary: false, grupo: "Sistema" },
@@ -1122,6 +1125,7 @@ export default function Shell() {
                   irParaPeca={irParaPeca}
                 />
               )}
+              {tab === "mapa-relacoes" && <MapaRelacoes despesas={despesas} />}
               {tab === "controle-producao" && !loadingPecas && (
                 <ControleProducao
                   pecas={pecas}
