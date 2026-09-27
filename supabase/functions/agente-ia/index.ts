@@ -111,7 +111,7 @@ Total estimado de camisas que esse estoque ainda produz (baseado na metragem pad
 Média de camisas vendidas por mês (calculada só a partir de julho/2026 pra cá, incluindo o mês corrente mesmo incompleto — meses anteriores têm dado de lançamento não confiável, segundo o dono): ${d.mediaMensalVendas}
 Meses de estoque restante no ritmo atual de venda: ${d.mesesDeEstoque ?? "não foi possível calcular (sem histórico de venda suficiente)"}
 
-Gasto médio mensal histórico com compra de tecido avulso (últimos 3 meses fechados, categoria "Material/Tecido avulso"): R$ ${d.mediaGastoMensalTecido}
+Gasto médio mensal com compra de tecido avulso (categoria "Material/Tecido avulso", mesma janela de julho/2026 pra cá incluindo o mês corrente — meses anteriores a julho não são confiáveis, e ficaram de fora por isso): R$ ${d.mediaGastoMensalTecido}
 Enquanto o estoque acima ainda cobre a produção, esse valor mensal deixa de sair do caixa pra reposição de tecido.
 
 Com base nisso, quanto tempo o caixa fica "aliviado" por não precisar comprar tecido, e o que o dono deveria fazer com isso (e quando deveria começar a se planejar pra próxima compra)?`,

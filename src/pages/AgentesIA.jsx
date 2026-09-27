@@ -181,12 +181,14 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const mediaMensalVendas = mesesConfiaveis.length > 0 ? qtdVendidaDesdeJulho / mesesConfiaveis.length : 0;
     const mesesDeEstoque = mediaMensalVendas > 0 ? totalCamisasPossiveis / mediaMensalVendas : null;
 
-    // Gasto médio mensal com compra de tecido avulso nos últimos 3 meses
-    // fechados (exclui o mês atual, ainda incompleto) — referência de
-    // quanto normalmente sai de caixa pra repor estoque.
-    const tresMesesAnteriores = [1, 2, 3].map((n) => mesesAntesDe(mesAtual, n));
-    const gastoTecidoUltimos3Meses = (despesas || [])
-      .filter((d) => d.status === "Pago" && d.categoria === "Material/Tecido avulso" && tresMesesAnteriores.includes((d.dataPagamento || "").slice(0, 7)))
+    // Gasto médio mensal com compra de tecido avulso — mesma janela
+    // confiável usada acima pra vendas (julho/2026 em diante, incluindo o
+    // mês corrente): antes disso os 3 últimos meses fechados (jun/jul/ago)
+    // davam R$0 (a compra do lote grande foi feita via Estoque, não como
+    // despesa dessa categoria), o que escondia que setembro já reiniciou
+    // gasto real de reposição avulsa.
+    const gastoTecidoDesdeJulho = (despesas || [])
+      .filter((d) => d.status === "Pago" && d.categoria === "Material/Tecido avulso" && mesesConfiaveis.includes((d.dataPagamento || "").slice(0, 7)))
       .reduce((s, d) => s + totalDespesaLinha(d), 0);
 
     return {
@@ -194,7 +196,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       totalCamisasPossiveis,
       mediaMensalVendas: Math.round(mediaMensalVendas * 10) / 10,
       mesesDeEstoque: mesesDeEstoque !== null ? Math.round(mesesDeEstoque * 10) / 10 : null,
-      mediaGastoMensalTecido: gastoTecidoUltimos3Meses / 3,
+      mediaGastoMensalTecido: mesesConfiaveis.length > 0 ? gastoTecidoDesdeJulho / mesesConfiaveis.length : 0,
       itensComSaldo: itens.filter((e) => e.saldoMetros > 0).length,
     };
   }, [estoqueTecidos, pedidos, despesas, metragemPadrao, mesAtual]);
@@ -358,7 +360,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
         </div>
         <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
           Analisa quanto tempo o estoque de tecido já comprado ainda cobre a produção, e o que isso significa pro caixa.
-          Ritmo de venda considera só de {INICIO_DADOS_CONFIAVEIS.slice(5, 7)}/{INICIO_DADOS_CONFIAVEIS.slice(0, 4)} pra cá (mês corrente incluso).
+          Ritmo de venda e gasto com tecido avulso consideram só de {INICIO_DADOS_CONFIAVEIS.slice(5, 7)}/{INICIO_DADOS_CONFIAVEIS.slice(0, 4)} pra cá (mês corrente incluso).
         </div>
 
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
