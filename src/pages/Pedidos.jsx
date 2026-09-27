@@ -21,11 +21,13 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
   const opcoesStatus = incluirEntregues ? STATUS : STATUS_ATIVOS;
 
   // Pedidos entregues saem daqui — ficam no histórico da aba Entregues.
-  // Exceção: telas que precisam ver TODOS os pedidos de uma pessoa (ex:
-  // "Pedidos Deivid") passam incluirEntregues, senão um pedido já
-  // entregue simplesmente "sumia" dessa visão específica.
+  // Doação sai junto: já foi entregue de verdade (só não gerou receita),
+  // então não é produção pendente — ficava presa aqui pra sempre antes
+  // dessa correção. Exceção: telas que precisam ver TODOS os pedidos de
+  // uma pessoa (ex: "Pedidos Deivid") passam incluirEntregues, senão um
+  // pedido já entregue/doado simplesmente "sumia" dessa visão específica.
   const filtrados = pedidos
-    .filter((p) => incluirEntregues || p.status !== "Entregue")
+    .filter((p) => incluirEntregues || (p.status !== "Entregue" && p.status !== "Doação"))
     .filter((p) => {
       const bateBusca = p.cliente.toLowerCase().includes(busca.toLowerCase());
       const bateStatus = statusFiltro.size === 0 || statusFiltro.has(p.status);
