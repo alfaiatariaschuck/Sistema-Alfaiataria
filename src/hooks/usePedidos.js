@@ -141,6 +141,7 @@ const CAMPO_PARA_COLUNA = {
   previsaoEntrega: "previsao_entrega",
   dataEntrega: "data_entrega",
   dataCobranca: "data_cobranca",
+  dataRecebimento: "data_recebimento",
   quantidade: "quantidade",
   status: "status",
   qtEntregue: "qt_entregue",
