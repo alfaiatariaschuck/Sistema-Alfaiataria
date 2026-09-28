@@ -241,13 +241,14 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
 
         <div
           className="grid"
-          style={{ gridTemplateColumns: "repeat(5, 1fr)", border: `2px solid ${INK}`, borderRadius: 6, overflow: "hidden", marginBottom: 14 }}
+          style={{ gridTemplateColumns: "repeat(6, 1fr)", border: `2px solid ${INK}`, borderRadius: 6, overflow: "hidden", marginBottom: 14 }}
         >
           <CelulaDestaque label="Status" valor={p.status} />
           <CelulaDestaque label="Data do pedido" valor={fmtData(p.dataPedido)} />
           <CelulaDestaque label="Previsão entrega" valor={fmtData(p.previsaoEntrega)} destaque />
           <CelulaDestaque label="Quantidade" valor={`${p.quantidade} un`} destaque />
-          <CelulaDestaque label="Vendedor" valor={p.vendedor || "—"} valorFontSize={16} ultima />
+          <CelulaDestaque label="Vendedor" valor={p.vendedor || "—"} valorFontSize={16} />
+          <CelulaDestaque label="Pix recebido em" valor={p.dataRecebimento ? fmtData(p.dataRecebimento) : "—"} valorFontSize={16} ultima />
         </div>
 
         <TituloSecao primeira>Medidas (cm)</TituloSecao>
