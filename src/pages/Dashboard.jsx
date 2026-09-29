@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Gift, Hourglass, Package, PackageCheck, Shirt, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Gift, Hourglass, Package, PackageCheck, Shirt, ShoppingBag, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
@@ -107,9 +107,17 @@ export default function Dashboard({
 
   // Vendido no mês corrente, pra comparar com a meta configurada.
   const mesAtual = hojeISO().slice(0, 7);
-  const vendidoNoMes = naoDoacaoLista
-    .filter((p) => (p.dataPedido || "").slice(0, 7) === mesAtual)
-    .reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
+  const pedidosVendidosNoMes = naoDoacaoLista.filter((p) => (p.dataPedido || "").slice(0, 7) === mesAtual);
+  const vendidoNoMes = pedidosVendidosNoMes.reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
+
+  // Das camisas vendidas nesse mês, quantas já saíram (entregue de
+  // verdade, "Entregue Parcial" não conta) dentro do mesmo mês da
+  // venda — mede o ritmo de entrega em cima do que entrou no mês, não
+  // um total solto de entregas de pedidos antigos.
+  const camisasVendidasNoMes = pedidosVendidosNoMes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
+  const camisasEntreguesDentroDoMes = pedidosVendidosNoMes
+    .filter((p) => p.status === "Entregue" && (p.dataEntrega || "").slice(0, 7) === mesAtual)
+    .reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
 
   return (
     <div>
@@ -138,6 +146,8 @@ export default function Dashboard({
         <StatCard label="Tempo médio — recompra" value={tempoMedioRecompra !== null ? `${tempoMedioRecompra}d` : "—"} icon={Timer} />
         <StatCard label="Espera média por prova" value={esperaMediaProva !== null ? `${esperaMediaProva}d` : "—"} icon={Hourglass} />
         <StatCard label="Doações" value={doacoes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0)} icon={Gift} />
+        <StatCard label="Vendidas no mês" value={camisasVendidasNoMes} icon={ShoppingBag} />
+        <StatCard label="Entregues dentro do mês" value={camisasEntreguesDentroDoMes} icon={PackageCheck} />
       </div>
       {esperaMediaProva === null && (
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: -20, marginBottom: 20 }}>
