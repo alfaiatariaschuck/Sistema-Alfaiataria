@@ -110,12 +110,14 @@ export default function Dashboard({
   const pedidosVendidosNoMes = naoDoacaoLista.filter((p) => (p.dataPedido || "").slice(0, 7) === mesAtual);
   const vendidoNoMes = pedidosVendidosNoMes.reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
 
-  // Das camisas vendidas nesse mês, quantas já saíram (entregue de
-  // verdade, "Entregue Parcial" não conta) dentro do mesmo mês da
-  // venda — mede o ritmo de entrega em cima do que entrou no mês, não
-  // um total solto de entregas de pedidos antigos.
   const camisasVendidasNoMes = pedidosVendidosNoMes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
-  const camisasEntreguesDentroDoMes = pedidosVendidosNoMes
+
+  // Entregues DENTRO do mês corrente, não importa quando foi vendido —
+  // pega qualquer pedido (mesmo de mês anterior) que virou "Entregue"
+  // completo com data de entrega caindo nesse mês. É o total real de
+  // camisas que saíram da loja no mês, não só o recorte de quem também
+  // foi vendido no mesmo mês (que dava um número bem menor e enganoso).
+  const camisasEntreguesNoMes = naoDoacaoLista
     .filter((p) => p.status === "Entregue" && (p.dataEntrega || "").slice(0, 7) === mesAtual)
     .reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0);
 
@@ -147,7 +149,7 @@ export default function Dashboard({
         <StatCard label="Espera média por prova" value={esperaMediaProva !== null ? `${esperaMediaProva}d` : "—"} icon={Hourglass} />
         <StatCard label="Doações" value={doacoes.reduce((s, p) => s + (parseFloat(p.quantidade) || 0), 0)} icon={Gift} />
         <StatCard label="Vendidas no mês" value={camisasVendidasNoMes} icon={ShoppingBag} />
-        <StatCard label="Entregues dentro do mês" value={camisasEntreguesDentroDoMes} icon={PackageCheck} />
+        <StatCard label="Entregues no mês" value={camisasEntreguesNoMes} icon={PackageCheck} />
       </div>
       {esperaMediaProva === null && (
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: -20, marginBottom: 20 }}>
