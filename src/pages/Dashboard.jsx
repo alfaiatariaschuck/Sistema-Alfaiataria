@@ -5,6 +5,7 @@ import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
 import DoacoesPorAno from "../components/DoacoesPorAno";
 import ComparativoCosteiras from "../components/ComparativoCosteiras";
+import VendidasEntreguesPorMes from "../components/VendidasEntreguesPorMes";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, STATUS_TECIDO, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData, hojeISO, mediaEsperaCliente, pedidoFechado, statusPedidoSemVenda, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
 import CentralAlertas from "../components/CentralAlertas";
@@ -156,6 +157,8 @@ export default function Dashboard({
           "Espera média por prova" é uma métrica nova: só conta pedidos pausados com o motivo "cliente_prova" a partir de agora — pedidos antigos não têm esse detalhe registrado.
         </div>
       )}
+
+      <VendidasEntreguesPorMes pedidos={pedidos} titulo={`Vendidas x Entregues por mês — ${titulo}`} />
 
       <TempoProducaoPorMes lista={pedidos} titulo={`Tempo médio de produção por mês — ${titulo}`} />
 
