@@ -8,12 +8,12 @@ import { brl, fmtData, statusPedidoSemVenda, valorRecebidoEfetivo } from "../lib
 // Alfaiataria), pra não precisar de duas abas na lateral. Assim que um
 // pedido/peça vira "Entregue" ele some das listas ativas (Pedidos e
 // Pedidos Alfaiataria) e passa a aparecer aqui, agrupado por cliente.
-export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
+export default function Entregues({ pedidos, pecas, irPara, irParaPeca, titulo = "Entregues", ocultarToggleTipo = false }) {
   const [busca, setBusca] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [tipo, setTipo] = useState("camisaria");
 
-  const isCamisaria = tipo === "camisaria";
+  const isCamisaria = ocultarToggleTipo || tipo === "camisaria";
   // Doação/Entregue Uso Pessoal entram aqui também — já foram entregues
   // de verdade, só não geraram receita (ficam de fora do faturamento em
   // outras contas do sistema, que já filtram por statusPedidoSemVenda).
@@ -64,7 +64,7 @@ export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
 
   return (
     <div>
-      <PageTitle eyebrow={eyebrow} title="Entregues" />
+      <PageTitle eyebrow={eyebrow} title={titulo} />
 
       {pedidosSemPagarFabi.length > 0 && (
         <div className="mb-4 p-4" style={{ background: "#F6E3D9", border: "1px solid #E0A583", borderRadius: 8 }}>
@@ -92,31 +92,33 @@ export default function Entregues({ pedidos, pecas, irPara, irParaPeca }) {
         </div>
       )}
 
-      <div className="flex items-center gap-2 mb-4">
-        {[
-          { id: "camisaria", label: "Camisaria" },
-          { id: "alfaiataria", label: "Alfaiataria" },
-        ].map((op) => (
-          <button
-            key={op.id}
-            onClick={() => {
-              setTipo(op.id);
-              setExpandido(null);
-            }}
-            style={{
-              background: tipo === op.id ? INK : "transparent",
-              color: tipo === op.id ? "#FFF" : TEXT_MUTED,
-              border: `1px solid ${tipo === op.id ? INK : LINE}`,
-              padding: "6px 14px",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
-            {op.label}
-          </button>
-        ))}
-      </div>
+      {!ocultarToggleTipo && (
+        <div className="flex items-center gap-2 mb-4">
+          {[
+            { id: "camisaria", label: "Camisaria" },
+            { id: "alfaiataria", label: "Alfaiataria" },
+          ].map((op) => (
+            <button
+              key={op.id}
+              onClick={() => {
+                setTipo(op.id);
+                setExpandido(null);
+              }}
+              style={{
+                background: tipo === op.id ? INK : "transparent",
+                color: tipo === op.id ? "#FFF" : TEXT_MUTED,
+                border: `1px solid ${tipo === op.id ? INK : LINE}`,
+                padding: "6px 14px",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              {op.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-4" style={{ ...inputStyle, maxWidth: 360, padding: "6px 10px" }}>
         <Search size={14} color={TEXT_MUTED} />
