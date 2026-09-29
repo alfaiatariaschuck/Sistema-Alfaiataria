@@ -157,6 +157,14 @@ Com base nisso, quanto tempo o caixa fica "aliviado" por não precisar comprar t
           titulo: "Estoque de tecido com saldo negativo",
           contexto: "foi dada baixa em mais metros do que o sistema tinha registrado — sinal de lançamento de consumo errado ou compra não registrada",
         },
+        naoEnviadoAtrasado: {
+          titulo: "Pedido/peça parado há mais de 10 dias sem ser enviado pra produção (Fabiana/Ícaro)",
+          contexto: "ficou esquecido na fila sem nem começar a ser produzido — risco direto de atraso de entrega pro cliente",
+        },
+        tecidoAtrasado: {
+          titulo: "Pedido/peça parado há mais de 10 dias com o tecido ainda não comprado/completo",
+          contexto: "a produção não pode nem começar direito sem o tecido — precisa comprar ou cobrar o fornecedor antes que vire gargalo",
+        },
       };
       const linhas = Object.entries(secoes).map(([chave, { titulo, contexto }]) => {
         const achado = d[chave] || { qtd: 0, exemplos: [], restantes: 0 };

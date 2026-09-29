@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Package, ShieldAlert, Sparkles, Sunrise, Wallet } from "lucide-react";
 import { Card, Field, PageTitle } from "../components/ui";
 import { BRASS, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, enriquecerCliente, fmtData, hojeISO, metragemParaNumero, pedidoFechado, somarDias, statusPedidoSemVenda } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, diasAte, enriquecerCliente, fmtData, hojeISO, metragemParaNumero, pedidoFechado, somarDias, statusPedidoSemVenda } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
@@ -412,6 +412,27 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
 
     const estoqueNegativoLista = (estoqueTecidos || []).filter((e) => e.saldoMetros < 0);
 
+    // Pedido/peça com mais de 10 dias e ainda parado num passo manual
+    // que alguém esqueceu de fazer — mandar pra produção (Fabiana/
+    // Ícaro) ou comprar o tecido. Não é atraso normal de produção, é
+    // esquecimento: 10 dias é tempo de sobra pra qualquer um dos dois
+    // já ter acontecido. Pedido fechado (entregue/doação/uso pessoal)
+    // não conta, óbvio.
+    const LIMITE_DIAS_PARADO = 10;
+    const paradoHaMais10Dias = (p) => p.dataPedido && !pedidoFechado(p.status) && diasAte(p.dataPedido) <= -LIMITE_DIAS_PARADO;
+
+    const naoEnviadoAtrasadoLista = [
+      ...(pedidos || []).filter((p) => !p.enviadoFabi && paradoHaMais10Dias(p)).map((p) => ({ ...p, _tipo: "pedido" })),
+      ...(pecas || []).filter((p) => !p.enviadoIcaro && paradoHaMais10Dias(p)).map((p) => ({ ...p, _tipo: "peca" })),
+    ];
+
+    const tecidoAtrasadoLista = [
+      ...(pedidos || []).filter((p) => (p.statusTecido || "aguardando") !== "completo" && paradoHaMais10Dias(p)).map((p) => ({ ...p, _tipo: "pedido" })),
+      ...(pecas || []).filter((p) => (p.statusTecido || "aguardando") !== "completo" && paradoHaMais10Dias(p)).map((p) => ({ ...p, _tipo: "peca" })),
+    ];
+
+    const formatarParado = (p) => `${p.cliente || "(sem nome)"} · pedido de ${fmtData(p.dataPedido)}`;
+
     const achados = {
       semValorTecido: resumirAchado(semValorTecidoLista, (p) => p.cliente || "(sem nome)"),
       recebidoSemData: resumirAchado(recebidoSemDataLista, (p) => p.cliente || "(sem nome)"),
@@ -422,6 +443,8 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       ),
       entregueSemValor: resumirAchado(entregueSemValorLista, (p) => p.cliente || "(sem nome)"),
       estoqueNegativo: resumirAchado(estoqueNegativoLista, (e) => `${e.codigo} (${e.saldoMetros}m)`),
+      naoEnviadoAtrasado: resumirAchado(naoEnviadoAtrasadoLista, formatarParado),
+      tecidoAtrasado: resumirAchado(tecidoAtrasadoLista, formatarParado),
     };
     const totalAchados = Object.values(achados).reduce((s, a) => s + a.qtd, 0);
     const listasCompletas = {
@@ -431,6 +454,8 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       valorSuspeito: valorSuspeitoLista,
       entregueSemValor: entregueSemValorLista,
       estoqueNegativo: estoqueNegativoLista,
+      naoEnviadoAtrasado: naoEnviadoAtrasadoLista,
+      tecidoAtrasado: tecidoAtrasadoLista,
     };
     return { ...achados, totalAchados, listasCompletas };
   }, [pedidos, pecas, despesas, estoqueTecidos]);
@@ -811,7 +836,8 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
         <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
           Varre pedidos, peças, despesas e estoque atrás de dado desalinhado (tecido sem valor cadastrado, "Recebido" sem
           data, despesa sem categoria, valor fora do padrão do fornecedor, venda entregue sem valor a receber, estoque
-          negativo) e te diz o que corrigir primeiro.
+          negativo, pedido parado há mais de 10 dias sem enviar pra produção ou sem comprar o tecido) e te diz o que
+          corrigir primeiro.
         </div>
 
         <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
@@ -851,6 +877,18 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
               {achadosOperacionais.estoqueNegativo.qtd}
             </div>
           </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>+10 dias sem enviar produção</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: achadosOperacionais.naoEnviadoAtrasado.qtd > 0 ? "#9C4A1E" : undefined }}>
+              {achadosOperacionais.naoEnviadoAtrasado.qtd}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED }}>+10 dias sem comprar tecido</div>
+            <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: achadosOperacionais.tecidoAtrasado.qtd > 0 ? "#9C4A1E" : undefined }}>
+              {achadosOperacionais.tecidoAtrasado.qtd}
+            </div>
+          </div>
         </div>
 
         <div className="mb-4">
@@ -886,6 +924,18 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
             titulo="Estoque de tecido com saldo negativo"
             itens={achadosOperacionais.listasCompletas.estoqueNegativo}
             formatarLinha={(e) => `${e.codigo} (${e.saldoMetros}m)`}
+          />
+          <ListaAchado
+            titulo="Parado há mais de 10 dias sem enviar pra produção"
+            itens={achadosOperacionais.listasCompletas.naoEnviadoAtrasado}
+            formatarLinha={(p) => `${p.cliente || "(sem nome)"} · pedido de ${fmtData(p.dataPedido)}`}
+            aoAbrir={irParaItem}
+          />
+          <ListaAchado
+            titulo="Parado há mais de 10 dias sem comprar o tecido"
+            itens={achadosOperacionais.listasCompletas.tecidoAtrasado}
+            formatarLinha={(p) => `${p.cliente || "(sem nome)"} · pedido de ${fmtData(p.dataPedido)}`}
+            aoAbrir={irParaItem}
           />
         </div>
 
