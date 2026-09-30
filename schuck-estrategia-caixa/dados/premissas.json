@@ -1,6 +1,6 @@
 {
-  "atualizado_em": "2026-09-27",
-  "saldo_inicial_01_10_2026": {"valor": 9709.81, "fonte": "Extrato BTG 24/09/2026; substituir pelo saldo real de 30/09"},
+  "atualizado_em": "2026-09-30",
+  "saldo_inicial_01_10_2026": {"valor": 11724.96, "fonte": "Extrato BTG 30/09/2026 (saldo de fechamento real do mês) — confirmado, fecha o mês de setembro"},
   "camisaria": {
     "preco_medio": {"valor": 744, "fonte": "Sistema set/26: 54.334,59 / 73"},
     "custo_direto_unit": {"valor": 261, "inclui": "tecido + costura", "fonte": "Sistema set/26, confirmado pelo Tales"},
