@@ -20,7 +20,12 @@
     "luz_telefone_internet": 632.68, "plano_saude": 573.22, "contador": 400, "sistemas": 698,
     "impostos_das": 800, "transporte_estacionamento": 1400, "marketing": 1050
   },
-  "socio": {"retirada_fixa_mensal": 20000, "datas": [5, 20], "inclui_cartao_pessoal": true},
+  "socio": {
+    "retirada_fixa_mensal": 20000,
+    "datas": [5, 20],
+    "inclui_cartao_pessoal": true,
+    "pre_requisito": "Só dá pra rodar retirada fixa nos dias 5/20 depois de abrir a conta/reserva Produção (confirmado pelo Tales em 30/09/2026) — até lá, Pix avulso pro Tales todo dia é esperado (é a única conta que existe). Não alertar 'Pix fora de data' enquanto a conta Produção não estiver aberta."
+  },
   "dividas": {"emprestimo_restante": 2400, "quitar_em": "2026-10", "divida_ativa": "nenhuma (MK Tecidos quitada em set/26)"},
   "expansao": {"valor_max": 15000, "parcelas": 6, "inicio": "2026-10", "alternativa": "pré-venda de ~35 camisas corporativas"},
   "regras": {"pct_conta_producao": 0.41, "meta_reserva_1_meses": 1, "meta_reserva_1_valor": 38628, "meta_reserva_2_valor": 77257},
