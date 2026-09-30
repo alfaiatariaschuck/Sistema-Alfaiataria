@@ -1500,7 +1500,7 @@ export default function ContasAPagar({
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
             Caixa atual + o que entra − o que sai, semana a semana{somarTecidoPendente ? " (já descontando o tecido pendente)" : ""}
-            {somarPrevisaoVenda ? " (contando com a previsão de venda)" : ""}. Detalhe de cada semana na lista ao lado.
+            {somarPrevisaoVenda ? " (contando com a previsão de venda)" : ""}.
           </div>
           <GraficoFluxoCaixa semanas={semanasProjecao} />
         </Card>
@@ -1534,88 +1534,6 @@ export default function ContasAPagar({
           )}
         </Card>
       </div>
-
-      <Card style={{ padding: 20 }} className="mb-6">
-        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
-          Semana a semana
-        </div>
-        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>
-          Clique numa semana pra ver o que tem nela. A semana atual já vem aberta.
-        </div>
-        {semanasProjecao.map((s, i) => {
-          const rotuloRelativo = i === 0 ? "Semana atual" : i === 1 ? "Próxima semana" : `Em ${i} semanas`;
-          const itens = [
-            ...s.despesasSemana.map((d) => ({
-              key: `d-${d.id}`,
-              nome: d.descricao,
-              meta: `vence ${fmtData(d.vencimento)}${d.recorrente ? " · recorrente" : ""}`,
-              valor: -Math.max(0, totalDespesa(d) - (parseFloat(d.valorPago) || 0)),
-              recorrente: d.recorrente,
-            })),
-            ...s.receberSemana.map((p) => ({
-              key: `r-${p.tipo}-${p.id}`,
-              nome: p.nome,
-              meta: `cobrar em ${fmtData(p.dataCobranca || p.dataRef)} · ${p.tipo === "camisa" ? "Camisaria" : "Alfaiataria"}`,
-              valor: p.pendente,
-            })),
-            ...s.previsoesSemana.map((p) => ({
-              key: `p-${p.id}`,
-              nome: p.descricao || "Previsão de venda",
-              meta: `esperado ${fmtData(p.dataEsperada)}`,
-              valor: parseFloat(p.valor) || 0,
-            })),
-          ].sort((a, b) => b.valor - a.valor);
-          return (
-            <details key={s.inicio} open={i === 0} style={{ border: `1px solid ${LINE}`, borderRadius: 8, marginBottom: 8, overflow: "hidden" }}>
-              <summary
-                className="flex items-center justify-between flex-wrap gap-2"
-                style={{ padding: "10px 14px", cursor: "pointer", listStyle: "none" }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 700 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: BRASS, textTransform: "uppercase", letterSpacing: "0.03em" }}>
-                    {rotuloRelativo}
-                  </div>
-                  {fmtDataCurtaISO(s.inicio)} – {fmtDataCurtaISO(s.fim)}
-                </div>
-                <div className="flex items-center gap-3 fx-mono" style={{ fontSize: 12, fontWeight: 700 }}>
-                  <span style={{ color: VERMELHO }}>− {brl(s.totalSai)}</span>
-                  <span style={{ color: VERDE }}>+ {brl(s.totalEntra)}</span>
-                  <span
-                    style={{
-                      padding: "3px 9px",
-                      borderRadius: 999,
-                      fontSize: 11.5,
-                      background: s.saldoSemana >= 0 ? "#DCEBDD" : "#F6E3D9",
-                      color: s.saldoSemana >= 0 ? VERDE : VERMELHO,
-                    }}
-                  >
-                    saldo {s.saldoSemana >= 0 ? "+" : "−"}
-                    {brl(Math.abs(s.saldoSemana))}
-                  </span>
-                </div>
-              </summary>
-              <div style={{ padding: itens.length ? "0 14px 12px" : 0, borderTop: itens.length ? `1px solid ${LINE}` : "none" }}>
-                {itens.length === 0 && <div style={{ fontSize: 12, color: TEXT_MUTED, padding: "10px 0" }}>Nada previsto nessa semana ainda.</div>}
-                {itens.map((it) => (
-                  <div key={it.key} className="flex items-center justify-between py-1.5" style={{ borderBottom: `1px solid ${LINE}`, gap: 8 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="flex items-center gap-1.5" style={{ fontSize: 12.5, fontWeight: 600 }}>
-                        {it.nome}
-                        {it.recorrente && <Pill text="↻ recorrente" style={{ bg: "#EFE1CC", fg: BRASS }} />}
-                      </div>
-                      <div style={{ fontSize: 10.5, color: TEXT_MUTED }}>{it.meta}</div>
-                    </div>
-                    <span className="fx-mono" style={{ fontSize: 12, fontWeight: 700, color: it.valor >= 0 ? VERDE : VERMELHO, whiteSpace: "nowrap" }}>
-                      {it.valor >= 0 ? "+ " : "− "}
-                      {brl(Math.abs(it.valor))}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </details>
-          );
-        })}
-      </Card>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <Card style={{ padding: 20 }}>
