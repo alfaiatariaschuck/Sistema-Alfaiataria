@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Card, PageTitle } from "../components/ui";
 import TabelaControleProducao from "../components/TabelaControleProducao";
 import PainelProducaoResumo from "../components/PainelProducaoResumo";
+import EvolucaoTrajes from "../components/EvolucaoTrajes";
 import { hojeISO } from "../lib/helpers";
 
 // Réplica da planilha "Controle de Produção": fila de peças em aberto +
@@ -50,6 +51,10 @@ export default function ControleProducao({
           previsoesFila={previsoesFila}
         />
       </Card>
+
+      <div className="mt-6">
+        <EvolucaoTrajes pecas={pecas} mediaDiasPorTipo={mediaDiasPorTipo} previsoesFila={previsoesFila} irParaPeca={irParaPeca} />
+      </div>
     </div>
   );
 }
