@@ -4,7 +4,8 @@ import { BRASS, ETAPAS_ACOMPANHAMENTO_ALFAIATARIA, INK, TEXT_MUTED, inputStyle }
 import { diasAte, diasProducaoReal, fmtData, hojeISO, previsaoEfetivaDe, previsaoEstimada, somarDias, statusParaEtapa } from "../lib/helpers";
 
 const ORDENACOES = [
-  { valor: "previsao", label: "Mais próximo de entregar" },
+  { valor: "previsao", label: "Mais próximo de entregar (previsão)" },
+  { valor: "desenvolvimento", label: "Mais próximo de acabar (desenvolvimento)" },
   { valor: "dias", label: "Mais tempo na fila/produção" },
   { valor: "nome", label: "Nome do cliente (A-Z)" },
 ];
@@ -12,6 +13,9 @@ const ORDENACOES = [
 const RISCO = "#8A6A0C";
 const ATRASADO = "#9C4A1E";
 const PERCENTUAIS = ETAPAS_ACOMPANHAMENTO_ALFAIATARIA.map((e) => e.percentual);
+// Nomes curtos das etapas, mesma ordem/índice de ETAPAS_ACOMPANHAMENTO_ALFAIATARIA
+// — só pra caber na régua em cima do gráfico (o nome completo aparece no title).
+const SIGLAS_ETAPA = ["Aguard.", "Molde", "Corte", "Prova 1", "Ajuste 1", "Prova 2", "Ajuste 2", "Prova F.", "Final"];
 
 // Mesmo critério de atraso/risco já usado na Tabela de Controle de
 // Produção (previsão efetiva vencida = atrasado, vencendo em 7 dias =
@@ -51,6 +55,8 @@ export default function EvolucaoTrajes({ pecas, mediaDiasPorTipo, previsoesFila,
     const maxQtd = Math.max(...contagem, 1);
     return ETAPAS_ACOMPANHAMENTO_ALFAIATARIA.map((e, i) => ({
       label: e.label,
+      sigla: SIGLAS_ETAPA[i],
+      percentual: e.percentual,
       qtd: contagem[i],
       largura: `${Math.max(4, Math.round((contagem[i] / maxQtd) * 100))}%`,
       cor: i === 0 ? TEXT_MUTED : BRASS,
@@ -83,6 +89,11 @@ export default function EvolucaoTrajes({ pecas, mediaDiasPorTipo, previsoesFila,
         if (!b.previsaoEfetiva) return -1;
         return a.previsaoEfetiva.localeCompare(b.previsaoEfetiva);
       });
+    }
+    if (ordenacao === "desenvolvimento") {
+      // Mais avançado (perto de acabar) primeiro, não começado por
+      // último — pelo % de etapa concluída, não pela data prevista.
+      return [...lista].sort((a, b) => b.percentual - a.percentual || b.dias - a.dias);
     }
     if (ordenacao === "nome") {
       return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -127,9 +138,36 @@ export default function EvolucaoTrajes({ pecas, mediaDiasPorTipo, previsoesFila,
             ))}
           </select>
         </div>
-        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 18 }}>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 14 }}>
           Cada traje da fila — a barra preenche conforme avança nas etapas.
         </div>
+
+        <div className="flex items-start" style={{ gap: 14, marginBottom: 6 }}>
+          <div style={{ width: 190, flexShrink: 0 }} />
+          <div style={{ flexGrow: 1, position: "relative", height: 24 }}>
+            {etapas.map((et) => (
+              <div
+                key={et.label}
+                title={et.label}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: `${et.percentual}%`,
+                  transform: et.percentual === 0 ? "translateX(0)" : et.percentual === 100 ? "translateX(-100%)" : "translateX(-50%)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: et.percentual === 0 ? "flex-start" : et.percentual === 100 ? "flex-end" : "center",
+                }}
+              >
+                <span style={{ fontSize: 9.5, fontWeight: 700, color: TEXT_MUTED, whiteSpace: "nowrap" }}>{et.sigla}</span>
+                <span style={{ width: 1, height: 6, background: "#D8D2C2" }} />
+              </div>
+            ))}
+          </div>
+          <div style={{ width: 96, flexShrink: 0 }} />
+          <div style={{ width: 40, flexShrink: 0 }} />
+        </div>
+
         <div className="flex flex-col" style={{ gap: 12 }}>
           {clientes.map((c) => (
             <button
