@@ -19,6 +19,7 @@ import {
 import { Card, Empty } from "./components/ui";
 import TabelaControleProducao from "./components/TabelaControleProducao";
 import PainelProducaoResumo from "./components/PainelProducaoResumo";
+import EvolucaoTrajes from "./components/EvolucaoTrajes";
 import HistoricoProducao from "./pages/HistoricoProducao";
 import FichaImprimivelAlfaiataria from "./pages/FichaImprimivelAlfaiataria";
 
@@ -237,6 +238,9 @@ export default function ShellProducao() {
       {pagina === "painel" && (
         <div className="max-w-3xl mx-auto px-5 py-6">
           <PainelProducaoResumo pecas={pecas} equipe={equipe} mediaDiasProducao={mediaDiasProducao} mediaDiasPorTipo={mediaDiasPorTipo} previsoesFila={previsoesFila} />
+          <div className="mt-6">
+            <EvolucaoTrajes pecas={pecas} mediaDiasPorTipo={mediaDiasPorTipo} previsoesFila={previsoesFila} />
+          </div>
         </div>
       )}
 
