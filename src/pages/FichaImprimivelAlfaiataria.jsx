@@ -168,6 +168,9 @@ export default function FichaImprimivelAlfaiataria({ peca: p, onFechar, onMarcar
           <div>
             <strong>Previsão de entrega:</strong> {fmtData(p.previsaoEntrega)}
           </div>
+          <div>
+            <strong>Pagamento recebido em:</strong> {p.dataRecebimento ? fmtData(p.dataRecebimento) : "—"}
+          </div>
         </div>
 
         {p.medidasNovas && (

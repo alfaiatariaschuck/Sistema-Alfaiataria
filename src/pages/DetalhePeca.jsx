@@ -483,6 +483,9 @@ export default function DetalhePeca({
         <Field label="Data para cobrar (aparece em Contas a Receber)">
           <input type="date" style={inputStyle} value={p.dataCobranca || ""} onChange={(e) => set("dataCobranca", e.target.value)} />
         </Field>
+        <Field label="Data que recebeu o pagamento (aparece na Ficha de Produção)">
+          <input type="date" style={inputStyle} value={p.dataRecebimento || ""} onChange={(e) => set("dataRecebimento", e.target.value)} />
+        </Field>
       </Card>
 
       {(PECA_SECOES[p.tipoPeca] || []).length > 0 && (
