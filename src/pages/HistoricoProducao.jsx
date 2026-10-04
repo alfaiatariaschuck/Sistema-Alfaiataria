@@ -107,6 +107,34 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
       .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
   }, [pecas, mesDetalhe, custoAviamentosPorPecaBase]);
 
+  // Resumo mensal de tecido lançado — visão rápida de quantas peças
+  // (vendidas, excluindo doação/permuta/uso próprio) já têm tecido com
+  // R$/metro cadastrado em cada mês, pra priorizar onde lançar valor
+  // retroativo primeiro. Clicar num mês abre o detalhe peça a peça logo
+  // abaixo (mesmo estado, mesDetalhe).
+  const resumoTecidoPorMes = useMemo(() => {
+    const porMes = new Map();
+    pecas.forEach((p) => {
+      if (TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida)) return;
+      const mes = (p.dataPedido || "").slice(0, 7);
+      if (!mes) return;
+      if (!porMes.has(mes)) {
+        porMes.set(mes, { mes, qtdPecas: 0, valorVenda: 0, custoTecido: 0, pecasSemTecido: 0, itensSemValor: 0 });
+      }
+      const grupo = porMes.get(mes);
+      grupo.qtdPecas += 1;
+      grupo.valorVenda += parseFloat(p.valorVenda) || 0;
+      grupo.custoTecido += custoTecidoDe(p.tecidos);
+      const itensLancados = (p.tecidos || []).filter((t) => t.codigo || t.metragem || t.valorMetro);
+      if (itensLancados.length === 0) {
+        grupo.pecasSemTecido += 1;
+      } else {
+        grupo.itensSemValor += itensLancados.filter((t) => !t.valorMetro || !t.metragem).length;
+      }
+    });
+    return Array.from(porMes.values()).sort((a, b) => b.mes.localeCompare(a.mes));
+  }, [pecas]);
+
   const entregues = useMemo(
     () => pecas.filter((p) => p.status === "Entregue" && p.dataInicioProducao && p.dataEntrega),
     [pecas]
@@ -565,6 +593,60 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
         </Card>
       )}
 
+      {mostrarMargem && resumoTecidoPorMes.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Tecido lançado por mês
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+            Peças vendidas (exclui doação/permuta/uso próprio) por mês do pedido, com o tecido já lançado e quantas ainda
+            faltam valor retroativo. Clique num mês pra abrir o detalhe peça a peça logo abaixo.
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${LINE}`, textAlign: "left", color: TEXT_MUTED }}>
+                  <th style={{ padding: "6px 8px" }}>Mês</th>
+                  <th style={{ padding: "6px 8px" }}>Peças vendidas</th>
+                  <th style={{ padding: "6px 8px" }}>Venda total</th>
+                  <th style={{ padding: "6px 8px" }}>Tecido lançado</th>
+                  <th style={{ padding: "6px 8px" }}>Média tecido/peça</th>
+                  <th style={{ padding: "6px 8px" }}>Peças sem tecido lançado</th>
+                  <th style={{ padding: "6px 8px" }}>Itens sem R$/metro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resumoTecidoPorMes.map((m) => (
+                  <tr
+                    key={m.mes}
+                    onClick={() => setMesDetalhe(m.mes)}
+                    style={{
+                      borderBottom: `1px solid ${LINE}`,
+                      cursor: "pointer",
+                      background: m.mes === mesDetalhe ? "#F3EEDF" : "transparent",
+                    }}
+                  >
+                    <td className="fx-mono" style={{ padding: "6px 8px", fontWeight: 700, color: INK }}>
+                      {m.mes}
+                    </td>
+                    <td style={{ padding: "6px 8px" }}>{m.qtdPecas}</td>
+                    <td className="fx-mono" style={{ padding: "6px 8px" }}>{brl(m.valorVenda)}</td>
+                    <td className="fx-mono" style={{ padding: "6px 8px" }}>{brl(m.custoTecido)}</td>
+                    <td className="fx-mono" style={{ padding: "6px 8px" }}>{brl(m.qtdPecas ? m.custoTecido / m.qtdPecas : 0)}</td>
+                    <td style={{ padding: "6px 8px", fontWeight: m.pecasSemTecido > 0 ? 700 : 400, color: m.pecasSemTecido > 0 ? "#9C4A1E" : INK }}>
+                      {m.pecasSemTecido}
+                    </td>
+                    <td style={{ padding: "6px 8px", fontWeight: m.itensSemValor > 0 ? 700 : 400, color: m.itensSemValor > 0 ? "#9C4A1E" : INK }}>
+                      {m.itensSemValor}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {mostrarMargem && (
         <Card style={{ padding: 20 }} className="mb-6">
           <div className="flex items-center justify-between flex-wrap gap-3 mb-1">
@@ -616,7 +698,7 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
                 Margem média por tipo de peça
               </div>
               <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
-                Venda menos o custo real (tecido + aviamentos pela composição do tipo + valor devido ao Ícaro). Margem líquida aproximada.
+                Venda menos o custo real (tecido + aviamentos pela composição do tipo + mão de obra real da equipe, rateada pela hora). Margem líquida aproximada.
                 {margemResumo && ` Margem total (entregues): ${brl(margemResumo.total)}.`}
               </div>
               <BarraSimples dados={margemPorTipo} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${brl(d.valor)} de margem em média (${d.qtd} peça(s))`} />
