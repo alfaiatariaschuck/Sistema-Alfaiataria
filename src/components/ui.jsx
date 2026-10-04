@@ -165,11 +165,11 @@ export function BarraDuasSeries({ dados, corA, corB, legendaA, legendaB, tooltip
 
 export function PageTitle({ eyebrow, title }) {
   return (
-    <div className="mb-6">
-      <div className="uppercase" style={{ color: BRASS, fontSize: 11, letterSpacing: 1.5, fontWeight: 600 }}>
+    <div className="mb-8">
+      <div className="uppercase" style={{ color: BRASS, fontSize: 11, letterSpacing: 2, fontWeight: 600, marginBottom: 10 }}>
         {eyebrow}
       </div>
-      <h1 className="fx-serif" style={{ fontSize: 28, fontWeight: 600, color: INK }}>
+      <h1 className="fx-serif" style={{ fontSize: 38, fontWeight: 500, color: INK, lineHeight: 1.1, letterSpacing: "-0.01em" }}>
         {title}
       </h1>
     </div>
@@ -178,7 +178,7 @@ export function PageTitle({ eyebrow, title }) {
 
 export function Card({ children, style, ...rest }) {
   return (
-    <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, ...style }} {...rest}>
+    <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 3, ...style }} {...rest}>
       {children}
     </div>
   );
@@ -195,7 +195,7 @@ export function Pill({ text, style }) {
         fontSize: 11,
         fontWeight: 500,
         padding: "3px 10px",
-        borderRadius: 999,
+        borderRadius: 2,
         whiteSpace: "nowrap",
       }}
     >
@@ -218,18 +218,20 @@ export function Field({ label, children }) {
 export function StatCard({ label, value, icon: Icon, accent, suffix }) {
   const cor = accent || BRASS;
   return (
-    <Card style={{ padding: 16 }}>
-      <div className="flex items-center justify-between mb-2">
-        <span style={{ fontSize: 12, color: TEXT_MUTED, fontWeight: 600 }}>{label}</span>
-        <Icon size={15} color={cor} />
+    <div style={{ borderTop: `1px solid ${LINE}`, padding: "14px 0 2px" }}>
+      <div className="flex items-center gap-1.5 mb-3">
+        <Icon size={12} color={cor} style={{ flexShrink: 0 }} />
+        <span className="uppercase" style={{ fontSize: 10.5, color: TEXT_MUTED, fontWeight: 600, letterSpacing: 0.6 }}>
+          {label}
+        </span>
       </div>
       <div className="flex items-baseline gap-2">
-        <div className="fx-serif" style={{ fontSize: 22, fontWeight: 600, color: accent || INK }}>
+        <div className="fx-serif" style={{ fontSize: 25, fontWeight: 500, color: accent || INK }}>
           {value}
         </div>
         {suffix && <span style={{ fontSize: 20, lineHeight: 1 }}>{suffix}</span>}
       </div>
-    </Card>
+    </div>
   );
 }
 

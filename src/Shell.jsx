@@ -757,11 +757,11 @@ export default function Shell() {
             </div>
           </div>
           <nav className="flex-1 px-3 overflow-y-auto">
-            {GRUPOS_NAV.map((grupo) => {
+            {GRUPOS_NAV.map((grupo, grupoIdx) => {
               const itensGrupo = NAV.filter((n) => n.grupo === grupo);
               const aberto = gruposAbertos.has(grupo);
               return (
-                <div key={grupo} className="mb-1">
+                <div key={grupo} className="mb-2">
                   <button
                     onClick={() =>
                       setGruposAbertos((prev) => {
@@ -773,14 +773,13 @@ export default function Shell() {
                     }
                     className="w-full flex items-center justify-between px-3 py-2"
                   >
-                    <span style={{ color: "#6B7A8C", fontSize: 11, fontWeight: 600, letterSpacing: 1 }} className="uppercase">
-                      {grupo}
+                    <span style={{ color: "#6E7883", fontSize: 10.5, fontWeight: 600, letterSpacing: 1.6 }} className="uppercase">
+                      {String(grupoIdx + 1).padStart(2, "0")} / {grupo}
                     </span>
-                    {aberto ? <ChevronDown size={13} color="#6B7A8C" /> : <ChevronRight size={13} color="#6B7A8C" />}
+                    {aberto ? <ChevronDown size={13} color="#6E7883" /> : <ChevronRight size={13} color="#6E7883" />}
                   </button>
                   {aberto &&
                     itensGrupo.map((item) => {
-                      const Icon = item.icon;
                       const active = tab === item.id;
                       return (
                         <button
@@ -790,17 +789,15 @@ export default function Shell() {
                             setSelecionado(null);
                             setSelecionadaPeca(null);
                           }}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded"
+                          className="w-full text-left px-3 py-2"
                           style={{
-                            background: active ? INK_SOFT : "transparent",
-                            borderLeft: active ? `3px solid ${BRASS}` : "3px solid transparent",
-                            color: active ? "#FFFFFF" : "#A9B4C0",
-                            fontSize: 14,
-                            fontWeight: active ? 600 : 500,
+                            background: active ? "rgba(240,238,234,0.05)" : "transparent",
+                            color: active ? "#F0EEEA" : "#9199A3",
+                            fontSize: 13.5,
+                            fontWeight: active ? 600 : 400,
                             transition: "all .15s",
                           }}
                         >
-                          <Icon size={16} />
                           {item.label}
                         </button>
                       );
