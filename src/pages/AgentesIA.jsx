@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Package, ShieldAlert, Sparkles, Sunrise, Wallet } from "lucide-react";
 import { Card, Field, PageTitle } from "../components/ui";
-import { BRASS, TEXT_MUTED, inputStyle } from "../lib/constants";
+import { BRASS, TEXT_MUTED, TIPOS_SAIDA_SEM_VENDA, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasAte, enriquecerCliente, fmtData, hojeISO, metragemParaNumero, pedidoFechado, somarDias, statusPedidoSemVenda } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
@@ -407,7 +407,9 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       ...(pedidos || [])
         .filter((p) => p.status === "Entregue" && p.status !== "Doação" && !p.origemPlanoId && !(parseFloat(p.aReceber?.valor) > 0))
         .map((p) => ({ ...p, _tipo: "pedido" })),
-      ...(pecas || []).filter((p) => p.status === "Entregue" && !(parseFloat(p.valorVenda) > 0)).map((p) => ({ ...p, _tipo: "peca" })),
+      ...(pecas || [])
+        .filter((p) => p.status === "Entregue" && !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && !(parseFloat(p.valorVenda) > 0))
+        .map((p) => ({ ...p, _tipo: "peca" })),
     ];
 
     const estoqueNegativoLista = (estoqueTecidos || []).filter((e) => e.saldoMetros < 0);
