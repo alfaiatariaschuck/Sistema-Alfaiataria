@@ -15,6 +15,7 @@ import {
   inputStyle,
 } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, mediaEsperaCliente } from "../lib/helpers";
+import { custoEquipeMensal } from "../lib/custoEquipe";
 
 // Dias de produção pura (máquina/trabalho manual), sem prova nem
 // espera — vem das horas de desenvolvimento da planilha de parâmetros
@@ -74,7 +75,7 @@ function BarraVendasEntregas({ dados }) {
 // Histórico de produção da alfaiataria: médias reais (início -> entrega,
 // já sem pausas) por tipo de peça e por responsável, com gráficos —
 // pensado pra apresentação/reunião de equipe, não pra edição de nada.
-export default function HistoricoProducao({ pecas, mostrarMargem = false, mostrarComparativos = true, custoAviamentosPorPecaBase = {} }) {
+export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false, mostrarComparativos = true, custoAviamentosPorPecaBase = {} }) {
   const [mesDetalhe, setMesDetalhe] = useState("2026-09");
 
   // Detalhe peça a peça de um mês — pedido lançado (dataPedido) naquele
@@ -282,27 +283,47 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, mostra
     [entregues]
   );
 
+  // Custo real da equipe (Ícaro/Zonzo), vindo do cadastro em Equipe —
+  // mesmo número usado em Custos do Ateliê. Não dá pra usar o campo
+  // solto "valor devido ao Ícaro" de cada peça como mão de obra: ele é
+  // lançado à mão, inconsistente, e a equipe é paga fixo por mês, não
+  // por peça.
+  const custoEquipeMensalReal = useMemo(() => custoEquipeMensal(equipe), [equipe]);
+
   // Margem por peça: venda menos o custo real (tecido + aviamentos pela
-  // composição do tipo de peça + valor devido ao Ícaro). Só entra quem
-  // tem valor de venda lançado, E só quem foi venda de verdade — doação/
-  // permuta/uso próprio não são venda (mesmo critério já usado no
-  // faturamento), senão um valor "de brincadeira" lançado numa peça
+  // composição do tipo de peça + mão de obra). Mão de obra é o custo
+  // fixo mensal real da equipe (Equipe), rateado proporcional à hora de
+  // referência de cada tipo de peça dentro do mês em que foi pedida —
+  // uma Calça (5h) não pode pesar igual a um Traje (26,5h). Só entra
+  // quem tem valor de venda lançado, E só quem foi venda de verdade —
+  // doação/permuta/uso próprio não são venda (mesmo critério já usado
+  // no faturamento), senão um valor "de brincadeira" lançado numa peça
   // dessas distorce a margem média do tipo. Só calculado quando
-  // mostrarMargem=true (tela do Ícaro não recebe valor_venda/valor_total
-  // do banco, então nem teria como calcular isso direito).
+  // mostrarMargem=true (tela do Ícaro não recebe valor_venda do banco,
+  // então nem teria como calcular isso direito).
   const comMargem = useMemo(() => {
     if (!mostrarMargem) return [];
-    return entregues
-      .filter((p) => p.valorVenda !== "" && p.valorVenda != null && !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida))
-      .map((p) => {
-        const venda = parseFloat(p.valorVenda) || 0;
-        const custoMaterial = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase);
-        const custoMaoDeObra = parseFloat(p.valorTotal) || 0;
-        const custo = custoMaterial + custoMaoDeObra;
-        const dias = diasProducaoReal(p);
-        return { ...p, custoMaterial, custoMaoDeObra, margem: venda - custo, margemPorDia: dias ? (venda - custo) / dias : null };
-      });
-  }, [entregues, mostrarMargem, custoAviamentosPorPecaBase]);
+    const candidatas = entregues.filter((p) => p.valorVenda !== "" && p.valorVenda != null && !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida));
+
+    const horasPorMes = new Map();
+    candidatas.forEach((p) => {
+      const mes = (p.dataPedido || "").slice(0, 7);
+      const horas = HORAS_REFERENCIA_TIPO_PECA[p.tipoPeca] || 0;
+      horasPorMes.set(mes, (horasPorMes.get(mes) || 0) + horas);
+    });
+
+    return candidatas.map((p) => {
+      const venda = parseFloat(p.valorVenda) || 0;
+      const custoMaterial = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase);
+      const mes = (p.dataPedido || "").slice(0, 7);
+      const horasPeca = HORAS_REFERENCIA_TIPO_PECA[p.tipoPeca] || 0;
+      const horasMes = horasPorMes.get(mes) || 0;
+      const custoMaoDeObra = horasMes > 0 ? (custoEquipeMensalReal * horasPeca) / horasMes : 0;
+      const custo = custoMaterial + custoMaoDeObra;
+      const dias = diasProducaoReal(p);
+      return { ...p, custoMaterial, custoMaoDeObra, margem: venda - custo, margemPorDia: dias ? (venda - custo) / dias : null };
+    });
+  }, [entregues, mostrarMargem, custoAviamentosPorPecaBase, custoEquipeMensalReal]);
 
   const margemPorTipo = useMemo(() => {
     const mapa = new Map();
@@ -606,7 +627,7 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, mostra
                 Preço médio e custo por tipo de peça
               </div>
               <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-                Preço de venda e custo — material (tecido + aviamentos) separado de mão de obra (valor devido ao Ícaro) — base pra decidir se compensa crescer a produção de um tipo específico, ou qual o teto de mão de obra que mantém a margem.
+                Preço de venda e custo — material (tecido + aviamentos) separado de mão de obra (custo real da equipe cadastrada em Equipe, rateado pela hora de referência de cada tipo) — base pra decidir se compensa crescer a produção de um tipo específico, ou qual o teto de mão de obra que mantém a margem.
               </div>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { AlertTriangle, CalendarClock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { BarraDuasSeries, Card, Empty, PageTitle, StatCard } from "../components/ui";
 import { CalculadoraMarkup } from "../components/CalculadoraMarkup";
-import { BRASS, COMPOSICAO_AVIAMENTOS, COR_REAL, COR_REFERENCIA, LINE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
+import { BRASS, COMPOSICAO_AVIAMENTOS, COR_REAL, COR_REFERENCIA, INK, LINE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, hojeISO, metragemParaNumero } from "../lib/helpers";
 import { custoMensalDe } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
@@ -172,6 +172,37 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
   }, [pecas, anoAtual, mesAtual, custoTotal]);
 
   const mesesQueSePagaram = historicoMensal.filter((m) => m.b >= m.a).length;
+
+  // "Planilha" de resultado mensal — igual à comparação de vendedores da
+  // camisaria (Gestão do Vendedor), só que pra alfaiataria: quantidade
+  // vendida, receita e os 3 custos próprios (material, mão de obra,
+  // ateliê) mês a mês, com a margem já calculada. Mão de obra e ateliê
+  // usam o patamar de HOJE (equipe cadastrada, aluguel/luz atuais) pra
+  // todos os meses — não temos histórico de folha/aluguel mês a mês
+  // salvo, então isso é uma aproximação, igual ao gráfico de baixo.
+  const resultadoMensalDetalhado = useMemo(() => {
+    const meses = [];
+    for (let i = MESES_HISTORICO - 1; i >= 0; i--) {
+      const d = new Date(anoAtual, mesAtual - i, 1);
+      const chaveMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(".", "");
+      meses.push({ chaveMes, label });
+    }
+    return meses.map(({ chaveMes, label }) => {
+      const doMes = (pecas || []).filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && p.dataPedido && p.dataPedido.slice(0, 7) === chaveMes);
+      const qtd = doMes.length;
+      const receita = doMes.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+      const material = doMes.reduce(
+        (s, p) => s + custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase),
+        0
+      );
+      const maoDeObra = custoEquipeTotal;
+      const ateliePorMes = custoEstrutura;
+      const custoMes = material + maoDeObra + ateliePorMes;
+      const margem = receita - custoMes;
+      return { label, qtd, receita, material, maoDeObra, ateliePorMes, custoMes, margem, margemPct: receita > 0 ? (margem / receita) * 100 : null };
+    });
+  }, [pecas, anoAtual, mesAtual, custoAviamentosPorPecaBase, custoEquipeTotal, custoEstrutura]);
 
   return (
     <div>
@@ -366,6 +397,48 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
         custoVariavelPadrao={pecasDoMes.length > 0 ? (custoProducaoTecido + custoAviamentos) / pecasDoMes.length : 0}
         unidadeLabel="peça"
       />
+
+      <Card style={{ padding: 20 }} className="mb-6">
+        <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+          Resultado mensal — últimos {MESES_HISTORICO} meses
+        </div>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+          Quantidade vendida, receita e os 3 custos próprios do ateliê (material, mão de obra, aluguel+luz) mês a mês,
+          com a margem já calculada — mesma lógica da Gestão do Vendedor na camisaria, aplicada aqui. Mão de obra e
+          ateliê usam o patamar de <strong>hoje</strong> (equipe cadastrada, aluguel/luz atuais) em todos os meses — não
+          temos histórico salvo de folha/aluguel mês a mês, então é uma aproximação, não o custo exato daquele mês.
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${LINE}`, color: TEXT_MUTED, textAlign: "left" }}>
+                <th style={{ padding: "6px 8px", fontWeight: 600 }}>Mês</th>
+                <th style={{ padding: "6px 8px", fontWeight: 600 }}>Qtd vendida</th>
+                <th style={{ padding: "6px 8px", fontWeight: 600 }}>Receita</th>
+                <th style={{ padding: "6px 8px", fontWeight: 600 }}>Material</th>
+                <th style={{ padding: "6px 8px", fontWeight: 600 }}>Mão de obra</th>
+                <th style={{ padding: "6px 8px", fontWeight: 600 }}>Ateliê</th>
+                <th style={{ padding: "6px 8px", fontWeight: 600 }}>Margem</th>
+                <th style={{ padding: "6px 8px", fontWeight: 600 }}>Margem %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {resultadoMensalDetalhado.map((m) => (
+                <tr key={m.label} style={{ borderBottom: `1px solid ${LINE}` }}>
+                  <td style={{ padding: "8px", fontWeight: 600, color: INK }}>{m.label}</td>
+                  <td className="fx-mono" style={{ padding: "8px" }}>{m.qtd}</td>
+                  <td className="fx-mono" style={{ padding: "8px" }}>{brl(m.receita)}</td>
+                  <td className="fx-mono" style={{ padding: "8px" }}>{brl(m.material)}</td>
+                  <td className="fx-mono" style={{ padding: "8px" }}>{brl(m.maoDeObra)}</td>
+                  <td className="fx-mono" style={{ padding: "8px" }}>{brl(m.ateliePorMes)}</td>
+                  <td className="fx-mono" style={{ padding: "8px", fontWeight: 600, color: m.margem >= 0 ? "#2C6E31" : "#9C4A1E" }}>{brl(m.margem)}</td>
+                  <td className="fx-mono" style={{ padding: "8px" }}>{m.margemPct !== null ? `${m.margemPct.toFixed(0)}%` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       <Card style={{ padding: 20 }}>
         <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
