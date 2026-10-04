@@ -15,7 +15,7 @@ import {
   inputStyle,
 } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, mediaEsperaCliente } from "../lib/helpers";
-import { custoEquipeMensal } from "../lib/custoEquipe";
+import { custoEquipeMensal, custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 
 // Dias de produção pura (máquina/trabalho manual), sem prova nem
 // espera — vem das horas de desenvolvimento da planilha de parâmetros
@@ -78,6 +78,12 @@ function BarraVendasEntregas({ dados }) {
 export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false, mostrarComparativos = true, custoAviamentosPorPecaBase = {} }) {
   const [mesDetalhe, setMesDetalhe] = useState("2026-09");
 
+  // Custo de mão de obra por hora (equipe real, rateada) — mesmo número
+  // canônico usado no resto do sistema (Painel, Consolidado, Agente de
+  // Precificação, estimador ao vivo), pra mostrar o custo de ateliê por
+  // peça aqui também, no lugar do antigo campo solto "valor Ícaro".
+  const custoHoraGeral = useMemo(() => custoPorHoraAlfaiataria(pecas, equipe), [pecas, equipe]);
+
   // Detalhe peça a peça de um mês — pedido lançado (dataPedido) naquele
   // mês, com exatamente o que está cadastrado (valor de venda, cada item
   // de tecido com seu R$/metro, e o aviamento pela composição do tipo).
@@ -90,6 +96,8 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
         const itensTecido = (p.tecidos || []).filter((t) => t.codigo || t.metragem || t.valorMetro);
         const custoTecido = custoTecidoDe(p.tecidos);
         const custoAviamento = custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase);
+        const custoMaoDeObra = custoMaoDeObraPeca(p.tipoPeca, custoHoraGeral);
+        const custoAtelie = custoTecido + custoAviamento + custoMaoDeObra;
         return {
           id: p.id,
           cliente: p.cliente || "Sem nome",
@@ -101,10 +109,12 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
           custoTecido,
           composicaoAviamento: COMPOSICAO_AVIAMENTOS[p.tipoPeca] || [],
           custoAviamento,
+          custoMaoDeObra,
+          custoAtelie,
         };
       })
       .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
-  }, [pecas, mesDetalhe, custoAviamentosPorPecaBase]);
+  }, [pecas, mesDetalhe, custoAviamentosPorPecaBase, custoHoraGeral]);
 
   // Resumo mensal de tecido lançado — visão rápida de quantas peças
   // (vendidas, excluindo doação/permuta/uso próprio) já têm tecido com
@@ -656,8 +666,9 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
             Cada peça pedida nesse mês, exatamente como está lançada — valor de venda, cada item de tecido com seu R$/metro (ou
-            "sem valor cadastrado" se faltar), e o aviamento pela composição do tipo. Serve pra auditar de onde vem um material
-            médio baixo demais.
+            "sem valor cadastrado" se faltar), o aviamento pela composição do tipo, e o custo de ateliê (tecido + aviamento +
+            mão de obra real da equipe, rateada pela hora de referência do tipo). Serve pra auditar de onde vem um material
+            médio baixo demais, e quanto custou de verdade cada peça pro ateliê.
           </div>
           {detalheMes.length === 0 && <Empty texto="Nenhuma peça pedida nesse mês." />}
           {detalheMes.map((p) => (
@@ -681,8 +692,12 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
                 ))}
                 {" "}— total <strong style={{ color: INK }}>{brl(p.custoTecido)}</strong>
               </div>
-              <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+              <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>
                 Aviamento ({p.composicaoAviamento.join(" + ") || "sem composição"}): <strong style={{ color: INK }}>{brl(p.custoAviamento)}</strong>
+                {" "}· Mão de obra (equipe, rateada): <strong style={{ color: INK }}>{brl(p.custoMaoDeObra)}</strong>
+              </div>
+              <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                Custo de ateliê (tecido + aviamento + mão de obra): <strong style={{ color: INK }}>{brl(p.custoAtelie)}</strong>
               </div>
             </div>
           ))}
