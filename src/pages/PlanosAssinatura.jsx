@@ -10,6 +10,7 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
   const [busca, setBusca] = useState("");
   const [emitindo, setEmitindo] = useState(null);
   const [expandido, setExpandido] = useState(null);
+  const [mostrarInativos, setMostrarInativos] = useState(false);
 
   async function emitir(plano) {
     if (!confirm(`Emitir o pedido deste mês pro plano de ${plano.cliente}? Isso cria um pedido de verdade na aba Pedidos.`)) return;
@@ -30,8 +31,9 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
     }
   }
 
-  const filtrados = planos.filter((pl) => pl.cliente.toLowerCase().includes(busca.toLowerCase()));
+  const filtrados = planos.filter((pl) => (mostrarInativos || pl.ativo) && pl.cliente.toLowerCase().includes(busca.toLowerCase()));
   const ativos = planos.filter((pl) => pl.ativo);
+  const inativos = planos.filter((pl) => !pl.ativo);
 
   return (
     <div>
@@ -52,14 +54,22 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
         <StatCard label="Planos ativos" value={ativos.length} icon={PackageCheck} />
       </div>
 
-      <div className="flex items-center gap-2 mb-4" style={{ ...inputStyle, maxWidth: 320, padding: "6px 10px" }}>
-        <Search size={14} color={TEXT_MUTED} />
-        <input
-          placeholder="Buscar cliente…"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
-        />
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="flex items-center gap-2" style={{ ...inputStyle, maxWidth: 320, padding: "6px 10px" }}>
+          <Search size={14} color={TEXT_MUTED} />
+          <input
+            placeholder="Buscar cliente…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
+          />
+        </div>
+        {inativos.length > 0 && (
+          <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: TEXT_MUTED, cursor: "pointer" }}>
+            <input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />
+            Mostrar concluídos/inativos ({inativos.length})
+          </label>
+        )}
       </div>
 
       <Card>
@@ -77,6 +87,9 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
                   <div className="flex items-center gap-1.5">
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{pl.cliente}</span>
                     {!pl.ativo && <Pill text="inativo" />}
+                    {pl.ativo && parseFloat(pl.qtEntregue) >= parseFloat(pl.quantidade) && (
+                      <Pill text="concluído — marcar inativo pra sair da lista" style={{ bg: "#DCEBDD", fg: "#2C6E31" }} />
+                    )}
                   </div>
                   <div style={{ fontSize: 12, color: TEXT_MUTED }}>
                     {brl(parseFloat(pl.valorReceber) || 0)} vendido{pl.dataVenda ? ` em ${fmtData(pl.dataVenda)}` : ""} ·{" "}
