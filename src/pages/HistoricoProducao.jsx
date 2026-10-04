@@ -10,6 +10,7 @@ import {
   INK,
   LINE,
   TEXT_MUTED,
+  TIPOS_SAIDA_SEM_VENDA,
 } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, mediaEsperaCliente } from "../lib/helpers";
 
@@ -250,13 +251,16 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, mostra
 
   // Margem por peça: venda menos o custo real (tecido + aviamentos pela
   // composição do tipo de peça + valor devido ao Ícaro). Só entra quem
-  // tem valor de venda lançado. Só calculado quando mostrarMargem=true
-  // (tela do Ícaro não recebe valor_venda/valor_total do banco, então
-  // nem teria como calcular isso direito).
+  // tem valor de venda lançado, E só quem foi venda de verdade — doação/
+  // permuta/uso próprio não são venda (mesmo critério já usado no
+  // faturamento), senão um valor "de brincadeira" lançado numa peça
+  // dessas distorce a margem média do tipo. Só calculado quando
+  // mostrarMargem=true (tela do Ícaro não recebe valor_venda/valor_total
+  // do banco, então nem teria como calcular isso direito).
   const comMargem = useMemo(() => {
     if (!mostrarMargem) return [];
     return entregues
-      .filter((p) => p.valorVenda !== "" && p.valorVenda != null)
+      .filter((p) => p.valorVenda !== "" && p.valorVenda != null && !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida))
       .map((p) => {
         const venda = parseFloat(p.valorVenda) || 0;
         const custoMaterial = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase);
