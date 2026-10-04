@@ -259,9 +259,11 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, mostra
       .filter((p) => p.valorVenda !== "" && p.valorVenda != null)
       .map((p) => {
         const venda = parseFloat(p.valorVenda) || 0;
-        const custo = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + (parseFloat(p.valorTotal) || 0);
+        const custoMaterial = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase);
+        const custoMaoDeObra = parseFloat(p.valorTotal) || 0;
+        const custo = custoMaterial + custoMaoDeObra;
         const dias = diasProducaoReal(p);
-        return { ...p, margem: venda - custo, margemPorDia: dias ? (venda - custo) / dias : null };
+        return { ...p, custoMaterial, custoMaoDeObra, margem: venda - custo, margemPorDia: dias ? (venda - custo) / dias : null };
       });
   }, [entregues, mostrarMargem, custoAviamentosPorPecaBase]);
 
@@ -289,25 +291,40 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, mostra
   }, [comMargem]);
 
   // Preço médio de venda e custo médio (tecido + aviamentos + mão de obra
-  // do Ícaro) por tipo de peça — separado, não só a margem líquida, pra
-  // dar base pra decisão de crescimento (quanto custa fazer mais um de
-  // cada tipo, quanto ele rende).
+  // do Ícaro) por tipo de peça — separado material de mão de obra (não só
+  // a margem líquida), pra dar base pra decisão de crescimento (quanto
+  // custa fazer mais um de cada tipo, quanto é material x mão de obra,
+  // quanto ele rende) e pra achar o teto de mão de obra que mantém a
+  // margem desejada.
   const precoCustoPorTipo = useMemo(() => {
     const mapa = new Map();
     comMargem.forEach((p) => {
       const venda = parseFloat(p.valorVenda) || 0;
-      const custo = venda - p.margem;
-      if (!mapa.has(p.tipoPeca)) mapa.set(p.tipoPeca, { vendas: [], custos: [] });
-      mapa.get(p.tipoPeca).vendas.push(venda);
-      mapa.get(p.tipoPeca).custos.push(custo);
+      if (!mapa.has(p.tipoPeca)) mapa.set(p.tipoPeca, { vendas: [], materiais: [], maoDeObra: [] });
+      const grupo = mapa.get(p.tipoPeca);
+      grupo.vendas.push(venda);
+      grupo.materiais.push(p.custoMaterial);
+      grupo.maoDeObra.push(p.custoMaoDeObra);
     });
     return [...mapa.entries()]
-      .map(([tipo, { vendas, custos }]) => {
+      .map(([tipo, { vendas, materiais, maoDeObra }]) => {
         const qtd = vendas.length;
-        const precoMedio = vendas.reduce((s, v) => s + v, 0) / qtd;
-        const custoMedio = custos.reduce((s, v) => s + v, 0) / qtd;
+        const media = (arr) => arr.reduce((s, v) => s + v, 0) / qtd;
+        const precoMedio = media(vendas);
+        const materialMedio = media(materiais);
+        const maoDeObraMedia = media(maoDeObra);
+        const custoMedio = materialMedio + maoDeObraMedia;
         const margemMedia = precoMedio - custoMedio;
-        return { tipo, qtd, precoMedio, custoMedio, margemMedia, margemPercentual: precoMedio > 0 ? (margemMedia / precoMedio) * 100 : 0 };
+        return {
+          tipo,
+          qtd,
+          precoMedio,
+          materialMedio,
+          maoDeObraMedia,
+          custoMedio,
+          margemMedia,
+          margemPercentual: precoMedio > 0 ? (margemMedia / precoMedio) * 100 : 0,
+        };
       })
       .sort((a, b) => b.qtd - a.qtd);
   }, [comMargem]);
@@ -509,7 +526,7 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, mostra
                 Preço médio e custo por tipo de peça
               </div>
               <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-                Preço de venda e custo (tecido + aviamentos + valor devido ao Ícaro) separados — base pra decidir se compensa crescer a produção de um tipo específico.
+                Preço de venda e custo — material (tecido + aviamentos) separado de mão de obra (valor devido ao Ícaro) — base pra decidir se compensa crescer a produção de um tipo específico, ou qual o teto de mão de obra que mantém a margem.
               </div>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -518,7 +535,8 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, mostra
                       <th style={{ padding: "6px 8px", fontWeight: 600 }}>Tipo</th>
                       <th style={{ padding: "6px 8px", fontWeight: 600 }}>Qtd</th>
                       <th style={{ padding: "6px 8px", fontWeight: 600 }}>Preço médio de venda</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 600 }}>Custo médio</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 600 }}>Material médio</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 600 }}>Mão de obra média</th>
                       <th style={{ padding: "6px 8px", fontWeight: 600 }}>Margem média</th>
                       <th style={{ padding: "6px 8px", fontWeight: 600 }}>Margem %</th>
                     </tr>
@@ -529,7 +547,8 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, mostra
                         <td style={{ padding: "8px", fontWeight: 600, color: INK }}>{r.tipo}</td>
                         <td className="fx-mono" style={{ padding: "8px" }}>{r.qtd}</td>
                         <td className="fx-mono" style={{ padding: "8px" }}>{brl(r.precoMedio)}</td>
-                        <td className="fx-mono" style={{ padding: "8px" }}>{brl(r.custoMedio)}</td>
+                        <td className="fx-mono" style={{ padding: "8px" }}>{brl(r.materialMedio)}</td>
+                        <td className="fx-mono" style={{ padding: "8px" }}>{brl(r.maoDeObraMedia)}</td>
                         <td className="fx-mono" style={{ padding: "8px", fontWeight: 600 }}>{brl(r.margemMedia)}</td>
                         <td className="fx-mono" style={{ padding: "8px" }}>{r.margemPercentual.toFixed(0)}%</td>
                       </tr>
