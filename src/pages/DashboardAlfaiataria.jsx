@@ -4,7 +4,8 @@ import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
 import DoacoesPorAno from "../components/DoacoesPorAno";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
-import { brl, diasAte, fmtData, hojeISO, tempoMedioProducaoGenerico } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, diasAte, fmtData, hojeISO, tempoMedioProducaoGenerico } from "../lib/helpers";
+import { custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_TELEFONE_ICARO = "telefone_icaro";
@@ -16,7 +17,7 @@ const CHAVE_META = "meta_vendas_alfaiataria";
 const STATUS_PAINEL = STATUS_ALFAIATARIA.filter((s) => s !== "Pronto");
 const VERMELHO = "#9C4A1E";
 
-export default function DashboardAlfaiataria({ pecas, irPara }) {
+export default function DashboardAlfaiataria({ pecas, irPara, equipe, custoAviamentosPorPecaBase = {} }) {
   const [telIcaro, setTelIcaro] = useState("");
   const [meta, setMeta] = useState(null);
 
@@ -39,7 +40,14 @@ export default function DashboardAlfaiataria({ pecas, irPara }) {
   const totalGeral = pecas.reduce((s, p) => s + (parseFloat(p.valorTotal) || 0), 0);
   const pagoGeral = pecas.reduce((s, p) => s + (parseFloat(p.pago) || 0), 0);
   const totalVenda = pecas.filter(naoDoacao).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
-  const margem = totalVenda - pecas.filter(naoDoacao).reduce((s, p) => s + (parseFloat(p.valorTotal) || 0), 0);
+  // Margem de verdade: material (tecido+aviamento) + mão de obra real da
+  // equipe (Equipe, não o campo solto "valor devido ao Ícaro" — a
+  // equipe é paga fixo por mês, pedido explícito do Tales).
+  const custoPorHora = custoPorHoraAlfaiataria(pecas, equipe);
+  const custoReal = pecas
+    .filter(naoDoacao)
+    .reduce((s, p) => s + custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + custoMaoDeObraPeca(p.tipoPeca, custoPorHora), 0);
+  const margem = totalVenda - custoReal;
   const tempoMedio = tempoMedioProducaoGenerico(pecas);
   const mesAtual = hojeISO().slice(0, 7);
   const vendidoNoMes = pecas

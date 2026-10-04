@@ -29,6 +29,7 @@ import {
 import { brl, mediaDiasProducaoPorTipo, previsaoParaNovaPeca, statusDividido, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
+import { custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 
 export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe, custoAviamentosPorPecaBase = {}, estoqueTecidos, modelosAlfaiataria = [], onCriarModeloAlfaiataria }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
@@ -38,6 +39,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
   const [previsaoAuto, setPrevisaoAuto] = useState(null);
   const [temPecaAnterior, setTemPecaAnterior] = useState(false);
   const abertas = useMemo(() => (pecas || []).filter((p) => p.status !== "Entregue"), [pecas]);
+  const custoHora = useMemo(() => custoPorHoraAlfaiataria(pecas, equipe), [pecas, equipe]);
   const indicadorJaCadastrado = (nomesClientes || []).some((n) => n.trim().toLowerCase() === novaPeca.indicadoPor.trim().toLowerCase());
 
   // Sugere a previsão de entrega já considerando a fila de quem está
@@ -462,7 +464,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
             tecidos={novaPeca.tecidos}
             tipoPeca={novaPeca.tipoPeca}
             custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
-            valorTotal={novaPeca.valorTotal}
+            custoHora={custoHora}
             valorVenda={novaPeca.valorVenda}
           />
         </Card>

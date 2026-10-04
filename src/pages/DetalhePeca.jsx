@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { CheckCircle2, Clock, Printer, Save, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
@@ -9,6 +9,7 @@ import LinkAcompanhamento from "../components/LinkAcompanhamento";
 import { ControleVozMedidas } from "../components/ControleVozMedidas";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
+import { custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import HistoricoCliente from "../components/HistoricoCliente";
@@ -73,7 +74,10 @@ export default function DetalhePeca({
   clientesBase = [],
   nomesClientes,
   onIndicadorVinculado,
+  pecasTodas,
+  equipe,
 }) {
+  const custoHora = useMemo(() => custoPorHoraAlfaiataria(pecasTodas, equipe), [pecasTodas, equipe]);
   const [mostrarFicha, setMostrarFicha] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [notaPausa, setNotaPausa] = useState("");
@@ -654,7 +658,7 @@ export default function DetalhePeca({
           tecidos={p.tecidos}
           tipoPeca={p.tipoPeca}
           custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
-          valorTotal={p.valorTotal}
+          custoHora={custoHora}
           valorVenda={p.valorVenda}
         />
       </Card>

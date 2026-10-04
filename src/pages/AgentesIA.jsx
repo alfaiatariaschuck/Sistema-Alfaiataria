@@ -4,6 +4,7 @@ import { Card, Field, PageTitle } from "../components/ui";
 import { BRASS, TEXT_MUTED, TIPOS_SAIDA_SEM_VENDA, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasAte, enriquecerCliente, fmtData, hojeISO, metragemParaNumero, pedidoFechado, somarDias, statusPedidoSemVenda } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
+import { custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
 
@@ -106,7 +107,7 @@ function mesesEntre(mesInicio, mesFim) {
   return chaves;
 }
 
-export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPorPecaBase, estoqueTecidos, clientes, irParaPedido, irParaPeca }) {
+export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPorPecaBase, estoqueTecidos, clientes, equipe, irParaPedido, irParaPeca }) {
   const [metaProLabore, setMetaProLabore] = useState("40000");
   const [metaLucro, setMetaLucro] = useState("10000");
   const [caixaAtual, setCaixaAtual] = useState("");
@@ -164,12 +165,19 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     return { precoMedio: Math.round(precoMedio), custoMedio: Math.round(custoMedio), qtdHistorico: comVenda.length, qtdMesAtual };
   }, [pedidos, mesAtual, custoAviamentosPorPecaBase]);
 
+  const custoPorHoraAlfaiataria_ = useMemo(() => custoPorHoraAlfaiataria(pecas, equipe), [pecas, equipe]);
+
   const alfaiatariaPorTipo = useMemo(() => {
-    const entregues = (pecas || []).filter((p) => p.status === "Entregue" && p.valorVenda !== "" && p.valorVenda != null);
+    const entregues = (pecas || []).filter(
+      (p) => p.status === "Entregue" && !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && p.valorVenda !== "" && p.valorVenda != null
+    );
     const mapa = new Map();
     entregues.forEach((p) => {
       const venda = parseFloat(p.valorVenda) || 0;
-      const custo = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + (parseFloat(p.valorTotal) || 0);
+      // Mão de obra real da equipe (rateada pela hora de referência do
+      // tipo), não mais o campo solto "valor devido ao Ícaro" — a
+      // equipe é paga fixo por mês, pedido explícito do Tales.
+      const custo = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + custoMaoDeObraPeca(p.tipoPeca, custoPorHoraAlfaiataria_);
       if (!mapa.has(p.tipoPeca)) mapa.set(p.tipoPeca, { vendas: [], custos: [], qtdMesAtual: 0 });
       const grupo = mapa.get(p.tipoPeca);
       grupo.vendas.push(venda);
@@ -193,7 +201,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
         };
       })
       .sort((a, b) => b.qtdHistorico - a.qtdHistorico);
-  }, [pecas, custoAviamentosPorPecaBase, mesAtual]);
+  }, [pecas, custoAviamentosPorPecaBase, mesAtual, custoPorHoraAlfaiataria_]);
 
   const custosFixosMesAtual = useMemo(() => {
     return (despesas || [])

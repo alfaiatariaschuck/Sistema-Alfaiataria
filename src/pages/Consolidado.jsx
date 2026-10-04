@@ -3,6 +3,7 @@ import { ChevronRight, Download, Package, TrendingUp, Users, Wallet } from "luci
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { FORMAS_PAGAMENTO, LINE, LINHA_STYLE, PAG_STYLE, TIPOS_SAIDA_SEM_VENDA, STATUS_STYLE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, fmtData, statusPedidoSemVenda, valorRecebidoEfetivo } from "../lib/helpers";
+import { custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 
 // statusPagamento aqui já reflete pagamento dividido (entrada recebida +
 // restante pendente vira "Parcial", não "Pendente" com o valor inteiro).
@@ -20,7 +21,7 @@ function statusEValorPendente(p, valor, statusTotal) {
   return { pendente, status: pendente === 0 ? statusTotal : recebido > 0 ? "Parcial" : statusTotal };
 }
 
-function montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase) {
+function montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase, custoPorHora) {
   const camisas = pedidos
     .filter((p) => !statusPedidoSemVenda(p.status) && !p.origemPlanoId)
     .map((p) => {
@@ -79,9 +80,11 @@ function montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase) {
       const valor = parseFloat(p.valorVenda) || 0;
       const { pendente, status } = statusEValorPendente(p, valor, p.statusPagamentoVenda || "Pendente");
       // Custo real da peça — tecido + aviamentos (pela composição do tipo
-      // de peça, ex: Traje = Paletó+Calça+Colete) + valor devido ao
-      // Ícaro. Antes só contava o valor devido ao Ícaro.
-      const custo = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + (parseFloat(p.valorTotal) || 0);
+      // de peça, ex: Traje = Paletó+Calça+Colete) + mão de obra real da
+      // equipe (rateada pela hora de referência do tipo) — não mais o
+      // campo solto "valor devido ao Ícaro", que é lançado à mão e a
+      // equipe é paga fixo por mês, não por peça.
+      const custo = custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase) + custoMaoDeObraPeca(p.tipoPeca, custoPorHora);
       return {
         id: "peca-" + p.id,
         linha: "Alfaiataria",
@@ -103,7 +106,7 @@ function montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase) {
   return [...camisas, ...vendasPlano, ...trajes];
 }
 
-export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca, custoAviamentosPorPecaBase = {} }) {
+export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca, custoAviamentosPorPecaBase = {}, equipe }) {
   const [busca, setBusca] = useState("");
   const [dataIni, setDataIni] = useState("");
   const [dataFim, setDataFim] = useState("");
@@ -111,7 +114,8 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
   const [forma, setForma] = useState("Todas");
   const [status, setStatus] = useState(null);
 
-  const todas = montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase);
+  const custoPorHora = custoPorHoraAlfaiataria(pecas, equipe);
+  const todas = montarLinhas(pedidos, pecas, planos, custoAviamentosPorPecaBase, custoPorHora);
 
   const filtrados = todas
     .filter((l) => {

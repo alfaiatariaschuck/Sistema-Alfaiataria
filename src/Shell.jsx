@@ -715,6 +715,8 @@ export default function Shell() {
   );
 
   const acoesPeca = {
+    pecasTodas: pecas,
+    equipe,
     onCampo: atualizarCampoPeca,
     onPausar: pausarPeca,
     onRetomar: retomarPeca,
@@ -1077,7 +1079,9 @@ export default function Shell() {
                   irParaPeca={irParaPeca}
                 />
               )}
-              {tab === "painel-alfaiataria" && !loadingPecas && <DashboardAlfaiataria pecas={pecas} irPara={irParaPeca} />}
+              {tab === "painel-alfaiataria" && !loadingPecas && (
+                <DashboardAlfaiataria pecas={pecas} irPara={irParaPeca} equipe={equipe} custoAviamentosPorPecaBase={custoPorPecaBase} />
+              )}
               {tab === "alfaiataria" && !loadingPecas && (
                 <PedidoAlfaiataria
                   onCriar={salvarNovaPeca}
@@ -1129,6 +1133,7 @@ export default function Shell() {
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                   estoqueTecidos={estoqueTecidos}
                   clientes={clientes}
+                  equipe={equipe}
                   irParaPedido={irPara}
                   irParaPeca={irParaPeca}
                 />
@@ -1212,6 +1217,7 @@ export default function Shell() {
                   irPara={irPara}
                   irParaPeca={irParaPeca}
                   custoAviamentosPorPecaBase={custoPorPecaBase}
+                  equipe={equipe}
                 />
               )}
               {tab === "pedidos-vendidos" && !loadingPecas && !loading && (

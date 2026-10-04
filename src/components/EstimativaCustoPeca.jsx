@@ -1,19 +1,21 @@
 import React from "react";
 import { TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe } from "../lib/helpers";
+import { custoMaoDeObraPeca } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 // Mostra, na peça de alfaiataria, o custo real (tecido + aviamento da
-// composição do tipo de peça + valor devido ao Ícaro) e, quando já tem
-// valor de venda digitado, a margem daquela venda e quanto reservar de
-// imposto sobre ela. Sem "preço sugerido" — alfaiataria não tem um
-// catálogo de preço por tecido feito Tecidos de Camisa, é sob medida.
+// composição do tipo de peça + mão de obra real da equipe, rateada pela
+// hora de referência do tipo de peça) e, quando já tem valor de venda
+// digitado, a margem daquela venda e quanto reservar de imposto sobre
+// ela. Sem "preço sugerido" — alfaiataria não tem um catálogo de preço
+// por tecido feito Tecidos de Camisa, é sob medida.
 // Uso interno — nunca aparece na ficha do Icaro.
-export default function EstimativaCustoPeca({ tecidos, tipoPeca, custoAviamentosPorPecaBase = {}, valorTotal, valorVenda }) {
+export default function EstimativaCustoPeca({ tecidos, tipoPeca, custoAviamentosPorPecaBase = {}, custoHora, valorVenda }) {
   const { aliquotaImposto } = useConfigCustosFixos();
   const custoTecido = custoTecidoDe(tecidos);
   const custoAviamento = custoAviamentoComposicao(tipoPeca, custoAviamentosPorPecaBase);
-  const maoDeObra = parseFloat(valorTotal) || 0;
+  const maoDeObra = custoMaoDeObraPeca(tipoPeca, custoHora);
   const custo = custoTecido + custoAviamento + maoDeObra;
   const temDados = custoTecido > 0 || custoAviamento > 0 || maoDeObra > 0;
 
@@ -48,7 +50,7 @@ export default function EstimativaCustoPeca({ tecidos, tipoPeca, custoAviamentos
         )}
       </div>
       <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 4 }}>
-        Tecido {brl(custoTecido)} · Aviamento ({tipoPeca || "—"}) {brl(custoAviamento)} · Valor devido ao Icaro {brl(maoDeObra)}. Uso interno — não aparece na ficha.
+        Tecido {brl(custoTecido)} · Aviamento ({tipoPeca || "—"}) {brl(custoAviamento)} · Mão de obra (equipe, rateada) {brl(maoDeObra)}. Uso interno — não aparece na ficha.
       </div>
     </div>
   );
