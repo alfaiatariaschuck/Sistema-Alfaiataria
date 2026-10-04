@@ -97,7 +97,6 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
           status: p.status,
           dataPedido: p.dataPedido,
           valorVenda: parseFloat(p.valorVenda) || 0,
-          valorTotal: parseFloat(p.valorTotal) || 0,
           itensTecido,
           custoTecido,
           composicaoAviamento: COMPOSICAO_AVIAMENTOS[p.tipoPeca] || [],
@@ -668,7 +667,7 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
                   {p.cliente} <span style={{ fontWeight: 400, color: TEXT_MUTED }}>· {p.tipoPeca} · pedido {fmtData(p.dataPedido)}</span>
                 </span>
                 <span className="fx-mono" style={{ fontSize: 12, color: TEXT_MUTED }}>
-                  venda <strong style={{ color: INK }}>{brl(p.valorVenda)}</strong> · valor Ícaro <strong style={{ color: INK }}>{brl(p.valorTotal)}</strong>
+                  venda <strong style={{ color: INK }}>{brl(p.valorVenda)}</strong>
                 </span>
               </div>
               <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>

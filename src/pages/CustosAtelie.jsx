@@ -200,7 +200,20 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
       const ateliePorMes = custoEstrutura;
       const custoMes = material + maoDeObra + ateliePorMes;
       const margem = receita - custoMes;
-      return { label, qtd, receita, material, maoDeObra, ateliePorMes, custoMes, margem, margemPct: receita > 0 ? (margem / receita) * 100 : null };
+      return {
+        label,
+        qtd,
+        receita,
+        material,
+        maoDeObra,
+        ateliePorMes,
+        custoMes,
+        margem,
+        margemPct: receita > 0 ? (margem / receita) * 100 : null,
+        receitaPorPeca: qtd > 0 ? receita / qtd : null,
+        custoPorPeca: qtd > 0 ? custoMes / qtd : null,
+        margemPorPeca: qtd > 0 ? margem / qtd : null,
+      };
     });
   }, [pecas, anoAtual, mesAtual, custoAviamentosPorPecaBase, custoEquipeTotal, custoEstrutura]);
 
@@ -406,7 +419,9 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
           Quantidade vendida, receita e os 3 custos próprios do ateliê (material, mão de obra, aluguel+luz) mês a mês,
           com a margem já calculada — mesma lógica da Gestão do Vendedor na camisaria, aplicada aqui. Mão de obra e
           ateliê usam o patamar de <strong>hoje</strong> (equipe cadastrada, aluguel/luz atuais) em todos os meses — não
-          temos histórico salvo de folha/aluguel mês a mês, então é uma aproximação, não o custo exato daquele mês.
+          temos histórico salvo de folha/aluguel mês a mês, então é uma aproximação, não o custo exato daquele mês. As
+          3 últimas colunas são o ticket médio por peça naquele mês (receita, custo e margem divididos pela quantidade
+          vendida), pra comparar o tamanho médio do negócio mês a mês, não só o total.
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -420,6 +435,9 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
                 <th style={{ padding: "6px 8px", fontWeight: 600 }}>Ateliê</th>
                 <th style={{ padding: "6px 8px", fontWeight: 600 }}>Margem</th>
                 <th style={{ padding: "6px 8px", fontWeight: 600 }}>Margem %</th>
+                <th style={{ padding: "6px 8px", fontWeight: 600, borderLeft: `1px solid ${LINE}` }}>Receita/peça</th>
+                <th style={{ padding: "6px 8px", fontWeight: 600 }}>Custo/peça</th>
+                <th style={{ padding: "6px 8px", fontWeight: 600 }}>Margem/peça</th>
               </tr>
             </thead>
             <tbody>
@@ -433,6 +451,14 @@ export default function CustosAtelie({ pecas, equipe, custoAviamentosPorPecaBase
                   <td className="fx-mono" style={{ padding: "8px" }}>{brl(m.ateliePorMes)}</td>
                   <td className="fx-mono" style={{ padding: "8px", fontWeight: 600, color: m.margem >= 0 ? "#2C6E31" : "#9C4A1E" }}>{brl(m.margem)}</td>
                   <td className="fx-mono" style={{ padding: "8px" }}>{m.margemPct !== null ? `${m.margemPct.toFixed(0)}%` : "—"}</td>
+                  <td className="fx-mono" style={{ padding: "8px", borderLeft: `1px solid ${LINE}` }}>{m.receitaPorPeca !== null ? brl(m.receitaPorPeca) : "—"}</td>
+                  <td className="fx-mono" style={{ padding: "8px" }}>{m.custoPorPeca !== null ? brl(m.custoPorPeca) : "—"}</td>
+                  <td
+                    className="fx-mono"
+                    style={{ padding: "8px", fontWeight: 600, color: m.margemPorPeca === null ? INK : m.margemPorPeca >= 0 ? "#2C6E31" : "#9C4A1E" }}
+                  >
+                    {m.margemPorPeca !== null ? brl(m.margemPorPeca) : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
