@@ -139,7 +139,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
       <PageTitle eyebrow="Novo lançamento — produção: Icaro" title="Pedido Alfaiataria" />
 
       <Card style={{ padding: 16 }} className="mb-6">
-        <p style={{ fontSize: 13, color: "#2A3B4D", lineHeight: 1.6 }}>
+        <p style={{ fontSize: 13, color: "#2B2E33", lineHeight: 1.6 }}>
           Escolha o tipo de peça abaixo — o formulário mostra automaticamente as medidas e características
           certas pra cada uma (traje completo inclui corpo, calça e colete; peças avulsas mostram só o que for relevante).
           Depois de salvar, a peça aparece na aba <strong>Pedidos Alfaiataria</strong>.

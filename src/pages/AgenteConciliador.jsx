@@ -141,7 +141,7 @@ function BotaoAcao({ onClick, feito, texto, textoFeito }) {
   return (
     <button
       onClick={onClick}
-      style={{ background: "#EDEAE0", color: "#16212E", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}
+      style={{ background: "#EDEAE0", color: "#15161A", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}
     >
       {texto}
     </button>
@@ -325,7 +325,7 @@ export default function AgenteConciliador({
       <PageTitle eyebrow="Agente" title="Agente Conciliador" />
 
       <Card style={{ padding: 16 }} className="mb-6">
-        <p style={{ fontSize: 13, color: "#2A3B4D", lineHeight: 1.6 }}>
+        <p style={{ fontSize: 13, color: "#2B2E33", lineHeight: 1.6 }}>
           Cole abaixo as linhas do seu extrato (uma por linha: <strong>data, descrição e valor</strong> — separados por
           tab, se colar direto do Excel, ou por dois espaços). Não precisa de IA nem de chave de API pra isso — é
           comparação direta com o que já está no sistema, tudo roda aqui no navegador, nada sai daqui. Depois de
@@ -377,7 +377,7 @@ export default function AgenteConciliador({
           onClick={conciliar}
           disabled={!textoSaidas.trim() && !textoEntradas.trim()}
           className="flex items-center gap-2 mt-4"
-          style={{ background: "#16212E", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+          style={{ background: "#15161A", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
         >
           <GitCompare size={15} /> Conciliar
         </button>

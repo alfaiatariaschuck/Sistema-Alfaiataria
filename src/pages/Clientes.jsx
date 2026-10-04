@@ -763,7 +763,7 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
                       <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))" }}>
                         {ultimasMedidas.map(([label, valor]) => (
                           <div key={label} className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                            {maisRecente.tipo === "camisa" ? rotuloMedida(label) : label}: <strong style={{ color: "#16212E" }}>{valor}</strong>
+                            {maisRecente.tipo === "camisa" ? rotuloMedida(label) : label}: <strong style={{ color: "#15161A" }}>{valor}</strong>
                           </div>
                         ))}
                       </div>

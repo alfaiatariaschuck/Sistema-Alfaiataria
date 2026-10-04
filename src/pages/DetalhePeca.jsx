@@ -271,7 +271,7 @@ export default function DetalhePeca({
                 />
                 <span style={{ fontSize: 12, color: TEXT_MUTED }}>
                   · {p.status === "Entregue" ? "Tempo de produção:" : "Em produção há:"}{" "}
-                  <strong style={{ color: "#16212E" }}>{diasProducaoReal(p)}d</strong>
+                  <strong style={{ color: "#15161A" }}>{diasProducaoReal(p)}d</strong>
                   {p.diasPausados > 0 && ` (${p.diasPausados}d pausados não contam`}
                   {p.diasPausados > 0 && diasEsperaCliente(p) > 0 && `, sendo ${diasEsperaCliente(p)}d esperando cliente pra prova`}
                   {p.diasPausados > 0 && ")"}
@@ -701,7 +701,7 @@ export default function DetalhePeca({
         <button
           onClick={salvar}
           className="flex items-center gap-2"
-          style={{ background: confirmado ? "#2C6E31" : "#16212E", color: "#FFF", padding: "10px 22px", borderRadius: 8, fontWeight: 600, fontSize: 14 }}
+          style={{ background: confirmado ? "#2C6E31" : "#15161A", color: "#FFF", padding: "10px 22px", borderRadius: 8, fontWeight: 600, fontSize: 14 }}
         >
           <Save size={15} /> {confirmado ? "Salvo ✓" : "Salvar"}
         </button>

@@ -163,7 +163,7 @@ export default function DetalhePedidoVendedor({ pedido: p, onVoltar, onCampo, on
         <button
           onClick={salvar}
           className="flex items-center gap-2"
-          style={{ background: confirmado ? "#2C6E31" : "#16212E", color: "#FFF", padding: "10px 22px", borderRadius: 8, fontWeight: 600, fontSize: 14 }}
+          style={{ background: confirmado ? "#2C6E31" : "#15161A", color: "#FFF", padding: "10px 22px", borderRadius: 8, fontWeight: 600, fontSize: 14 }}
         >
           <Save size={15} /> {confirmado ? "Salvo ✓" : "Salvar"}
         </button>

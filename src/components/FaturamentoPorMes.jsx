@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Card } from "./ui";
-import { BRASS, INK, LINE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
+import { BRASS, COR_CATEGORIA_B, INK, LINE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
 import { brl, statusPedidoSemVenda } from "../lib/helpers";
 
 // Mesma paleta camisaria/alfaiataria do gráfico "Peças vendidas por ano"
@@ -59,7 +59,7 @@ export default function FaturamentoPorMes({ pedidos, pecas }) {
             <span style={{ width: 9, height: 9, borderRadius: 2, background: AZUL, display: "inline-block" }} /> Camisaria
           </span>
           <span className="flex items-center gap-1.5">
-            <span style={{ width: 9, height: 9, borderRadius: 2, background: BRASS, display: "inline-block" }} /> Alfaiataria
+            <span style={{ width: 9, height: 9, borderRadius: 2, background: COR_CATEGORIA_B, display: "inline-block" }} /> Alfaiataria
           </span>
         </div>
       </div>
@@ -108,7 +108,7 @@ export default function FaturamentoPorMes({ pedidos, pecas }) {
                   <div
                     style={{
                       height: Math.max(alturaAlfaiataria, 3),
-                      background: BRASS,
+                      background: COR_CATEGORIA_B,
                       borderRadius: "4px 4px 0 0",
                       marginBottom: alturaCamisaria > 0 ? 2 : 0,
                       opacity: emFoco ? 1 : 0.9,

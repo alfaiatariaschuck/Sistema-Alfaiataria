@@ -44,8 +44,8 @@ export default function FichaImprimivelSapatos({ pedido: p, onFechar }) {
     <div className="ficha-overlay" style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 50, overflow: "auto" }}>
       <div className="no-print" style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 0" }}>
         <div style={{ background: "#FFF", borderRadius: 10, padding: 16, marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: "#16212E" }}>Opção mais simples (funciona em qualquer lugar)</div>
-          <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: "#15161A" }}>Opção mais simples (funciona em qualquer lugar)</div>
+          <div style={{ fontSize: 11, color: "#6E7883", marginBottom: 8 }}>
             Toque no botão, o texto já aparece selecionado — é só copiar e colar no WhatsApp ou e-mail da fábrica.
           </div>
           <button
@@ -66,20 +66,20 @@ export default function FichaImprimivelSapatos({ pedido: p, onFechar }) {
             />
           )}
 
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "#16212E" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "#15161A" }}>
             Opção em PDF (funciona melhor no computador ou no navegador do celular)
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={imprimir}
               className="flex items-center gap-2"
-              style={{ background: "#16212E", color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+              style={{ background: "#15161A", color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
             >
               <Printer size={15} /> Salvar como PDF
             </button>
             <button
               onClick={onFechar}
-              style={{ background: "transparent", border: `1px solid #E4DECF`, color: "#16212E", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+              style={{ background: "transparent", border: `1px solid #DAD7D0`, color: "#15161A", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
             >
               <X size={14} className="inline mr-1" /> Fechar
             </button>

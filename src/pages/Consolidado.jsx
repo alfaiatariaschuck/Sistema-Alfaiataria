@@ -243,7 +243,7 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
       <button
         onClick={exportarCSV}
         className="flex items-center gap-2 mb-5"
-        style={{ background: "#16212E", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+        style={{ background: "#15161A", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
       >
         <Download size={15} /> Exportar CSV (Excel)
       </button>
@@ -297,7 +297,7 @@ export default function Consolidado({ pedidos, pecas, planos, irPara, irParaPeca
                   {brl(l.valor)}
                 </span>
                 <Pill text={l.statusPagamento} style={PAG_STYLE[l.statusPagamento]} />
-                <Pill text={l.status} style={STATUS_STYLE[l.status] || { bg: "#EDEAE0", fg: "#2A3B4D" }} />
+                <Pill text={l.status} style={STATUS_STYLE[l.status] || { bg: "#EDEAE0", fg: "#2B2E33" }} />
                 {l.tipoSaida && l.tipoSaida !== "Venda" && <Pill text={l.tipoSaida} style={STATUS_STYLE[l.tipoSaida]} />}
                 {clicavel && <ChevronRight size={16} color={TEXT_MUTED} />}
               </div>

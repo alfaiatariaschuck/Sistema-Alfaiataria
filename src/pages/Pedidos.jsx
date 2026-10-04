@@ -93,7 +93,7 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
         <button
           onClick={() => setMostrarCronograma(true)}
           className="flex items-center gap-2"
-          style={{ background: "transparent", border: "1px solid #E4DECF", color: "#16212E", padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+          style={{ background: "transparent", border: "1px solid #DAD7D0", color: "#15161A", padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
         >
           <CalendarClock size={15} /> Cronograma {nomeCronograma}
         </button>

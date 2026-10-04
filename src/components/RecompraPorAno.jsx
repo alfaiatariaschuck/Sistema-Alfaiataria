@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Card } from "./ui";
-import { BRASS, INK, LINE, TEXT_MUTED } from "../lib/constants";
+import { BRASS, COR_CATEGORIA_B, INK, LINE, TEXT_MUTED } from "../lib/constants";
 
 // Cor pro segmento "cliente novo" — só usada aqui, pra distinguir de
 // "recompra" (que já é BRASS em todo o resto do sistema).
@@ -53,7 +53,7 @@ export default function RecompraPorAno({ clientes }) {
             <span style={{ width: 9, height: 9, borderRadius: 2, background: AZUL, display: "inline-block" }} /> Cliente novo
           </span>
           <span className="flex items-center gap-1.5">
-            <span style={{ width: 9, height: 9, borderRadius: 2, background: BRASS, display: "inline-block" }} /> Recompra
+            <span style={{ width: 9, height: 9, borderRadius: 2, background: COR_CATEGORIA_B, display: "inline-block" }} /> Recompra
           </span>
         </div>
       </div>
@@ -113,7 +113,7 @@ export default function RecompraPorAno({ clientes }) {
                   <div
                     style={{
                       height: Math.max(alturaRecompra, 3),
-                      background: BRASS,
+                      background: COR_CATEGORIA_B,
                       borderRadius: alturaNovos > 0 ? "0 0 0 0" : "4px 4px 0 0",
                       opacity: emFoco ? 1 : 0.9,
                     }}
@@ -146,7 +146,7 @@ export default function RecompraPorAno({ clientes }) {
                 <td style={{ padding: "5px 8px", textAlign: "right" }}>{d.novos}</td>
                 <td style={{ padding: "5px 8px", textAlign: "right" }}>{d.recompra}</td>
                 <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700 }}>{d.total}</td>
-                <td style={{ padding: "5px 8px", textAlign: "right", color: BRASS, fontWeight: 700 }}>{d.taxa}%</td>
+                <td style={{ padding: "5px 8px", textAlign: "right", color: COR_CATEGORIA_B, fontWeight: 700 }}>{d.taxa}%</td>
               </tr>
             ))}
           </tbody>

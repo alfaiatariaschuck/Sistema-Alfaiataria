@@ -44,7 +44,7 @@ export function FiltroStatusMulti({ opcoes, estilos, selecionados, onChange }) {
               fontWeight: 600,
               border: `1px solid ${ativo ? style.fg : LINE}`,
               background: ativo ? style.bg : "#FFF",
-              color: ativo ? style.fg : "#6B7280",
+              color: ativo ? style.fg : "#6E7883",
             }}
           >
             {s}

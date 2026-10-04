@@ -748,7 +748,7 @@ export default function Shell() {
           <div className="px-6 pt-8 pb-6">
             <div className="flex items-center gap-2">
               <Ruler size={20} color={BRASS} />
-              <span className="fx-serif" style={{ color: "#F5F1E8", fontSize: 18, fontWeight: 600 }}>
+              <span className="fx-serif" style={{ color: "#F0EEEA", fontSize: 18, fontWeight: 600 }}>
                 Schuck
               </span>
             </div>
@@ -910,7 +910,7 @@ export default function Shell() {
             </div>
           )}
           {loading ? (
-            <div style={{ color: "#6B7280" }}>Carregando…</div>
+            <div style={{ color: "#6E7883" }}>Carregando…</div>
           ) : (
             <>
               {tab === "dashboard" && (

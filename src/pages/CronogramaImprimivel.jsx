@@ -25,13 +25,13 @@ export default function CronogramaImprimivel({ itens, onFechar, nomePara = "Fabi
           <button
             onClick={imprimir}
             className="flex items-center gap-2"
-            style={{ background: "#16212E", color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+            style={{ background: "#15161A", color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
           >
             <Printer size={15} /> Salvar como PDF
           </button>
           <button
             onClick={onFechar}
-            style={{ background: "transparent", border: "1px solid #E4DECF", color: "#16212E", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+            style={{ background: "transparent", border: "1px solid #DAD7D0", color: "#15161A", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
           >
             <X size={14} className="inline mr-1" /> Fechar
           </button>

@@ -1,11 +1,15 @@
-export const INK = "#16212E";
-export const INK_SOFT = "#2A3B4D";
-export const CANVAS = "#F5F1E8";
+// Identidade visual alinhada ao site (schuckalfaiataria.com.br): quase-preto
+// + papel + um único acento azul-acinzentado apagado, no lugar do
+// dourado/creme anterior. Troca só de cor — nenhum componente/gráfico
+// mudou de lugar ou de comportamento.
+export const INK = "#15161A";
+export const INK_SOFT = "#2B2E33";
+export const CANVAS = "#F0EEEA";
 export const CARD = "#FFFFFF";
-export const BRASS = "#A9793E";
-export const BRASS_SOFT = "#EFE1CC";
-export const LINE = "#E4DECF";
-export const TEXT_MUTED = "#6B7280";
+export const BRASS = "#7E8B98";
+export const BRASS_SOFT = "#DDE2E7";
+export const LINE = "#DAD7D0";
+export const TEXT_MUTED = "#6E7883";
 
 // Cores de comparação (2 séries categóricas) — validadas com o
 // verificador de paleta do skill de dataviz (blue/orange, slots 1-2 da
@@ -14,6 +18,14 @@ export const TEXT_MUTED = "#6B7280";
 // de croma pra uso categórico, por isso essa dupla à parte.
 export const COR_REFERENCIA = "#eb6834";
 export const COR_REAL = "#2a78d6";
+
+// Segunda categoria nos gráficos de 2 séries que usam azul como
+// primeira (Camisaria x Alfaiataria, Novo x Recompra etc) — é o
+// dourado antigo da marca, mantido só aqui porque já era a metade
+// validada (com o azul) contra confusão por daltonismo. BRASS virou a
+// cor de identidade/UI depois da repintura — não reaproveitar BRASS
+// pra categoria de gráfico, senão fica azul-contra-azul.
+export const COR_CATEGORIA_B = "#A9793E";
 
 // "Doação" sozinho é valor legado (pedidos antigos importados) — pra
 // pedido novo, usar "Entregue Doação"/"Entregue Uso Pessoal": já

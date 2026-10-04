@@ -41,7 +41,7 @@ function ResumoMedidas({ medidas, tipoPeca }) {
             <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))" }}>
               {campos.map((c) => (
                 <div key={c.label} className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  {c.label}: <strong style={{ color: "#16212E" }}>{medidas[secKey][c.label]}</strong>
+                  {c.label}: <strong style={{ color: "#15161A" }}>{medidas[secKey][c.label]}</strong>
                 </div>
               ))}
             </div>
@@ -174,7 +174,7 @@ export default function ShellProducao() {
       <div style={{ background: INK }} className="px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Ruler size={18} color={BRASS} />
-          <span className="fx-serif" style={{ color: "#F5F1E8", fontSize: 16, fontWeight: 600 }}>
+          <span className="fx-serif" style={{ color: "#F0EEEA", fontSize: 16, fontWeight: 600 }}>
             Schuck — Produção
           </span>
           <span style={{ color: "#8593A3", fontSize: 12 }}>· {perfil?.nome || "Produção"}</span>

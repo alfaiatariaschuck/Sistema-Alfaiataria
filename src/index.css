@@ -5,14 +5,14 @@
 @tailwind utilities;
 
 :root {
-  --ink: #16212e;
-  --ink-soft: #2a3b4d;
-  --canvas: #f5f1e8;
+  --ink: #15161a;
+  --ink-soft: #2b2e33;
+  --canvas: #f0eeea;
   --card: #ffffff;
-  --brass: #a9793e;
-  --brass-soft: #efe1cc;
-  --line: #e4decf;
-  --text-muted: #6b7280;
+  --brass: #7e8b98;
+  --brass-soft: #dde2e7;
+  --line: #dad7d0;
+  --text-muted: #6e7883;
 }
 
 .fx-serif {

@@ -127,7 +127,7 @@ export default function RelatorioAlfaiataria({ pecas }) {
       <button
         onClick={exportarCSV}
         className="flex items-center gap-2 mb-5"
-        style={{ background: "#16212E", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+        style={{ background: "#15161A", color: "#FFF", padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
       >
         <Download size={15} /> Exportar CSV (Excel)
       </button>
@@ -145,7 +145,7 @@ export default function RelatorioAlfaiataria({ pecas }) {
           </div>
         )}
         {filtrados.map((p, i) => (
-          <div key={p.id} className="flex items-center justify-between px-5 py-3" style={{ borderBottom: i < filtrados.length - 1 ? `1px solid #E4DECF` : "none" }}>
+          <div key={p.id} className="flex items-center justify-between px-5 py-3" style={{ borderBottom: i < filtrados.length - 1 ? `1px solid #DAD7D0` : "none" }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</div>
               <div style={{ fontSize: 12, color: TEXT_MUTED }}>

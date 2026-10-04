@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { Card } from "./ui";
-import { BRASS, INK, LINE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
+import { BRASS, COR_CATEGORIA_B, INK, LINE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED } from "../lib/constants";
 import { statusPedidoSemVenda } from "../lib/helpers";
 
-// Mesma cor da "recompra" (BRASS) já usada em todo o sistema; as outras
-// duas são só pra esse gráfico — pra distinguir camisas x alfaiataria x
-// planilha antiga sem repetir cor.
+// Mesma cor da "recompra" (COR_CATEGORIA_B) já usada em todo o sistema;
+// as outras duas são só pra esse gráfico — pra distinguir camisas x
+// alfaiataria x planilha antiga sem repetir cor.
 const AZUL = "#2A78D6";
 const VIOLETA = "#4A3AA7";
 const ALTURA_GRAFICO = 150;
@@ -38,7 +38,7 @@ function calcularVendasPorAno(clientesEnriquecidos) {
 }
 
 const SEGMENTOS = [
-  { chave: "alfaiataria", label: "Alfaiataria", cor: BRASS },
+  { chave: "alfaiataria", label: "Alfaiataria", cor: COR_CATEGORIA_B },
   { chave: "camisas", label: "Camisas", cor: AZUL },
   { chave: "historico", label: "Planilha antiga", cor: VIOLETA },
 ];

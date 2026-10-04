@@ -291,7 +291,7 @@ export default function DetalhePedido({
             <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${LINE}` }}>
               <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                 <span style={{ fontSize: 12, color: TEXT_MUTED }}>
-                  Em produção há: <strong style={{ color: "#16212E" }}>{diasProducaoRealPedido(p)}d</strong>
+                  Em produção há: <strong style={{ color: "#15161A" }}>{diasProducaoRealPedido(p)}d</strong>
                   {p.diasPausados > 0 && ` (${p.diasPausados}d pausados não contam no prazo médio)`}
                 </span>
                 {p.pausado ? (
@@ -697,7 +697,7 @@ export default function DetalhePedido({
         <button
           onClick={salvar}
           className="flex items-center gap-2"
-          style={{ background: confirmado ? "#2C6E31" : "#16212E", color: "#FFF", padding: "10px 22px", borderRadius: 8, fontWeight: 600, fontSize: 14 }}
+          style={{ background: confirmado ? "#2C6E31" : "#15161A", color: "#FFF", padding: "10px 22px", borderRadius: 8, fontWeight: 600, fontSize: 14 }}
         >
           <Save size={15} /> {confirmado ? "Salvo ✓" : "Salvar"}
         </button>

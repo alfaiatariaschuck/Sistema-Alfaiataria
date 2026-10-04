@@ -11,7 +11,7 @@ const CHAVE_TELEFONE_MILENA = "telefone_milena";
 
 const TABELA_ESTILO = { width: "100%", borderCollapse: "collapse", border: `2px solid ${INK}`, fontSize: 14 };
 const CELULA_ESTILO = { border: `1px solid ${INK}`, padding: "5px 11px", textAlign: "left" };
-const CABECALHO_ESTILO = { ...CELULA_ESTILO, background: INK, color: "#F5F1E8", fontSize: 11.5, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" };
+const CABECALHO_ESTILO = { ...CELULA_ESTILO, background: INK, color: "#F0EEEA", fontSize: 11.5, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" };
 
 // Bloco de "destaque" no topo da ficha (status, prazo, quantidade...) —
 // tamanho de célula de planilha, bem maior que o texto corrido, pra dar
@@ -19,7 +19,7 @@ const CABECALHO_ESTILO = { ...CELULA_ESTILO, background: INK, color: "#F5F1E8", 
 function CelulaDestaque({ label, valor, destaque, ultima, valorFontSize = 19 }) {
   return (
     <div style={{ padding: "6px 10px 6px", borderRight: ultima ? "none" : `1px solid ${INK}`, background: destaque ? "#F3E9D8" : "#FFF" }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: destaque ? "#7A5A2E" : "#6B7280", marginBottom: 4 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: destaque ? "#7A5A2E" : "#6E7883", marginBottom: 4 }}>
         {label}
       </div>
       <div className="fx-serif" style={{ fontSize: valorFontSize, fontWeight: 600, color: destaque ? "#A9793E" : INK, lineHeight: 1.15 }}>
@@ -150,8 +150,8 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
     <div className="ficha-overlay" style={{ position: "fixed", inset: 0, background: "rgba(22,33,46,0.6)", zIndex: 50, overflow: "auto" }}>
       <div className="no-print" style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 0" }}>
         <div style={{ background: "#FFF", borderRadius: 10, padding: 16, marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: "#16212E" }}>Opção mais simples (funciona em qualquer lugar)</div>
-          <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: "#15161A" }}>Opção mais simples (funciona em qualquer lugar)</div>
+          <div style={{ fontSize: 11, color: "#6E7883", marginBottom: 8 }}>
             Toque no botão, o texto da ficha já aparece selecionado — é só tocar em "Copiar" no menu que surge, e colar no WhatsApp da {nomeCosteira}.
           </div>
           <button
@@ -172,12 +172,12 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
             />
           )}
 
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "#16212E" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "#15161A" }}>
             Opção em PDF (funciona melhor no computador ou no navegador do celular)
           </div>
           {telefone ? (
-            <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 10 }}>
-              WhatsApp configurado: <strong style={{ color: "#16212E" }}>{telefone}</strong>
+            <div style={{ fontSize: 12, color: "#6E7883", marginBottom: 10 }}>
+              WhatsApp configurado: <strong style={{ color: "#15161A" }}>{telefone}</strong>
             </div>
           ) : (
             <div style={{ fontSize: 12, color: "#9C4A1E", marginBottom: 10 }}>
@@ -188,7 +188,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
             <button
               onClick={imprimir}
               className="flex items-center gap-2"
-              style={{ background: "#16212E", color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+              style={{ background: "#15161A", color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
             >
               <Printer size={15} /> 1. Salvar como PDF
             </button>
@@ -201,7 +201,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
             </button>
             <button
               onClick={onFechar}
-              style={{ background: "transparent", border: `1px solid #E4DECF`, color: "#16212E", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+              style={{ background: "transparent", border: `1px solid #DAD7D0`, color: "#15161A", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
             >
               <X size={14} className="inline mr-1" /> Fechar
             </button>
@@ -226,7 +226,7 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
             </span>
           )}
         </div>
-        <div className="flex justify-between flex-wrap gap-2" style={{ fontSize: 12, color: "#6B7280", marginBottom: 12 }}>
+        <div className="flex justify-between flex-wrap gap-2" style={{ fontSize: 12, color: "#6E7883", marginBottom: 12 }}>
           <span>Gerado em {fmtData(hojeISO())}</span>
           <span>
             Ficha para: <strong style={{ color: INK }}>{nomeCosteira}</strong>

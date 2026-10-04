@@ -182,8 +182,8 @@ export default function PedidosVendidos({ pedidos, pecas, custoAviamentosPorPeca
                     <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600 }}>
                       {brl(item.valor)}
                     </span>
-                    <Pill text={item.statusPagamento} style={PAG_STYLE[item.statusPagamento] || { bg: "#EDEAE0", fg: "#2A3B4D" }} />
-                    <Pill text={item.status} style={STATUS_STYLE[item.status] || { bg: "#EDEAE0", fg: "#2A3B4D" }} />
+                    <Pill text={item.statusPagamento} style={PAG_STYLE[item.statusPagamento] || { bg: "#EDEAE0", fg: "#2B2E33" }} />
+                    <Pill text={item.status} style={STATUS_STYLE[item.status] || { bg: "#EDEAE0", fg: "#2B2E33" }} />
                     {clicavel && <ChevronRight size={16} color={TEXT_MUTED} />}
                   </div>
                 </div>

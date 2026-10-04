@@ -42,7 +42,7 @@ export default function ShellVendedor() {
       <div style={{ background: INK }} className="px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Ruler size={18} color={BRASS} />
-          <span className="fx-serif" style={{ color: "#F5F1E8", fontSize: 16, fontWeight: 600 }}>
+          <span className="fx-serif" style={{ color: "#F0EEEA", fontSize: 16, fontWeight: 600 }}>
             Schuck
           </span>
           <span style={{ color: "#8593A3", fontSize: 12 }}>· {perfil?.nome || "Vendedor"}</span>
