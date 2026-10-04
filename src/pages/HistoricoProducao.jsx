@@ -1,8 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { AlertTriangle, Clock, Hourglass, PackageCheck, Timer, Wallet, Zap } from "lucide-react";
 import { BarraDuasSeries, BarraSimples, Card, Empty, PageTitle, StatCard } from "../components/ui";
 import {
   BRASS,
+  COMPOSICAO_AVIAMENTOS,
   COR_REAL,
   COR_REFERENCIA,
   HORAS_PRODUTIVAS_POR_DIA_PADRAO,
@@ -11,6 +12,7 @@ import {
   LINE,
   TEXT_MUTED,
   TIPOS_SAIDA_SEM_VENDA,
+  inputStyle,
 } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, mediaEsperaCliente } from "../lib/helpers";
 
@@ -73,6 +75,37 @@ function BarraVendasEntregas({ dados }) {
 // já sem pausas) por tipo de peça e por responsável, com gráficos —
 // pensado pra apresentação/reunião de equipe, não pra edição de nada.
 export default function HistoricoProducao({ pecas, mostrarMargem = false, mostrarComparativos = true, custoAviamentosPorPecaBase = {} }) {
+  const [mesDetalhe, setMesDetalhe] = useState("2026-09");
+
+  // Detalhe peça a peça de um mês — pedido lançado (dataPedido) naquele
+  // mês, com exatamente o que está cadastrado (valor de venda, cada item
+  // de tecido com seu R$/metro, e o aviamento pela composição do tipo).
+  // Serve pra auditar de onde vem um "Material médio" baixo — mostra
+  // item de tecido sem R$/metro cadastrado em vez de esconder como R$0.
+  const detalheMes = useMemo(() => {
+    return pecas
+      .filter((p) => (p.dataPedido || "").slice(0, 7) === mesDetalhe)
+      .map((p) => {
+        const itensTecido = (p.tecidos || []).filter((t) => t.codigo || t.metragem || t.valorMetro);
+        const custoTecido = custoTecidoDe(p.tecidos);
+        const custoAviamento = custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase);
+        return {
+          id: p.id,
+          cliente: p.cliente || "Sem nome",
+          tipoPeca: p.tipoPeca,
+          status: p.status,
+          dataPedido: p.dataPedido,
+          valorVenda: parseFloat(p.valorVenda) || 0,
+          valorTotal: parseFloat(p.valorTotal) || 0,
+          itensTecido,
+          custoTecido,
+          composicaoAviamento: COMPOSICAO_AVIAMENTOS[p.tipoPeca] || [],
+          custoAviamento,
+        };
+      })
+      .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
+  }, [pecas, mesDetalhe, custoAviamentosPorPecaBase]);
+
   const entregues = useMemo(
     () => pecas.filter((p) => p.status === "Entregue" && p.dataInicioProducao && p.dataEntrega),
     [pecas]
@@ -508,6 +541,49 @@ export default function HistoricoProducao({ pecas, mostrarMargem = false, mostra
             Quantidade de peças que precisaram de ajuste extra além do fluxo normal, por quem produziu.
           </div>
           <BarraSimples dados={retrabalhoPorResponsavel} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${d.valor} peça(s) com retrabalho`} />
+        </Card>
+      )}
+
+      {mostrarMargem && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-1">
+            <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+              Detalhe por peça — mês
+            </div>
+            <input type="month" style={{ ...inputStyle, width: "auto" }} value={mesDetalhe} onChange={(e) => setMesDetalhe(e.target.value)} />
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+            Cada peça pedida nesse mês, exatamente como está lançada — valor de venda, cada item de tecido com seu R$/metro (ou
+            "sem valor cadastrado" se faltar), e o aviamento pela composição do tipo. Serve pra auditar de onde vem um material
+            médio baixo demais.
+          </div>
+          {detalheMes.length === 0 && <Empty texto="Nenhuma peça pedida nesse mês." />}
+          {detalheMes.map((p) => (
+            <div key={p.id} className="py-3" style={{ borderTop: `1px solid ${LINE}` }}>
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+                <span style={{ fontSize: 13, fontWeight: 700 }}>
+                  {p.cliente} <span style={{ fontWeight: 400, color: TEXT_MUTED }}>· {p.tipoPeca} · pedido {fmtData(p.dataPedido)}</span>
+                </span>
+                <span className="fx-mono" style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  venda <strong style={{ color: INK }}>{brl(p.valorVenda)}</strong> · valor Ícaro <strong style={{ color: INK }}>{brl(p.valorTotal)}</strong>
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>
+                Tecido: {p.itensTecido.length === 0 && "nenhum item lançado"}
+                {p.itensTecido.map((t, i) => (
+                  <span key={i}>
+                    {i > 0 && " · "}
+                    {t.codigo || "(sem código)"} — {t.metragem || "0"}m ×{" "}
+                    {t.valorMetro ? brl(parseFloat(t.valorMetro)) + "/m" : <strong style={{ color: "#9C4A1E" }}>sem valor/metro cadastrado</strong>}
+                  </span>
+                ))}
+                {" "}— total <strong style={{ color: INK }}>{brl(p.custoTecido)}</strong>
+              </div>
+              <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                Aviamento ({p.composicaoAviamento.join(" + ") || "sem composição"}): <strong style={{ color: INK }}>{brl(p.custoAviamento)}</strong>
+              </div>
+            </div>
+          ))}
         </Card>
       )}
 
