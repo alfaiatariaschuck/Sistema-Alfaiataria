@@ -115,14 +115,37 @@ export default function PlanosAssinatura({ planos, onCampo, onMedida, onDescrica
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => emitir(pl)}
-                    disabled={emitindo === pl.id}
-                    className="flex items-center gap-1.5"
-                    style={{ background: BRASS, color: "#FFF", padding: "8px 14px", borderRadius: 6, fontWeight: 600, fontSize: 12, opacity: emitindo === pl.id ? 0.7 : 1 }}
-                  >
-                    <Send size={13} /> {emitindo === pl.id ? "Emitindo…" : "Emitir pedido do mês"}
-                  </button>
+                  {pl.ativo ? (
+                    <>
+                      <button
+                        onClick={() => emitir(pl)}
+                        disabled={emitindo === pl.id}
+                        className="flex items-center gap-1.5"
+                        style={{ background: BRASS, color: "#FFF", padding: "8px 14px", borderRadius: 6, fontWeight: 600, fontSize: 12, opacity: emitindo === pl.id ? 0.7 : 1 }}
+                      >
+                        <Send size={13} /> {emitindo === pl.id ? "Emitindo…" : "Emitir pedido do mês"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Dar baixa no plano de ${pl.cliente}? Ele sai da lista (marca como inativo) — dá pra achar de novo em "Mostrar concluídos/inativos".`)) {
+                            onCampo(pl.id, "ativo", false);
+                          }
+                        }}
+                        className="flex items-center gap-1.5"
+                        style={{ background: "#DCEBDD", color: "#2C6E31", padding: "8px 14px", borderRadius: 6, fontWeight: 600, fontSize: 12 }}
+                      >
+                        <CheckCircle2 size={13} /> Dar baixa
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => onCampo(pl.id, "ativo", true)}
+                      className="flex items-center gap-1.5"
+                      style={{ background: "transparent", border: `1px solid ${LINE}`, color: INK_SOFT, padding: "8px 14px", borderRadius: 6, fontWeight: 600, fontSize: 12 }}
+                    >
+                      Reativar plano
+                    </button>
+                  )}
                   <button
                     onClick={() => setExpandido(aberto ? null : pl.id)}
                     title="Editar medidas / características"
