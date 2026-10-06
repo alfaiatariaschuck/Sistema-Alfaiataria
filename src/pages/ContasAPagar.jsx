@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, HelpCircle, Pencil, PiggyBank, Plus, Repeat, Trash2, TrendingDown, TrendingUp, Undo2, Wallet, X } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, CATEGORIAS_DESPESA, FORNECEDORES_TECIDO, INK, LINE, LINHA_STYLE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, domingoDe, fmtData, hojeISO, metragemParaNumero, segundaFeiraDe, semanaSeguinteDe, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
+import { brl, domingoDe, fmtData, hojeISO, metragemParaNumero, pedidoFechado, segundaFeiraDe, semanaSeguinteDe, somarDias, valorRecebidoEfetivo } from "../lib/helpers";
 import { supabase } from "../supabaseClient";
 
 const VERMELHO = "#9C4A1E";
@@ -710,13 +710,20 @@ export default function ContasAPagar({
   // item: ligado, soma o total inteiro no saldo projetado/falta
   // faturar; desligado, não conta nada — pra decidir o ritmo sem ficar
   // marcando item por item.
+  // Pedido/peça já entregue fica de fora mesmo que "comprado" nunca
+  // tenha sido marcado — na alfaiataria, é comum lançar o R$/metro
+  // retroativamente em peça antiga só pra ter o dado de custo (ver
+  // Histórico de Produção), e isso não deveria virar "ainda vou
+  // precisar comprar" numa peça que já foi entregue faz tempo.
   const tecidoPendenteItens = [];
-  (pedidos || []).forEach((p) =>
-    (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "camisa", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }))
-  );
-  (pecas || []).forEach((p) =>
-    (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "alfaiataria", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }))
-  );
+  (pedidos || []).forEach((p) => {
+    if (pedidoFechado(p.status)) return;
+    (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "camisa", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }));
+  });
+  (pecas || []).forEach((p) => {
+    if (p.status === "Entregue") return;
+    (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "alfaiataria", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }));
+  });
   const tecidoPendenteComPreco = tecidoPendenteItens.filter((t) => metragemParaNumero(t.metragem) !== null && parseFloat(t.valorMetro));
   const tecidoPendenteTotal = tecidoPendenteComPreco.reduce((s, t) => s + metragemParaNumero(t.metragem) * parseFloat(t.valorMetro), 0);
   const tecidoPendente = somarTecidoPendente ? tecidoPendenteTotal : 0;
