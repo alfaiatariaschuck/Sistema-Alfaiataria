@@ -719,14 +719,22 @@ export default function ContasAPagar({
   // o tecido de um pedido é comprado de uma vez pro lote inteiro no
   // início da produção, não unidade por unidade conforme entrega, então
   // uma entrega parcial não significa tecido pendente de parte alguma.
+  // Item sem código nem fornecedor não é uma compra de verdade pra
+  // fazer (mesma régua já usada em Compras.jsx) — é o caso do R$/metro
+  // lançado só pra ter o dado de custo, sem nenhum fornecedor real por
+  // trás pra ir comprar.
   const tecidoPendenteItens = [];
   (pedidos || []).forEach((p) => {
     if (pedidoFechado(p.status) || p.status === "Entregue Parcial") return;
-    (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "camisa", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }));
+    (p.tecidos || []).forEach((t) => {
+      if (!t.comprado && (t.codigo || t.fornecedor)) tecidoPendenteItens.push({ ...t, origem: "camisa", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente });
+    });
   });
   (pecas || []).forEach((p) => {
     if (p.status === "Entregue") return;
-    (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "alfaiataria", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }));
+    (p.tecidos || []).forEach((t) => {
+      if (!t.comprado && (t.codigo || t.fornecedor)) tecidoPendenteItens.push({ ...t, origem: "alfaiataria", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente });
+    });
   });
   const tecidoPendenteComPreco = tecidoPendenteItens.filter((t) => metragemParaNumero(t.metragem) !== null && parseFloat(t.valorMetro));
   const tecidoPendenteTotal = tecidoPendenteComPreco.reduce((s, t) => s + metragemParaNumero(t.metragem) * parseFloat(t.valorMetro), 0);
