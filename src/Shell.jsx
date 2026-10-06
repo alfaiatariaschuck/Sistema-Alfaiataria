@@ -601,6 +601,28 @@ export default function Shell() {
     }
   }
 
+  // Medida é campo solto demais pra passar por atualizarSubcampo (que só
+  // conhece aReceber/pagoFabiana) — teria o update pro Supabase ignorado
+  // em silêncio (nenhuma coluna mapeada) enquanto o estado local parecia
+  // salvo normalmente. Mesmo padrão já usado em atualizarMedidaPeca
+  // (alfaiataria): monta o objeto `medidas` inteiro e grava via
+  // atualizarCampo, que sabe gravar a coluna "medidas" (JSON).
+  function atualizarMedidaPedido(pedidoId, label, valor) {
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    const medidas = { ...(pedido?.medidas || {}), [label]: valor };
+    atualizarCampo(pedidoId, "medidas", medidas);
+  }
+
+  // Mesmo problema da medida: "descricao" (características da camisa —
+  // gola, punho etc.) também é coluna JSON inteira, não subcampo de
+  // aReceber/pagoFabiana — tinha o mesmo risco de update silenciosamente
+  // ignorado via atualizarSubcampo.
+  function atualizarDescricaoPedido(pedidoId, label, valor) {
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    const descricao = { ...(pedido?.descricao || {}), [label]: valor };
+    atualizarCampo(pedidoId, "descricao", descricao);
+  }
+
   async function atualizarCampoPedido(pedidoId, campo, valor) {
     await atualizarCampo(pedidoId, campo, valor);
     if (campo === "status" && valor === "Em Produção") {
@@ -662,6 +684,8 @@ export default function Shell() {
     onCampo: atualizarCampoPedido,
     onDefinirValorPorCamisaFabiana: definirValorPorCamisaFabianaDoPedido,
     onSub: atualizarSubcampoPedido,
+    onMedida: atualizarMedidaPedido,
+    onDescricao: atualizarDescricaoPedido,
     onPausar: pausarPedido,
     onRetomar: retomarPedido,
     onReabrirPagamentoFabiana: reabrirPagamentoFabianaDoPedido,

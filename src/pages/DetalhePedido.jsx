@@ -25,6 +25,8 @@ export default function DetalhePedido({
   onVoltar,
   onCampo,
   onSub,
+  onMedida,
+  onDescricao,
   onDefinirValorPorCamisaFabiana,
   onPausar,
   onRetomar,
@@ -513,7 +515,7 @@ export default function DetalhePedido({
             Medidas Novas (destaca na ficha da Fabi)
           </label>
         </div>
-        <ControleVozMedidas onMedida={(label, valor) => setSub("medidas", label, valor)} />
+        <ControleVozMedidas onMedida={(label, valor) => onMedida(p.id, label, valor)} />
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
           {MEDIDA_LABELS.map((label) => {
             const fin = finalDaMedida(label, p.medidas[label]);
@@ -524,7 +526,7 @@ export default function DetalhePedido({
                   step="0.5"
                   style={inputStyle}
                   value={p.medidas[label]}
-                  onChange={(e) => setSub("medidas", label, e.target.value)}
+                  onChange={(e) => onMedida(p.id, label, e.target.value)}
                 />
                 {fin !== null && (
                   <span className="fx-mono" style={{ fontSize: 11, color: BRASS }}>
@@ -543,7 +545,7 @@ export default function DetalhePedido({
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           {DESC_CAMPOS.map((campo) => (
-            <CampoDescricao key={campo.label} campo={campo} valor={p.descricao[campo.label]} onChange={(v) => setSub("descricao", campo.label, v)} />
+            <CampoDescricao key={campo.label} campo={campo} valor={p.descricao[campo.label]} onChange={(v) => onDescricao(p.id, campo.label, v)} />
           ))}
         </div>
       </Card>

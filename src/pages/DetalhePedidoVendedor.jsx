@@ -12,7 +12,7 @@ import { finalDaMedida, statusDividido, totalDividido } from "../lib/helpers";
 // Edição restrita do próprio pedido do vendedor — mesmos campos da
 // ficha de criação. Sem status de produção, qtd entregue, valor
 // Fabiana ou plano de assinatura, que não são da alçada dele.
-export default function DetalhePedidoVendedor({ pedido: p, onVoltar, onCampo, onSub, onAddTecido, onTecido }) {
+export default function DetalhePedidoVendedor({ pedido: p, onVoltar, onCampo, onSub, onMedida, onDescricao, onAddTecido, onTecido }) {
   const [confirmado, setConfirmado] = useState(false);
 
   function set(campo, valor) {
@@ -102,13 +102,13 @@ export default function DetalhePedidoVendedor({ pedido: p, onVoltar, onCampo, on
         <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
           Medidas (cm)
         </div>
-        <ControleVozMedidas onMedida={(label, valor) => setSub("medidas", label, valor)} />
+        <ControleVozMedidas onMedida={(label, valor) => onMedida(p.id, label, valor)} />
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
           {MEDIDA_LABELS.map((label) => {
             const fin = finalDaMedida(label, p.medidas[label]);
             return (
               <Field key={label} label={rotuloMedida(label)}>
-                <input type="number" step="0.5" style={inputStyle} value={p.medidas[label]} onChange={(e) => setSub("medidas", label, e.target.value)} />
+                <input type="number" step="0.5" style={inputStyle} value={p.medidas[label]} onChange={(e) => onMedida(p.id, label, e.target.value)} />
                 {fin !== null && (
                   <span className="fx-mono" style={{ fontSize: 11, color: BRASS }}>
                     final: {fin} cm
@@ -126,7 +126,7 @@ export default function DetalhePedidoVendedor({ pedido: p, onVoltar, onCampo, on
         </div>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
           {DESC_CAMPOS.map((campo) => (
-            <CampoDescricao key={campo.label} campo={campo} valor={p.descricao[campo.label]} onChange={(v) => setSub("descricao", campo.label, v)} />
+            <CampoDescricao key={campo.label} campo={campo} valor={p.descricao[campo.label]} onChange={(v) => onDescricao(p.id, campo.label, v)} />
           ))}
         </div>
       </Card>

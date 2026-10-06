@@ -26,6 +26,23 @@ export default function ShellVendedor() {
   const { pedidos, loading, saving, criarPedido, atualizarCampo, atualizarSubcampo, adicionarTecido, atualizarTecido } = usePedidos();
   const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
 
+  // Mesma correção aplicada no Shell do dono: "medidas" não é subcampo de
+  // aReceber/pagoFabiana, então atualizarSubcampo ignorava o update em
+  // silêncio (sem coluna mapeada) — grava o objeto `medidas` inteiro via
+  // atualizarCampo, que sabe gravar essa coluna.
+  function atualizarMedidaPedido(pedidoId, label, valor) {
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    const medidas = { ...(pedido?.medidas || {}), [label]: valor };
+    atualizarCampo(pedidoId, "medidas", medidas);
+  }
+
+  // Mesma correção pra "descricao" (características da camisa).
+  function atualizarDescricaoPedido(pedidoId, label, valor) {
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    const descricao = { ...(pedido?.descricao || {}), [label]: valor };
+    atualizarCampo(pedidoId, "descricao", descricao);
+  }
+
   async function salvar(p) {
     const { clienteId } = await criarPedido(p);
     // Ele pode escrever por cima mesmo se o cliente já tiver dados
@@ -196,6 +213,8 @@ export default function ShellVendedor() {
             onVoltar={() => setSelecionado(null)}
             onCampo={atualizarCampo}
             onSub={atualizarSubcampo}
+            onMedida={atualizarMedidaPedido}
+            onDescricao={atualizarDescricaoPedido}
             onAddTecido={adicionarTecido}
             onTecido={atualizarTecido}
           />
