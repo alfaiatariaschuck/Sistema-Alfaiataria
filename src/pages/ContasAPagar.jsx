@@ -715,9 +715,13 @@ export default function ContasAPagar({
   // retroativamente em peça antiga só pra ter o dado de custo (ver
   // Histórico de Produção), e isso não deveria virar "ainda vou
   // precisar comprar" numa peça que já foi entregue faz tempo.
+  // "Entregue Parcial" também conta como resolvido pra esse cálculo —
+  // o tecido de um pedido é comprado de uma vez pro lote inteiro no
+  // início da produção, não unidade por unidade conforme entrega, então
+  // uma entrega parcial não significa tecido pendente de parte alguma.
   const tecidoPendenteItens = [];
   (pedidos || []).forEach((p) => {
-    if (pedidoFechado(p.status)) return;
+    if (pedidoFechado(p.status) || p.status === "Entregue Parcial") return;
     (p.tecidos || []).forEach((t) => !t.comprado && tecidoPendenteItens.push({ ...t, origem: "camisa", pedidoId: p.id, tecidoId: t.id, cliente: p.cliente }));
   });
   (pecas || []).forEach((p) => {
