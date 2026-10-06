@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { CheckCircle2, Clock, Copy, Search, Undo2 } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { BRASS, BRASS_SOFT, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
-import { brl, metragemParaNumero } from "../lib/helpers";
+import { brl, metragemParaNumero, pedidoFechado } from "../lib/helpers";
 
 // Junta variações de digitação (maiúscula/minúscula, espaço a mais) do
 // mesmo fornecedor conhecido num nome só, pra tudo ficar concentrado num
@@ -41,6 +41,7 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
 
   const itens = [];
   pedidos.forEach((p) => {
+    const jaEntregue = pedidoFechado(p.status) || p.status === "Entregue Parcial";
     (p.tecidos || []).forEach((t) => {
       if (!t.codigo && !t.fornecedor) return;
       itens.push({
@@ -56,10 +57,12 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
         fornecedor: normalizarFornecedor(t.fornecedor),
         comprado: !!t.comprado,
         dataPedido: p.dataPedido,
+        jaEntregue,
       });
     });
   });
   (pecas || []).forEach((p) => {
+    const jaEntregue = p.status === "Entregue";
     (p.tecidos || []).forEach((t) => {
       if (!t.codigo && !t.fornecedor) return;
       itens.push({
@@ -76,6 +79,7 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
         comprado: !!t.comprado,
         dataPedido: p.dataPedido,
         tipoPeca: p.tipoPeca,
+        jaEntregue,
       });
     });
   });
@@ -108,6 +112,13 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
     // escondesse ele — dá tempo de clicar em "desfazer" antes de sumir
     // da lista, pro caso de ter clicado no item errado.
     const recemAlternado = chaveDe(i) === desfazerDisponivel;
+    // Pedido/peça já entregue não é mais "pendente de compra de
+    // verdade" — o tecido obviamente já saiu (a peça foi feita e
+    // entregue), então fica fora da lista de pendente mesmo que
+    // "comprado" nunca tenha sido marcado (mesma régua de Contas a
+    // Pagar). Continua aparecendo em "Comprado"/"Todos", que é visão
+    // histórica.
+    if (filtroStatus === "Pendente" && i.jaEntregue && !recemAlternado) return false;
     if (filtroStatus === "Pendente" && i.comprado && !recemAlternado) return false;
     if (filtroStatus === "Comprado" && !i.comprado && !recemAlternado) return false;
     if (busca && !i.cliente.toLowerCase().includes(busca.toLowerCase()) && !i.codigo.toLowerCase().includes(busca.toLowerCase())) return false;
@@ -120,7 +131,7 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
     porFornecedor.get(i.fornecedor).push(i);
   });
 
-  const itensPendentes = itens.filter((i) => !i.comprado);
+  const itensPendentes = itens.filter((i) => !i.comprado && !i.jaEntregue);
   const pendentes = itensPendentes.length;
   // Quanto ainda vai precisar desembolsar em tecido não comprado — só
   // conta quem já tem metragem e valor/metro preenchidos; o resto é
