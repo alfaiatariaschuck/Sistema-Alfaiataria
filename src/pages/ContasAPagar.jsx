@@ -980,20 +980,16 @@ export default function ContasAPagar({
   const mesesComHistorico = historicoDespesas.filter((m) => m.total > 0);
   const mediaHistoricoDespesas = mesesComHistorico.length > 0 ? mesesComHistorico.reduce((s, m) => s + m.total, 0) / mesesComHistorico.length : 0;
 
-  // Por categoria, somando os últimos MESES_HISTORICO_FRETE meses de uma
-  // vez — pra ver de cara onde o dinheiro está indo e o que dá pra cortar,
-  // sem precisar escolher mês por mês.
-  const porCategoriaHistorico = (() => {
-    const chaveMesLimite = historicoDespesas[0]?.chaveMes;
-    // Agrupa ignorando maiúsculas/minúsculas e espaços extras (ex: "Material/Tecido
-    // avulso" vs "Material/Tecido Avulso" não podem virar duas linhas separadas) —
-    // o rótulo exibido usa a grafia oficial de CATEGORIAS_DESPESA quando bate,
-    // senão fica com a primeira grafia encontrada.
+  // Por categoria, quebrada mês a mês — pra ver em qual mês cada
+  // categoria pesou mais, além do total acumulado (últimos
+  // MESES_HISTORICO_FRETE meses, ordenado pelo total desc).
+  const porCategoriaPorMesHistorico = (() => {
+    const meses = historicoDespesas.map((m) => m.chaveMes);
     const normalizar = (s) => s.trim().toLowerCase();
     const rotulos = new Map();
     const mapa = new Map();
     despesas
-      .filter((d) => d.status === "Pago" && d.vencimento && chaveMesLimite && d.vencimento.slice(0, 7) >= chaveMesLimite)
+      .filter((d) => d.status === "Pago" && d.vencimento && meses.includes(d.vencimento.slice(0, 7)))
       .forEach((d) => {
         const bruta = (d.categoria || "").trim() || "Sem categoria";
         const chave = normalizar(bruta);
@@ -1001,9 +997,13 @@ export default function ContasAPagar({
           const oficial = CATEGORIAS_DESPESA.find((c) => normalizar(c) === chave);
           rotulos.set(chave, oficial || bruta);
         }
-        mapa.set(chave, (mapa.get(chave) || 0) + totalDespesa(d));
+        if (!mapa.has(chave)) mapa.set(chave, meses.map(() => 0));
+        const idx = meses.indexOf(d.vencimento.slice(0, 7));
+        mapa.get(chave)[idx] += totalDespesa(d);
       });
-    return [...mapa.entries()].map(([chave, valor]) => [rotulos.get(chave), valor]).sort((a, b) => b[1] - a[1]);
+    return [...mapa.entries()]
+      .map(([chave, valores]) => ({ categoria: rotulos.get(chave), valores, total: valores.reduce((s, v) => s + v, 0) }))
+      .sort((a, b) => b.total - a.total);
   })();
 
   // Divide um valor em N parcelas sem perder centavo no arredondamento —
@@ -2190,17 +2190,42 @@ export default function ContasAPagar({
               Onde o dinheiro foi
             </div>
             <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-              Soma por categoria, últimos {MESES_HISTORICO_FRETE} meses — o topo da lista é o melhor lugar pra
-              procurar corte de custo.
+              Por categoria, mês a mês — últimos {MESES_HISTORICO_FRETE} meses, com o total somado na última coluna.
+              O topo da lista (ordenado pelo total) é o melhor lugar pra procurar corte de custo.
             </div>
-            {porCategoriaHistorico.map(([categoria, valor], i) => (
-              <div key={categoria} className="flex items-center justify-between py-1.5" style={{ borderBottom: i < porCategoriaHistorico.length - 1 ? `1px solid ${LINE}` : "none" }}>
-                <span style={{ fontSize: 12, fontWeight: i === 0 ? 700 : 500 }}>{categoria}</span>
-                <span className="fx-mono" style={{ fontSize: 12, fontWeight: 700, color: i === 0 ? VERMELHO : INK }}>
-                  {brl(valor)}
-                </span>
-              </div>
-            ))}
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${LINE}`, color: TEXT_MUTED, textAlign: "left" }}>
+                    <th style={{ padding: "6px 8px", fontWeight: 600 }}>Categoria</th>
+                    {historicoDespesas.map((m) => (
+                      <th key={m.chaveMes} className="fx-mono" style={{ padding: "6px 8px", fontWeight: 600, textAlign: "right" }}>
+                        {m.label}
+                      </th>
+                    ))}
+                    <th style={{ padding: "6px 8px", fontWeight: 600, textAlign: "right", borderLeft: `1px solid ${LINE}` }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {porCategoriaPorMesHistorico.map((linha, i) => (
+                    <tr key={linha.categoria} style={{ borderBottom: i < porCategoriaPorMesHistorico.length - 1 ? `1px solid ${LINE}` : "none" }}>
+                      <td style={{ padding: "6px 8px", fontWeight: i === 0 ? 700 : 500 }}>{linha.categoria}</td>
+                      {linha.valores.map((valor, j) => (
+                        <td key={j} className="fx-mono" style={{ padding: "6px 8px", textAlign: "right", color: valor > 0 ? INK : TEXT_MUTED }}>
+                          {valor > 0 ? brl(valor) : "—"}
+                        </td>
+                      ))}
+                      <td
+                        className="fx-mono"
+                        style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: i === 0 ? VERMELHO : INK, borderLeft: `1px solid ${LINE}` }}
+                      >
+                        {brl(linha.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
         </div>
       )}
