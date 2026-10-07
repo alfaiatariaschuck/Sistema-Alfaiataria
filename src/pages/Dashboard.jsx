@@ -72,8 +72,16 @@ export default function Dashboard({
   const diasDesdePedido = (p) => (p.dataPedido ? -diasAte(p.dataPedido) : 0);
   const atrasados = abertos.filter((p) => diasDesdePedido(p) >= 45);
   const idsAtrasados = new Set(atrasados.map((p) => p.id));
+  // Alarme de prazo — separado do "atrasado" acima (que é sobre tempo de
+  // produção, não sobre o prazo combinado com o cliente). Esse é sobre a
+  // data da previsão de entrega em si: estourou, ou está logo ali — caso
+  // clássico de casamento/evento com data que não dá pra empurrar.
+  const entregasVencidas = [...abertos]
+    .filter((p) => p.previsaoEntrega && diasAte(p.previsaoEntrega) < 0)
+    .sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega));
+  const idsEntregasVencidas = new Set(entregasVencidas.map((p) => p.id));
   const proximos = [...abertos]
-    .filter((p) => p.previsaoEntrega && !idsAtrasados.has(p.id))
+    .filter((p) => p.previsaoEntrega && !idsAtrasados.has(p.id) && !idsEntregasVencidas.has(p.id))
     .sort((a, b) => a.previsaoEntrega.localeCompare(b.previsaoEntrega))
     .slice(0, 6);
 
@@ -129,6 +137,7 @@ export default function Dashboard({
       {mostrarExtras && (
         <CentralAlertas
           pedidosAtrasados={atrasados.length}
+          entregasVencidas={entregasVencidas.length}
           pecasAtrasadas={pecasAtrasadas}
           despesasAtrasadas={despesasAtrasadas}
           estoqueBaixo={estoqueBaixo}
@@ -238,6 +247,37 @@ export default function Dashboard({
         </Card>
       )}
 
+      {entregasVencidas.length > 0 && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-3 flex items-center gap-2" style={{ fontSize: 16, fontWeight: 600, color: VERMELHO }}>
+            <AlertTriangle size={16} /> Prazo de entrega vencido ({entregasVencidas.length})
+          </div>
+          <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 12 }}>
+            A data combinada com o cliente já passou e o pedido ainda não foi entregue — atenção redobrada se for
+            evento (casamento etc.), a data não volta.
+          </div>
+          {entregasVencidas.map((p) => {
+            const dias = Math.abs(diasAte(p.previsaoEntrega));
+            return (
+              <button
+                key={p.id}
+                onClick={() => irPara(p.id)}
+                className="w-full flex items-center justify-between py-2.5"
+                style={{ borderBottom: `1px solid ${LINE}`, textAlign: "left" }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{p.cliente || "Sem nome"}</div>
+                  <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                    Entrega prevista {fmtData(p.previsaoEntrega)} · {p.status}
+                  </div>
+                </div>
+                <Pill text={`${dias}d atrasado`} style={{ bg: "#F6E3D9", fg: VERMELHO }} />
+              </button>
+            );
+          })}
+        </Card>
+      )}
+
       {atrasados.length > 0 && (
         <Card style={{ padding: 20 }} className="mb-6">
           <div className="fx-serif mb-3 flex items-center gap-2" style={{ fontSize: 16, fontWeight: 600, color: VERMELHO }}>
@@ -273,6 +313,10 @@ export default function Dashboard({
           {proximos.length === 0 && <Empty texto="Nenhuma previsão de entrega cadastrada ainda." />}
           {proximos.map((p) => {
             const dias = diasAte(p.previsaoEntrega);
+            // Dentro de 3 dias já merece o mesmo destaque vermelho dos
+            // vencidos — é a janela em que ainda dá tempo de correr atrás,
+            // mas não sobra folga nenhuma.
+            const urgente = dias <= 3;
             return (
               <button
                 key={p.id}
@@ -286,7 +330,10 @@ export default function Dashboard({
                     {fmtData(p.previsaoEntrega)} · {p.status}
                   </div>
                 </div>
-                <Pill text={dias === 0 ? "hoje" : `em ${dias}d`} style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />
+                <Pill
+                  text={dias === 0 ? "hoje" : `em ${dias}d`}
+                  style={urgente ? { bg: "#F6E3D9", fg: VERMELHO } : { bg: BRASS_SOFT, fg: "#A9793E" }}
+                />
               </button>
             );
           })}

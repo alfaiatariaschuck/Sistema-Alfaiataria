@@ -7,8 +7,9 @@ const VERMELHO = "#9C4A1E";
 // Reúne num só lugar os avisos que hoje ficam espalhados em cada aba
 // (pedidos atrasados, peças de alfaiataria atrasadas, despesa vencida,
 // tecido com estoque baixo) — clica e já vai direto pra aba certa.
-export default function CentralAlertas({ pedidosAtrasados, pecasAtrasadas, despesasAtrasadas, estoqueBaixo, irParaTab }) {
+export default function CentralAlertas({ pedidosAtrasados, entregasVencidas, pecasAtrasadas, despesasAtrasadas, estoqueBaixo, irParaTab }) {
   const itens = [
+    { label: "entrega(s) de camisa com prazo vencido", count: entregasVencidas, tab: "pedidos" },
     { label: "pedido(s) de camisa atrasado(s)", count: pedidosAtrasados, tab: "pedidos" },
     { label: "peça(s) de alfaiataria atrasada(s)", count: pecasAtrasadas, tab: "pedidos-alfaiataria" },
     { label: "despesa(s) vencida(s)", count: despesasAtrasadas, tab: "contas-a-pagar" },

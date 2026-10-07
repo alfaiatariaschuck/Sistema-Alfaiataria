@@ -134,6 +134,14 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
           const atrasado40 = diasAberto > DIAS_LIMITE && !pedidoFechado(p.status);
           const naoEnviado = !p.enviadoFabi;
           const tecido = STATUS_TECIDO.find((s) => s.valor === (p.statusTecido || "aguardando")) || STATUS_TECIDO[0];
+          // Alarme de prazo de entrega — independente do "atrasado" acima
+          // (que é sobre tempo de produção). Esse é sobre a data combinada
+          // com o cliente: já estourou, ou está a 3 dias ou menos —
+          // crítico quando é pra um evento (casamento etc.) que não dá
+          // pra empurrar.
+          const diasEntrega = p.previsaoEntrega ? diasAte(p.previsaoEntrega) : null;
+          const entregaVencida = diasEntrega !== null && diasEntrega < 0;
+          const entregaProxima = diasEntrega !== null && diasEntrega >= 0 && diasEntrega <= 3;
           return (
           <div
             key={p.id}
@@ -166,8 +174,14 @@ export default function Pedidos({ pedidos, selecionado, setSelecionado, titulo =
                   </span>
                 )}
                 {naoEnviado && <Pill text="📨 Não enviado" style={{ bg: "#DCE4EE", fg: "#2E4A6B" }} />}
+                {entregaVencida && (
+                  <Pill text={`⏰ Entrega atrasada ${Math.abs(diasEntrega)}d`} style={{ bg: "#F6E3D9", fg: VERMELHO }} />
+                )}
+                {entregaProxima && (
+                  <Pill text={diasEntrega === 0 ? "⏰ Entrega hoje" : `⏰ Entrega em ${diasEntrega}d`} style={{ bg: "#F6E3D9", fg: VERMELHO }} />
+                )}
               </div>
-              <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+              <div style={{ fontSize: 12, color: entregaVencida || entregaProxima ? VERMELHO : TEXT_MUTED, fontWeight: entregaVencida || entregaProxima ? 600 : 400 }}>
                 Pedido {fmtData(p.dataPedido)} · Entrega prevista {fmtData(p.previsaoEntrega)}
               </div>
             </div>
