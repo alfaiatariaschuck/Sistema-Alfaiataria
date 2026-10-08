@@ -10,6 +10,8 @@ const VERDE = "#2C6E31";
 const CHAVE_CAIXA = "caixa_atual";
 const CHAVE_SOMAR_TECIDO = "somar_tecido_pendente";
 const CHAVE_SOMAR_PREVISAO = "somar_previsao_venda";
+const CHAVE_RESERVA = "reserva_investimento_pj";
+const CHAVE_SOMAR_RESERVA = "somar_reserva_investimento";
 const MESES_HISTORICO_FRETE = 6;
 
 // Total de uma despesa = valor do produto/serviço + frete (quando tiver).
@@ -539,6 +541,9 @@ export default function ContasAPagar({
   const [mostrarPagas, setMostrarPagas] = useState(false);
   const [somarTecidoPendente, setSomarTecidoPendente] = useState(false);
   const [somarPrevisaoVenda, setSomarPrevisaoVenda] = useState(false);
+  const [reservaInvestimento, setReservaInvestimento] = useState("");
+  const [reservaSalvo, setReservaSalvo] = useState(null);
+  const [somarReserva, setSomarReserva] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -552,6 +557,14 @@ export default function ContasAPagar({
     (async () => {
       const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_SOMAR_PREVISAO).maybeSingle();
       setSomarPrevisaoVenda(data?.valor === "true");
+    })();
+    (async () => {
+      const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_RESERVA).maybeSingle();
+      if (data?.valor) setReservaInvestimento(data.valor);
+    })();
+    (async () => {
+      const { data } = await supabase.from("config").select("valor").eq("chave", CHAVE_SOMAR_RESERVA).maybeSingle();
+      setSomarReserva(data?.valor === "true");
     })();
   }, []);
 
@@ -576,6 +589,24 @@ export default function ContasAPagar({
     const novo = !somarPrevisaoVenda;
     setSomarPrevisaoVenda(novo);
     await supabase.from("config").upsert({ chave: CHAVE_SOMAR_PREVISAO, valor: novo ? "true" : "false" });
+  }
+
+  async function salvarReserva() {
+    setReservaSalvo(null);
+    const { error } = await supabase.from("config").upsert({ chave: CHAVE_RESERVA, valor: reservaInvestimento });
+    setReservaSalvo(!error);
+    setTimeout(() => setReservaSalvo(null), 2500);
+  }
+
+  // Dinheiro aplicado (ex: conta de investimento da própria PJ) — fica
+  // registrado pra não sumir do radar, mas de propósito FORA do saldo
+  // projetado/falta faturar por padrão: é patrimônio, não caixa
+  // disponível pra operação, até você decidir resgatar. O interruptor
+  // deixa ligar quando quiser simular "e se eu resgatasse".
+  async function alternarSomarReserva() {
+    const novo = !somarReserva;
+    setSomarReserva(novo);
+    await supabase.from("config").upsert({ chave: CHAVE_SOMAR_RESERVA, valor: novo ? "true" : "false" });
   }
 
   const hoje = hojeISO();
@@ -741,12 +772,17 @@ export default function ContasAPagar({
   const tecidoPendente = somarTecidoPendente ? tecidoPendenteTotal : 0;
   const tecidoPendenteSemPreco = tecidoPendenteItens.length - tecidoPendenteComPreco.length;
 
+  const reservaNum = parseFloat(reservaInvestimento) || 0;
+  const reservaContada = somarReserva ? reservaNum : 0;
+
   // Saldo projetado = o que já tenho em caixa + o que ainda vou receber - o
   // que ainda vou pagar (despesas + tecido pendente de compra). Falta
   // faturar = quanto de venda nova (fora do que já está previsto) eu
-  // preciso pra cobrir tudo isso com o caixa que tenho.
-  const saldo = caixaNum + totalReceita - totalDespesas - tecidoPendente;
-  const faltaFaturar = Math.max(0, totalDespesas + tecidoPendente - caixaNum - totalReceita);
+  // preciso pra cobrir tudo isso com o caixa que tenho. Reserva/
+  // investimento só entra se o interruptor acima estiver ligado — por
+  // padrão fica de fora, porque é dinheiro aplicado, não caixa líquido.
+  const saldo = caixaNum + totalReceita - totalDespesas - tecidoPendente + reservaContada;
+  const faltaFaturar = Math.max(0, totalDespesas + tecidoPendente - caixaNum - totalReceita - reservaContada);
 
   // Contas fixas do mês — despesas recorrentes ainda em aberto. Como
   // marcar uma como paga já lança sozinha a ocorrência do mês seguinte,
@@ -1417,7 +1453,13 @@ export default function ContasAPagar({
               {" "}+ <strong>{brl(tecidoPendente)}</strong> de tecido ainda por comprar
             </>
           )}
-          , e espera receber <strong>{brl(totalReceita)}</strong>.{" "}
+          , e espera receber <strong>{brl(totalReceita)}</strong>
+          {reservaContada > 0 && (
+            <>
+              {" "}+ <strong>{brl(reservaContada)}</strong> de reserva/investimento (contando com resgate)
+            </>
+          )}
+          .{" "}
           {saldo >= 0 ? (
             <>Sobra <strong>{brl(saldo)}</strong> — tá tranquilo por enquanto.</>
           ) : (
@@ -1449,6 +1491,32 @@ export default function ContasAPagar({
           {caixaSalvo === true && <span style={{ fontSize: 12, color: VERDE }}>✓ salvo</span>}
           {caixaSalvo === false && <span style={{ fontSize: 12, color: VERMELHO }}>não consegui salvar, tenta de novo</span>}
           <span style={{ fontSize: 11, color: TEXT_MUTED }}>Atualize aqui sempre que quiser — entra na conta do saldo projetado e do quanto falta faturar.</span>
+        </div>
+      </Card>
+
+      <Card style={{ padding: 16 }} className="mb-6">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <PiggyBank size={16} color={BRASS} />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Reserva/Investimento PJ (R$)</span>
+          </div>
+          <input
+            type="number"
+            step="0.01"
+            style={{ ...inputStyle, width: 140 }}
+            value={reservaInvestimento}
+            onChange={(e) => setReservaInvestimento(e.target.value)}
+            placeholder="0,00"
+          />
+          <button onClick={salvarReserva} style={{ background: INK, color: "#FFF", padding: "7px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+            Atualizar
+          </button>
+          {reservaSalvo === true && <span style={{ fontSize: 12, color: VERDE }}>✓ salvo</span>}
+          {reservaSalvo === false && <span style={{ fontSize: 12, color: VERMELHO }}>não consegui salvar, tenta de novo</span>}
+          <span style={{ fontSize: 11, color: TEXT_MUTED }}>
+            Dinheiro aplicado (ex: conta de investimento da própria PJ) — fica registrado aqui mas fora do caixa
+            operacional por padrão. Use o card "Reserva/Investimento" abaixo pra ligar/desligar se ele entra no saldo.
+          </span>
         </div>
       </Card>
 
@@ -1491,6 +1559,25 @@ export default function ContasAPagar({
             </div>
             <div style={{ fontSize: 11, fontWeight: 600, color: somarPrevisaoVenda ? VERDE : TEXT_MUTED, marginTop: 4 }}>
               {somarPrevisaoVenda ? "✓ somando no saldo — clica pra parar" : "não está somando — clica pra somar"}
+            </div>
+          </Card>
+        </button>
+        <button
+          type="button"
+          onClick={alternarSomarReserva}
+          title={somarReserva ? "Clica pra parar de somar" : "Clica pra somar no saldo projetado/falta faturar — pra simular 'e se eu resgatasse'"}
+          style={{ textAlign: "left", cursor: "pointer" }}
+        >
+          <Card style={{ padding: 16, border: somarReserva ? "1px solid #8FB89A" : undefined }}>
+            <div className="flex items-center justify-between mb-2">
+              <span style={{ fontSize: 12, color: TEXT_MUTED, fontWeight: 600 }}>Reserva/Investimento PJ</span>
+              <PiggyBank size={15} color={somarReserva ? VERDE : TEXT_MUTED} />
+            </div>
+            <div className="fx-serif" style={{ fontSize: 22, fontWeight: 600, color: somarReserva ? VERDE : INK }}>
+              {brl(reservaNum)}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: somarReserva ? VERDE : TEXT_MUTED, marginTop: 4 }}>
+              {somarReserva ? "✓ somando no saldo — clica pra parar" : "fora do saldo — clica se for resgatar"}
             </div>
           </Card>
         </button>
