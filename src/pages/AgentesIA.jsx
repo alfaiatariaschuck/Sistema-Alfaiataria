@@ -479,6 +479,17 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const margemHojeMedioPeca = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca - maoDeObraMedioPeca;
     const margemHojePct = ticketMedio > 0 ? (margemHojeMedioPeca / ticketMedio) * 100 : 0;
 
+    // Mesma margem, mas trocando a mão de obra pela versão "ritmo de
+    // entrega" — NÃO é a margem líquida real (essa é a de cima, pela
+    // pedida, que bate com o que a equipe realmente recebe). É uma
+    // leitura operacional: "quanto sobraria se o custo fosse medido
+    // pelo que de fato sai pronto" — sempre menor que a margem líquida
+    // real quando entrega < pedida, pedido explícito do Tales pra
+    // comparar os dois lado a lado.
+    const maoDeObraMedioPecaEntrega = qtdEntregueProducao > 0 ? (custoEquipeMensalAtual * meses.length) / qtdEntregueProducao : 0;
+    const margemOperacionalEntrega = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca - maoDeObraMedioPecaEntrega;
+    const margemOperacionalEntregaPct = ticketMedio > 0 ? (margemOperacionalEntrega / ticketMedio) * 100 : 0;
+
     // Ponto de equilíbrio completo, contando TUDO que pesa hoje
     // (estrutura do ateliê + custo fixo real da equipe) — pedido
     // explícito do Tales: essa seção é diagnóstico da situação atual,
@@ -568,6 +579,9 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       maoDeObraMedioPeca,
       margemHojeMedioPeca,
       margemHojePct,
+      maoDeObraMedioPecaEntrega,
+      margemOperacionalEntrega,
+      margemOperacionalEntregaPct,
       custoEquipeMensalAtual,
       porTipoDetalhe,
       piorMes,
@@ -599,7 +613,10 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       `Ponto de equilíbrio hoje (estrutura do ateliê + custo fixo da equipe atual): ${d.pontoEquilibrioHoje !== null ? d.pontoEquilibrioHoje.toFixed(1) + " peças/mês" : "—"}`,
       "",
       `SITUAÇÃO ATUAL (referência — inclui o custo de mão de obra de hoje, calculado pelo ritmo de peças pedidas, pra bater com o total real pago à equipe no período)`,
-      `Margem líquida de hoje / peça: ${brl(d.margemHojeMedioPeca)} (${d.margemHojePct.toFixed(0)}%), já descontando mão de obra média de ${brl(d.maoDeObraMedioPeca)}/peça pelo custo atual da equipe`,
+      `Mão de obra média / peça (ritmo de pedida): ${brl(d.maoDeObraMedioPeca)}`,
+      `Margem líquida de hoje / peça: ${brl(d.margemHojeMedioPeca)} (${d.margemHojePct.toFixed(0)}%) — a margem contábil real do período`,
+      `Mão de obra média / peça (ritmo de entrega): ${brl(d.maoDeObraMedioPecaEntrega)}`,
+      `Margem operacional (ritmo de entrega) / peça: ${brl(d.margemOperacionalEntrega)} (${d.margemOperacionalEntregaPct.toFixed(0)}%) — não é a margem líquida real, é "quanto sobraria se o custo fosse medido pelo que de fato sai pronto"`,
       "",
       "CUSTO REAL POR PEÇA ENTREGUE, por tipo (serve pra CLT, PJ fixo ou PJ por produtividade — não é preço combinado, é o ponto de partida pra negociar)",
       "Calculado pelo ritmo real de ENTREGA (peça que sai pronta), não de pedido — quanto custa de verdade cada peça no ritmo atual. Empata com o fixo de hoje só se o ritmo de entrega se manter na média. Abaixo da média, custa mais por peça; acima, custa menos.",
@@ -1186,13 +1203,13 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
               </p>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>SITUAÇÃO ATUAL</div>
               <p style={{ marginBottom: 8 }}>
-                Só referência — usa o custo de equipe de hoje, rateado pelo ritmo de peças <strong>pedidas</strong>{" "}
-                (não entregues), de propósito: essa é a única forma de o total de mão de obra somado nas peças
+                Só referência — mostra o custo de mão de obra calculado das duas formas, lado a lado, pra comparar.{" "}
+                <strong>Ritmo de pedida</strong>: essa é a única forma de o total de mão de obra somado nas peças
                 vendidas bater exatamente com o que a equipe realmente recebe no período — é sobre "qual a margem
-                real hoje", não sobre "quanto pagaria um modelo por entrega" (isso é a tabela de valor equivalente,
-                mais abaixo). <strong>Mão de obra média hoje/peça</strong>: quanto a equipe atual custa, em média,
-                por peça vendida. <strong>Margem líquida de hoje/peça</strong>: a margem real de hoje, já descontando
-                essa mão de obra.
+                real hoje" (a <strong>Margem líquida de hoje</strong>, que não muda). <strong>Ritmo de entrega</strong>:
+                o mesmo custo fixo dividido pelo que realmente saiu pronto — sempre maior quando entrega é menor que
+                pedida. A <strong>Margem operacional (ritmo de entrega)</strong> usa esse segundo número — não é a
+                margem líquida real, é "quanto sobraria se o custo fosse medido pelo que de fato sai pronto".
               </p>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>CUSTO REAL POR PEÇA ENTREGUE</div>
               <p style={{ marginBottom: 8 }}>
@@ -1294,9 +1311,9 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
           <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6, marginTop: 10 }}>
             SITUAÇÃO ATUAL <span style={{ fontWeight: 400 }}>(referência — custo de equipe de hoje, rateado pelas peças pedidas pra bater com o total real pago, vai mudar com o modelo novo)</span>
           </div>
-          <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+          <div className="grid gap-3 mb-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
             <div>
-              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra média hoje / peça</div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra média / peça (ritmo de pedida)</div>
               <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(dadosRemuneracao.maoDeObraMedioPeca)}</div>
             </div>
             <div>
@@ -1305,6 +1322,25 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
                 {brl(dadosRemuneracao.margemHojeMedioPeca)} ({dadosRemuneracao.margemHojePct.toFixed(0)}%)
               </div>
             </div>
+          </div>
+          <div style={{ fontSize: 10.5, color: TEXT_MUTED, marginBottom: 10, fontStyle: "italic" }}>
+            Margem líquida acima é a contábil real do período (pedida) — não muda.
+          </div>
+          <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra média / peça (ritmo de entrega)</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(dadosRemuneracao.maoDeObraMedioPecaEntrega)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Margem operacional (ritmo de entrega) / peça</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: dadosRemuneracao.margemOperacionalEntrega >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                {brl(dadosRemuneracao.margemOperacionalEntrega)} ({dadosRemuneracao.margemOperacionalEntregaPct.toFixed(0)}%)
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 10.5, color: TEXT_MUTED, marginBottom: 10, fontStyle: "italic" }}>
+            Margem operacional acima <strong>não é a margem líquida real</strong> — é "quanto sobraria se o custo
+            fosse medido pelo que de fato sai pronto", pra comparar com a de cima.
           </div>
 
           <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6, marginTop: 10 }}>
