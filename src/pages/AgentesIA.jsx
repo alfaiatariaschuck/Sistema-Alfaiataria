@@ -434,7 +434,6 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const estruturaPorPeca = mediaPedida > 0 ? estruturaMensal / mediaPedida : 0;
     const margemDisponivelMaoDeObra = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca;
     const contribuicaoPorPeca = receitaLiquidaPorPeca - materialMedio;
-    const pontoEquilibrioSemMaoDeObra = contribuicaoPorPeca > 0 ? estruturaMensal / contribuicaoPorPeca : null;
 
     // Margem de hoje — com o custo ATUAL de mão de obra (equipe
     // cadastrada), só como referência de "situação hoje". Fica de fora
@@ -458,6 +457,15 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const maoDeObraMedioPeca = qtdPedidaVenda > 0 ? maoDeObraTotalPeriodo / qtdPedidaVenda : 0;
     const margemHojeMedioPeca = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca - maoDeObraMedioPeca;
     const margemHojePct = ticketMedio > 0 ? (margemHojeMedioPeca / ticketMedio) * 100 : 0;
+
+    // Ponto de equilíbrio completo, contando TUDO que pesa hoje
+    // (estrutura do ateliê + custo fixo real da equipe) — pedido
+    // explícito do Tales: essa seção é diagnóstico da situação atual,
+    // não simulação, então o ponto de equilíbrio tem que refletir o
+    // custo de verdade de hoje, não uma versão artificialmente sem mão
+    // de obra.
+    const custosFixosHoje = estruturaMensal + custoEquipeMensalAtual;
+    const pontoEquilibrioHoje = contribuicaoPorPeca > 0 ? custosFixosHoje / contribuicaoPorPeca : null;
 
     // Valor equivalente por peça, tipo por tipo — pelo custo-hora atual
     // (o mesmo número usado no resto do sistema), não um "preço
@@ -530,7 +538,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       aliquotaImposto: parseFloat(aliquotaImposto) || 0,
       receitaLiquidaMensalMedia,
       margemDisponivelMaoDeObra,
-      pontoEquilibrioSemMaoDeObra,
+      pontoEquilibrioHoje,
       maoDeObraMedioPeca,
       margemHojeMedioPeca,
       margemHojePct,
@@ -559,10 +567,10 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       `Estrutura fixa do ateliê / mês (aluguel+luz): ${brl(d.estruturaMensal)}`,
       `Alíquota de imposto: ${d.aliquotaImposto}%`,
       "",
-      "INDICADORES (diagnóstico, não dependem do modelo de remuneração escolhido)",
+      "INDICADORES",
       `Receita líquida mensal média: ${brl(d.receitaLiquidaMensalMedia)}`,
-      `Margem disponível pra mão de obra / peça (antes de remunerar): ${brl(d.margemDisponivelMaoDeObra)}`,
-      `Ponto de equilíbrio sem mão de obra: ${d.pontoEquilibrioSemMaoDeObra !== null ? d.pontoEquilibrioSemMaoDeObra.toFixed(1) + " peças/mês" : "—"}`,
+      `Margem disponível pra mão de obra / peça (antes de remunerar, não depende do modelo escolhido): ${brl(d.margemDisponivelMaoDeObra)}`,
+      `Ponto de equilíbrio hoje (estrutura do ateliê + custo fixo da equipe atual): ${d.pontoEquilibrioHoje !== null ? d.pontoEquilibrioHoje.toFixed(1) + " peças/mês" : "—"}`,
       "",
       `SITUAÇÃO ATUAL (referência — inclui o custo de mão de obra de hoje, que está sendo redesenhado)`,
       `Margem líquida de hoje / peça: ${brl(d.margemHojeMedioPeca)} (${d.margemHojePct.toFixed(0)}%), já descontando mão de obra média de ${brl(d.maoDeObraMedioPeca)}/peça pelo custo atual da equipe`,
@@ -1185,9 +1193,9 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Ponto de equilíbrio (sem mão de obra)</div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Ponto de equilíbrio hoje (c/ mão de obra atual)</div>
               <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>
-                {dadosRemuneracao.pontoEquilibrioSemMaoDeObra !== null ? `${dadosRemuneracao.pontoEquilibrioSemMaoDeObra.toFixed(1)} peças/mês` : "—"}
+                {dadosRemuneracao.pontoEquilibrioHoje !== null ? `${dadosRemuneracao.pontoEquilibrioHoje.toFixed(1)} peças/mês` : "—"}
               </div>
             </div>
           </div>
