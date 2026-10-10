@@ -1388,6 +1388,104 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
             fosse medido pelo que de fato sai pronto", pra comparar com a de cima.
           </div>
 
+          <div style={{ borderTop: "1px solid #E4E0D6", marginTop: 14, paddingTop: 18, marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 2 }}>
+              DE ONDE VEM CADA MARGEM <span style={{ fontWeight: 400 }}>(composição do ticket médio — pedida x entrega)</span>
+            </div>
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16, lineHeight: 1.5, maxWidth: 640 }}>
+              As duas barras partem do mesmo ticket médio ({brl(dadosRemuneracao.ticketMedio)}) e dos mesmos imposto,
+              material e estrutura — só a mão de obra muda entre as duas, e é por isso que a margem no topo muda junto.
+            </div>
+            <div className="flex flex-wrap items-end" style={{ gap: 36 }}>
+              {[
+                {
+                  titulo: "Ritmo de pedida",
+                  sub: "retrato contábil real",
+                  nomeMargem: "Margem líquida",
+                  corMargem: "#2C6E31",
+                  maoDeObra: dadosRemuneracao.maoDeObraMedioPeca,
+                  margem: dadosRemuneracao.margemHojeMedioPeca,
+                  margemPct: dadosRemuneracao.margemHojePct,
+                },
+                {
+                  titulo: "Ritmo de entrega",
+                  sub: "alerta de capacidade",
+                  nomeMargem: "Margem ajustada",
+                  corMargem: "#9C4A1E",
+                  maoDeObra: dadosRemuneracao.maoDeObraMedioPecaEntrega,
+                  margem: dadosRemuneracao.margemOperacionalEntrega,
+                  margemPct: dadosRemuneracao.margemOperacionalEntregaPct,
+                },
+              ].map((b) => {
+                const impostoPorPeca = (dadosRemuneracao.ticketMedio * dadosRemuneracao.aliquotaImposto) / 100;
+                const segmentos = [
+                  { nome: "Imposto", valor: impostoPorPeca, cor: "#2a78d6" },
+                  { nome: "Material", valor: dadosRemuneracao.materialMedio, cor: "#eb6834" },
+                  { nome: "Estrutura", valor: dadosRemuneracao.estruturaPorPeca, cor: "#1baf7a" },
+                  { nome: "Mão de obra", valor: b.maoDeObra, cor: "#eda100" },
+                  { nome: b.nomeMargem, valor: b.margem, cor: b.corMargem },
+                ];
+                return (
+                  <div key={b.titulo} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 150 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1F2430" }}>{b.titulo}</div>
+                    <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 8 }}>{b.sub}</div>
+                    <div
+                      style={{
+                        width: 110,
+                        height: 240,
+                        display: "flex",
+                        flexDirection: "column-reverse",
+                        borderRadius: 6,
+                        overflow: "hidden",
+                        border: "1px solid rgba(0,0,0,0.08)",
+                      }}
+                    >
+                      {segmentos.map((s, i) => {
+                        const pct = dadosRemuneracao.ticketMedio > 0 ? Math.max(0, (s.valor / dadosRemuneracao.ticketMedio) * 100) : 0;
+                        return (
+                          <div
+                            key={s.nome}
+                            title={`${s.nome}: ${brl(s.valor)} (${pct.toFixed(0)}%)`}
+                            style={{
+                              height: `${pct}%`,
+                              background: s.cor,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 10,
+                              color: "#fff",
+                              fontWeight: 700,
+                              borderTop: i > 0 ? "2px solid #F7F4EE" : "none",
+                            }}
+                          >
+                            {pct >= 7 ? `${pct.toFixed(0)}%` : ""}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ marginTop: 10, fontSize: 18, fontWeight: 800, color: b.corMargem }}>{b.margemPct.toFixed(0)}%</div>
+                    <div style={{ fontSize: 10.5, color: TEXT_MUTED }}>{b.nomeMargem}</div>
+                  </div>
+                );
+              })}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11, color: "#3A3630", minWidth: 180 }}>
+                {[
+                  { nome: "Imposto", cor: "#2a78d6" },
+                  { nome: "Material", cor: "#eb6834" },
+                  { nome: "Estrutura", cor: "#1baf7a" },
+                  { nome: "Mão de obra", cor: "#eda100" },
+                  { nome: "Margem líquida (pedida)", cor: "#2C6E31" },
+                  { nome: "Margem ajustada (entrega)", cor: "#9C4A1E" },
+                ].map((l) => (
+                  <div key={l.nome} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: l.cor, flexShrink: 0 }} />
+                    {l.nome}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6, marginTop: 10 }}>
             CUSTO REAL POR PEÇA ENTREGUE <span style={{ fontWeight: 400 }}>(por tipo — CLT, PJ fixo ou PJ por produtividade)</span>
           </div>
