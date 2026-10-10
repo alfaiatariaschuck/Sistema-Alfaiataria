@@ -13,6 +13,11 @@ const CHAVE_META_PROLABORE = "meta_pro_labore";
 const CHAVE_META_LUCRO = "meta_lucro";
 const CHAVE_CAIXA = "caixa_atual";
 const CHAVE_SUMIDO = "cliente_sumido_meses";
+// Início real da produção de alfaiataria — configurável de propósito,
+// em vez de inferido da menor dataPedido que existir no banco: pedido
+// lançado antes da produção começar de verdade (teste, pré-venda)
+// distorceria a janela de "Dados para Remuneração" pra qualquer lado.
+const CHAVE_INICIO_PRODUCAO_ALFAIATARIA = "inicio_producao_alfaiataria";
 
 const CATEGORIAS_VARIAVEIS_POR_PECA = ["Material/Tecido avulso", "Aviamento Alfaiataria", "Aviamento Camisaria", "Pró-labore", "Dívida Antiga/Renegociação"];
 
@@ -113,22 +118,32 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
   const [metaLucro, setMetaLucro] = useState("10000");
   const [caixaAtual, setCaixaAtual] = useState("");
   const [limiteMesesSumido, setLimiteMesesSumido] = useState(6);
+  const [inicioProducaoAlfaiataria, setInicioProducaoAlfaiataria] = useState("2026-05-01");
   const [carregandoConfig, setCarregandoConfig] = useState(true);
   const { margemPadrao: margemPadraoCamisaria, metragemPadrao } = useConfigPrecoCamisa();
   const { aluguelAtelie, luzAtelie, aliquotaImposto } = useConfigCustosFixos();
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("chave, valor").in("chave", [CHAVE_META_PROLABORE, CHAVE_META_LUCRO, CHAVE_CAIXA, CHAVE_SUMIDO]);
+      const { data } = await supabase
+        .from("config")
+        .select("chave, valor")
+        .in("chave", [CHAVE_META_PROLABORE, CHAVE_META_LUCRO, CHAVE_CAIXA, CHAVE_SUMIDO, CHAVE_INICIO_PRODUCAO_ALFAIATARIA]);
       (data || []).forEach((row) => {
         if (row.chave === CHAVE_META_PROLABORE) setMetaProLabore(row.valor || "40000");
         if (row.chave === CHAVE_META_LUCRO) setMetaLucro(row.valor || "10000");
         if (row.chave === CHAVE_CAIXA) setCaixaAtual(row.valor || "");
         if (row.chave === CHAVE_SUMIDO) setLimiteMesesSumido(parseInt(row.valor, 10) || 6);
+        if (row.chave === CHAVE_INICIO_PRODUCAO_ALFAIATARIA) setInicioProducaoAlfaiataria(row.valor || "2026-05-01");
       });
       setCarregandoConfig(false);
     })();
   }, []);
+
+  async function salvarInicioProducaoAlfaiataria(valor) {
+    setInicioProducaoAlfaiataria(valor);
+    await supabase.from("config").upsert({ chave: CHAVE_INICIO_PRODUCAO_ALFAIATARIA, valor });
+  }
 
   async function salvarMetaProLabore(valor) {
     setMetaProLabore(valor);
@@ -356,31 +371,20 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
   const dadosRemuneracao = useMemo(() => {
     const hojeD = new Date(hojeISO() + "T00:00:00");
 
-    // Monta uma janela de meses fechados (nunca o mês atual) que nunca
-    // volta antes do início real de UM histórico específico. Pedida e
-    // entregue têm cada uma o seu próprio início — entrega atrasa em
-    // relação ao pedido, produção leva semanas — então usar o mesmo
-    // início pros dois foi o que causou o 2,83 em vez de 3,40: a janela
-    // de "entregue" ficou 1 mês mais longa que o histórico real de
-    // entrega, contando um mês fantasma com 0 no meio da conta.
-    function mesesFechadosDesde(primeiroMes) {
-      const arr = [];
-      for (let i = janelaRemuneracao; i >= 1; i--) {
-        const d = new Date(hojeD.getFullYear(), hojeD.getMonth() - i, 1);
-        const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        if (!primeiroMes || chave >= primeiroMes) arr.push(chave);
-      }
-      return arr;
+    // Início da janela = quando a PRODUÇÃO começou de verdade, pedido
+    // explícito do Tales — não a menor dataPedido que existir no banco
+    // (podia ter pedido de teste/pré-venda lançado antes da operação
+    // começar pra valer, o que já causou confusão). É configurável logo
+    // abaixo, editável sem precisar mexer em código se um dia mudar.
+    // Pedida e entregue usam a MESMA âncora agora — as duas são sobre o
+    // mesmo período de operação, só contadas por data diferente cada.
+    const inicioProducaoMes = inicioProducaoAlfaiataria ? inicioProducaoAlfaiataria.slice(0, 7) : null;
+    const meses = [];
+    for (let i = janelaRemuneracao; i >= 1; i--) {
+      const d = new Date(hojeD.getFullYear(), hojeD.getMonth() - i, 1);
+      const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!inicioProducaoMes || chave >= inicioProducaoMes) meses.push(chave);
     }
-
-    const primeiraDataPedido = (pecas || []).reduce((min, p) => (p.dataPedido && (!min || p.dataPedido < min) ? p.dataPedido : min), null);
-    const primeiraDataEntrega = (pecas || []).reduce((min, p) => {
-      const valida = p.status === "Entregue" && p.dataInicioProducao && p.dataEntrega;
-      return valida && (!min || p.dataEntrega < min) ? p.dataEntrega : min;
-    }, null);
-
-    const meses = mesesFechadosDesde(primeiraDataPedido ? primeiraDataPedido.slice(0, 7) : null);
-    const mesesEntregas = mesesFechadosDesde(primeiraDataEntrega ? primeiraDataEntrega.slice(0, 7) : null);
     const mesesPedidosSolicitados = janelaRemuneracao;
     const qtdMesesDisponiveis = meses.length;
 
@@ -388,9 +392,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     // doação/uso próprio/permuta), exatamente como o resto do sistema já
     // conta (Histórico de Produção: "vendasPorMesRaw" e "entregues").
     // Peça doada ainda ocupou hora de produção de verdade, então conta
-    // pra volume/remuneração mesmo sem ter gerado receita. Cada
-    // contagem usa a SUA própria janela (meses / mesesEntregas), nunca
-    // a do outro.
+    // pra volume/remuneração mesmo sem ter gerado receita.
     let qtdPedidaProducao = 0;
     let qtdEntregueProducao = 0;
     const porTipo = new Map();
@@ -400,10 +402,10 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
         const tipo = p.tipoPeca || "Outro";
         porTipo.set(tipo, (porTipo.get(tipo) || 0) + 1);
       }
-      if (p.status === "Entregue" && p.dataInicioProducao && mesesEntregas.includes((p.dataEntrega || "").slice(0, 7))) qtdEntregueProducao += 1;
+      if (p.status === "Entregue" && p.dataInicioProducao && meses.includes((p.dataEntrega || "").slice(0, 7))) qtdEntregueProducao += 1;
     });
     const mediaPedida = meses.length > 0 ? qtdPedidaProducao / meses.length : 0;
-    const mediaEntregue = mesesEntregas.length > 0 ? qtdEntregueProducao / mesesEntregas.length : 0;
+    const mediaEntregue = meses.length > 0 ? qtdEntregueProducao / meses.length : 0;
     const porTipoLista = [...porTipo.entries()].sort((a, b) => b[1] - a[1]);
 
     // Preço e custo — aqui sim exclui doação/uso próprio/permuta
@@ -438,8 +440,20 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     // cadastrada), só como referência de "situação hoje". Fica de fora
     // dos outros 3 indicadores de propósito, pra eles continuarem
     // válidos depois que o modelo de remuneração mudar.
-    const custoHoraAtual = custoPorHoraAlfaiataria(pecas, equipe);
+    // Custo-hora calculado com a MESMA janela (maio a set, configurável
+    // acima) usada em toda essa seção — não a janela própria de
+    // custoPorHoraAlfaiataria (lib/custoEquipe.js), que infere o início
+    // sozinha a partir da menor dataPedido e pode incluir mês de
+    // pré-produção que aqui já sabemos que não deve contar.
     const custoEquipeMensalAtual = custoEquipeMensal(equipe);
+    let horasTotaisPeriodo = 0;
+    (pecas || []).forEach((p) => {
+      if (TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida)) return;
+      if (!meses.includes((p.dataPedido || "").slice(0, 7))) return;
+      horasTotaisPeriodo += HORAS_REFERENCIA_TIPO_PECA[p.tipoPeca] || 0;
+    });
+    const horasPorMesPeriodo = meses.length > 0 ? horasTotaisPeriodo / meses.length : 0;
+    const custoHoraAtual = horasPorMesPeriodo > 0 ? custoEquipeMensalAtual / horasPorMesPeriodo : 0;
     const maoDeObraTotalPeriodo = pecasDoPeriodo.reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraAtual), 0);
     const maoDeObraMedioPeca = qtdPedidaVenda > 0 ? maoDeObraTotalPeriodo / qtdPedidaVenda : 0;
     const margemHojeMedioPeca = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca - maoDeObraMedioPeca;
@@ -503,10 +517,8 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
 
     return {
       meses,
-      mesesEntregas,
       mesesPedidosSolicitados,
       qtdMesesDisponiveis,
-      qtdMesesDisponiveisEntregas: mesesEntregas.length,
       qtdPedida: qtdPedidaProducao,
       qtdEntregue: qtdEntregueProducao,
       mediaPedida,
@@ -527,7 +539,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       piorMes,
       melhorMes,
     };
-  }, [pecas, equipe, custoAviamentosPorPecaBase, aluguelAtelie, luzAtelie, aliquotaImposto, janelaRemuneracao]);
+  }, [pecas, equipe, custoAviamentosPorPecaBase, aluguelAtelie, luzAtelie, aliquotaImposto, janelaRemuneracao, inicioProducaoAlfaiataria]);
 
   function textoRemuneracao(d) {
     const linhas = [
@@ -535,7 +547,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       "",
       "PRODUÇÃO (toda peça produzida, inclusive doação/uso próprio/permuta — mesma base do Histórico de Produção)",
       `Peças pedidas/mês (média): ${d.mediaPedida.toFixed(2)} (total ${d.qtdPedida} no período, base: data do pedido)`,
-      `Peças entregues/mês (média): ${d.mediaEntregue.toFixed(2)} (total ${d.qtdEntregue} em ${d.qtdMesesDisponiveisEntregas} mês(es) fechado(s), base: data de entrega, status Entregue — janela própria, diferente da de pedida)`,
+      `Peças entregues/mês (média): ${d.mediaEntregue.toFixed(2)} (total ${d.qtdEntregue} no período, base: data de entrega, status Entregue)`,
       d.porTipoLista.length ? `Por tipo de peça (pedidas no período): ${d.porTipoLista.map(([t, n]) => `${t} ${n}`).join(", ")}` : "",
       "",
       "PREÇO E CUSTO (só peça vendida — exclui doação/uso próprio/permuta)",
@@ -1092,24 +1104,26 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
               últimos {janelaRemuneracao} meses fechados — trocar pra {janelaRemuneracao === 6 ? 12 : 6}
             </button>
           </div>
-          <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 8 }}>
+          <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 10 }}>
             Só meses fechados entram na conta — o mês atual nunca aparece aqui, mesmo que já tenha alguma peça
             lançada, pra não puxar a média pra baixo artificialmente. Diagnóstico da alfaiataria pra embasar um
             projeto de remuneração (CLT, PJ, por produtividade etc.) — fatos
             de hoje, direto do banco, não é uma simulação do modelo novo.
+          </div>
+          <div className="flex items-center gap-2 flex-wrap mb-4">
+            <label style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 600 }}>Início real da produção (nunca conta mês antes disso):</label>
+            <input
+              type="date"
+              value={inicioProducaoAlfaiataria}
+              onChange={(e) => salvarInicioProducaoAlfaiataria(e.target.value)}
+              style={{ ...inputStyle, width: "auto", padding: "5px 8px", fontSize: 12 }}
+            />
           </div>
           {dadosRemuneracao.qtdMesesDisponiveis < dadosRemuneracao.mesesPedidosSolicitados && (
             <div style={{ fontSize: 11, color: "#9C4A1E", marginBottom: 16, fontWeight: 600 }}>
               Pediu {dadosRemuneracao.mesesPedidosSolicitados} meses, mas o histórico só tem {dadosRemuneracao.qtdMesesDisponiveis} meses fechados até
               agora ({dadosRemuneracao.meses[0]} a {dadosRemuneracao.meses[dadosRemuneracao.meses.length - 1]}) — as médias abaixo usam só esses{" "}
               {dadosRemuneracao.qtdMesesDisponiveis}, nunca inventa mês vazio antes do início real da operação.
-            </div>
-          )}
-          {dadosRemuneracao.qtdMesesDisponiveisEntregas !== dadosRemuneracao.qtdMesesDisponiveis && (
-            <div style={{ fontSize: 11, color: "#9C4A1E", marginBottom: 16, fontWeight: 600 }}>
-              "Peças entregues/mês" usa uma janela própria de {dadosRemuneracao.qtdMesesDisponiveisEntregas} mês(es) — entrega
-              começa depois do pedido (produção leva tempo), então o início real do histórico de entrega é mais recente que o de
-              pedido, e os dois nunca dividem pelo mesmo número de meses.
             </div>
           )}
 
