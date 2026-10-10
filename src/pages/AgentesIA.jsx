@@ -616,7 +616,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       `Mão de obra média / peça (ritmo de pedida): ${brl(d.maoDeObraMedioPeca)}`,
       `Margem líquida de hoje / peça: ${brl(d.margemHojeMedioPeca)} (${d.margemHojePct.toFixed(0)}%) — a margem contábil real do período`,
       `Mão de obra média / peça (ritmo de entrega): ${brl(d.maoDeObraMedioPecaEntrega)}`,
-      `Margem operacional (ritmo de entrega) / peça: ${brl(d.margemOperacionalEntrega)} (${d.margemOperacionalEntregaPct.toFixed(0)}%) — não é a margem líquida real, é "quanto sobraria se o custo fosse medido pelo que de fato sai pronto"`,
+      `Margem ajustada ao ritmo de entrega / peça: ${brl(d.margemOperacionalEntrega)} (${d.margemOperacionalEntregaPct.toFixed(0)}%) — não é a margem líquida real, é "quanto sobraria se o custo fosse medido pelo que de fato sai pronto"`,
       "",
       "CUSTO REAL POR PEÇA ENTREGUE, por tipo (serve pra CLT, PJ fixo ou PJ por produtividade — não é preço combinado, é o ponto de partida pra negociar)",
       "Calculado pelo ritmo real de ENTREGA (peça que sai pronta), não de pedido — quanto custa de verdade cada peça no ritmo atual. Empata com o fixo de hoje só se o ritmo de entrega se manter na média. Abaixo da média, custa mais por peça; acima, custa menos.",
@@ -1208,7 +1208,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
                 vendidas bater exatamente com o que a equipe realmente recebe no período — é sobre "qual a margem
                 real hoje" (a <strong>Margem líquida de hoje</strong>, que não muda). <strong>Ritmo de entrega</strong>:
                 o mesmo custo fixo dividido pelo que realmente saiu pronto — sempre maior quando entrega é menor que
-                pedida. A <strong>Margem operacional (ritmo de entrega)</strong> usa esse segundo número — não é a
+                pedida. A <strong>Margem ajustada ao ritmo de entrega</strong> usa esse segundo número — não é a
                 margem líquida real, é "quanto sobraria se o custo fosse medido pelo que de fato sai pronto".
               </p>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>CUSTO REAL POR PEÇA ENTREGUE</div>
@@ -1332,14 +1332,14 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
               <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(dadosRemuneracao.maoDeObraMedioPecaEntrega)}</div>
             </div>
             <div>
-              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Margem operacional (ritmo de entrega) / peça</div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Margem ajustada ao ritmo de entrega / peça</div>
               <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: dadosRemuneracao.margemOperacionalEntrega >= 0 ? "#2C6E31" : "#9C4A1E" }}>
                 {brl(dadosRemuneracao.margemOperacionalEntrega)} ({dadosRemuneracao.margemOperacionalEntregaPct.toFixed(0)}%)
               </div>
             </div>
           </div>
           <div style={{ fontSize: 10.5, color: TEXT_MUTED, marginBottom: 10, fontStyle: "italic" }}>
-            Margem operacional acima <strong>não é a margem líquida real</strong> — é "quanto sobraria se o custo
+            Margem ajustada ao ritmo de entrega acima <strong>não é a margem líquida real</strong> — é "quanto sobraria se o custo
             fosse medido pelo que de fato sai pronto", pra comparar com a de cima.
           </div>
 
