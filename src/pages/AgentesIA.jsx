@@ -601,13 +601,13 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       `SITUAÇÃO ATUAL (referência — inclui o custo de mão de obra de hoje, calculado pelo ritmo de peças pedidas, pra bater com o total real pago à equipe no período)`,
       `Margem líquida de hoje / peça: ${brl(d.margemHojeMedioPeca)} (${d.margemHojePct.toFixed(0)}%), já descontando mão de obra média de ${brl(d.maoDeObraMedioPeca)}/peça pelo custo atual da equipe`,
       "",
-      "VALOR EQUIVALENTE POR TIPO DE PEÇA (PJ por produtividade — não é preço combinado, é o ponto de partida pra negociar)",
-      "Calculado pelo ritmo real de ENTREGA (peça que sai pronta), não de pedido — é o que o modelo por peça pagaria de verdade. Empata com o fixo de hoje só se o ritmo de entrega se manter na média. Abaixo da média, PJ por peça paga menos que o fixo de hoje; acima, paga mais.",
+      "CUSTO REAL POR PEÇA ENTREGUE, por tipo (serve pra CLT, PJ fixo ou PJ por produtividade — não é preço combinado, é o ponto de partida pra negociar)",
+      "Calculado pelo ritmo real de ENTREGA (peça que sai pronta), não de pedido — quanto custa de verdade cada peça no ritmo atual. Empata com o fixo de hoje só se o ritmo de entrega se manter na média. Abaixo da média, custa mais por peça; acima, custa menos.",
       ...d.porTipoDetalhe.map(
         (t) =>
           `${t.tipo}: ${t.qtd} peça(s) pedida(s) no período · ticket médio ${brl(t.ticketMedio)} · material médio ${brl(t.materialMedio)} · ${
             t.horasRef !== null ? t.horasRef + "h de referência · " : ""
-          }valor equivalente ${brl(t.valorEquivalente)}/peça`
+          }custo real por peça entregue ${brl(t.valorEquivalente)}`
       ),
       "",
       "O QUE ISSO SIGNIFICA NOS SEUS MESES REAIS (por mês de ENTREGA)",
@@ -1194,11 +1194,12 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
                 por peça vendida. <strong>Margem líquida de hoje/peça</strong>: a margem real de hoje, já descontando
                 essa mão de obra.
               </p>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>VALOR EQUIVALENTE POR TIPO DE PEÇA</div>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>CUSTO REAL POR PEÇA ENTREGUE</div>
               <p style={{ marginBottom: 8 }}>
-                Por tipo de peça, quanto equivaleria pagar em PJ por produtividade pra dar o mesmo total que a equipe
-                ganha fixo hoje — calculado pelo ritmo real de entrega. Não é preço combinado, é ponto de partida pra
-                negociar.
+                Por tipo de peça, quanto custa de verdade cada peça no ritmo real de entrega (não de pedido) —
+                serve pra avaliar qualquer modalidade (CLT, PJ fixo ou PJ por produtividade), não só PJ: é o custo
+                de manter a equipe, dividido pelo que ela realmente entrega pronto. Não é preço combinado, é ponto
+                de partida pra negociar.
               </p>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>O QUE ISSO SIGNIFICA NOS SEUS MESES REAIS</div>
               <p style={{ margin: 0 }}>
@@ -1307,14 +1308,15 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
           </div>
 
           <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6, marginTop: 10 }}>
-            VALOR EQUIVALENTE POR TIPO DE PEÇA <span style={{ fontWeight: 400 }}>(PJ por produtividade)</span>
+            CUSTO REAL POR PEÇA ENTREGUE <span style={{ fontWeight: 400 }}>(por tipo — CLT, PJ fixo ou PJ por produtividade)</span>
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10, lineHeight: 1.5 }}>
-            Não é um preço combinado — não existe isso hoje (o campo "valor devido ao Ícaro" é solto, não confiável,
-            já que a equipe é paga fixo por mês). É o ponto de partida pra negociar a tabela nova: quanto equivaleria
-            pagar por peça, pelo custo-hora calculado com o <strong>ritmo real de entrega</strong> (peça que sai
-            pronta), não o de pedido. Empata com o fixo de hoje <strong>só se o ritmo de entrega se manter na
-            média</strong> — abaixo da média, PJ por peça paga menos que o fixo de hoje; acima, paga mais.
+            Quanto custa de verdade cada peça, no ritmo real de <strong>entrega</strong> (peça que sai pronta), não
+            no de pedido — serve pra qualquer modalidade (CLT, PJ fixo, PJ por produtividade), não só PJ: é o custo
+            de manter a equipe dividido pelo que ela realmente entrega pronto. Não é um preço combinado — não existe
+            isso hoje (o campo "valor devido ao Ícaro" é solto, não confiável, já que a equipe é paga fixo por mês).
+            Empata com o fixo de hoje <strong>só se o ritmo de entrega se manter na média</strong> — abaixo da
+            média, custa mais por peça; acima, custa menos.
           </div>
           <div style={{ overflowX: "auto", marginBottom: 14 }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -1325,7 +1327,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
                   <th style={{ padding: "6px 8px", fontWeight: 600 }}>Ticket médio</th>
                   <th style={{ padding: "6px 8px", fontWeight: 600 }}>Material médio</th>
                   <th style={{ padding: "6px 8px", fontWeight: 600 }}>Horas ref.</th>
-                  <th style={{ padding: "6px 8px", fontWeight: 600 }}>Valor equivalente/peça</th>
+                  <th style={{ padding: "6px 8px", fontWeight: 600 }}>Custo real/peça entregue</th>
                 </tr>
               </thead>
               <tbody>
