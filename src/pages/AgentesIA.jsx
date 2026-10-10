@@ -355,16 +355,30 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
 
   const dadosRemuneracao = useMemo(() => {
     const hojeD = new Date(hojeISO() + "T00:00:00");
+
+    // Início real do histórico — menor dataPedido que existe entre as
+    // peças de alfaiataria. Sem isso, pedir "6 meses" quando só existem
+    // 5 meses fechados de operação inventaria um mês fantasma (zero
+    // peças, porque o sistema nem existia ainda) e derrubaria a média
+    // do mesmo jeito que o mês atual incompleto derrubava — mesmo bug,
+    // motivo diferente.
+    const primeiraData = (pecas || []).reduce((min, p) => (p.dataPedido && (!min || p.dataPedido < min) ? p.dataPedido : min), null);
+    const primeiroMes = primeiraData ? primeiraData.slice(0, 7) : null;
+
     // Começa em i = janelaRemuneracao (nunca 0) de propósito — o mês
     // atual nunca entra, mesmo incompleto com 1 peça ele teria o mesmo
     // peso de um mês fechado e puxaria a média pra baixo artificialmente
     // (foi exatamente o bug relatado: outubro com 1 peça derrubando a
-    // média de peças entregues/mês). Só meses 100% fechados contam.
+    // média de peças entregues/mês). Só meses 100% fechados contam, e
+    // nunca antes do início real do histórico.
     const meses = [];
     for (let i = janelaRemuneracao; i >= 1; i--) {
       const d = new Date(hojeD.getFullYear(), hojeD.getMonth() - i, 1);
-      meses.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!primeiroMes || chave >= primeiroMes) meses.push(chave);
     }
+    const mesesPedidosSolicitados = janelaRemuneracao;
+    const qtdMesesDisponiveis = meses.length;
 
     const pecasValidas = (pecas || []).filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida));
 
@@ -381,8 +395,8 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       }
       if (meses.includes((p.dataEntrega || "").slice(0, 7))) qtdEntregue += 1;
     });
-    const mediaPedida = qtdPedida / meses.length;
-    const mediaEntregue = qtdEntregue / meses.length;
+    const mediaPedida = meses.length > 0 ? qtdPedida / meses.length : 0;
+    const mediaEntregue = meses.length > 0 ? qtdEntregue / meses.length : 0;
     const porTipoLista = [...porTipo.entries()].sort((a, b) => b[1] - a[1]);
 
     // Preço e custo — mesma base (pedida no período), consistente com
@@ -401,7 +415,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const aliquotaFracao = (parseFloat(aliquotaImposto) || 0) / 100;
 
     // Indicadores
-    const receitaMensalMedia = receitaTotalPeriodo / meses.length;
+    const receitaMensalMedia = meses.length > 0 ? receitaTotalPeriodo / meses.length : 0;
     const receitaLiquidaMensalMedia = receitaMensalMedia * (1 - aliquotaFracao);
 
     const receitaLiquidaPorPeca = ticketMedio * (1 - aliquotaFracao);
@@ -472,6 +486,8 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
 
     return {
       meses,
+      mesesPedidosSolicitados,
+      qtdMesesDisponiveis,
       qtdPedida,
       qtdEntregue,
       mediaPedida,
@@ -1057,12 +1073,19 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
               últimos {janelaRemuneracao} meses fechados — trocar pra {janelaRemuneracao === 6 ? 12 : 6}
             </button>
           </div>
-          <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 8 }}>
             Só meses fechados entram na conta — o mês atual nunca aparece aqui, mesmo que já tenha alguma peça
             lançada, pra não puxar a média pra baixo artificialmente. Diagnóstico da alfaiataria pra embasar um
             projeto de remuneração (CLT, PJ, por produtividade etc.) — fatos
             de hoje, direto do banco, não é uma simulação do modelo novo.
           </div>
+          {dadosRemuneracao.qtdMesesDisponiveis < dadosRemuneracao.mesesPedidosSolicitados && (
+            <div style={{ fontSize: 11, color: "#9C4A1E", marginBottom: 16, fontWeight: 600 }}>
+              Pediu {dadosRemuneracao.mesesPedidosSolicitados} meses, mas o histórico só tem {dadosRemuneracao.qtdMesesDisponiveis} meses fechados até
+              agora ({dadosRemuneracao.meses[0]} a {dadosRemuneracao.meses[dadosRemuneracao.meses.length - 1]}) — as médias abaixo usam só esses{" "}
+              {dadosRemuneracao.qtdMesesDisponiveis}, nunca inventa mês vazio antes do início real da operação.
+            </div>
+          )}
 
           <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>PRODUÇÃO</div>
           <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
