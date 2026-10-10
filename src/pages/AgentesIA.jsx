@@ -355,8 +355,13 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
 
   const dadosRemuneracao = useMemo(() => {
     const hojeD = new Date(hojeISO() + "T00:00:00");
+    // Começa em i = janelaRemuneracao (nunca 0) de propósito — o mês
+    // atual nunca entra, mesmo incompleto com 1 peça ele teria o mesmo
+    // peso de um mês fechado e puxaria a média pra baixo artificialmente
+    // (foi exatamente o bug relatado: outubro com 1 peça derrubando a
+    // média de peças entregues/mês). Só meses 100% fechados contam.
     const meses = [];
-    for (let i = janelaRemuneracao - 1; i >= 0; i--) {
+    for (let i = janelaRemuneracao; i >= 1; i--) {
       const d = new Date(hojeD.getFullYear(), hojeD.getMonth() - i, 1);
       meses.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
     }
@@ -491,7 +496,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
 
   function textoRemuneracao(d) {
     const linhas = [
-      `Dados para remuneração — Schuck Alfaiataria (últimos ${janelaRemuneracao} meses, ${d.meses[0]} a ${d.meses[d.meses.length - 1]})`,
+      `Dados para remuneração — Schuck Alfaiataria (últimos ${janelaRemuneracao} meses fechados, ${d.meses[0]} a ${d.meses[d.meses.length - 1]})`,
       "",
       "PRODUÇÃO",
       `Peças pedidas/mês (média): ${d.mediaPedida.toFixed(2)} (total ${d.qtdPedida} no período, base: data do pedido)`,
@@ -1049,11 +1054,13 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
               onClick={() => setJanelaRemuneracao((v) => (v === 6 ? 12 : 6))}
               style={{ background: "#EDEAE0", color: TEXT_MUTED, padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
             >
-              últimos {janelaRemuneracao} meses — trocar pra {janelaRemuneracao === 6 ? 12 : 6}
+              últimos {janelaRemuneracao} meses fechados — trocar pra {janelaRemuneracao === 6 ? 12 : 6}
             </button>
           </div>
           <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
-            Diagnóstico da alfaiataria pra embasar um projeto de remuneração (CLT, PJ, por produtividade etc.) — fatos
+            Só meses fechados entram na conta — o mês atual nunca aparece aqui, mesmo que já tenha alguma peça
+            lançada, pra não puxar a média pra baixo artificialmente. Diagnóstico da alfaiataria pra embasar um
+            projeto de remuneração (CLT, PJ, por produtividade etc.) — fatos
             de hoje, direto do banco, não é uma simulação do modelo novo.
           </div>
 
