@@ -380,35 +380,39 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const mesesPedidosSolicitados = janelaRemuneracao;
     const qtdMesesDisponiveis = meses.length;
 
-    const pecasValidas = (pecas || []).filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida));
-
-    // Produção — pedida x entregue, lado a lado, pra nunca mais ter
-    // dúvida de qual base um número usou.
-    let qtdPedida = 0;
-    let qtdEntregue = 0;
+    // Produção — pedida x entregue, sempre TODAS as peças (inclusive
+    // doação/uso próprio/permuta), exatamente como o resto do sistema já
+    // conta (Histórico de Produção: "vendasPorMesRaw" e "entregues").
+    // Peça doada ainda ocupou hora de produção de verdade, então conta
+    // pra volume/remuneração mesmo sem ter gerado receita.
+    let qtdPedidaProducao = 0;
+    let qtdEntregueProducao = 0;
     const porTipo = new Map();
-    pecasValidas.forEach((p) => {
+    (pecas || []).forEach((p) => {
       if (meses.includes((p.dataPedido || "").slice(0, 7))) {
-        qtdPedida += 1;
+        qtdPedidaProducao += 1;
         const tipo = p.tipoPeca || "Outro";
         porTipo.set(tipo, (porTipo.get(tipo) || 0) + 1);
       }
-      if (meses.includes((p.dataEntrega || "").slice(0, 7))) qtdEntregue += 1;
+      if (p.status === "Entregue" && p.dataInicioProducao && meses.includes((p.dataEntrega || "").slice(0, 7))) qtdEntregueProducao += 1;
     });
-    const mediaPedida = meses.length > 0 ? qtdPedida / meses.length : 0;
-    const mediaEntregue = meses.length > 0 ? qtdEntregue / meses.length : 0;
+    const mediaPedida = meses.length > 0 ? qtdPedidaProducao / meses.length : 0;
+    const mediaEntregue = meses.length > 0 ? qtdEntregueProducao / meses.length : 0;
     const porTipoLista = [...porTipo.entries()].sort((a, b) => b[1] - a[1]);
 
-    // Preço e custo — mesma base (pedida no período), consistente com
-    // o resto do sistema (Histórico de Produção, Custos do Ateliê).
+    // Preço e custo — aqui sim exclui doação/uso próprio/permuta
+    // (TIPOS_SAIDA_SEM_VENDA), porque ticket médio e receita são
+    // conceitos de VENDA, não de volume de produção.
+    const pecasValidas = (pecas || []).filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida));
     const pecasDoPeriodo = pecasValidas.filter((p) => meses.includes((p.dataPedido || "").slice(0, 7)));
+    const qtdPedidaVenda = pecasDoPeriodo.length;
     const receitaTotalPeriodo = pecasDoPeriodo.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
     const materialTotalPeriodo = pecasDoPeriodo.reduce(
       (s, p) => s + custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase),
       0
     );
-    const ticketMedio = qtdPedida > 0 ? receitaTotalPeriodo / qtdPedida : 0;
-    const materialMedio = qtdPedida > 0 ? materialTotalPeriodo / qtdPedida : 0;
+    const ticketMedio = qtdPedidaVenda > 0 ? receitaTotalPeriodo / qtdPedidaVenda : 0;
+    const materialMedio = qtdPedidaVenda > 0 ? materialTotalPeriodo / qtdPedidaVenda : 0;
 
     // Estrutura e metas
     const estruturaMensal = (parseFloat(aluguelAtelie) || 0) + (parseFloat(luzAtelie) || 0);
@@ -431,7 +435,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const custoHoraAtual = custoPorHoraAlfaiataria(pecas, equipe);
     const custoEquipeMensalAtual = custoEquipeMensal(equipe);
     const maoDeObraTotalPeriodo = pecasDoPeriodo.reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraAtual), 0);
-    const maoDeObraMedioPeca = qtdPedida > 0 ? maoDeObraTotalPeriodo / qtdPedida : 0;
+    const maoDeObraMedioPeca = qtdPedidaVenda > 0 ? maoDeObraTotalPeriodo / qtdPedidaVenda : 0;
     const margemHojeMedioPeca = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca - maoDeObraMedioPeca;
     const margemHojePct = ticketMedio > 0 ? (margemHojeMedioPeca / ticketMedio) * 100 : 0;
 
@@ -442,14 +446,18 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     // de partida pra negociar a tabela nova de PJ por peça: empata com
     // o fixo de hoje só se o ritmo se mantiver na média.
     const porTipoDetalhe = porTipoLista.map(([tipo, qtd]) => {
+      // qtd (produção total, inclui doação/uso próprio) e pecasTipo
+      // (só venda) são pools diferentes de propósito — ticket médio e
+      // material médio dividem pelo próprio pecasTipo.length, nunca
+      // por qtd, senão diluiriam o valor com peça que não teve receita.
       const pecasTipo = pecasDoPeriodo.filter((p) => (p.tipoPeca || "Outro") === tipo);
       const receitaTipo = pecasTipo.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
       const materialTipo = pecasTipo.reduce((s, p) => s + custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase), 0);
       return {
         tipo,
         qtd,
-        ticketMedio: qtd > 0 ? receitaTipo / qtd : 0,
-        materialMedio: qtd > 0 ? materialTipo / qtd : 0,
+        ticketMedio: pecasTipo.length > 0 ? receitaTipo / pecasTipo.length : 0,
+        materialMedio: pecasTipo.length > 0 ? materialTipo / pecasTipo.length : 0,
         horasRef: HORAS_REFERENCIA_TIPO_PECA[tipo] ?? null,
         valorEquivalente: custoMaoDeObraPeca(tipo, custoHoraAtual),
       };
@@ -460,15 +468,18 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     // obra (equipe inteira) ganharia naquele mês específico sob o
     // modelo por peça (com o mix real de tipos daquele mês), comparado
     // ao fixo de hoje.
+    // Usa TODAS as peças (não só as com venda) — se é PJ por peça
+    // produzida, a peça doada/uso próprio também ocupou hora de
+    // trabalho e também seria paga.
     const qtdPorMes = new Map(meses.map((m) => [m, 0]));
-    pecasDoPeriodo.forEach((p) => {
+    (pecas || []).forEach((p) => {
       const m = (p.dataPedido || "").slice(0, 7);
-      qtdPorMes.set(m, (qtdPorMes.get(m) || 0) + 1);
+      if (qtdPorMes.has(m)) qtdPorMes.set(m, qtdPorMes.get(m) + 1);
     });
     const mesesComProducao = [...qtdPorMes.entries()].filter(([, q]) => q > 0).sort((a, b) => a[1] - b[1]);
 
     function ganhoPJPecaNoMes(mesChave) {
-      return pecasDoPeriodo
+      return (pecas || [])
         .filter((p) => (p.dataPedido || "").slice(0, 7) === mesChave)
         .reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraAtual), 0);
     }
@@ -488,8 +499,8 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       meses,
       mesesPedidosSolicitados,
       qtdMesesDisponiveis,
-      qtdPedida,
-      qtdEntregue,
+      qtdPedida: qtdPedidaProducao,
+      qtdEntregue: qtdEntregueProducao,
       mediaPedida,
       mediaEntregue,
       porTipoLista,
@@ -514,12 +525,12 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const linhas = [
       `Dados para remuneração — Schuck Alfaiataria (últimos ${janelaRemuneracao} meses fechados, ${d.meses[0]} a ${d.meses[d.meses.length - 1]})`,
       "",
-      "PRODUÇÃO",
+      "PRODUÇÃO (toda peça produzida, inclusive doação/uso próprio/permuta — mesma base do Histórico de Produção)",
       `Peças pedidas/mês (média): ${d.mediaPedida.toFixed(2)} (total ${d.qtdPedida} no período, base: data do pedido)`,
-      `Peças entregues/mês (média): ${d.mediaEntregue.toFixed(2)} (total ${d.qtdEntregue} no período, base: data de entrega)`,
+      `Peças entregues/mês (média): ${d.mediaEntregue.toFixed(2)} (total ${d.qtdEntregue} no período, base: data de entrega, status Entregue)`,
       d.porTipoLista.length ? `Por tipo de peça (pedidas no período): ${d.porTipoLista.map(([t, n]) => `${t} ${n}`).join(", ")}` : "",
       "",
-      "PREÇO E CUSTO",
+      "PREÇO E CUSTO (só peça vendida — exclui doação/uso próprio/permuta)",
       `Ticket médio de venda / peça: ${brl(d.ticketMedio)}`,
       `Material médio / peça: ${brl(d.materialMedio)}`,
       `Horas de referência por tipo: ${Object.entries(HORAS_REFERENCIA_TIPO_PECA).map(([t, h]) => `${t} ${h}h`).join(", ")}`,
@@ -1087,7 +1098,11 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
             </div>
           )}
 
-          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>PRODUÇÃO</div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 2 }}>PRODUÇÃO</div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
+            Conta toda peça produzida, inclusive doação/uso próprio/permuta — mesma base do gráfico "Peças entregues
+            por mês" em Histórico de Produção. Preço e custo logo abaixo já são só de peça vendida.
+          </div>
           <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
             <div>
               <div style={{ fontSize: 11, color: TEXT_MUTED }}>Peças pedidas/mês (média)</div>
