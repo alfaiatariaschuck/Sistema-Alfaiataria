@@ -440,14 +440,31 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     // cadastrada), só como referência de "situação hoje". Fica de fora
     // dos outros 3 indicadores de propósito, pra eles continuarem
     // válidos depois que o modelo de remuneração mudar.
-    // Custo-hora calculado pelo ritmo REAL DE ENTREGA, não de pedido —
-    // pedido explícito do Tales: se o modelo novo for PJ por peça, o
-    // pagamento é pela peça que sai pronta, não pela que só entrou na
-    // fila. Entregue nunca supera pedida (não dá pra entregar mais do
-    // que foi pedido), então usar horas de pedida infla a capacidade e
-    // SUBESTIMA o custo real por peça entregue. Mesma janela (maio a
-    // set, configurável acima) usada no resto da seção.
+    // Dois custos-hora, de propósito, pra dois usos diferentes:
+    // - custoHoraPedida: calibrado pelas horas das peças PEDIDAS no
+    //   período (mesma população de pecasDoPeriodo, usada logo abaixo).
+    //   Isso GARANTE que a mão de obra somada em todas as peças vendidas
+    //   bate exatamente com o que a equipe realmente recebe no período
+    //   (custoEquipeMensalAtual × meses) — é a conta certa pra medir a
+    //   margem REAL de hoje, porque conserva o total pago de verdade.
+    // - custoHoraEntrega: calibrado pelas horas das peças ENTREGUES —
+    //   usado só na tabela de PJ por produtividade e no pior/melhor mês
+    //   (ver abaixo), porque ali a pergunta é outra ("quanto pagaria um
+    //   modelo por entrega"), não "qual a margem real de hoje".
+    // Misturar os dois (aplicar custoHoraEntrega sobre a população de
+    // peças PEDIDAS) infla a mão de obra somada muito acima do que a
+    // equipe realmente recebe — foi exatamente o que derrubou errado a
+    // margem líquida de hoje depois da mudança anterior.
     const custoEquipeMensalAtual = custoEquipeMensal(equipe);
+    let horasPedidasPeriodo = 0;
+    (pecas || []).forEach((p) => {
+      if (TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida)) return;
+      if (!meses.includes((p.dataPedido || "").slice(0, 7))) return;
+      horasPedidasPeriodo += HORAS_REFERENCIA_TIPO_PECA[p.tipoPeca] || 0;
+    });
+    const horasPedidasPorMes = meses.length > 0 ? horasPedidasPeriodo / meses.length : 0;
+    const custoHoraPedida = horasPedidasPorMes > 0 ? custoEquipeMensalAtual / horasPedidasPorMes : 0;
+
     let horasEntreguesPeriodo = 0;
     (pecas || []).forEach((p) => {
       if (p.status !== "Entregue" || !p.dataInicioProducao) return;
@@ -456,7 +473,8 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     });
     const horasEntreguesPorMes = meses.length > 0 ? horasEntreguesPeriodo / meses.length : 0;
     const custoHoraEntrega = horasEntreguesPorMes > 0 ? custoEquipeMensalAtual / horasEntreguesPorMes : 0;
-    const maoDeObraTotalPeriodo = pecasDoPeriodo.reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraEntrega), 0);
+
+    const maoDeObraTotalPeriodo = pecasDoPeriodo.reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraPedida), 0);
     const maoDeObraMedioPeca = qtdPedidaVenda > 0 ? maoDeObraTotalPeriodo / qtdPedidaVenda : 0;
     const margemHojeMedioPeca = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca - maoDeObraMedioPeca;
     const margemHojePct = ticketMedio > 0 ? (margemHojeMedioPeca / ticketMedio) * 100 : 0;
@@ -580,7 +598,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       `Margem disponível pra mão de obra / peça (antes de remunerar, não depende do modelo escolhido): ${brl(d.margemDisponivelMaoDeObra)}`,
       `Ponto de equilíbrio hoje (estrutura do ateliê + custo fixo da equipe atual): ${d.pontoEquilibrioHoje !== null ? d.pontoEquilibrioHoje.toFixed(1) + " peças/mês" : "—"}`,
       "",
-      `SITUAÇÃO ATUAL (referência — inclui o custo de mão de obra de hoje, calculado pelo ritmo real de ENTREGA, não de pedido)`,
+      `SITUAÇÃO ATUAL (referência — inclui o custo de mão de obra de hoje, calculado pelo ritmo de peças pedidas, pra bater com o total real pago à equipe no período)`,
       `Margem líquida de hoje / peça: ${brl(d.margemHojeMedioPeca)} (${d.margemHojePct.toFixed(0)}%), já descontando mão de obra média de ${brl(d.maoDeObraMedioPeca)}/peça pelo custo atual da equipe`,
       "",
       "VALOR EQUIVALENTE POR TIPO DE PEÇA (PJ por produtividade — não é preço combinado, é o ponto de partida pra negociar)",
@@ -1168,11 +1186,13 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
               </p>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>SITUAÇÃO ATUAL</div>
               <p style={{ marginBottom: 8 }}>
-                Só referência — usa o custo de equipe de hoje, calculado pelo <strong>ritmo real de entrega</strong>{" "}
-                (não de pedido, já que é isso que um modelo por produção pagaria de verdade).{" "}
-                <strong>Mão de obra média hoje/peça</strong>: quanto a equipe atual custa, em média, por peça
-                vendida. <strong>Margem líquida de hoje/peça</strong>: a margem real de hoje, já descontando essa mão
-                de obra.
+                Só referência — usa o custo de equipe de hoje, rateado pelo ritmo de peças <strong>pedidas</strong>{" "}
+                (não entregues), de propósito: essa é a única forma de o total de mão de obra somado nas peças
+                vendidas bater exatamente com o que a equipe realmente recebe no período — é sobre "qual a margem
+                real hoje", não sobre "quanto pagaria um modelo por entrega" (isso é a tabela de valor equivalente,
+                mais abaixo). <strong>Mão de obra média hoje/peça</strong>: quanto a equipe atual custa, em média,
+                por peça vendida. <strong>Margem líquida de hoje/peça</strong>: a margem real de hoje, já descontando
+                essa mão de obra.
               </p>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>VALOR EQUIVALENTE POR TIPO DE PEÇA</div>
               <p style={{ marginBottom: 8 }}>
@@ -1271,7 +1291,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
           </div>
 
           <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6, marginTop: 10 }}>
-            SITUAÇÃO ATUAL <span style={{ fontWeight: 400 }}>(referência — custo de equipe de hoje pelo ritmo real de entrega, vai mudar com o modelo novo)</span>
+            SITUAÇÃO ATUAL <span style={{ fontWeight: 400 }}>(referência — custo de equipe de hoje, rateado pelas peças pedidas pra bater com o total real pago, vai mudar com o modelo novo)</span>
           </div>
           <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
             <div>
