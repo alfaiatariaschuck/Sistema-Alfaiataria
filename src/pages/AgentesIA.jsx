@@ -367,6 +367,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
   // do banco.
   const [janelaRemuneracao, setJanelaRemuneracao] = useState(6);
   const [copiadoRemuneracao, setCopiadoRemuneracao] = useState(false);
+  const [mostrarLegendaRemuneracao, setMostrarLegendaRemuneracao] = useState(false);
 
   const dadosRemuneracao = useMemo(() => {
     const hojeD = new Date(hojeISO() + "T00:00:00");
@@ -439,21 +440,23 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     // cadastrada), só como referência de "situação hoje". Fica de fora
     // dos outros 3 indicadores de propósito, pra eles continuarem
     // válidos depois que o modelo de remuneração mudar.
-    // Custo-hora calculado com a MESMA janela (maio a set, configurável
-    // acima) usada em toda essa seção — não a janela própria de
-    // custoPorHoraAlfaiataria (lib/custoEquipe.js), que infere o início
-    // sozinha a partir da menor dataPedido e pode incluir mês de
-    // pré-produção que aqui já sabemos que não deve contar.
+    // Custo-hora calculado pelo ritmo REAL DE ENTREGA, não de pedido —
+    // pedido explícito do Tales: se o modelo novo for PJ por peça, o
+    // pagamento é pela peça que sai pronta, não pela que só entrou na
+    // fila. Entregue nunca supera pedida (não dá pra entregar mais do
+    // que foi pedido), então usar horas de pedida infla a capacidade e
+    // SUBESTIMA o custo real por peça entregue. Mesma janela (maio a
+    // set, configurável acima) usada no resto da seção.
     const custoEquipeMensalAtual = custoEquipeMensal(equipe);
-    let horasTotaisPeriodo = 0;
+    let horasEntreguesPeriodo = 0;
     (pecas || []).forEach((p) => {
-      if (TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida)) return;
-      if (!meses.includes((p.dataPedido || "").slice(0, 7))) return;
-      horasTotaisPeriodo += HORAS_REFERENCIA_TIPO_PECA[p.tipoPeca] || 0;
+      if (p.status !== "Entregue" || !p.dataInicioProducao) return;
+      if (!meses.includes((p.dataEntrega || "").slice(0, 7))) return;
+      horasEntreguesPeriodo += HORAS_REFERENCIA_TIPO_PECA[p.tipoPeca] || 0;
     });
-    const horasPorMesPeriodo = meses.length > 0 ? horasTotaisPeriodo / meses.length : 0;
-    const custoHoraAtual = horasPorMesPeriodo > 0 ? custoEquipeMensalAtual / horasPorMesPeriodo : 0;
-    const maoDeObraTotalPeriodo = pecasDoPeriodo.reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraAtual), 0);
+    const horasEntreguesPorMes = meses.length > 0 ? horasEntreguesPeriodo / meses.length : 0;
+    const custoHoraEntrega = horasEntreguesPorMes > 0 ? custoEquipeMensalAtual / horasEntreguesPorMes : 0;
+    const maoDeObraTotalPeriodo = pecasDoPeriodo.reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraEntrega), 0);
     const maoDeObraMedioPeca = qtdPedidaVenda > 0 ? maoDeObraTotalPeriodo / qtdPedidaVenda : 0;
     const margemHojeMedioPeca = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca - maoDeObraMedioPeca;
     const margemHojePct = ticketMedio > 0 ? (margemHojeMedioPeca / ticketMedio) * 100 : 0;
@@ -467,12 +470,14 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     const custosFixosHoje = estruturaMensal + custoEquipeMensalAtual;
     const pontoEquilibrioHoje = contribuicaoPorPeca > 0 ? custosFixosHoje / contribuicaoPorPeca : null;
 
-    // Valor equivalente por peça, tipo por tipo — pelo custo-hora atual
-    // (o mesmo número usado no resto do sistema), não um "preço
-    // combinado" de verdade, já que esse não existe (ver nota no
-    // "valor devido ao Ícaro" — campo solto, não confiável). É o ponto
-    // de partida pra negociar a tabela nova de PJ por peça: empata com
-    // o fixo de hoje só se o ritmo se mantiver na média.
+    // Valor equivalente por peça, tipo por tipo — pelo custo-hora de
+    // ENTREGA (não um "preço combinado" de verdade, já que esse não
+    // existe — ver nota no "valor devido ao Ícaro", campo solto, não
+    // confiável). É o ponto de partida pra negociar a tabela nova de PJ
+    // por peça: empata com o fixo de hoje só se o ritmo de ENTREGA se
+    // mantiver na média — por isso usa custoHoraEntrega, não a versão
+    // calculada por pedido (que infla a capacidade e subestimaria o
+    // valor por peça nessa tabela).
     const porTipoDetalhe = porTipoLista.map(([tipo, qtd]) => {
       // qtd (produção total, inclui doação/uso próprio) e pecasTipo
       // (só venda) são pools diferentes de propósito — ticket médio e
@@ -487,7 +492,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
         ticketMedio: pecasTipo.length > 0 ? receitaTipo / pecasTipo.length : 0,
         materialMedio: pecasTipo.length > 0 ? materialTipo / pecasTipo.length : 0,
         horasRef: HORAS_REFERENCIA_TIPO_PECA[tipo] ?? null,
-        valorEquivalente: custoMaoDeObraPeca(tipo, custoHoraAtual),
+        valorEquivalente: custoMaoDeObraPeca(tipo, custoHoraEntrega),
       };
     });
 
@@ -496,20 +501,23 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     // obra (equipe inteira) ganharia naquele mês específico sob o
     // modelo por peça (com o mix real de tipos daquele mês), comparado
     // ao fixo de hoje.
-    // Usa TODAS as peças (não só as com venda) — se é PJ por peça
-    // produzida, a peça doada/uso próprio também ocupou hora de
-    // trabalho e também seria paga.
+    // Agrupa por mês de ENTREGA (só peça com status Entregue), não de
+    // pedido — é quando o pagamento aconteceria num modelo PJ por peça
+    // de verdade (paga pelo que sai pronto, não pelo que entra na
+    // fila). Peça doada/uso próprio entra (ocupou hora de trabalho de
+    // verdade), só excluídas peças não entregues.
     const qtdPorMes = new Map(meses.map((m) => [m, 0]));
     (pecas || []).forEach((p) => {
-      const m = (p.dataPedido || "").slice(0, 7);
+      if (p.status !== "Entregue" || !p.dataInicioProducao) return;
+      const m = (p.dataEntrega || "").slice(0, 7);
       if (qtdPorMes.has(m)) qtdPorMes.set(m, qtdPorMes.get(m) + 1);
     });
     const mesesComProducao = [...qtdPorMes.entries()].filter(([, q]) => q > 0).sort((a, b) => a[1] - b[1]);
 
     function ganhoPJPecaNoMes(mesChave) {
       return (pecas || [])
-        .filter((p) => (p.dataPedido || "").slice(0, 7) === mesChave)
-        .reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraAtual), 0);
+        .filter((p) => p.status === "Entregue" && p.dataInicioProducao && (p.dataEntrega || "").slice(0, 7) === mesChave)
+        .reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraEntrega), 0);
     }
 
     function montarComparativoMes(entrada) {
@@ -572,24 +580,24 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       `Margem disponível pra mão de obra / peça (antes de remunerar, não depende do modelo escolhido): ${brl(d.margemDisponivelMaoDeObra)}`,
       `Ponto de equilíbrio hoje (estrutura do ateliê + custo fixo da equipe atual): ${d.pontoEquilibrioHoje !== null ? d.pontoEquilibrioHoje.toFixed(1) + " peças/mês" : "—"}`,
       "",
-      `SITUAÇÃO ATUAL (referência — inclui o custo de mão de obra de hoje, que está sendo redesenhado)`,
+      `SITUAÇÃO ATUAL (referência — inclui o custo de mão de obra de hoje, calculado pelo ritmo real de ENTREGA, não de pedido)`,
       `Margem líquida de hoje / peça: ${brl(d.margemHojeMedioPeca)} (${d.margemHojePct.toFixed(0)}%), já descontando mão de obra média de ${brl(d.maoDeObraMedioPeca)}/peça pelo custo atual da equipe`,
       "",
       "VALOR EQUIVALENTE POR TIPO DE PEÇA (PJ por produtividade — não é preço combinado, é o ponto de partida pra negociar)",
-      "Empata com o fixo de hoje só se o ritmo se manter na média do período. Abaixo da média, PJ por peça paga menos que o fixo de hoje; acima, paga mais.",
+      "Calculado pelo ritmo real de ENTREGA (peça que sai pronta), não de pedido — é o que o modelo por peça pagaria de verdade. Empata com o fixo de hoje só se o ritmo de entrega se manter na média. Abaixo da média, PJ por peça paga menos que o fixo de hoje; acima, paga mais.",
       ...d.porTipoDetalhe.map(
         (t) =>
-          `${t.tipo}: ${t.qtd} peça(s) no período · ticket médio ${brl(t.ticketMedio)} · material médio ${brl(t.materialMedio)} · ${
+          `${t.tipo}: ${t.qtd} peça(s) pedida(s) no período · ticket médio ${brl(t.ticketMedio)} · material médio ${brl(t.materialMedio)} · ${
             t.horasRef !== null ? t.horasRef + "h de referência · " : ""
           }valor equivalente ${brl(t.valorEquivalente)}/peça`
       ),
       "",
-      "O QUE ISSO SIGNIFICA NOS SEUS MESES REAIS",
+      "O QUE ISSO SIGNIFICA NOS SEUS MESES REAIS (por mês de ENTREGA)",
       d.piorMes
-        ? `Mês mais fraco do período (${d.piorMes.mes}, ${d.piorMes.qtd} peça(s)): a mão de obra ganharia ${brl(d.piorMes.ganhoPJ)} sob PJ por peça — ${d.piorMes.diferencaPct.toFixed(0)}% ${d.piorMes.diferencaPct >= 0 ? "a mais" : "a menos"} que os ${brl(d.custoEquipeMensalAtual)} fixos de hoje.`
+        ? `Mês de entrega mais fraco do período (${d.piorMes.mes}, ${d.piorMes.qtd} peça(s) entregue(s)): a mão de obra ganharia ${brl(d.piorMes.ganhoPJ)} sob PJ por peça — ${d.piorMes.diferencaPct.toFixed(0)}% ${d.piorMes.diferencaPct >= 0 ? "a mais" : "a menos"} que os ${brl(d.custoEquipeMensalAtual)} fixos de hoje.`
         : "",
       d.melhorMes
-        ? `Mês mais forte do período (${d.melhorMes.mes}, ${d.melhorMes.qtd} peça(s)): a mão de obra ganharia ${brl(d.melhorMes.ganhoPJ)} sob PJ por peça — ${d.melhorMes.diferencaPct.toFixed(0)}% ${d.melhorMes.diferencaPct >= 0 ? "a mais" : "a menos"} que os ${brl(d.custoEquipeMensalAtual)} fixos de hoje.`
+        ? `Mês de entrega mais forte do período (${d.melhorMes.mes}, ${d.melhorMes.qtd} peça(s) entregue(s)): a mão de obra ganharia ${brl(d.melhorMes.ganhoPJ)} sob PJ por peça — ${d.melhorMes.diferencaPct.toFixed(0)}% ${d.melhorMes.diferencaPct >= 0 ? "a mais" : "a menos"} que os ${brl(d.custoEquipeMensalAtual)} fixos de hoje.`
         : "",
     ];
     return linhas.filter((l) => l !== "").join("\n");
@@ -1105,12 +1113,20 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
             <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
               Dados para Remuneração
             </div>
-            <button
-              onClick={() => setJanelaRemuneracao((v) => (v === 6 ? 12 : 6))}
-              style={{ background: "#EDEAE0", color: TEXT_MUTED, padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
-            >
-              últimos {janelaRemuneracao} meses fechados — trocar pra {janelaRemuneracao === 6 ? 12 : 6}
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setMostrarLegendaRemuneracao((v) => !v)}
+                style={{ background: "transparent", color: BRASS, padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "underline" }}
+              >
+                {mostrarLegendaRemuneracao ? "Fechar explicação" : "O que significa cada indicador?"}
+              </button>
+              <button
+                onClick={() => setJanelaRemuneracao((v) => (v === 6 ? 12 : 6))}
+                style={{ background: "#EDEAE0", color: TEXT_MUTED, padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
+              >
+                últimos {janelaRemuneracao} meses fechados — trocar pra {janelaRemuneracao === 6 ? 12 : 6}
+              </button>
+            </div>
           </div>
           <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 10 }}>
             Só meses fechados entram na conta — o mês atual nunca aparece aqui, mesmo que já tenha alguma peça
@@ -1118,6 +1134,60 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
             projeto de remuneração (CLT, PJ, por produtividade etc.) — fatos
             de hoje, direto do banco, não é uma simulação do modelo novo.
           </div>
+
+          {mostrarLegendaRemuneracao && (
+            <div style={{ background: "#F3EEDF", borderRadius: 8, padding: 16, marginBottom: 16, fontSize: 12.5, lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>PRODUÇÃO</div>
+              <p style={{ marginBottom: 8 }}>
+                <strong>Peças pedidas/mês</strong>: quantas peças entraram como pedido por mês, em média. Conta tudo —
+                venda, doação, uso próprio. É volume de trabalho, não de venda. <strong>Peças entregues/mês</strong>:
+                quantas peças realmente saíram prontas (status Entregue) por mês, em média — normalmente menor que a
+                de pedido, porque sempre tem peça em produção.
+              </p>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>PREÇO E CUSTO</div>
+              <p style={{ marginBottom: 8 }}>
+                <strong>Ticket médio/peça</strong>: quanto você cobra, em média, por peça vendida de verdade (doação
+                não entra). <strong>Material médio/peça</strong>: quanto custa, em média, o tecido + aviamento de uma
+                peça vendida.
+              </p>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>ESTRUTURA E METAS</div>
+              <p style={{ marginBottom: 8 }}>
+                <strong>Estrutura do ateliê/mês</strong>: aluguel + luz, custo fixo do espaço, independente de quanto
+                se produz. <strong>Alíquota de imposto</strong>: % que sai do faturamento pro Simples Nacional.
+              </p>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>INDICADORES</div>
+              <p style={{ marginBottom: 8 }}>
+                <strong>Receita líquida mensal média</strong>: quanto entra líquido por mês (já descontado o
+                imposto), em média. <strong>Margem disponível pra mão de obra (peça)</strong>: o número mais
+                importante pro projeto de remuneração — quanto sobra de cada peça vendida, depois de material,
+                imposto e a fatia da estrutura do ateliê, <strong>antes de pagar quem produziu</strong>. É o teto:
+                nenhum modelo de remuneração pode custar mais que isso por peça sem comer sua margem de lucro.{" "}
+                <strong>Ponto de equilíbrio hoje</strong>: quantas peças por mês cobririam a estrutura do ateliê{" "}
+                <strong>e</strong> o custo fixo real da equipe atual — a situação de hoje, completa, não uma versão
+                hipotética sem mão de obra.
+              </p>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>SITUAÇÃO ATUAL</div>
+              <p style={{ marginBottom: 8 }}>
+                Só referência — usa o custo de equipe de hoje, calculado pelo <strong>ritmo real de entrega</strong>{" "}
+                (não de pedido, já que é isso que um modelo por produção pagaria de verdade).{" "}
+                <strong>Mão de obra média hoje/peça</strong>: quanto a equipe atual custa, em média, por peça
+                vendida. <strong>Margem líquida de hoje/peça</strong>: a margem real de hoje, já descontando essa mão
+                de obra.
+              </p>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>VALOR EQUIVALENTE POR TIPO DE PEÇA</div>
+              <p style={{ marginBottom: 8 }}>
+                Por tipo de peça, quanto equivaleria pagar em PJ por produtividade pra dar o mesmo total que a equipe
+                ganha fixo hoje — calculado pelo ritmo real de entrega. Não é preço combinado, é ponto de partida pra
+                negociar.
+              </p>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>O QUE ISSO SIGNIFICA NOS SEUS MESES REAIS</div>
+              <p style={{ margin: 0 }}>
+                Seu mês de entrega mais fraco e mais forte do período, mostrando quanto a mão de obra ganharia sob PJ
+                por peça naquele mês específico, comparado ao fixo de hoje — pra ver concretamente o efeito de um mês
+                de ritmo baixo ou alto.
+              </p>
+            </div>
+          )}
           <div className="flex items-center gap-2 flex-wrap mb-4">
             <label style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 600 }}>Início real da produção (nunca conta mês antes disso):</label>
             <input
@@ -1201,7 +1271,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
           </div>
 
           <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6, marginTop: 10 }}>
-            SITUAÇÃO ATUAL <span style={{ fontWeight: 400 }}>(referência — custo de equipe de hoje, vai mudar com o modelo novo)</span>
+            SITUAÇÃO ATUAL <span style={{ fontWeight: 400 }}>(referência — custo de equipe de hoje pelo ritmo real de entrega, vai mudar com o modelo novo)</span>
           </div>
           <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
             <div>
@@ -1222,9 +1292,9 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10, lineHeight: 1.5 }}>
             Não é um preço combinado — não existe isso hoje (o campo "valor devido ao Ícaro" é solto, não confiável,
             já que a equipe é paga fixo por mês). É o ponto de partida pra negociar a tabela nova: quanto equivaleria
-            pagar por peça, pelo custo-hora atual da equipe. Empata com o fixo de hoje <strong>só se o ritmo se
-            manter na média do período</strong> — abaixo da média, PJ por peça paga menos que o fixo de hoje; acima,
-            paga mais.
+            pagar por peça, pelo custo-hora calculado com o <strong>ritmo real de entrega</strong> (peça que sai
+            pronta), não o de pedido. Empata com o fixo de hoje <strong>só se o ritmo de entrega se manter na
+            média</strong> — abaixo da média, PJ por peça paga menos que o fixo de hoje; acima, paga mais.
           </div>
           <div style={{ overflowX: "auto", marginBottom: 14 }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -1253,12 +1323,14 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
             </table>
           </div>
 
-          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>O QUE ISSO SIGNIFICA NOS SEUS MESES REAIS</div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>
+            O QUE ISSO SIGNIFICA NOS SEUS MESES REAIS <span style={{ fontWeight: 400 }}>(por mês de entrega)</span>
+          </div>
           <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
             {dadosRemuneracao.piorMes && (
               <div style={{ background: "#F6E3D9", borderRadius: 8, padding: 12 }}>
                 <div style={{ fontSize: 11, color: "#9C4A1E", fontWeight: 700, marginBottom: 4 }}>
-                  Mês mais fraco ({dadosRemuneracao.piorMes.mes}, {dadosRemuneracao.piorMes.qtd} peça(s))
+                  Mês de entrega mais fraco ({dadosRemuneracao.piorMes.mes}, {dadosRemuneracao.piorMes.qtd} peça(s))
                 </div>
                 <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
                   A mão de obra ganharia <strong className="fx-mono">{brl(dadosRemuneracao.piorMes.ganhoPJ)}</strong> sob PJ por peça —{" "}
@@ -1270,7 +1342,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
             {dadosRemuneracao.melhorMes && (
               <div style={{ background: "#DCEBDD", borderRadius: 8, padding: 12 }}>
                 <div style={{ fontSize: 11, color: "#2C6E31", fontWeight: 700, marginBottom: 4 }}>
-                  Mês mais forte ({dadosRemuneracao.melhorMes.mes}, {dadosRemuneracao.melhorMes.qtd} peça(s))
+                  Mês de entrega mais forte ({dadosRemuneracao.melhorMes.mes}, {dadosRemuneracao.melhorMes.qtd} peça(s))
                 </div>
                 <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
                   A mão de obra ganharia <strong className="fx-mono">{brl(dadosRemuneracao.melhorMes.ganhoPJ)}</strong> sob PJ por peça —{" "}
