@@ -4,7 +4,7 @@ import { Card, Field, PageTitle } from "../components/ui";
 import { BRASS, HORAS_REFERENCIA_TIPO_PECA, TEXT_MUTED, TIPOS_SAIDA_SEM_VENDA, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasAte, enriquecerCliente, fmtData, hojeISO, metragemParaNumero, pedidoFechado, somarDias, statusPedidoSemVenda } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
-import { custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
+import { custoEquipeMensal, custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 import { supabase } from "../supabaseClient";
@@ -410,10 +410,60 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
     // dos outros 3 indicadores de propósito, pra eles continuarem
     // válidos depois que o modelo de remuneração mudar.
     const custoHoraAtual = custoPorHoraAlfaiataria(pecas, equipe);
+    const custoEquipeMensalAtual = custoEquipeMensal(equipe);
     const maoDeObraTotalPeriodo = pecasDoPeriodo.reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraAtual), 0);
     const maoDeObraMedioPeca = qtdPedida > 0 ? maoDeObraTotalPeriodo / qtdPedida : 0;
     const margemHojeMedioPeca = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca - maoDeObraMedioPeca;
     const margemHojePct = ticketMedio > 0 ? (margemHojeMedioPeca / ticketMedio) * 100 : 0;
+
+    // Valor equivalente por peça, tipo por tipo — pelo custo-hora atual
+    // (o mesmo número usado no resto do sistema), não um "preço
+    // combinado" de verdade, já que esse não existe (ver nota no
+    // "valor devido ao Ícaro" — campo solto, não confiável). É o ponto
+    // de partida pra negociar a tabela nova de PJ por peça: empata com
+    // o fixo de hoje só se o ritmo se mantiver na média.
+    const porTipoDetalhe = porTipoLista.map(([tipo, qtd]) => {
+      const pecasTipo = pecasDoPeriodo.filter((p) => (p.tipoPeca || "Outro") === tipo);
+      const receitaTipo = pecasTipo.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+      const materialTipo = pecasTipo.reduce((s, p) => s + custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase), 0);
+      return {
+        tipo,
+        qtd,
+        ticketMedio: qtd > 0 ? receitaTipo / qtd : 0,
+        materialMedio: qtd > 0 ? materialTipo / qtd : 0,
+        horasRef: HORAS_REFERENCIA_TIPO_PECA[tipo] ?? null,
+        valorEquivalente: custoMaoDeObraPeca(tipo, custoHoraAtual),
+      };
+    });
+
+    // Pior/melhor mês real do período, pra tornar concreta a
+    // desvantagem de PJ por peça quando o ritmo cai: quanto a mão de
+    // obra (equipe inteira) ganharia naquele mês específico sob o
+    // modelo por peça (com o mix real de tipos daquele mês), comparado
+    // ao fixo de hoje.
+    const qtdPorMes = new Map(meses.map((m) => [m, 0]));
+    pecasDoPeriodo.forEach((p) => {
+      const m = (p.dataPedido || "").slice(0, 7);
+      qtdPorMes.set(m, (qtdPorMes.get(m) || 0) + 1);
+    });
+    const mesesComProducao = [...qtdPorMes.entries()].filter(([, q]) => q > 0).sort((a, b) => a[1] - b[1]);
+
+    function ganhoPJPecaNoMes(mesChave) {
+      return pecasDoPeriodo
+        .filter((p) => (p.dataPedido || "").slice(0, 7) === mesChave)
+        .reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraAtual), 0);
+    }
+
+    function montarComparativoMes(entrada) {
+      if (!entrada) return null;
+      const [mes, qtd] = entrada;
+      const ganhoPJ = ganhoPJPecaNoMes(mes);
+      const diferencaPct = custoEquipeMensalAtual > 0 ? ((ganhoPJ - custoEquipeMensalAtual) / custoEquipeMensalAtual) * 100 : 0;
+      return { mes, qtd, ganhoPJ, diferencaPct };
+    }
+
+    const piorMes = montarComparativoMes(mesesComProducao[0]);
+    const melhorMes = montarComparativoMes(mesesComProducao[mesesComProducao.length - 1]);
 
     return {
       meses,
@@ -432,6 +482,10 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       maoDeObraMedioPeca,
       margemHojeMedioPeca,
       margemHojePct,
+      custoEquipeMensalAtual,
+      porTipoDetalhe,
+      piorMes,
+      melhorMes,
     };
   }, [pecas, equipe, custoAviamentosPorPecaBase, aluguelAtelie, luzAtelie, aliquotaImposto, janelaRemuneracao]);
 
@@ -460,6 +514,23 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       "",
       `SITUAÇÃO ATUAL (referência — inclui o custo de mão de obra de hoje, que está sendo redesenhado)`,
       `Margem líquida de hoje / peça: ${brl(d.margemHojeMedioPeca)} (${d.margemHojePct.toFixed(0)}%), já descontando mão de obra média de ${brl(d.maoDeObraMedioPeca)}/peça pelo custo atual da equipe`,
+      "",
+      "VALOR EQUIVALENTE POR TIPO DE PEÇA (PJ por produtividade — não é preço combinado, é o ponto de partida pra negociar)",
+      "Empata com o fixo de hoje só se o ritmo se manter na média do período. Abaixo da média, PJ por peça paga menos que o fixo de hoje; acima, paga mais.",
+      ...d.porTipoDetalhe.map(
+        (t) =>
+          `${t.tipo}: ${t.qtd} peça(s) no período · ticket médio ${brl(t.ticketMedio)} · material médio ${brl(t.materialMedio)} · ${
+            t.horasRef !== null ? t.horasRef + "h de referência · " : ""
+          }valor equivalente ${brl(t.valorEquivalente)}/peça`
+      ),
+      "",
+      "O QUE ISSO SIGNIFICA NOS SEUS MESES REAIS",
+      d.piorMes
+        ? `Mês mais fraco do período (${d.piorMes.mes}, ${d.piorMes.qtd} peça(s)): a mão de obra ganharia ${brl(d.piorMes.ganhoPJ)} sob PJ por peça — ${d.piorMes.diferencaPct.toFixed(0)}% ${d.piorMes.diferencaPct >= 0 ? "a mais" : "a menos"} que os ${brl(d.custoEquipeMensalAtual)} fixos de hoje.`
+        : "",
+      d.melhorMes
+        ? `Mês mais forte do período (${d.melhorMes.mes}, ${d.melhorMes.qtd} peça(s)): a mão de obra ganharia ${brl(d.melhorMes.ganhoPJ)} sob PJ por peça — ${d.melhorMes.diferencaPct.toFixed(0)}% ${d.melhorMes.diferencaPct >= 0 ? "a mais" : "a menos"} que os ${brl(d.custoEquipeMensalAtual)} fixos de hoje.`
+        : "",
     ];
     return linhas.filter((l) => l !== "").join("\n");
   }
@@ -1061,6 +1132,71 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
                 {brl(dadosRemuneracao.margemHojeMedioPeca)} ({dadosRemuneracao.margemHojePct.toFixed(0)}%)
               </div>
             </div>
+          </div>
+
+          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6, marginTop: 10 }}>
+            VALOR EQUIVALENTE POR TIPO DE PEÇA <span style={{ fontWeight: 400 }}>(PJ por produtividade)</span>
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10, lineHeight: 1.5 }}>
+            Não é um preço combinado — não existe isso hoje (o campo "valor devido ao Ícaro" é solto, não confiável,
+            já que a equipe é paga fixo por mês). É o ponto de partida pra negociar a tabela nova: quanto equivaleria
+            pagar por peça, pelo custo-hora atual da equipe. Empata com o fixo de hoje <strong>só se o ritmo se
+            manter na média do período</strong> — abaixo da média, PJ por peça paga menos que o fixo de hoje; acima,
+            paga mais.
+          </div>
+          <div style={{ overflowX: "auto", marginBottom: 14 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #DAD7D0", color: TEXT_MUTED, textAlign: "left" }}>
+                  <th style={{ padding: "6px 8px", fontWeight: 600 }}>Tipo</th>
+                  <th style={{ padding: "6px 8px", fontWeight: 600 }}>Qtd no período</th>
+                  <th style={{ padding: "6px 8px", fontWeight: 600 }}>Ticket médio</th>
+                  <th style={{ padding: "6px 8px", fontWeight: 600 }}>Material médio</th>
+                  <th style={{ padding: "6px 8px", fontWeight: 600 }}>Horas ref.</th>
+                  <th style={{ padding: "6px 8px", fontWeight: 600 }}>Valor equivalente/peça</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dadosRemuneracao.porTipoDetalhe.map((t) => (
+                  <tr key={t.tipo} style={{ borderBottom: "1px solid #EDEAE0" }}>
+                    <td style={{ padding: "6px 8px", fontWeight: 600 }}>{t.tipo}</td>
+                    <td className="fx-mono" style={{ padding: "6px 8px" }}>{t.qtd}</td>
+                    <td className="fx-mono" style={{ padding: "6px 8px" }}>{brl(t.ticketMedio)}</td>
+                    <td className="fx-mono" style={{ padding: "6px 8px" }}>{brl(t.materialMedio)}</td>
+                    <td className="fx-mono" style={{ padding: "6px 8px" }}>{t.horasRef !== null ? `${t.horasRef}h` : "—"}</td>
+                    <td className="fx-mono" style={{ padding: "6px 8px", fontWeight: 700 }}>{brl(t.valorEquivalente)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>O QUE ISSO SIGNIFICA NOS SEUS MESES REAIS</div>
+          <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+            {dadosRemuneracao.piorMes && (
+              <div style={{ background: "#F6E3D9", borderRadius: 8, padding: 12 }}>
+                <div style={{ fontSize: 11, color: "#9C4A1E", fontWeight: 700, marginBottom: 4 }}>
+                  Mês mais fraco ({dadosRemuneracao.piorMes.mes}, {dadosRemuneracao.piorMes.qtd} peça(s))
+                </div>
+                <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+                  A mão de obra ganharia <strong className="fx-mono">{brl(dadosRemuneracao.piorMes.ganhoPJ)}</strong> sob PJ por peça —{" "}
+                  <strong>{Math.abs(dadosRemuneracao.piorMes.diferencaPct).toFixed(0)}% {dadosRemuneracao.piorMes.diferencaPct >= 0 ? "a mais" : "a menos"}</strong>{" "}
+                  que os {brl(dadosRemuneracao.custoEquipeMensalAtual)} fixos de hoje.
+                </div>
+              </div>
+            )}
+            {dadosRemuneracao.melhorMes && (
+              <div style={{ background: "#DCEBDD", borderRadius: 8, padding: 12 }}>
+                <div style={{ fontSize: 11, color: "#2C6E31", fontWeight: 700, marginBottom: 4 }}>
+                  Mês mais forte ({dadosRemuneracao.melhorMes.mes}, {dadosRemuneracao.melhorMes.qtd} peça(s))
+                </div>
+                <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+                  A mão de obra ganharia <strong className="fx-mono">{brl(dadosRemuneracao.melhorMes.ganhoPJ)}</strong> sob PJ por peça —{" "}
+                  <strong>{Math.abs(dadosRemuneracao.melhorMes.diferencaPct).toFixed(0)}% {dadosRemuneracao.melhorMes.diferencaPct >= 0 ? "a mais" : "a menos"}</strong>{" "}
+                  que os {brl(dadosRemuneracao.custoEquipeMensalAtual)} fixos de hoje.
+                </div>
+              </div>
+            )}
           </div>
 
           <button
