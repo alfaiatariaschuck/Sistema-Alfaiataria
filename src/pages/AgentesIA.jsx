@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Package, ShieldAlert, Sparkles, Sunrise, Wallet } from "lucide-react";
+import { Copy, Package, ShieldAlert, Sparkles, Sunrise, Wallet } from "lucide-react";
 import { Card, Field, PageTitle } from "../components/ui";
-import { BRASS, TEXT_MUTED, TIPOS_SAIDA_SEM_VENDA, inputStyle } from "../lib/constants";
+import { BRASS, HORAS_REFERENCIA_TIPO_PECA, TEXT_MUTED, TIPOS_SAIDA_SEM_VENDA, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasAte, enriquecerCliente, fmtData, hojeISO, metragemParaNumero, pedidoFechado, somarDias, statusPedidoSemVenda } from "../lib/helpers";
 import { chamarAgenteIA } from "../lib/agentesIA";
 import { custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
+import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 import { supabase } from "../supabaseClient";
 
 const CHAVE_META_PROLABORE = "meta_pro_labore";
@@ -114,6 +115,7 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
   const [limiteMesesSumido, setLimiteMesesSumido] = useState(6);
   const [carregandoConfig, setCarregandoConfig] = useState(true);
   const { margemPadrao: margemPadraoCamisaria, metragemPadrao } = useConfigPrecoCamisa();
+  const { aluguelAtelie, luzAtelie, aliquotaImposto } = useConfigCustosFixos();
 
   useEffect(() => {
     (async () => {
@@ -340,6 +342,138 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       totalProximosVencimentos,
     };
   }, [pedidos, pecas, despesas, modoTrimestreFinanceiro]);
+
+  // ---------- Dados para Remuneração ----------
+  // Diagnóstico, não simulador: só calcula fatos reais da alfaiataria
+  // (produção, preço, custo) pra servir de insumo confiável pra um
+  // projeto de remuneração — nasceu de um caso real em que um número
+  // passado "de ouvido" (print de tela) divergiu do real porque usava
+  // base diferente (pedida x entregue). Aqui sempre é ao vivo, direto
+  // do banco.
+  const [janelaRemuneracao, setJanelaRemuneracao] = useState(6);
+  const [copiadoRemuneracao, setCopiadoRemuneracao] = useState(false);
+
+  const dadosRemuneracao = useMemo(() => {
+    const hojeD = new Date(hojeISO() + "T00:00:00");
+    const meses = [];
+    for (let i = janelaRemuneracao - 1; i >= 0; i--) {
+      const d = new Date(hojeD.getFullYear(), hojeD.getMonth() - i, 1);
+      meses.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+
+    const pecasValidas = (pecas || []).filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida));
+
+    // Produção — pedida x entregue, lado a lado, pra nunca mais ter
+    // dúvida de qual base um número usou.
+    let qtdPedida = 0;
+    let qtdEntregue = 0;
+    const porTipo = new Map();
+    pecasValidas.forEach((p) => {
+      if (meses.includes((p.dataPedido || "").slice(0, 7))) {
+        qtdPedida += 1;
+        const tipo = p.tipoPeca || "Outro";
+        porTipo.set(tipo, (porTipo.get(tipo) || 0) + 1);
+      }
+      if (meses.includes((p.dataEntrega || "").slice(0, 7))) qtdEntregue += 1;
+    });
+    const mediaPedida = qtdPedida / meses.length;
+    const mediaEntregue = qtdEntregue / meses.length;
+    const porTipoLista = [...porTipo.entries()].sort((a, b) => b[1] - a[1]);
+
+    // Preço e custo — mesma base (pedida no período), consistente com
+    // o resto do sistema (Histórico de Produção, Custos do Ateliê).
+    const pecasDoPeriodo = pecasValidas.filter((p) => meses.includes((p.dataPedido || "").slice(0, 7)));
+    const receitaTotalPeriodo = pecasDoPeriodo.reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+    const materialTotalPeriodo = pecasDoPeriodo.reduce(
+      (s, p) => s + custoTecidoDe(p.tecidos) + custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase),
+      0
+    );
+    const ticketMedio = qtdPedida > 0 ? receitaTotalPeriodo / qtdPedida : 0;
+    const materialMedio = qtdPedida > 0 ? materialTotalPeriodo / qtdPedida : 0;
+
+    // Estrutura e metas
+    const estruturaMensal = (parseFloat(aluguelAtelie) || 0) + (parseFloat(luzAtelie) || 0);
+    const aliquotaFracao = (parseFloat(aliquotaImposto) || 0) / 100;
+
+    // Indicadores
+    const receitaMensalMedia = receitaTotalPeriodo / meses.length;
+    const receitaLiquidaMensalMedia = receitaMensalMedia * (1 - aliquotaFracao);
+
+    const receitaLiquidaPorPeca = ticketMedio * (1 - aliquotaFracao);
+    const estruturaPorPeca = mediaPedida > 0 ? estruturaMensal / mediaPedida : 0;
+    const margemDisponivelMaoDeObra = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca;
+    const contribuicaoPorPeca = receitaLiquidaPorPeca - materialMedio;
+    const pontoEquilibrioSemMaoDeObra = contribuicaoPorPeca > 0 ? estruturaMensal / contribuicaoPorPeca : null;
+
+    // Margem de hoje — com o custo ATUAL de mão de obra (equipe
+    // cadastrada), só como referência de "situação hoje". Fica de fora
+    // dos outros 3 indicadores de propósito, pra eles continuarem
+    // válidos depois que o modelo de remuneração mudar.
+    const custoHoraAtual = custoPorHoraAlfaiataria(pecas, equipe);
+    const maoDeObraTotalPeriodo = pecasDoPeriodo.reduce((s, p) => s + custoMaoDeObraPeca(p.tipoPeca, custoHoraAtual), 0);
+    const maoDeObraMedioPeca = qtdPedida > 0 ? maoDeObraTotalPeriodo / qtdPedida : 0;
+    const margemHojeMedioPeca = receitaLiquidaPorPeca - materialMedio - estruturaPorPeca - maoDeObraMedioPeca;
+    const margemHojePct = ticketMedio > 0 ? (margemHojeMedioPeca / ticketMedio) * 100 : 0;
+
+    return {
+      meses,
+      qtdPedida,
+      qtdEntregue,
+      mediaPedida,
+      mediaEntregue,
+      porTipoLista,
+      ticketMedio,
+      materialMedio,
+      estruturaMensal,
+      aliquotaImposto: parseFloat(aliquotaImposto) || 0,
+      receitaLiquidaMensalMedia,
+      margemDisponivelMaoDeObra,
+      pontoEquilibrioSemMaoDeObra,
+      maoDeObraMedioPeca,
+      margemHojeMedioPeca,
+      margemHojePct,
+    };
+  }, [pecas, equipe, custoAviamentosPorPecaBase, aluguelAtelie, luzAtelie, aliquotaImposto, janelaRemuneracao]);
+
+  function textoRemuneracao(d) {
+    const linhas = [
+      `Dados para remuneração — Schuck Alfaiataria (últimos ${janelaRemuneracao} meses, ${d.meses[0]} a ${d.meses[d.meses.length - 1]})`,
+      "",
+      "PRODUÇÃO",
+      `Peças pedidas/mês (média): ${d.mediaPedida.toFixed(2)} (total ${d.qtdPedida} no período, base: data do pedido)`,
+      `Peças entregues/mês (média): ${d.mediaEntregue.toFixed(2)} (total ${d.qtdEntregue} no período, base: data de entrega)`,
+      d.porTipoLista.length ? `Por tipo de peça (pedidas no período): ${d.porTipoLista.map(([t, n]) => `${t} ${n}`).join(", ")}` : "",
+      "",
+      "PREÇO E CUSTO",
+      `Ticket médio de venda / peça: ${brl(d.ticketMedio)}`,
+      `Material médio / peça: ${brl(d.materialMedio)}`,
+      `Horas de referência por tipo: ${Object.entries(HORAS_REFERENCIA_TIPO_PECA).map(([t, h]) => `${t} ${h}h`).join(", ")}`,
+      "",
+      "ESTRUTURA E METAS",
+      `Estrutura fixa do ateliê / mês (aluguel+luz): ${brl(d.estruturaMensal)}`,
+      `Alíquota de imposto: ${d.aliquotaImposto}%`,
+      "",
+      "INDICADORES (diagnóstico, não dependem do modelo de remuneração escolhido)",
+      `Receita líquida mensal média: ${brl(d.receitaLiquidaMensalMedia)}`,
+      `Margem disponível pra mão de obra / peça (antes de remunerar): ${brl(d.margemDisponivelMaoDeObra)}`,
+      `Ponto de equilíbrio sem mão de obra: ${d.pontoEquilibrioSemMaoDeObra !== null ? d.pontoEquilibrioSemMaoDeObra.toFixed(1) + " peças/mês" : "—"}`,
+      "",
+      `SITUAÇÃO ATUAL (referência — inclui o custo de mão de obra de hoje, que está sendo redesenhado)`,
+      `Margem líquida de hoje / peça: ${brl(d.margemHojeMedioPeca)} (${d.margemHojePct.toFixed(0)}%), já descontando mão de obra média de ${brl(d.maoDeObraMedioPeca)}/peça pelo custo atual da equipe`,
+    ];
+    return linhas.filter((l) => l !== "").join("\n");
+  }
+
+  async function copiarRemuneracao() {
+    const texto = textoRemuneracao(dadosRemuneracao);
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiadoRemuneracao(true);
+      setTimeout(() => setCopiadoRemuneracao(false), 2500);
+    } catch {
+      setCopiadoRemuneracao(false);
+    }
+  }
 
   const [respostaFinanceiro, setRespostaFinanceiro] = useState(null);
   const [carregandoFinanceiro, setCarregandoFinanceiro] = useState(false);
@@ -834,6 +968,109 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
             {respostaFinanceiro}
           </div>
         )}
+
+        <div style={{ borderTop: "1px solid #EDEAE0", marginTop: 20, paddingTop: 20 }}>
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+            <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
+              Dados para Remuneração
+            </div>
+            <button
+              onClick={() => setJanelaRemuneracao((v) => (v === 6 ? 12 : 6))}
+              style={{ background: "#EDEAE0", color: TEXT_MUTED, padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
+            >
+              últimos {janelaRemuneracao} meses — trocar pra {janelaRemuneracao === 6 ? 12 : 6}
+            </button>
+          </div>
+          <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
+            Diagnóstico da alfaiataria pra embasar um projeto de remuneração (CLT, PJ, por produtividade etc.) — fatos
+            de hoje, direto do banco, não é uma simulação do modelo novo.
+          </div>
+
+          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>PRODUÇÃO</div>
+          <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Peças pedidas/mês (média)</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{dadosRemuneracao.mediaPedida.toFixed(2)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Peças entregues/mês (média)</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{dadosRemuneracao.mediaEntregue.toFixed(2)}</div>
+            </div>
+          </div>
+          {dadosRemuneracao.porTipoLista.length > 0 && (
+            <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+              Por tipo (pedidas no período): {dadosRemuneracao.porTipoLista.map(([t, n]) => `${t} ${n}`).join(" · ")}
+            </div>
+          )}
+
+          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>PREÇO E CUSTO</div>
+          <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Ticket médio / peça</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(dadosRemuneracao.ticketMedio)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Material médio / peça</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(dadosRemuneracao.materialMedio)}</div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>ESTRUTURA E METAS</div>
+          <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Estrutura do ateliê / mês</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(dadosRemuneracao.estruturaMensal)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Alíquota de imposto</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{dadosRemuneracao.aliquotaImposto}%</div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>INDICADORES</div>
+          <div className="grid gap-3 mb-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Receita líquida mensal média</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(dadosRemuneracao.receitaLiquidaMensalMedia)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Margem disponível p/ mão de obra (peça)</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: dadosRemuneracao.margemDisponivelMaoDeObra >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                {brl(dadosRemuneracao.margemDisponivelMaoDeObra)}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Ponto de equilíbrio (sem mão de obra)</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>
+                {dadosRemuneracao.pontoEquilibrioSemMaoDeObra !== null ? `${dadosRemuneracao.pontoEquilibrioSemMaoDeObra.toFixed(1)} peças/mês` : "—"}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 700, marginBottom: 6, marginTop: 10 }}>
+            SITUAÇÃO ATUAL <span style={{ fontWeight: 400 }}>(referência — custo de equipe de hoje, vai mudar com o modelo novo)</span>
+          </div>
+          <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Mão de obra média hoje / peça</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700 }}>{brl(dadosRemuneracao.maoDeObraMedioPeca)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_MUTED }}>Margem líquida de hoje / peça</div>
+              <div className="fx-mono" style={{ fontSize: 15, fontWeight: 700, color: dadosRemuneracao.margemHojeMedioPeca >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                {brl(dadosRemuneracao.margemHojeMedioPeca)} ({dadosRemuneracao.margemHojePct.toFixed(0)}%)
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={copiarRemuneracao}
+            className="flex items-center gap-2"
+            style={{ background: BRASS, color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+          >
+            <Copy size={14} /> {copiadoRemuneracao ? "Copiado!" : "Copiar resumo"}
+          </button>
+        </div>
       </Card>
 
       <Card style={{ padding: 20 }} className="mt-6">
