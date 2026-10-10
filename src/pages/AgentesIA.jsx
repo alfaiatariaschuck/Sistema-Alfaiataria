@@ -574,6 +574,10 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       estruturaMensal,
       aliquotaImposto: parseFloat(aliquotaImposto) || 0,
       receitaLiquidaMensalMedia,
+      receitaLiquidaPorPeca,
+      estruturaPorPeca,
+      contribuicaoPorPeca,
+      qtdPedidaVenda,
       margemDisponivelMaoDeObra,
       pontoEquilibrioHoje,
       maoDeObraMedioPeca,
@@ -588,6 +592,47 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
       melhorMes,
     };
   }, [pecas, equipe, custoAviamentosPorPecaBase, aluguelAtelie, luzAtelie, aliquotaImposto, janelaRemuneracao, inicioProducaoAlfaiataria]);
+
+  // Simulador de folha — ao contrário do diagnóstico acima, aqui o
+  // Tales pode mexer livremente (inclusive até 0, sem piso) na folha
+  // mensal da equipe pra ver o impacto na margem ANTES de decidir um
+  // aumento ou redução de verdade. Reaproveita os números fixos do
+  // diagnóstico (ticket médio, material, estrutura, volumes reais de
+  // pedida/entrega) e só recalcula o que depende da folha simulada.
+  const [folhaSimulada, setFolhaSimulada] = useState("");
+  const folhaEfetiva =
+    folhaSimulada !== "" && !isNaN(parseFloat(folhaSimulada)) ? parseFloat(folhaSimulada) : dadosRemuneracao.custoEquipeMensalAtual;
+
+  const simulacaoFolha = useMemo(() => {
+    const d = dadosRemuneracao;
+    const meses = d.meses.length || 1;
+
+    const maoDeObraPedidaSim = d.qtdPedidaVenda > 0 ? (folhaEfetiva * meses) / d.qtdPedidaVenda : 0;
+    const margemLiquidaSim = d.receitaLiquidaPorPeca - d.materialMedio - d.estruturaPorPeca - maoDeObraPedidaSim;
+    const margemLiquidaSimPct = d.ticketMedio > 0 ? (margemLiquidaSim / d.ticketMedio) * 100 : 0;
+
+    const maoDeObraEntregaSim = d.qtdEntregue > 0 ? (folhaEfetiva * meses) / d.qtdEntregue : 0;
+    const margemAjustadaSim = d.receitaLiquidaPorPeca - d.materialMedio - d.estruturaPorPeca - maoDeObraEntregaSim;
+    const margemAjustadaSimPct = d.ticketMedio > 0 ? (margemAjustadaSim / d.ticketMedio) * 100 : 0;
+
+    const pontoEquilibrioSim = d.contribuicaoPorPeca > 0 ? (d.estruturaMensal + folhaEfetiva) / d.contribuicaoPorPeca : null;
+
+    const deltaFolhaMensal = folhaEfetiva - d.custoEquipeMensalAtual;
+
+    return {
+      maoDeObraPedidaSim,
+      margemLiquidaSim,
+      margemLiquidaSimPct,
+      margemLiquidaMensalSim: margemLiquidaSim * d.mediaPedida,
+      maoDeObraEntregaSim,
+      margemAjustadaSim,
+      margemAjustadaSimPct,
+      margemAjustadaMensalSim: margemAjustadaSim * d.mediaEntregue,
+      pontoEquilibrioSim,
+      deltaFolhaMensal,
+      deltaFolhaAnual: deltaFolhaMensal * 12,
+    };
+  }, [dadosRemuneracao, folhaEfetiva]);
 
   function textoRemuneracao(d) {
     const linhas = [
@@ -1418,6 +1463,93 @@ export default function AgentesIA({ pedidos, pecas, despesas, custoAviamentosPor
           >
             <Copy size={14} /> {copiadoRemuneracao ? "Copiado!" : "Copiar resumo"}
           </button>
+
+          <div style={{ borderTop: "1px solid #E4E0D6", marginTop: 24, paddingTop: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#1F2430", marginBottom: 4 }}>
+              Simulador de remuneração
+            </div>
+            <div style={{ fontSize: 11.5, color: TEXT_MUTED, marginBottom: 14, lineHeight: 1.5, maxWidth: 720 }}>
+              Diferente do diagnóstico acima, aqui você mexe livremente na folha mensal da equipe — sem piso, pode ir
+              até R$0 — pra ver o impacto na margem antes de decidir um aumento ou redução de verdade. O ticket
+              médio, material, estrutura e os volumes reais de pedida/entrega continuam os mesmos de hoje.
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              <label style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 600 }}>Folha mensal simulada da equipe:</label>
+              <input
+                type="number"
+                value={folhaSimulada}
+                onChange={(e) => setFolhaSimulada(e.target.value)}
+                placeholder={dadosRemuneracao.custoEquipeMensalAtual.toFixed(0)}
+                style={{ ...inputStyle, width: 140, padding: "5px 8px", fontSize: 12 }}
+              />
+              {folhaSimulada !== "" && (
+                <button
+                  onClick={() => setFolhaSimulada("")}
+                  style={{ fontSize: 11, color: BRASS, fontWeight: 600, textDecoration: "underline" }}
+                >
+                  Usar valor atual ({brl(dadosRemuneracao.custoEquipeMensalAtual)})
+                </button>
+              )}
+            </div>
+
+            {simulacaoFolha.deltaFolhaMensal !== 0 && (
+              <div style={{ fontSize: 11.5, color: simulacaoFolha.deltaFolhaMensal > 0 ? "#9C4A1E" : "#2C6E31", marginBottom: 16, fontWeight: 600 }}>
+                {simulacaoFolha.deltaFolhaMensal > 0 ? "Aumento" : "Redução"} de {brl(Math.abs(simulacaoFolha.deltaFolhaMensal))}/mês em
+                relação à folha atual ({brl(Math.abs(simulacaoFolha.deltaFolhaAnual))}/ano {simulacaoFolha.deltaFolhaMensal > 0 ? "a mais" : "a menos"}).
+              </div>
+            )}
+
+            <div className="grid gap-3 mb-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>
+              <div style={{ background: "#F7F4EE", borderRadius: 8, padding: 12 }}>
+                <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 600, marginBottom: 4 }}>
+                  Margem líquida simulada (ritmo de pedida)
+                </div>
+                <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: simulacaoFolha.margemLiquidaSim >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                  {brl(simulacaoFolha.margemLiquidaSim)}/peça ({simulacaoFolha.margemLiquidaSimPct.toFixed(0)}%)
+                </div>
+                <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 2 }}>
+                  ≈ {brl(simulacaoFolha.margemLiquidaMensalSim)}/mês no total
+                </div>
+                {simulacaoFolha.margemLiquidaSimPct < 30 && (
+                  <div style={{ fontSize: 10.5, color: "#9C4A1E", marginTop: 4, fontWeight: 600 }}>
+                    Abaixo dos 30% que você vinha usando como referência de conforto.
+                  </div>
+                )}
+              </div>
+              <div style={{ background: "#F7F4EE", borderRadius: 8, padding: 12 }}>
+                <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 600, marginBottom: 4 }}>
+                  Margem ajustada simulada (ritmo de entrega)
+                </div>
+                <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700, color: simulacaoFolha.margemAjustadaSim >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                  {brl(simulacaoFolha.margemAjustadaSim)}/peça ({simulacaoFolha.margemAjustadaSimPct.toFixed(0)}%)
+                </div>
+                <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 2 }}>
+                  ≈ {brl(simulacaoFolha.margemAjustadaMensalSim)}/mês no total
+                </div>
+                {simulacaoFolha.margemAjustadaSimPct < 30 && (
+                  <div style={{ fontSize: 10.5, color: "#9C4A1E", marginTop: 4, fontWeight: 600 }}>
+                    Abaixo dos 30% que você vinha usando como referência de conforto.
+                  </div>
+                )}
+              </div>
+              <div style={{ background: "#F7F4EE", borderRadius: 8, padding: 12 }}>
+                <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 600, marginBottom: 4 }}>
+                  Ponto de equilíbrio simulado
+                </div>
+                <div className="fx-mono" style={{ fontSize: 16, fontWeight: 700 }}>
+                  {simulacaoFolha.pontoEquilibrioSim !== null ? `${simulacaoFolha.pontoEquilibrioSim.toFixed(1)} peças/mês` : "—"}
+                </div>
+                <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 2 }}>
+                  Hoje você pede {dadosRemuneracao.mediaPedida.toFixed(1)} e entrega {dadosRemuneracao.mediaEntregue.toFixed(1)}/mês.
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: 10.5, color: TEXT_MUTED, fontStyle: "italic", marginTop: 4 }}>
+              Sem piso nem teto — a simulação deixa ir a qualquer valor, inclusive R$0, pra você ver o efeito completo
+              antes de decidir.
+            </div>
+          </div>
         </div>
       </Card>
 
