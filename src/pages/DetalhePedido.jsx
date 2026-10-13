@@ -16,7 +16,7 @@ import HistoricoCliente from "../components/HistoricoCliente";
 import VincularIndicador from "../components/VincularIndicador";
 import EditarNomeCliente from "../components/EditarNomeCliente";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, STATUS_TECIDO, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
+import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, statusPedidoSemVenda, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
@@ -66,6 +66,16 @@ export default function DetalhePedido({
   }
   function setSub(grupo, sub, valor) {
     onSub(p.id, grupo, sub, valor);
+  }
+  // Doação/uso pessoal: marca como já entregue, sem cobrança — mesmos
+  // status que o resto do sistema já trata como "sem venda" (ver
+  // statusPedidoSemVenda em lib/helpers.js). Limpa forma de pagamento e
+  // valor a receber pra não sobrar lixo de uma troca de ideia.
+  function marcarSemVenda(novoStatus) {
+    set("status", novoStatus);
+    set("qtEntregue", novoStatus === "Aguardando Produção" ? 0 : p.quantidade);
+    set("formaPagamento", "");
+    setSub("aReceber", "valor", "");
   }
   async function converter() {
     if (
@@ -352,6 +362,66 @@ export default function DetalhePedido({
           <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
             Financeiro
           </div>
+          <Field label="Doação / uso pessoal">
+            <div className="flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => marcarSemVenda("Aguardando Produção")}
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: 6,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  background: !statusPedidoSemVenda(p.status) ? "#15161A" : "#EDEAE0",
+                  color: !statusPedidoSemVenda(p.status) ? "#FFF" : INK_SOFT,
+                  border: `1px solid ${!statusPedidoSemVenda(p.status) ? "#15161A" : LINE}`,
+                }}
+              >
+                Venda normal
+              </button>
+              <button
+                type="button"
+                onClick={() => marcarSemVenda("Entregue Doação")}
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: 6,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  background: p.status === "Entregue Doação" ? "#9C4A1E" : "#EDEAE0",
+                  color: p.status === "Entregue Doação" ? "#FFF" : INK_SOFT,
+                  border: `1px solid ${p.status === "Entregue Doação" ? "#9C4A1E" : LINE}`,
+                }}
+              >
+                🎁 Doação
+              </button>
+              <button
+                type="button"
+                onClick={() => marcarSemVenda("Entregue Uso Pessoal")}
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: 6,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  background: p.status === "Entregue Uso Pessoal" ? "#9C4A1E" : "#EDEAE0",
+                  color: p.status === "Entregue Uso Pessoal" ? "#FFF" : INK_SOFT,
+                  border: `1px solid ${p.status === "Entregue Uso Pessoal" ? "#9C4A1E" : LINE}`,
+                }}
+              >
+                Uso pessoal
+              </button>
+            </div>
+            {statusPedidoSemVenda(p.status) && (
+              <span style={{ fontSize: 10, color: TEXT_MUTED }}>
+                Marcado como entregue, sem cobrança do cliente — não conta como faturamento em nenhum relatório, mas
+                o custo de produção continua contando normal.
+              </span>
+            )}
+          </Field>
+          {statusPedidoSemVenda(p.status) ? (
+            <div className="mb-3 p-3" style={{ background: "#F6E3D9", borderRadius: 8, fontSize: 12, color: "#9C4A1E" }}>
+              Sem cobrança do cliente — não precisa preencher valor a receber nem forma de pagamento.
+            </div>
+          ) : (
           <CampoPagamento
             labelValor="A receber (R$)"
             labelPago="Recebido"
@@ -380,7 +450,10 @@ export default function DetalhePedido({
             labelRestante="2ª forma — valor (R$)"
             labelFormaRestante="2ª forma de pagamento"
           />
-          <TaxaCartaoRecebido valorVenda={p.aReceber.valor} valorLiquidoRecebido={p.valorLiquidoRecebido} onChange={(v) => set("valorLiquidoRecebido", v)} />
+          )}
+          {!statusPedidoSemVenda(p.status) && (
+            <TaxaCartaoRecebido valorVenda={p.aReceber.valor} valorLiquidoRecebido={p.valorLiquidoRecebido} onChange={(v) => set("valorLiquidoRecebido", v)} />
+          )}
           <Field label="Data para cobrar (aparece em Contas a Receber)">
             <input type="date" style={inputStyle} value={p.dataCobranca || ""} onChange={(e) => set("dataCobranca", e.target.value)} />
           </Field>
@@ -388,14 +461,20 @@ export default function DetalhePedido({
             <input type="date" style={inputStyle} value={p.dataRecebimento || ""} onChange={(e) => set("dataRecebimento", e.target.value)} />
           </Field>
           <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${LINE}` }}>
-            <Field label="Forma de pagamento">
-              <select style={inputStyle} value={p.formaPagamento || ""} onChange={(e) => set("formaPagamento", e.target.value)}>
-                <option value="">Selecione</option>
-                {FORMAS_PAGAMENTO.map((f) => (
-                  <option key={f}>{f}</option>
-                ))}
-              </select>
-            </Field>
+            {statusPedidoSemVenda(p.status) ? (
+              <Field label="Forma de pagamento">
+                <div style={{ fontSize: 12, color: TEXT_MUTED, paddingTop: 8 }}>Não se aplica — pedido sem venda.</div>
+              </Field>
+            ) : (
+              <Field label="Forma de pagamento">
+                <select style={inputStyle} value={p.formaPagamento || ""} onChange={(e) => set("formaPagamento", e.target.value)}>
+                  <option value="">Selecione</option>
+                  {FORMAS_PAGAMENTO.map((f) => (
+                    <option key={f}>{f}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <div className="mt-3">
               <Field label="Costureira">
                 <select style={{ ...inputStyle, maxWidth: 200 }} value={p.costureira || "Fabiana"} onChange={(e) => set("costureira", e.target.value)}>
