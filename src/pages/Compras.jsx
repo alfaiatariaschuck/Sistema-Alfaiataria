@@ -26,7 +26,7 @@ function textoParaFornecedor(fornecedor, lista) {
   return linhas.join("\n");
 }
 
-export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, irParaPedido, irParaPeca }) {
+export default function Compras({ pedidos, pecas, planos = [], onTecidoPedido, onTecidoPeca, onTecidoPlano, irParaPedido, irParaPeca, irParaPlano }) {
   const [busca, setBusca] = useState("");
   const [filtroFornecedor, setFiltroFornecedor] = useState("Todos");
   const [filtroStatus, setFiltroStatus] = useState("Pendente");
@@ -79,6 +79,32 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
         comprado: !!t.comprado,
         dataPedido: p.dataPedido,
         tipoPeca: p.tipoPeca,
+        jaEntregue,
+      });
+    });
+  });
+  // Plano de Assinatura guarda o tecido do próximo mês a emitir — ainda
+  // não é um "pedido" de verdade (só vira um ao clicar em "Emitir pedido
+  // do mês"), mas o tecido já precisa ser comprado antes disso, senão a
+  // Fabi não tem o que cortar na hora de emitir. Plano inativo/concluído
+  // sai da lista, igual peça/pedido já entregue.
+  (planos || []).forEach((pl) => {
+    const jaEntregue = !pl.ativo;
+    (pl.tecidos || []).forEach((t, i) => {
+      if (!t.codigo && !t.fornecedor) return;
+      itens.push({
+        origem: "plano",
+        pedidoId: pl.id,
+        tecidoId: i,
+        cliente: pl.cliente,
+        codigo: t.codigo,
+        qtd: t.qtd,
+        numero: t.numero,
+        metragem: t.metragem || "",
+        valorMetro: t.valorMetro ?? "",
+        fornecedor: normalizarFornecedor(t.fornecedor),
+        comprado: !!t.comprado,
+        dataPedido: pl.dataVenda,
         jaEntregue,
       });
     });
@@ -146,6 +172,7 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
 
   function alternarComprado(item) {
     if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "comprado", !item.comprado);
+    else if (item.origem === "plano") onTecidoPlano(item.pedidoId, item.tecidoId, "comprado", !item.comprado);
     else onTecidoPeca(item.pedidoId, item.tecidoId, "comprado", !item.comprado);
 
     // Clicou errado? Por alguns segundos o item continua na tela (mesmo
@@ -161,16 +188,19 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
 
   function atualizarMetragem(item, valor) {
     if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "metragem", valor);
+    else if (item.origem === "plano") onTecidoPlano(item.pedidoId, item.tecidoId, "metragem", valor);
     else onTecidoPeca(item.pedidoId, item.tecidoId, "metragem", valor);
   }
 
   function atualizarValorMetro(item, valor) {
     if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "valorMetro", valor);
+    else if (item.origem === "plano") onTecidoPlano(item.pedidoId, item.tecidoId, "valorMetro", valor);
     else onTecidoPeca(item.pedidoId, item.tecidoId, "valorMetro", valor);
   }
 
   function abrirItem(item) {
     if (item.origem === "camisa") irParaPedido(item.pedidoId);
+    else if (item.origem === "plano") irParaPlano(item.pedidoId);
     else irParaPeca(item.pedidoId);
   }
 
@@ -316,6 +346,7 @@ export default function Compras({ pedidos, pecas, onTecidoPedido, onTecidoPeca, 
                 <div className="flex items-center gap-1.5">
                   <span style={{ fontWeight: 600, fontSize: 13 }}>{item.cliente}</span>
                   {item.origem === "alfaiataria" && <Pill text={item.tipoPeca} style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />}
+                  {item.origem === "plano" && <Pill text="Plano de Assinatura" style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />}
                 </div>
                 <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
                   Código {item.codigo || "—"} · Qtd {item.qtd} {item.numero ? `· Obs: ${item.numero}` : ""}

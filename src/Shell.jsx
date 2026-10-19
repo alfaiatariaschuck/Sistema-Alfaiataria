@@ -346,6 +346,13 @@ export default function Shell() {
     setSelecionadaPeca(id);
   }
 
+  // Plano de Assinatura não tem "detalhe" próprio fora da lista (o
+  // expandir/recolher é estado local da própria tela) — só leva pra lá,
+  // sem abrir já um plano específico.
+  function irParaPlano() {
+    setTab("planos-assinatura");
+  }
+
   function fecharOuAbrirPeca(id) {
     if (id === null && tabAntesDaPeca) {
       setTab(tabAntesDaPeca);
@@ -1097,10 +1104,13 @@ export default function Shell() {
                 <Compras
                   pedidos={pedidos}
                   pecas={pecas}
+                  planos={planos}
                   onTecidoPedido={atualizarTecido}
                   onTecidoPeca={atualizarTecidoPeca}
+                  onTecidoPlano={atualizarTecidoPlano}
                   irParaPedido={irPara}
                   irParaPeca={irParaPeca}
+                  irParaPlano={irParaPlano}
                 />
               )}
               {tab === "painel-alfaiataria" && !loadingPecas && (
