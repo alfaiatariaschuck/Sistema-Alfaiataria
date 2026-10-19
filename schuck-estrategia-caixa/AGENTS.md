@@ -33,3 +33,17 @@ Próximas ações: ... (máx. 3)
 
 ## Em caso de dúvida
 Se um lançamento não se encaixa em nenhuma categoria, ou um número foge mais de 20% da premissa, **pergunte ao Tales**. Não suponha.
+
+## Pendências conhecidas (levantadas em 19/10/2026, não resolvidas ainda)
+- **Plano de assinatura de camisaria distorce "camisas vendidas"**: quando um cliente fecha um plano de assinatura
+  (ex: 12 camisas, uma por mês ao longo do ano), o Tales recebe o valor cheio de uma vez, mas a entrega é diluída
+  mês a mês. Hoje, ao contar "camisas vendidas no mês" pra comparar com a meta, o Tales está contando todas as
+  unidades do plano no mês em que ele foi fechado (ex: 12 de uma vez em outubro/2026), o que infla aquele mês e
+  deixa os meses seguintes de entrega sem nenhuma camisa "nova" correspondente, mesmo saindo peça de verdade.
+  **Ainda não decidido** como contabilizar isso daqui pra frente sem distorcer a meta semanal/mensal de camisas —
+  possíveis caminhos (não decidir sozinho, só apresentar ao Tales quando for revisar): (a) separar "camisas
+  vendidas" (contratos novos fechados) de "camisas entregues" (unidades físicas saídas no mês, 1 por plano/mês) e
+  comparar a meta contra entregues, não vendidas; (b) contar cada plano de assinatura como 1 camisa/mês pro KPI de
+  ritmo, independente de quando o pagamento entrou. Agendado lembrete pro Tales revisar isso (ver Routine).
+  - No extrato de 19/10/2026, Tales reportou 26 camisas vendidas no mês até a data, sendo 12 de um único plano de
+    assinatura fechado no mês — não soma ao vendido semanal sem considerar isso.
