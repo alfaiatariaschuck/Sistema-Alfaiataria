@@ -4,6 +4,7 @@ import {
   Archive,
   BarChart3,
   BookText,
+  CalendarDays,
   ChevronDown,
   ChevronRight,
   Brain,
@@ -103,6 +104,7 @@ import ContasAReceber from "./pages/ContasAReceber";
 import Metas from "./pages/Metas";
 import VendedorGestao from "./pages/VendedorGestao";
 import BuscaGlobal from "./components/BuscaGlobal";
+import CalendarioProvas from "./components/CalendarioProvas";
 
 const NAV = [
   { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true, grupo: "Camisaria" },
@@ -122,6 +124,7 @@ const NAV = [
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true, grupo: "Alfaiataria" },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true, grupo: "Alfaiataria" },
   { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true, grupo: "Alfaiataria" },
+  { id: "calendario-provas", label: "Calendário de Provas", icon: CalendarDays, primary: false, grupo: "Alfaiataria" },
   { id: "historico-producao", label: "Histórico de Produção", icon: BarChart3, primary: false, grupo: "Alfaiataria" },
   { id: "custos-atelie", label: "Custos do Ateliê", icon: PiggyBank, primary: false, grupo: "Alfaiataria" },
   { id: "tecidos-alfaiataria", label: "Tecidos Alfaiataria", icon: Ruler, primary: false, grupo: "Alfaiataria" },
@@ -1186,6 +1189,16 @@ export default function Shell() {
                   previsoesFila={previsoesFilaAlfaiataria}
                   equipe={equipe}
                   irParaPeca={irParaPeca}
+                />
+              )}
+              {tab === "calendario-provas" && !loadingPecas && (
+                <CalendarioProvas
+                  pecas={pecas}
+                  onAtualizarProva={async (id, dataProva, horaProva) => {
+                    await atualizarCampoPeca(id, "dataProva", dataProva);
+                    await atualizarCampoPeca(id, "horaProva", horaProva);
+                  }}
+                  onAbrir={irParaPeca}
                 />
               )}
               {tab === "historico-producao" && !loadingPecas && (

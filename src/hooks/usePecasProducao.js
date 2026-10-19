@@ -8,7 +8,7 @@ import { diasEntre, hojeISO } from "../lib/helpers";
 // restrinja o resto do banco pra esse papel, essa tela nem pede esses
 // campos, então eles nunca chegam a trafegar até o navegador dele.
 const SELECT_PRODUCAO =
-  "id, cliente_id, data_pedido, previsao_entrega, previsao_manual, data_limite_evento, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, tipo_peca, status, observacoes, observacoes_producao, responsavel, responsaveis_secoes, prioridade, situacao, ordem_producao, medidas, caracteristicas, retrabalho, retrabalho_obs, clientes(nome), tecidos(codigo, qtd, numero, fornecedor), pedidos_alfaiataria_pausas(motivo, data_inicio, data_fim)";
+  "id, cliente_id, data_pedido, previsao_entrega, previsao_manual, data_limite_evento, data_entrega, data_inicio_producao, data_pausa_inicio, dias_pausados, data_prova, hora_prova, tipo_peca, status, observacoes, observacoes_producao, responsavel, responsaveis_secoes, prioridade, situacao, ordem_producao, medidas, caracteristicas, retrabalho, retrabalho_obs, clientes(nome), tecidos(codigo, qtd, numero, fornecedor), pedidos_alfaiataria_pausas(motivo, data_inicio, data_fim)";
 
 function rowParaPecaProducao(row) {
   return {
@@ -24,6 +24,8 @@ function rowParaPecaProducao(row) {
     dataInicioProducao: row.data_inicio_producao || "",
     dataPausaInicio: row.data_pausa_inicio || "",
     diasPausados: row.dias_pausados || 0,
+    dataProva: row.data_prova || "",
+    horaProva: row.hora_prova || "",
     pausas: (row.pedidos_alfaiataria_pausas || []).map((pa) => ({ motivo: pa.motivo, dataInicio: pa.data_inicio, dataFim: pa.data_fim || "" })),
     status: row.status,
     observacoes: row.observacoes || "",
@@ -121,6 +123,14 @@ export function usePecasProducao() {
     await supabase.from("pedidos_alfaiataria").update({ retrabalho, retrabalho_obs: retrabalhoObs }).eq("id", id);
   }
 
+  // Agenda (ou remarca/limpa) a próxima prova dessa peça — alimenta o
+  // Calendário de Provas. Um campo só por peça: representa a PRÓXIMA
+  // prova agendada, não uma por etapa (Tela/Caixa/Final).
+  async function atualizarProva(id, dataProva, horaProva) {
+    setPecas((prev) => prev.map((p) => (p.id === id ? { ...p, dataProva, horaProva } : p)));
+    await supabase.from("pedidos_alfaiataria").update({ data_prova: dataProva || null, hora_prova: horaProva || null }).eq("id", id);
+  }
+
   // Desfaz um início marcado por engano — zera início, pausa e dias pausados.
   async function desfazerInicio(id) {
     setPecas((prev) =>
@@ -147,5 +157,6 @@ export function usePecasProducao() {
     atualizarObservacaoProducao,
     atualizarMedidas,
     atualizarRetrabalho,
+    atualizarProva,
   };
 }

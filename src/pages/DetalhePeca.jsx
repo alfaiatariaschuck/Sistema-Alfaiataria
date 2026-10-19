@@ -420,6 +420,15 @@ export default function DetalhePeca({
               </span>
             </div>
           )}
+          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <Field label="Próxima prova — data">
+              <input type="date" style={inputStyle} value={p.dataProva || ""} onChange={(e) => set("dataProva", e.target.value)} />
+            </Field>
+            <Field label="Próxima prova — hora (opcional)">
+              <input type="time" style={inputStyle} value={p.horaProva || ""} onChange={(e) => set("horaProva", e.target.value)} />
+            </Field>
+          </div>
+          <span style={{ fontSize: 10, color: TEXT_MUTED }}>Aparece no Calendário de Provas. Deixe em branco se não houver prova marcada.</span>
         </Card>
 
         <Card style={{ padding: 20 }}>

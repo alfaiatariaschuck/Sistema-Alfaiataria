@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, BarChart3, Check, ChevronDown, ChevronUp, FileText, Gauge, LayoutGrid, LogOut, Pencil, Ruler, Search, Table2 } from "lucide-react";
+import { AlertTriangle, BarChart3, CalendarDays, Check, ChevronDown, ChevronUp, FileText, Gauge, LayoutGrid, LogOut, Pencil, Ruler, Search, Table2 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePecasProducao } from "./hooks/usePecasProducao";
 import { useEquipeProducao } from "./hooks/useEquipeProducao";
@@ -21,6 +21,7 @@ import TabelaControleProducao from "./components/TabelaControleProducao";
 import PainelProducaoResumo from "./components/PainelProducaoResumo";
 import EvolucaoTrajes from "./components/EvolucaoTrajes";
 import HistoricoProducao from "./pages/HistoricoProducao";
+import CalendarioProvas from "./components/CalendarioProvas";
 import FichaImprimivelAlfaiataria from "./pages/FichaImprimivelAlfaiataria";
 
 const NOME_SECAO = { corpo: "Paletó", calca: "Calça", colete: "Colete" };
@@ -105,6 +106,7 @@ export default function ShellProducao() {
     atualizarObservacaoProducao,
     atualizarMedidas,
     atualizarRetrabalho,
+    atualizarProva,
   } = usePecasProducao();
   const { equipe } = useEquipeProducao(true);
   const [busca, setBusca] = useState("");
@@ -227,7 +229,27 @@ export default function ShellProducao() {
         >
           <BarChart3 size={14} /> Histórico de Produção
         </button>
+        <button
+          onClick={() => setPagina("provas")}
+          className="flex items-center gap-1.5"
+          style={{
+            background: pagina === "provas" ? CANVAS : "transparent",
+            color: pagina === "provas" ? INK : "#A9B4C0",
+            padding: "8px 14px",
+            borderRadius: "8px 8px 0 0",
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          <CalendarDays size={14} /> Provas
+        </button>
       </div>
+
+      {pagina === "provas" && (
+        <div className="max-w-3xl mx-auto px-5 py-6">
+          <CalendarioProvas pecas={pecas} onAtualizarProva={atualizarProva} />
+        </div>
+      )}
 
       {pagina === "historico" && (
         <div className="max-w-3xl mx-auto px-5 py-6">
@@ -423,6 +445,27 @@ export default function ShellProducao() {
                     />
                   </div>
                 )}
+
+                <div className="mb-3 flex items-center gap-2 flex-wrap">
+                  <div style={{ flex: 1, minWidth: 130 }}>
+                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Próxima prova — data</div>
+                    <input
+                      type="date"
+                      style={inputStyle}
+                      defaultValue={p.dataProva || ""}
+                      onBlur={(e) => atualizarProva(p.id, e.target.value, p.horaProva)}
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 100 }}>
+                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Hora (opcional)</div>
+                    <input
+                      type="time"
+                      style={inputStyle}
+                      defaultValue={p.horaProva || ""}
+                      onBlur={(e) => atualizarProva(p.id, p.dataProva, e.target.value)}
+                    />
+                  </div>
+                </div>
 
                 <div className="mb-3">
                   <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 4 }}>Início da produção</div>

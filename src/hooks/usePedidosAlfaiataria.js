@@ -16,6 +16,8 @@ export function pecaVazia() {
     dataLimiteEvento: "",
     dataEntrega: "",
     dataCobranca: "",
+    dataProva: "",
+    horaProva: "",
     status: "Aguardando Produção",
     tipoSaida: "Venda",
     valorTotal: "",
@@ -66,6 +68,8 @@ function rowParaPeca(row) {
     dataLimiteEvento: row.data_limite_evento || "",
     dataEntrega: row.data_entrega || "",
     dataCobranca: row.data_cobranca || "",
+    dataProva: row.data_prova || "",
+    horaProva: row.hora_prova || "",
     status: row.status,
     tipoSaida: row.tipo_saida || "Venda",
     valorTotal: row.valor_total ?? "",
@@ -135,6 +139,8 @@ const CAMPO_PARA_COLUNA = {
   dataLimiteEvento: "data_limite_evento",
   dataEntrega: "data_entrega",
   dataCobranca: "data_cobranca",
+  dataProva: "data_prova",
+  horaProva: "hora_prova",
   retrabalho: "retrabalho",
   retrabalhoObs: "retrabalho_obs",
   status: "status",
@@ -294,7 +300,7 @@ export function usePedidosAlfaiataria() {
     // válida ou nulo) — um input de data pode disparar onChange com ""
     // no meio da digitação, antes de completar a data, então isso
     // precisa virar null igual já fazíamos pros campos numéricos.
-    const CAMPOS_DATA = ["dataPedido", "previsaoEntrega", "dataLimiteEvento", "dataEntrega", "dataInicioProducao", "dataPausaInicio", "dataCobranca"];
+    const CAMPOS_DATA = ["dataPedido", "previsaoEntrega", "dataLimiteEvento", "dataEntrega", "dataInicioProducao", "dataPausaInicio", "dataCobranca", "dataProva"];
     const valorFinal = CAMPOS_NUMERICOS.includes(campo)
       ? (valor === "" ? (campo === "pago" ? 0 : null) : Number(valor))
       : CAMPOS_DATA.includes(campo)
