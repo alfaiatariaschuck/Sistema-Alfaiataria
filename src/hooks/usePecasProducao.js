@@ -46,11 +46,21 @@ function rowParaPecaProducao(row) {
 export function usePecasProducao() {
   const [pecas, setPecas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(null);
 
+  // Erro aqui não pode ficar em silêncio — isso já causou uma tela em
+  // branco sem explicação pro Ícaro (migração do banco não rodada ainda,
+  // SELECT falhando inteiro). Melhor mostrar o erro de verdade do que
+  // fingir "nenhuma peça em produção".
   const recarregar = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from("pedidos_alfaiataria").select(SELECT_PRODUCAO).order("data_pedido", { ascending: true });
-    setPecas((data || []).map(rowParaPecaProducao));
+    const { data, error } = await supabase.from("pedidos_alfaiataria").select(SELECT_PRODUCAO).order("data_pedido", { ascending: true });
+    if (error) {
+      setErro(error.message);
+    } else {
+      setErro(null);
+      setPecas((data || []).map(rowParaPecaProducao));
+    }
     setLoading(false);
   }, []);
 
@@ -145,6 +155,7 @@ export function usePecasProducao() {
   return {
     pecas,
     loading,
+    erro,
     recarregar,
     marcarInicio,
     atualizarStatus,

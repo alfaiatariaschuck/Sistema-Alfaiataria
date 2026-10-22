@@ -95,6 +95,7 @@ export default function ShellProducao() {
   const {
     pecas,
     loading,
+    erro,
     marcarInicio,
     atualizarStatus,
     atualizarSituacao,
@@ -185,6 +186,12 @@ export default function ShellProducao() {
           <LogOut size={14} /> Sair
         </button>
       </div>
+
+      {erro && (
+        <div className="px-5 py-3" style={{ background: "#F6E3D9", color: "#9C4A1E", fontSize: 13, fontWeight: 600 }}>
+          Não consegui carregar as peças ({erro}). Avisa o Tales — provavelmente falta rodar uma atualização no banco.
+        </div>
+      )}
 
       <div className="px-5 pt-4 flex items-center gap-1" style={{ background: INK }}>
         <button
