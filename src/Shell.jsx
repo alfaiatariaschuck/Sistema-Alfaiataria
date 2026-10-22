@@ -992,6 +992,7 @@ export default function Shell() {
                   onSalvar={salvarNovoPedido}
                   onSalvarPlano={salvarNovoPlano}
                   nomesClientes={nomesClientes}
+                  clientesBase={clientesBase}
                   pedidos={pedidos}
                   estoqueTecidos={estoqueTecidos}
                   modelosCamisa={modelosCamisa}
@@ -1123,6 +1124,7 @@ export default function Shell() {
                 <PedidoAlfaiataria
                   onCriar={salvarNovaPeca}
                   nomesClientes={nomesClientes}
+                  clientesBase={clientesBase}
                   pecas={pecas}
                   equipe={equipe}
                   custoAviamentosPorPecaBase={custoPorPecaBase}

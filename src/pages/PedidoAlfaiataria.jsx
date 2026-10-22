@@ -30,8 +30,9 @@ import { brl, mediaDiasProducaoPorTipo, previsaoParaNovaPeca, statusDividido, to
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 import { custoPorHoraAlfaiataria } from "../lib/custoEquipe";
+import { buscarDadosPessoaisCliente } from "../lib/clientes";
 
-export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equipe, custoAviamentosPorPecaBase = {}, estoqueTecidos, modelosAlfaiataria = [], onCriarModeloAlfaiataria }) {
+export default function PedidoAlfaiataria({ onCriar, nomesClientes, clientesBase = [], pecas, equipe, custoAviamentosPorPecaBase = {}, estoqueTecidos, modelosAlfaiataria = [], onCriarModeloAlfaiataria }) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -82,6 +83,30 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, pecas, equip
     });
     // eslint-disable-next-line
   }, [novaPeca.cliente]);
+
+  // Cliente já cadastrado (mesmo nome, letra por letra, ignorando
+  // maiúscula/espaço) → puxa os dados pessoais já salvos — mesma lógica
+  // do Pedido Camisas (ver NovoPedido.jsx). Se os dados não aparecerem
+  // puxados sozinhos quando deveriam, é sinal de que o nome foi digitado
+  // diferente demais do cadastro existente (vira cliente duplicado em
+  // vez de linkar no mesmo).
+  useEffect(() => {
+    const key = novaPeca.cliente.trim().toLowerCase();
+    const clienteExistente = clientesBase.find((c) => c.nome.trim().toLowerCase() === key);
+    if (!clienteExistente) return;
+    let cancelado = false;
+    buscarDadosPessoaisCliente(clienteExistente.id).then((dados) => {
+      if (cancelado || !dados) return;
+      setDadosPessoais((prev) => {
+        const aindaVazio = !prev.telefone && !prev.email && !prev.endereco && !prev.cep && !prev.cpf && !prev.cnpj && !prev.razaoSocial;
+        return aindaVazio ? { ...prev, ...dados } : prev;
+      });
+    });
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line
+  }, [novaPeca.cliente, clientesBase]);
 
   function setMedida(secKey, label, valor) {
     setNovaPeca((prev) => ({

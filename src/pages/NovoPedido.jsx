@@ -12,9 +12,10 @@ import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
 import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, ORIGENS_CLIENTE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
+import { buscarDadosPessoaisCliente } from "../lib/clientes";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 
-export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, pedidos, estoqueTecidos, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {} }) {
+export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, clientesBase = [], pedidos, estoqueTecidos, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {} }) {
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const [p, setP] = useState(pedidoVazio());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
@@ -130,6 +131,31 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, ped
     });
     // eslint-disable-next-line
   }, [p.cliente]);
+
+  // Cliente já cadastrado (mesmo nome, letra por letra, ignorando
+  // maiúscula/espaço) → puxa os dados pessoais já salvos, pra não
+  // precisar digitar CPF/endereço de novo — e principalmente pra você
+  // PERCEBER na hora se o nome bate com o cliente certo (se os dados não
+  // aparecerem onde deveriam, é sinal de nome digitado diferente demais,
+  // virando cadastro duplicado). Só preenche se a ficha ainda estiver
+  // vazia — não sobrescreve o que você já tiver digitado na mão.
+  useEffect(() => {
+    const key = p.cliente.trim().toLowerCase();
+    const clienteExistente = clientesBase.find((c) => c.nome.trim().toLowerCase() === key);
+    if (!clienteExistente) return;
+    let cancelado = false;
+    buscarDadosPessoaisCliente(clienteExistente.id).then((dados) => {
+      if (cancelado || !dados) return;
+      setDadosPessoais((prev) => {
+        const aindaVazio = !prev.telefone && !prev.email && !prev.endereco && !prev.cep && !prev.cpf && !prev.cnpj && !prev.razaoSocial;
+        return aindaVazio ? { ...prev, ...dados } : prev;
+      });
+    });
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line
+  }, [p.cliente, clientesBase]);
 
   // Sugere o "Valor a pagar à Fabiana" sozinho (mão de obra padrão ×
   // quantidade) — só mexe se o campo ainda estiver vazio ou com o valor

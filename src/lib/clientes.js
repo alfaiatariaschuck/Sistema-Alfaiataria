@@ -230,6 +230,31 @@ export async function adicionarHistoricoCliente(clienteId, texto, marco = null) 
   if (error) throw error;
 }
 
+// Busca os dados pessoais já cadastrados de um cliente, no formato que
+// CampoDadosPessoais espera (mesmas chaves de dadosPessoaisVazio) —
+// usada pra pré-preencher a ficha de um pedido novo quando o nome
+// digitado já bate com um cliente existente, evitando o caso de
+// cadastrar o CPF/endereço de novo (ou, pior, criar um cliente
+// duplicado por digitar o nome ligeiramente diferente da vez anterior).
+export async function buscarDadosPessoaisCliente(clienteId) {
+  if (!clienteId) return null;
+  const { data } = await supabase.from("clientes_dados_pessoais").select("*").eq("cliente_id", clienteId).maybeSingle();
+  if (!data) return null;
+  return {
+    tipoPessoa: data.tipo_pessoa || "PF",
+    telefone: data.telefone || "",
+    email: data.email || "",
+    dataNascimento: data.data_nascimento || "",
+    endereco: data.endereco || "",
+    cep: data.cep || "",
+    cpf: data.cpf || "",
+    cnpj: data.cnpj || "",
+    razaoSocial: data.razao_social || "",
+    observacoes: data.observacoes || "",
+    consentimento: !!data.consentimento,
+  };
+}
+
 // Só grava se pelo menos um campo foi preenchido — não cria uma linha vazia
 // na tabela toda vez que um pedido é lançado sem dado pessoal nenhum.
 export async function salvarDadosPessoaisCliente(clienteId, dados) {
