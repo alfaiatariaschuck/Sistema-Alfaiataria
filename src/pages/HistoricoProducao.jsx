@@ -231,9 +231,10 @@ export default function HistoricoProducao({
       .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
     const receitaTotalAmbasLinhas = receitaMesAtualPropria + (parseFloat(receitaMesOutraLinha) || 0);
     const fatiaAtelie = receitaTotalAmbasLinhas > 0 ? receitaMesAtualPropria / receitaTotalAmbasLinhas : 0.5;
-    const prolaboreMetade = (parseFloat(prolabore) || 0) * 0.5;
+    const prolaboreMetadePeriodo = (parseFloat(prolabore) || 0) * 0.5 * qtdMeses;
     const custoCompartilhadoRateavel = (parseFloat(custosFixosPJ) || 0) + (parseFloat(planoSaudePJ) || 0);
-    const custoCompartilhado = (prolaboreMetade + custoCompartilhadoRateavel * fatiaAtelie) * qtdMeses;
+    const outrosCompartilhadosPeriodo = custoCompartilhadoRateavel * fatiaAtelie * qtdMeses;
+    const custoCompartilhado = prolaboreMetadePeriodo + outrosCompartilhadosPeriodo;
 
     const pctMargemMinima = (parseFloat(margemMinimaPct) || 0) / 100;
     const margemConsolidada =
@@ -251,6 +252,8 @@ export default function HistoricoProducao({
       custoFolha,
       custoEstrutura,
       custoCompartilhado,
+      prolaboreMetadePeriodo,
+      outrosCompartilhadosPeriodo,
       fatiaAtelie,
       margemConsolidada,
       espacoConsolidado: margemConsolidada - margemMinimaConsolidada,
@@ -1004,6 +1007,36 @@ export default function HistoricoProducao({
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px", marginBottom: 10 }}>
+                <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 6 }}>
+                  <Wallet size={12} /> Custos compartilhados da empresa no período (sua fatia)
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between fx-mono" style={{ fontSize: 12 }}>
+                    <span style={{ color: INK, fontWeight: 600 }}>
+                      Pró-labore (sua retirada)
+                      <span style={{ fontWeight: 400, color: TEXT_MUTED }}> — metade cai no ateliê, metade na camisaria</span>
+                    </span>
+                    <span style={{ color: INK }}>{brl(folhaEMes.prolaboreMetadePeriodo)}</span>
+                  </div>
+                  <div className="flex items-center justify-between fx-mono" style={{ fontSize: 12 }}>
+                    <span style={{ color: INK, fontWeight: 600 }}>
+                      Contador, sistemas, marketing, plano de saúde
+                      <span style={{ fontWeight: 400, color: TEXT_MUTED }}> — {(folhaEMes.fatiaAtelie * 100).toFixed(0)}% rateado pro ateliê</span>
+                    </span>
+                    <span style={{ color: INK }}>{brl(folhaEMes.outrosCompartilhadosPeriodo)}</span>
+                  </div>
+                  <div className="flex items-center justify-between fx-mono" style={{ fontSize: 12, fontWeight: 700, borderTop: `1px solid ${LINE}`, paddingTop: 4, marginTop: 2 }}>
+                    <span style={{ color: INK }}>Total compartilhado no período</span>
+                    <span style={{ color: INK }}>{brl(folhaEMes.custoCompartilhado)}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6 }}>
+                  É quase sempre o maior custo porque o pró-labore sozinho já pesa mais do que a folha da equipe — não é
+                  um custo "novo", é a sua retirada mensal cadastrada em Configurações entrando na conta.
+                </div>
               </div>
 
               <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
