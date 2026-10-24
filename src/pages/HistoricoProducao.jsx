@@ -236,15 +236,22 @@ export default function HistoricoProducao({
     const outrosCompartilhadosPeriodo = custoCompartilhadoRateavel * fatiaAtelie * qtdMeses;
     const custoCompartilhado = prolaboreMetadePeriodo + outrosCompartilhadosPeriodo;
 
-    const pctMargemMinima = (parseFloat(margemMinimaPct) || 0) / 100;
-    const margemConsolidada =
+    // Pró-labore não é uma conta fixa que sai sozinha — é retirada sua,
+    // decisão sua. Então separa o resultado em dois: o do ATELIÊ de
+    // verdade (sem mexer no pró-labore) e o que sobra DEPOIS de tirar o
+    // pró-labore cheio — pra distinguir "o ateliê não girou" de "esse
+    // mês eu não consigo tirar o pró-labore inteiro" (pedido do Tales,
+    // 24/10/2026).
+    const resultadoAntesProLabore =
       totalDetalheMes.valorVenda -
       totalDetalheMes.custoTecido -
       totalDetalheMes.custoAviamento -
       custoFolha -
       custoEstrutura -
-      custoCompartilhado -
+      outrosCompartilhadosPeriodo -
       totalDetalheMes.imposto;
+    const margemConsolidada = resultadoAntesProLabore - prolaboreMetadePeriodo;
+    const pctMargemMinima = (parseFloat(margemMinimaPct) || 0) / 100;
     const margemMinimaConsolidada = totalDetalheMes.valorVenda * pctMargemMinima;
     return {
       qtdMeses,
@@ -255,6 +262,7 @@ export default function HistoricoProducao({
       prolaboreMetadePeriodo,
       outrosCompartilhadosPeriodo,
       fatiaAtelie,
+      resultadoAntesProLabore,
       margemConsolidada,
       espacoConsolidado: margemConsolidada - margemMinimaConsolidada,
     };
@@ -1033,9 +1041,25 @@ export default function HistoricoProducao({
                     <span style={{ color: INK }}>{brl(folhaEMes.custoCompartilhado)}</span>
                   </div>
                 </div>
-                <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6 }}>
+                <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6, marginBottom: 10 }}>
                   É quase sempre o maior custo porque o pró-labore sozinho já pesa mais do que a folha da equipe — não é
-                  um custo "novo", é a sua retirada mensal cadastrada em Configurações entrando na conta.
+                  um custo "novo", é a sua retirada mensal cadastrada em Configurações entrando na conta. E diferente da
+                  folha da equipe, <strong>o pró-labore é flexível</strong> — se o mês aperta, dá pra tirar menos (ou não
+                  tirar), coisa que você não faz com o salário de ninguém.
+                </div>
+                <div
+                  className="flex items-center justify-between fx-mono"
+                  style={{ fontSize: 13, fontWeight: 700, borderTop: `1px solid ${LINE}`, paddingTop: 8 }}
+                >
+                  <span style={{ color: INK }}>
+                    Resultado do ateliê antes do pró-labore
+                    <div style={{ fontSize: 10, fontWeight: 400, color: TEXT_MUTED }}>
+                      venda − material − folha − ateliê − demais compartilhados − imposto (sem tirar sua retirada ainda)
+                    </div>
+                  </span>
+                  <span style={{ color: folhaEMes.resultadoAntesProLabore >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                    {brl(folhaEMes.resultadoAntesProLabore)}
+                  </span>
                 </div>
               </div>
 
@@ -1054,7 +1078,7 @@ export default function HistoricoProducao({
                 </div>
                 <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
                   <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
-                    <TrendingUp size={12} /> Margem líquida do período (já com tudo — é o que sobra de verdade)
+                    <TrendingUp size={12} /> Margem líquida do período (já tirando o pró-labore cheio)
                   </div>
                   <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: folhaEMes.margemConsolidada >= 0 ? "#2C6E31" : "#9C4A1E" }}>
                     {brl(folhaEMes.margemConsolidada)}
