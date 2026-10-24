@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, Clock, Hourglass, PackageCheck, Timer, TrendingUp, Users, Wallet, Zap } from "lucide-react";
+import { AlertTriangle, Clock, Hourglass, PackageCheck, Timer, Wallet, Zap } from "lucide-react";
 import { BarraDuasSeries, BarraSimples, Card, Empty, PageTitle, StatCard } from "../components/ui";
 import {
   BRASS,
@@ -74,6 +74,43 @@ function BarraComparativa({ dados }) {
   );
 }
 
+// Uma linha da cascata venda -> deduções -> sobra, no Consolidado do
+// período. nivel=1 marca um subtotal (fundo diferente, borda em cima);
+// forte deixa o texto mais pesado; destaque pinta o valor de
+// verde/vermelho conforme o sinal (pros subtotais que realmente
+// importam: resultado antes do pró-labore, margem final, espaço pra
+// aumentar); pctDe mostra o % desse valor sobre a venda; onVerDetalhe
+// liga um link "ver detalhe" pra linhas que têm um breakdown por
+// baixo (folha por pessoa, custos compartilhados).
+function LinhaCascata({ label, valor, nivel = 0, forte = false, destaque = false, pctDe = null, onVerDetalhe, detalheAberto, ultima = false }) {
+  const cor = destaque ? (valor >= 0 ? "#2C6E31" : "#9C4A1E") : INK;
+  return (
+    <div
+      className="flex items-center justify-between fx-mono"
+      style={{
+        padding: nivel === 1 ? "8px 0" : "5px 0",
+        borderTop: nivel === 1 ? `1px solid ${LINE}` : "none",
+        borderBottom: ultima ? "none" : nivel === 1 ? `1px solid ${LINE}` : "none",
+      }}
+    >
+      <span style={{ fontSize: nivel === 1 ? 13 : 12, fontWeight: forte ? 700 : 400, color: nivel === 1 ? INK : TEXT_MUTED }}>
+        {label}
+        {onVerDetalhe && (
+          <button onClick={onVerDetalhe} style={{ fontSize: 10, color: BRASS, fontWeight: 600, marginLeft: 8, textDecoration: "underline" }}>
+            {detalheAberto ? "ocultar detalhe" : "ver detalhe"}
+          </button>
+        )}
+      </span>
+      <span style={{ fontSize: nivel === 1 ? 15 : 12, fontWeight: forte ? 700 : 400, color: cor }}>
+        {brl(valor)}
+        {pctDe !== null && pctDe > 0 && (
+          <span style={{ fontSize: 11, fontWeight: 400, color: TEXT_MUTED }}> ({((valor / pctDe) * 100).toFixed(1)}%)</span>
+        )}
+      </span>
+    </div>
+  );
+}
+
 // Vendidas vs entregues, mês a mês — pra ver se a produção está
 // acompanhando o ritmo de vendas (não é "sobra" exata, já que uma venda
 // de um mês pode entregar só depois, mas mostra a tendência).
@@ -105,6 +142,8 @@ export default function HistoricoProducao({
   const [mesFim, setMesFim] = useState("2026-09");
   const [margemMinimaPct, setMargemMinimaPct] = useState(30);
   const [mostrarBacklog, setMostrarBacklog] = useState(false);
+  const [mostrarFolhaDetalhe, setMostrarFolhaDetalhe] = useState(false);
+  const [mostrarCompartilhadosDetalhe, setMostrarCompartilhadosDetalhe] = useState(false);
   const { aliquotaImposto, aluguelAtelie, luzAtelie, prolabore, custosFixosPJ, planoSaudePJ } = useConfigCustosFixos();
 
   // Custo de mão de obra por hora (equipe real, rateada) — mesmo número
@@ -264,6 +303,7 @@ export default function HistoricoProducao({
       fatiaAtelie,
       resultadoAntesProLabore,
       margemConsolidada,
+      margemMinimaConsolidada,
       espacoConsolidado: margemConsolidada - margemMinimaConsolidada,
     };
   }, [
@@ -979,140 +1019,88 @@ export default function HistoricoProducao({
               )}
               <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 10 }}>
                 Vendida = pedido lançado no período (pode entregar depois). Entregue = peça marcada "Entregue" com data
-                de entrega no período (pode ter sido vendida antes) — não é a mesma peça virando entregue, é o ritmo de
-                cada lado nesse intervalo. Folha, estrutura do ateliê e custos compartilhados usam a equipe e os custos
-                cadastrados hoje (Configurações), multiplicados por {folhaEMes.qtdMeses} mês(es) do período — se parte
-                do período for passado, é uma aproximação do patamar atual, não o valor exato de cada mês. A fatia dos
-                custos compartilhados (abaixo) usa a proporção de receita do mês atual entre alfaiataria e camisaria
-                ({(folhaEMes.fatiaAtelie * 100).toFixed(0)}% pro ateliê) — mesma régua, sem histórico de meses passados.
+                de entrega no período (pode ter sido vendida antes). Folha, estrutura do ateliê e custos compartilhados
+                usam a equipe e os custos cadastrados hoje (Configurações), multiplicados por {folhaEMes.qtdMeses} mês(es)
+                do período — se parte do período for passado, é uma aproximação do patamar atual. A fatia dos custos
+                compartilhados usa a proporção de receita do mês atual entre alfaiataria e camisaria (
+                {(folhaEMes.fatiaAtelie * 100).toFixed(0)}% pro ateliê).
               </div>
 
-              <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px", marginBottom: 10 }}>
-                <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 6 }}>
-                  <Users size={12} /> Folha da equipe no período ({folhaEMes.qtdMeses} mês(es), por pessoa)
-                </div>
-                {folhaEMes.membros.filter((m) => m.custoMensal > 0).length === 0 ? (
-                  <div style={{ fontSize: 11, color: "#9C4A1E" }}>Ninguém com remuneração cadastrada em Equipe ainda.</div>
-                ) : (
-                  <div className="flex flex-col gap-1">
-                    {folhaEMes.membros
-                      .filter((m) => m.custoMensal > 0)
-                      .map((m) => (
-                        <div key={m.id} className="flex items-center justify-between fx-mono" style={{ fontSize: 12 }}>
-                          <span style={{ color: INK, fontWeight: 600 }}>
-                            {m.nome}
-                            <span style={{ fontWeight: 400, color: TEXT_MUTED }}>
-                              {" "}
-                              — {m.tipoRemuneracao === "mensal" ? "mensalista" : `diarista, ${m.diasPorSemana}x/semana`}, {brl(m.custoMensal)}/mês
+              {/* Cascata: venda no topo, cada dedução abaixo, até o que sobra de verdade. */}
+              <div style={{ background: "#fff", borderRadius: 6, padding: "4px 14px" }}>
+                <LinhaCascata label="Venda no período" valor={totalDetalheMes.valorVenda} nivel={0} forte />
+
+                <LinhaCascata label="(–) Tecido" valor={-totalDetalheMes.custoTecido} />
+                <LinhaCascata label="(–) Aviamento" valor={-totalDetalheMes.custoAviamento} />
+                <LinhaCascata
+                  label="(–) Mão de obra (folha da equipe)"
+                  valor={-folhaEMes.custoFolha}
+                  onVerDetalhe={() => setMostrarFolhaDetalhe((v) => !v)}
+                  detalheAberto={mostrarFolhaDetalhe}
+                />
+                {mostrarFolhaDetalhe && (
+                  <div style={{ margin: "0 0 8px 14px", paddingLeft: 10, borderLeft: `2px solid ${LINE}` }}>
+                    {folhaEMes.membros.filter((m) => m.custoMensal > 0).length === 0 ? (
+                      <div style={{ fontSize: 11, color: "#9C4A1E" }}>Ninguém com remuneração cadastrada em Equipe ainda.</div>
+                    ) : (
+                      folhaEMes.membros
+                        .filter((m) => m.custoMensal > 0)
+                        .map((m) => (
+                          <div key={m.id} className="flex items-center justify-between fx-mono" style={{ fontSize: 11 }}>
+                            <span style={{ color: TEXT_MUTED }}>
+                              {m.nome} — {m.tipoRemuneracao === "mensal" ? "mensalista" : `diarista, ${m.diasPorSemana}x/semana`}, {brl(m.custoMensal)}/mês
                             </span>
-                          </span>
-                          <span style={{ color: INK }}>{brl(m.custoPeriodo)}</span>
-                        </div>
-                      ))}
-                    <div className="flex items-center justify-between fx-mono" style={{ fontSize: 12, fontWeight: 700, borderTop: `1px solid ${LINE}`, paddingTop: 4, marginTop: 2 }}>
-                      <span style={{ color: INK }}>Total da folha no período</span>
-                      <span style={{ color: INK }}>{brl(folhaEMes.custoFolha)}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px", marginBottom: 10 }}>
-                <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 6 }}>
-                  <Wallet size={12} /> Custos compartilhados da empresa no período (sua fatia)
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between fx-mono" style={{ fontSize: 12 }}>
-                    <span style={{ color: INK, fontWeight: 600 }}>
-                      Pró-labore (sua retirada)
-                      <span style={{ fontWeight: 400, color: TEXT_MUTED }}> — metade cai no ateliê, metade na camisaria</span>
-                    </span>
-                    <span style={{ color: INK }}>{brl(folhaEMes.prolaboreMetadePeriodo)}</span>
-                  </div>
-                  <div className="flex items-center justify-between fx-mono" style={{ fontSize: 12 }}>
-                    <span style={{ color: INK, fontWeight: 600 }}>
-                      Contador, sistemas, marketing, plano de saúde
-                      <span style={{ fontWeight: 400, color: TEXT_MUTED }}> — {(folhaEMes.fatiaAtelie * 100).toFixed(0)}% rateado pro ateliê</span>
-                    </span>
-                    <span style={{ color: INK }}>{brl(folhaEMes.outrosCompartilhadosPeriodo)}</span>
-                  </div>
-                  <div className="flex items-center justify-between fx-mono" style={{ fontSize: 12, fontWeight: 700, borderTop: `1px solid ${LINE}`, paddingTop: 4, marginTop: 2 }}>
-                    <span style={{ color: INK }}>Total compartilhado no período</span>
-                    <span style={{ color: INK }}>{brl(folhaEMes.custoCompartilhado)}</span>
-                  </div>
-                </div>
-                <div style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 6, marginBottom: 10 }}>
-                  É quase sempre o maior custo porque o pró-labore sozinho já pesa mais do que a folha da equipe — não é
-                  um custo "novo", é a sua retirada mensal cadastrada em Configurações entrando na conta. E diferente da
-                  folha da equipe, <strong>o pró-labore é flexível</strong> — se o mês aperta, dá pra tirar menos (ou não
-                  tirar), coisa que você não faz com o salário de ninguém.
-                </div>
-                <div
-                  className="flex items-center justify-between fx-mono"
-                  style={{ fontSize: 13, fontWeight: 700, borderTop: `1px solid ${LINE}`, paddingTop: 8 }}
-                >
-                  <span style={{ color: INK }}>
-                    Resultado do ateliê antes do pró-labore
-                    <div style={{ fontSize: 10, fontWeight: 400, color: TEXT_MUTED }}>
-                      venda − material − folha − ateliê − demais compartilhados − imposto (sem tirar sua retirada ainda)
-                    </div>
-                  </span>
-                  <span style={{ color: folhaEMes.resultadoAntesProLabore >= 0 ? "#2C6E31" : "#9C4A1E" }}>
-                    {brl(folhaEMes.resultadoAntesProLabore)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-                <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
-                  <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
-                    <Wallet size={12} /> Custo do ateliê (aluguel + luz)
-                  </div>
-                  <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: INK }}>{brl(folhaEMes.custoEstrutura)}</div>
-                </div>
-                <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
-                  <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
-                    <Wallet size={12} /> Custos compartilhados (sua fatia — pró-labore, contador, etc.)
-                  </div>
-                  <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: INK }}>{brl(folhaEMes.custoCompartilhado)}</div>
-                </div>
-                <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
-                  <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
-                    <TrendingUp size={12} /> Margem líquida do período (já tirando o pró-labore cheio)
-                  </div>
-                  <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: folhaEMes.margemConsolidada >= 0 ? "#2C6E31" : "#9C4A1E" }}>
-                    {brl(folhaEMes.margemConsolidada)}
-                    {totalDetalheMes.valorVenda > 0 && (
-                      <span style={{ fontSize: 11, fontWeight: 400, color: TEXT_MUTED }}>
-                        {" "}
-                        ({((folhaEMes.margemConsolidada / totalDetalheMes.valorVenda) * 100).toFixed(1)}%)
-                      </span>
+                            <span style={{ color: INK }}>{brl(m.custoPeriodo)}</span>
+                          </div>
+                        ))
                     )}
                   </div>
-                </div>
-                <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
-                  <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
-                    <TrendingUp size={12} /> Espaço pra aumentar folha/capacidade (mantendo {margemMinimaPct}% de margem)
+                )}
+                <LinhaCascata label="(–) Custo do ateliê (aluguel + luz)" valor={-folhaEMes.custoEstrutura} />
+                <LinhaCascata label={`(–) Imposto (${(parseFloat(aliquotaImposto) || 0).toFixed(1)}%)`} valor={-totalDetalheMes.imposto} />
+                <LinhaCascata
+                  label="(–) Outros custos compartilhados (contador, sistemas, marketing, saúde)"
+                  valor={-folhaEMes.outrosCompartilhadosPeriodo}
+                  onVerDetalhe={() => setMostrarCompartilhadosDetalhe((v) => !v)}
+                  detalheAberto={mostrarCompartilhadosDetalhe}
+                />
+                {mostrarCompartilhadosDetalhe && (
+                  <div style={{ margin: "0 0 8px 14px", paddingLeft: 10, borderLeft: `2px solid ${LINE}`, fontSize: 11, color: TEXT_MUTED }}>
+                    Rateado pela fatia de receita do ateliê no mês atual ({(folhaEMes.fatiaAtelie * 100).toFixed(0)}%) sobre o
+                    total de contador + sistemas + marketing + combustível + internet + outros + plano de saúde cadastrados
+                    em Configurações.
                   </div>
-                  <div
-                    className="fx-mono"
-                    style={{ fontSize: 18, fontWeight: 700, color: folhaEMes.espacoConsolidado >= 0 ? "#2C6E31" : "#9C4A1E" }}
-                  >
-                    {brl(folhaEMes.espacoConsolidado)}
-                  </div>
-                </div>
-              </div>
+                )}
 
-              <div className="flex flex-wrap gap-x-5 gap-y-1">
-                <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  venda <strong style={{ color: INK }}>{brl(totalDetalheMes.valorVenda)}</strong>
-                </span>
-                <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  material (tecido+aviamento) <strong style={{ color: INK }}>{brl(totalDetalheMes.custoTecido + totalDetalheMes.custoAviamento)}</strong>
-                </span>
-                <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  imposto <strong style={{ color: INK }}>{brl(totalDetalheMes.imposto)}</strong>
-                </span>
+                <LinhaCascata label="= Resultado do ateliê antes do pró-labore" valor={folhaEMes.resultadoAntesProLabore} nivel={1} forte />
+
+                <LinhaCascata
+                  label="(–) Pró-labore (sua retirada — metade cai no ateliê)"
+                  valor={-folhaEMes.prolaboreMetadePeriodo}
+                />
+                <div style={{ fontSize: 10, color: TEXT_MUTED, margin: "-4px 0 6px 0" }}>
+                  Diferente da folha, o pró-labore é flexível — se o mês aperta, dá pra tirar menos.
+                </div>
+
+                <LinhaCascata
+                  label="= Margem líquida do período (já com tudo)"
+                  valor={folhaEMes.margemConsolidada}
+                  nivel={1}
+                  forte
+                  destaque
+                  pctDe={totalDetalheMes.valorVenda}
+                />
+
+                <LinhaCascata label={`(–) Margem mínima desejada (${margemMinimaPct}%)`} valor={-folhaEMes.margemMinimaConsolidada} />
+
+                <LinhaCascata
+                  label="= Espaço pra aumentar folha/capacidade"
+                  valor={folhaEMes.espacoConsolidado}
+                  nivel={1}
+                  forte
+                  destaque
+                  ultima
+                />
               </div>
             </div>
           )}
