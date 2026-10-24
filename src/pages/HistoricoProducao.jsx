@@ -15,7 +15,7 @@ import {
   inputStyle,
 } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasEntre, diasProducaoReal, fmtData, hojeISO, mediaEsperaCliente } from "../lib/helpers";
-import { custoEquipeMensal, custoMaoDeObraPeca, custoMensalDe, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
+import { custoEquipeMensal, custoMaoDeObraPeca, custoMensalDe, custoPorHoraAlfaiataria, SEMANAS_POR_MES } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 // "YYYY-MM" de N meses atrás (0 = mês atual) — usado pros atalhos de
@@ -82,8 +82,8 @@ function BarraComparativa({ dados }) {
 // aumentar); pctDe mostra o % desse valor sobre a venda; onVerDetalhe
 // liga um link "ver detalhe" pra linhas que têm um breakdown por
 // baixo (folha por pessoa, custos compartilhados).
-function LinhaCascata({ label, valor, nivel = 0, forte = false, destaque = false, pctDe = null, onVerDetalhe, detalheAberto, ultima = false }) {
-  const cor = destaque ? (valor >= 0 ? "#2C6E31" : "#9C4A1E") : INK;
+function LinhaCascata({ label, valor, nivel = 0, forte = false, destaque = false, pctDe = null, onVerDetalhe, detalheAberto, ultima = false, textoValor }) {
+  const cor = destaque && valor !== null ? (valor >= 0 ? "#2C6E31" : "#9C4A1E") : INK;
   return (
     <div
       className="flex items-center justify-between fx-mono"
@@ -102,12 +102,210 @@ function LinhaCascata({ label, valor, nivel = 0, forte = false, destaque = false
         )}
       </span>
       <span style={{ fontSize: nivel === 1 ? 15 : 12, fontWeight: forte ? 700 : 400, color: cor }}>
-        {brl(valor)}
-        {pctDe !== null && pctDe > 0 && (
+        {textoValor !== undefined ? textoValor : brl(valor)}
+        {pctDe !== null && pctDe > 0 && valor !== null && (
           <span style={{ fontSize: 11, fontWeight: 400, color: TEXT_MUTED }}> ({((valor / pctDe) * 100).toFixed(1)}%)</span>
         )}
       </span>
     </div>
+  );
+}
+
+// Simulador de projeção — "e se eu aumentasse a folha de verdade?"
+// (pedido do Tales, 24/10/2026: dobrar a renda de quem é mensalista
+// hoje — Ícaro e Zonzo — e ver o que isso exige). Diferente do
+// Consolidado (que olha o passado real), aqui tudo é hipotético:
+// o Tales mexe nos campos e o simulador recalcula.
+//
+// Lógica: dada uma folha nova (mensalistas × multiplicador +
+// diaristas com dias/semana ajustável), quantas peças/mês precisam
+// ser vendidas pra ainda bater a margem mínima desejada? E a equipe
+// projetada (com o freelancer no novo ritmo) tem capacidade de HORAS
+// pra produzir esse tanto?
+//
+// Pra achar as peças necessárias (N), parte de: por peça, sobra
+// receita×(1-imposto) - material; isso tem que cobrir os custos fixos
+// (folha+ateliê+compartilhados+pró-labore) MAIS a margem mínima
+// (que também escala com a receita). Isolando N:
+//   N = custosFixos / ((preço×(1-imposto) - material) - margemMinPct×preço)
+function SimuladorProjecao({
+  equipe,
+  aliquotaImposto,
+  aluguelAtelie,
+  luzAtelie,
+  prolabore,
+  custosFixosPJ,
+  planoSaudePJ,
+  fatiaAtelieAtual,
+  margemMinimaPctDefault,
+  precoMedioDefault,
+  custoMaterialMedioDefault,
+  horasMediaPorPecaDefault,
+}) {
+  const [multiplicador, setMultiplicador] = useState(2);
+  const [freelancerDias, setFreelancerDias] = useState(() => {
+    const diarista = (equipe || []).find((m) => m.ativo && m.tipoRemuneracao === "diaria");
+    return diarista?.diasPorSemana || 3;
+  });
+  const [precoMedio, setPrecoMedio] = useState(Math.round(precoMedioDefault || 0));
+  const [custoMaterialMedio, setCustoMaterialMedio] = useState(Math.round(custoMaterialMedioDefault || 0));
+  const [horasMediaPorPeca, setHorasMediaPorPeca] = useState(Math.round((horasMediaPorPecaDefault || 20) * 10) / 10);
+  const [margemMinimaSimPct, setMargemMinimaSimPct] = useState(margemMinimaPctDefault || 30);
+
+  const mensalistas = useMemo(() => (equipe || []).filter((m) => m.ativo && m.tipoRemuneracao === "mensal"), [equipe]);
+  const diaristas = useMemo(() => (equipe || []).filter((m) => m.ativo && m.tipoRemuneracao === "diaria"), [equipe]);
+  const folhaAtualMensal = useMemo(() => custoEquipeMensal(equipe), [equipe]);
+
+  const folhaNovaMensal = useMemo(() => {
+    const totalMensalistas = mensalistas.reduce((s, m) => s + custoMensalDe(m) * (parseFloat(multiplicador) || 1), 0);
+    const totalDiaristas = diaristas.reduce(
+      (s, m) => s + (parseFloat(m.valorRemuneracao) || 0) * (parseFloat(freelancerDias) || 0) * SEMANAS_POR_MES,
+      0
+    );
+    return totalMensalistas + totalDiaristas;
+  }, [mensalistas, diaristas, multiplicador, freelancerDias]);
+
+  const horasDisponiveisMes = useMemo(() => {
+    const horasMensalistas = mensalistas.reduce(
+      (s, m) => s + (parseFloat(m.horasPorDia) || HORAS_PRODUTIVAS_POR_DIA_PADRAO) * (parseFloat(m.diasPorSemana) || 5) * SEMANAS_POR_MES,
+      0
+    );
+    const horasDiaristas = diaristas.reduce(
+      (s, m) => s + (parseFloat(m.horasPorDia) || HORAS_PRODUTIVAS_POR_DIA_PADRAO) * (parseFloat(freelancerDias) || 0) * SEMANAS_POR_MES,
+      0
+    );
+    return horasMensalistas + horasDiaristas;
+  }, [mensalistas, diaristas, freelancerDias]);
+
+  const capacidadeMensal = horasMediaPorPeca > 0 ? horasDisponiveisMes / horasMediaPorPeca : null;
+
+  const custoEstruturaMensal = (parseFloat(aluguelAtelie) || 0) + (parseFloat(luzAtelie) || 0);
+  const prolaboreMetadeMensal = (parseFloat(prolabore) || 0) * 0.5;
+  const outrosCompartilhadosMensal = ((parseFloat(custosFixosPJ) || 0) + (parseFloat(planoSaudePJ) || 0)) * fatiaAtelieAtual;
+  const custosFixosTotaisMensal = folhaNovaMensal + custoEstruturaMensal + outrosCompartilhadosMensal + prolaboreMetadeMensal;
+
+  const pctImposto = (parseFloat(aliquotaImposto) || 0) / 100;
+  const pctMargemMinima = (parseFloat(margemMinimaSimPct) || 0) / 100;
+  const margemContribPorPeca = precoMedio * (1 - pctImposto) - custoMaterialMedio;
+  const denom = margemContribPorPeca - pctMargemMinima * precoMedio;
+
+  const pecasNecessarias = denom > 0 ? custosFixosTotaisMensal / denom : null;
+  const vendaNecessaria = pecasNecessarias !== null ? pecasNecessarias * precoMedio : null;
+
+  const capacidadeOk = pecasNecessarias !== null && capacidadeMensal !== null ? capacidadeMensal >= pecasNecessarias : null;
+
+  return (
+    <Card style={{ padding: 20 }} className="mb-6">
+      <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+        Simulador — dobrar a renda dos mensalistas
+      </div>
+      <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+        Hipotético, não usa o período selecionado acima — mexe nos campos e veja o que precisaria pra sustentar a folha
+        nova sem furar a margem mínima, e se a capacidade de produção projetada dá conta.
+      </div>
+
+      <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+        <label style={{ fontSize: 11, color: TEXT_MUTED }}>
+          Multiplicador de renda dos mensalistas ({mensalistas.map((m) => m.nome).join(", ") || "nenhum"})
+          <input
+            type="number"
+            min="1"
+            step="0.1"
+            style={{ ...inputStyle, marginTop: 4 }}
+            value={multiplicador}
+            onChange={(e) => setMultiplicador(e.target.value)}
+          />
+        </label>
+        <label style={{ fontSize: 11, color: TEXT_MUTED }}>
+          Freelancer — dias/semana projetado
+          <input
+            type="number"
+            min="0"
+            max="7"
+            step="0.5"
+            style={{ ...inputStyle, marginTop: 4 }}
+            value={freelancerDias}
+            onChange={(e) => setFreelancerDias(e.target.value)}
+          />
+        </label>
+        <label style={{ fontSize: 11, color: TEXT_MUTED }}>
+          Preço médio de venda/peça (R$)
+          <input type="number" min="0" style={{ ...inputStyle, marginTop: 4 }} value={precoMedio} onChange={(e) => setPrecoMedio(e.target.value)} />
+        </label>
+        <label style={{ fontSize: 11, color: TEXT_MUTED }}>
+          Material médio/peça (R$)
+          <input
+            type="number"
+            min="0"
+            style={{ ...inputStyle, marginTop: 4 }}
+            value={custoMaterialMedio}
+            onChange={(e) => setCustoMaterialMedio(e.target.value)}
+          />
+        </label>
+        <label style={{ fontSize: 11, color: TEXT_MUTED }}>
+          Horas de produção médias/peça
+          <input
+            type="number"
+            min="0.5"
+            step="0.5"
+            style={{ ...inputStyle, marginTop: 4 }}
+            value={horasMediaPorPeca}
+            onChange={(e) => setHorasMediaPorPeca(e.target.value)}
+          />
+        </label>
+        <label style={{ fontSize: 11, color: TEXT_MUTED }}>
+          Margem mínima desejada (%)
+          <input
+            type="number"
+            min="0"
+            max="100"
+            style={{ ...inputStyle, marginTop: 4 }}
+            value={margemMinimaSimPct}
+            onChange={(e) => setMargemMinimaSimPct(e.target.value)}
+          />
+        </label>
+      </div>
+
+      <div style={{ background: "#F3EEDF", borderRadius: 8, padding: 14 }}>
+        <LinhaCascata label="Folha atual (equipe de hoje)" valor={folhaAtualMensal} />
+        <LinhaCascata label={`Folha projetada (mensalistas × ${multiplicador}, freelancer ${freelancerDias}x/sem)`} valor={folhaNovaMensal} forte />
+        <LinhaCascata label="= Aumento de folha necessário/mês" valor={folhaNovaMensal - folhaAtualMensal} nivel={1} forte destaque />
+
+        {denom <= 0 ? (
+          <div style={{ fontSize: 12, color: "#9C4A1E", padding: "10px 0" }}>
+            Com esse preço/material/margem mínima, nenhum volume de venda cobre os custos — o preço médio por peça
+            precisa subir, ou o custo de material cair, antes de dar pra calcular quantas peças bastam.
+          </div>
+        ) : (
+          <>
+            <LinhaCascata label="Peças/mês necessárias pra sustentar isso" valor={null} nivel={1} forte textoValor={`${pecasNecessarias.toFixed(1)} peça(s)`} />
+            <LinhaCascata label="= Venda/mês necessária" valor={vendaNecessaria} nivel={1} forte />
+            <LinhaCascata
+              label="Capacidade de produção estimada (com o freelancer projetado)"
+              valor={null}
+              textoValor={capacidadeMensal !== null ? `${capacidadeMensal.toFixed(1)} peça(s)/mês` : "—"}
+            />
+            <div
+              style={{
+                marginTop: 10,
+                padding: "8px 12px",
+                borderRadius: 6,
+                background: capacidadeOk ? "#DCEBDD" : "#F6E3D9",
+                color: capacidadeOk ? "#2C6E31" : "#9C4A1E",
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              {capacidadeOk === null
+                ? "Preencha os campos pra ver se a capacidade bate."
+                : capacidadeOk
+                ? `A capacidade projetada cobre — sobra ${(capacidadeMensal - pecasNecessarias).toFixed(1)} peça(s)/mês de folga.`
+                : `Capacidade projetada NÃO cobre — faltam ${(pecasNecessarias - capacidadeMensal).toFixed(1)} peça(s)/mês. Aumente os dias do freelancer acima pra testar.`}
+            </div>
+          </>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -320,6 +518,20 @@ export default function HistoricoProducao({
     mesInicio,
     mesFim,
   ]);
+
+  // Médias do período selecionado, usadas só como ponto de partida pros
+  // campos do Simulador de Projeção abaixo (o Tales edita livremente
+  // depois) — preço, material e horas de produção médios por peça.
+  const mediasParaSimulador = useMemo(() => {
+    const n = detalheMes.length;
+    if (n === 0) return { precoMedio: 0, custoMaterialMedio: 0, horasMediaPorPeca: 20 };
+    const horasTotais = detalheMes.reduce((s, p) => s + (HORAS_REFERENCIA_TIPO_PECA[p.tipoPeca] || 0), 0);
+    return {
+      precoMedio: totalDetalheMes.valorVenda / n,
+      custoMaterialMedio: (totalDetalheMes.custoTecido + totalDetalheMes.custoAviamento) / n,
+      horasMediaPorPeca: horasTotais > 0 ? horasTotais / n : 20,
+    };
+  }, [detalheMes, totalDetalheMes]);
 
   // Vendidas vs entregues NESSE período (não é a mesma peça virando
   // "entregue" — uma vendida no período pode entregar só depois, e uma
@@ -1152,6 +1364,23 @@ export default function HistoricoProducao({
             </div>
           ))}
         </Card>
+      )}
+
+      {mostrarMargem && (
+        <SimuladorProjecao
+          equipe={equipe}
+          aliquotaImposto={aliquotaImposto}
+          aluguelAtelie={aluguelAtelie}
+          luzAtelie={luzAtelie}
+          prolabore={prolabore}
+          custosFixosPJ={custosFixosPJ}
+          planoSaudePJ={planoSaudePJ}
+          fatiaAtelieAtual={folhaEMes.fatiaAtelie}
+          margemMinimaPctDefault={margemMinimaPct}
+          precoMedioDefault={mediasParaSimulador.precoMedio}
+          custoMaterialMedioDefault={mediasParaSimulador.custoMaterialMedio}
+          horasMediaPorPecaDefault={mediasParaSimulador.horasMediaPorPeca}
+        />
       )}
 
       {mostrarMargem && (

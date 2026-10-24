@@ -1,8 +1,10 @@
 import { HORAS_REFERENCIA_TIPO_PECA, TIPOS_SAIDA_SEM_VENDA } from "./constants";
 
 // Semanas por mês na média (365,25/7/12) — usado pra estimar o custo
-// mensal de quem recebe por diária (ex: freelancer 3x/semana).
-const SEMANAS_POR_MES = 4.345;
+// mensal de quem recebe por diária (ex: freelancer 3x/semana), e
+// também pra estimar horas disponíveis por mês no Simulador de
+// Projeção (HistoricoProducao.jsx) — mesmo número canônico nos dois.
+export const SEMANAS_POR_MES = 4.345;
 
 // Custo mensal de um membro da equipe — mensalista (valor fixo) ou
 // diarista/freelancer (valor por dia × dias por semana × semanas do
