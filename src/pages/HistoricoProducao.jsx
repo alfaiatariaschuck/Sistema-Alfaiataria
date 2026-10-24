@@ -15,7 +15,7 @@ import {
   inputStyle,
 } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, mediaEsperaCliente } from "../lib/helpers";
-import { custoEquipeMensal, custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
+import { custoEquipeMensal, custoMaoDeObraPeca, custoMensalDe, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 // Dias de produção pura (máquina/trabalho manual), sem prova nem
@@ -79,7 +79,7 @@ function BarraVendasEntregas({ dados }) {
 export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false, mostrarComparativos = true, custoAviamentosPorPecaBase = {} }) {
   const [mesDetalhe, setMesDetalhe] = useState("2026-09");
   const [margemMinimaPct, setMargemMinimaPct] = useState(30);
-  const { aliquotaImposto } = useConfigCustosFixos();
+  const { aliquotaImposto, aluguelAtelie, luzAtelie } = useConfigCustosFixos();
 
   // Custo de mão de obra por hora (equipe real, rateada) — mesmo número
   // canônico usado no resto do sistema (Painel, Consolidado, Agente de
@@ -173,6 +173,33 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
       }
     );
   }, [detalheMes]);
+
+  // Folha real (fixa, paga por mês) por pessoa + custo de estrutura do
+  // ateliê (aluguel+luz) — pedido do Tales (24/10/2026): no consolidado
+  // do mês, quer ver quanto gastou de folha, por pessoa da equipe, e o
+  // custo do ateliê, não a versão "rateada pela hora" que já aparece
+  // peça a peça. Usa a equipe/estrutura de HOJE (igual à tela Custos do
+  // Ateliê) — não existe histórico salvo de folha/aluguel mês a mês,
+  // então pra um mês passado isso é uma aproximação, não o valor exato
+  // daquele mês.
+  const folhaEMes = useMemo(() => {
+    const membros = (equipe || [])
+      .filter((m) => m.ativo)
+      .map((m) => ({ ...m, custoMensal: custoMensalDe(m) }))
+      .sort((a, b) => b.custoMensal - a.custoMensal);
+    const custoFolha = membros.reduce((s, m) => s + m.custoMensal, 0);
+    const custoEstrutura = (parseFloat(aluguelAtelie) || 0) + (parseFloat(luzAtelie) || 0);
+    const pctMargemMinima = (parseFloat(margemMinimaPct) || 0) / 100;
+    const margemConsolidada = totalDetalheMes.valorVenda - totalDetalheMes.custoTecido - totalDetalheMes.custoAviamento - custoFolha - custoEstrutura - totalDetalheMes.imposto;
+    const margemMinimaConsolidada = totalDetalheMes.valorVenda * pctMargemMinima;
+    return {
+      membros,
+      custoFolha,
+      custoEstrutura,
+      margemConsolidada,
+      espacoConsolidado: margemConsolidada - margemMinimaConsolidada,
+    };
+  }, [equipe, aluguelAtelie, luzAtelie, margemMinimaPct, totalDetalheMes]);
 
   // Resumo mensal de tecido lançado — visão rápida de quantas peças
   // (vendidas, excluindo doação/permuta/uso próprio) já têm tecido com
@@ -750,40 +777,77 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
               className="mb-4"
               style={{ background: "#F3EEDF", borderRadius: 8, padding: "14px" }}
             >
-              <div style={{ fontSize: 11, fontWeight: 700, color: INK, marginBottom: 10 }}>
-                Consolidado do mês ({detalheMes.length} peça(s))
+              <div style={{ fontSize: 11, fontWeight: 700, color: INK, marginBottom: 2 }}>
+                Consolidado do mês ({detalheMes.length} peça(s) vendida(s))
               </div>
+              <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 10 }}>
+                Folha e estrutura do ateliê usam a equipe e os custos cadastrados hoje (aluguel/luz em Configurações)
+                — se {mesDetalhe} for mês passado, é uma aproximação do patamar atual, não o valor exato daquele mês.
+              </div>
+
+              <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px", marginBottom: 10 }}>
+                <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 6 }}>
+                  <Users size={12} /> Folha da equipe (gasto mensal fixo, por pessoa)
+                </div>
+                {folhaEMes.membros.filter((m) => m.custoMensal > 0).length === 0 ? (
+                  <div style={{ fontSize: 11, color: "#9C4A1E" }}>Ninguém com remuneração cadastrada em Equipe ainda.</div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {folhaEMes.membros
+                      .filter((m) => m.custoMensal > 0)
+                      .map((m) => (
+                        <div key={m.id} className="flex items-center justify-between fx-mono" style={{ fontSize: 12 }}>
+                          <span style={{ color: INK, fontWeight: 600 }}>
+                            {m.nome}
+                            <span style={{ fontWeight: 400, color: TEXT_MUTED }}>
+                              {" "}
+                              — {m.tipoRemuneracao === "mensal" ? "mensalista" : `diarista, ${m.diasPorSemana}x/semana`}
+                            </span>
+                          </span>
+                          <span style={{ color: INK }}>{brl(m.custoMensal)}</span>
+                        </div>
+                      ))}
+                    <div className="flex items-center justify-between fx-mono" style={{ fontSize: 12, fontWeight: 700, borderTop: `1px solid ${LINE}`, paddingTop: 4, marginTop: 2 }}>
+                      <span style={{ color: INK }}>Total da folha</span>
+                      <span style={{ color: INK }}>{brl(folhaEMes.custoFolha)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
                 <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
                   <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
-                    <Users size={12} /> Mão de obra gasta no mês (o que já é pago hoje)
+                    <Wallet size={12} /> Custo do ateliê (aluguel + luz)
                   </div>
-                  <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: INK }}>{brl(totalDetalheMes.custoMaoDeObra)}</div>
+                  <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: INK }}>{brl(folhaEMes.custoEstrutura)}</div>
                 </div>
                 <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
                   <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
-                    <TrendingUp size={12} /> Espaço pra aumentar remuneração (mantendo {margemMinimaPct}% de margem)
+                    <TrendingUp size={12} /> Espaço pra aumentar folha/capacidade (mantendo {margemMinimaPct}% de margem)
                   </div>
                   <div
                     className="fx-mono"
-                    style={{ fontSize: 18, fontWeight: 700, color: totalDetalheMes.espacoRemuneracao >= 0 ? "#2C6E31" : "#9C4A1E" }}
+                    style={{ fontSize: 18, fontWeight: 700, color: folhaEMes.espacoConsolidado >= 0 ? "#2C6E31" : "#9C4A1E" }}
                   >
-                    {brl(totalDetalheMes.espacoRemuneracao)}
+                    {brl(folhaEMes.espacoConsolidado)}
                   </div>
                 </div>
               </div>
+
               <div className="flex flex-wrap gap-x-5 gap-y-1">
                 <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
                   venda <strong style={{ color: INK }}>{brl(totalDetalheMes.valorVenda)}</strong>
                 </span>
                 <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  custo ateliê <strong style={{ color: INK }}>{brl(totalDetalheMes.custoAtelie)}</strong>
+                  material (tecido+aviamento) <strong style={{ color: INK }}>{brl(totalDetalheMes.custoTecido + totalDetalheMes.custoAviamento)}</strong>
                 </span>
                 <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
                   imposto <strong style={{ color: INK }}>{brl(totalDetalheMes.imposto)}</strong>
                 </span>
                 <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  margem líquida <strong style={{ color: INK }}>{brl(totalDetalheMes.margemLiquida)}</strong>
+                  margem líquida (já com folha + ateliê + imposto){" "}
+                  <strong style={{ color: INK }}>{brl(folhaEMes.margemConsolidada)}</strong>
                 </span>
               </div>
             </div>
