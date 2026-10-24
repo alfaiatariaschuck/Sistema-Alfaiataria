@@ -959,12 +959,26 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
                 )}
               </div>
 
-              <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
                 <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
                   <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
                     <Wallet size={12} /> Custo do ateliê (aluguel + luz)
                   </div>
                   <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: INK }}>{brl(folhaEMes.custoEstrutura)}</div>
+                </div>
+                <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
+                  <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
+                    <TrendingUp size={12} /> Margem líquida do período
+                  </div>
+                  <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: folhaEMes.margemConsolidada >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                    {brl(folhaEMes.margemConsolidada)}
+                    {totalDetalheMes.valorVenda > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 400, color: TEXT_MUTED }}>
+                        {" "}
+                        ({((folhaEMes.margemConsolidada / totalDetalheMes.valorVenda) * 100).toFixed(1)}%)
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
                   <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
@@ -988,10 +1002,6 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
                 </span>
                 <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
                   imposto <strong style={{ color: INK }}>{brl(totalDetalheMes.imposto)}</strong>
-                </span>
-                <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  margem líquida (já com folha + ateliê + imposto){" "}
-                  <strong style={{ color: INK }}>{brl(folhaEMes.margemConsolidada)}</strong>
                 </span>
               </div>
             </div>
