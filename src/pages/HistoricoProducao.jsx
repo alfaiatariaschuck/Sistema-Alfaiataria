@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, Clock, Hourglass, PackageCheck, Timer, Wallet, Zap } from "lucide-react";
+import { AlertTriangle, Clock, Hourglass, PackageCheck, Timer, TrendingUp, Users, Wallet, Zap } from "lucide-react";
 import { BarraDuasSeries, BarraSimples, Card, Empty, PageTitle, StatCard } from "../components/ui";
 import {
   BRASS,
@@ -15,7 +15,7 @@ import {
   inputStyle,
 } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, mediaEsperaCliente } from "../lib/helpers";
-import { custoEquipeMensal, custoMaoDeObraPeca, custoMensalDe, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
+import { custoEquipeMensal, custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 // Dias de produção pura (máquina/trabalho manual), sem prova nem
@@ -100,20 +100,11 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
   // ainda dá pra aumentar o custo de mão de obra da equipe nessa peça
   // sem a margem cair abaixo do mínimo desejado (editável, default 30%)
   // — serve de teto pro estudo de remuneração, não é um valor já pago.
-  // Quem entra no rateio da mão de obra — só ativo e com remuneração
-  // cadastrada (sem isso o custo já é 0, não tem o que ratear). Pedido
-  // do Tales (24/10/2026): mostrar não só o total de mão de obra da
-  // peça, mas quanto disso é de cada pessoa — participação de cada um
-  // é a fração do custo mensal dela sobre o custo mensal de TODA a
-  // equipe, aplicada em cima do valor de mão de obra já calculado pra
-  // essa peça (não é "quem trabalhou nessa peça", é rateio pelo peso
-  // de cada um na folha).
-  const membrosRateio = useMemo(
-    () => (equipe || []).filter((m) => m.ativo && custoMensalDe(m) > 0),
-    [equipe]
-  );
-  const custoEquipeMensalTotal = useMemo(() => custoEquipeMensal(equipe), [equipe]);
-
+  //
+  // O rateio de mão de obra por pessoa (pelo peso de cada um na folha)
+  // foi tentado e tirado de novo (24/10/2026) — o Tales achou confuso
+  // peça a peça; o que importa pra ele é o total consolidado do mês
+  // (ver totalDetalheMes), não o rateio individual.
   const detalheMes = useMemo(() => {
     const pctImposto = (parseFloat(aliquotaImposto) || 0) / 100;
     const pctMargemMinima = (parseFloat(margemMinimaPct) || 0) / 100;
@@ -125,19 +116,6 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
         const custoAviamento = custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase);
         const horasReferencia = HORAS_REFERENCIA_TIPO_PECA[p.tipoPeca] || 0;
         const custoMaoDeObra = custoMaoDeObraPeca(p.tipoPeca, custoHoraGeral);
-        const maoDeObraPorPessoa = membrosRateio.map((m) => {
-          const custoMensalMembro = custoMensalDe(m);
-          const participacao = custoEquipeMensalTotal > 0 ? custoMensalMembro / custoEquipeMensalTotal : 0;
-          return {
-            nome: m.nome,
-            tipoRemuneracao: m.tipoRemuneracao,
-            valorRemuneracao: parseFloat(m.valorRemuneracao) || 0,
-            diasPorSemana: m.diasPorSemana,
-            custoMensal: custoMensalMembro,
-            participacaoPct: participacao * 100,
-            valorNestaPeca: participacao * custoMaoDeObra,
-          };
-        });
         const custoAtelie = custoTecido + custoAviamento + custoMaoDeObra;
         const valorVenda = parseFloat(p.valorVenda) || 0;
         const imposto = valorVenda * pctImposto;
@@ -156,7 +134,6 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
           composicaoAviamento: COMPOSICAO_AVIAMENTOS[p.tipoPeca] || [],
           custoAviamento,
           horasReferencia,
-          maoDeObraPorPessoa,
           custoMaoDeObra,
           custoAtelie,
           imposto,
@@ -166,7 +143,7 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
         };
       })
       .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
-  }, [pecas, mesDetalhe, custoAviamentosPorPecaBase, custoHoraGeral, aliquotaImposto, margemMinimaPct, membrosRateio, custoEquipeMensalTotal]);
+  }, [pecas, mesDetalhe, custoAviamentosPorPecaBase, custoHoraGeral, aliquotaImposto, margemMinimaPct]);
 
   // Total do mês — mesmos campos do detalhe, somados, pra ver o teto
   // consolidado de remuneração de uma vez (não só peça a peça).
@@ -771,27 +748,44 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
           {detalheMes.length > 0 && (
             <div
               className="mb-4"
-              style={{ background: "#F3EEDF", borderRadius: 8, padding: "12px 14px", display: "flex", flexWrap: "wrap", gap: "6px 20px" }}
+              style={{ background: "#F3EEDF", borderRadius: 8, padding: "14px" }}
             >
-              <span style={{ fontSize: 11, fontWeight: 700, color: INK }}>Total do mês ({detalheMes.length} peça(s)):</span>
-              <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                venda <strong style={{ color: INK }}>{brl(totalDetalheMes.valorVenda)}</strong>
-              </span>
-              <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                custo ateliê <strong style={{ color: INK }}>{brl(totalDetalheMes.custoAtelie)}</strong>
-              </span>
-              <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                imposto <strong style={{ color: INK }}>{brl(totalDetalheMes.imposto)}</strong>
-              </span>
-              <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                margem líquida <strong style={{ color: INK }}>{brl(totalDetalheMes.margemLiquida)}</strong>
-              </span>
-              <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                espaço pra remuneração ({margemMinimaPct}% mín.){" "}
-                <strong style={{ color: totalDetalheMes.espacoRemuneracao >= 0 ? "#2C6E31" : "#9C4A1E" }}>
-                  {brl(totalDetalheMes.espacoRemuneracao)}
-                </strong>
-              </span>
+              <div style={{ fontSize: 11, fontWeight: 700, color: INK, marginBottom: 10 }}>
+                Consolidado do mês ({detalheMes.length} peça(s))
+              </div>
+              <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
+                  <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
+                    <Users size={12} /> Mão de obra gasta no mês (o que já é pago hoje)
+                  </div>
+                  <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: INK }}>{brl(totalDetalheMes.custoMaoDeObra)}</div>
+                </div>
+                <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
+                  <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
+                    <TrendingUp size={12} /> Espaço pra aumentar remuneração (mantendo {margemMinimaPct}% de margem)
+                  </div>
+                  <div
+                    className="fx-mono"
+                    style={{ fontSize: 18, fontWeight: 700, color: totalDetalheMes.espacoRemuneracao >= 0 ? "#2C6E31" : "#9C4A1E" }}
+                  >
+                    {brl(totalDetalheMes.espacoRemuneracao)}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-1">
+                <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                  venda <strong style={{ color: INK }}>{brl(totalDetalheMes.valorVenda)}</strong>
+                </span>
+                <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                  custo ateliê <strong style={{ color: INK }}>{brl(totalDetalheMes.custoAtelie)}</strong>
+                </span>
+                <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                  imposto <strong style={{ color: INK }}>{brl(totalDetalheMes.imposto)}</strong>
+                </span>
+                <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                  margem líquida <strong style={{ color: INK }}>{brl(totalDetalheMes.margemLiquida)}</strong>
+                </span>
+              </div>
             </div>
           )}
           {detalheMes.length === 0 && <Empty texto="Nenhuma peça pedida nesse mês." />}
@@ -826,27 +820,6 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
                   equipe ÷ média de horas produzidas por mês, últimos 6 meses fechados)
                 </span>
               </div>
-              {p.maoDeObraPorPessoa.length > 0 ? (
-                <div style={{ marginLeft: 14, marginBottom: 2, paddingLeft: 10, borderLeft: `2px solid ${LINE}` }}>
-                  <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
-                    Rateio desse total de mão de obra por pessoa (pelo peso de cada um na folha da equipe, não por quem exatamente fez essa peça):
-                  </div>
-                  {p.maoDeObraPorPessoa.map((pm) => (
-                    <div key={pm.nome} style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 1 }}>
-                      <strong style={{ color: INK }}>{pm.nome}</strong>
-                      {" — "}
-                      {pm.tipoRemuneracao === "mensal" && `mensalista, ${brl(pm.valorRemuneracao)}/mês`}
-                      {pm.tipoRemuneracao === "diaria" && `diarista, ${brl(pm.valorRemuneracao)}/dia × ${pm.diasPorSemana}x/semana`}
-                      {pm.tipoRemuneracao !== "mensal" && pm.tipoRemuneracao !== "diaria" && "sem forma de pagamento cadastrada"}
-                      {" "}· {pm.participacaoPct.toFixed(0)}% da folha da equipe → <strong style={{ color: INK }}>{brl(pm.valorNestaPeca)}</strong> dessa peça
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ fontSize: 11, color: "#9C4A1E", marginLeft: 14, marginBottom: 2 }}>
-                  Ninguém com remuneração cadastrada em Equipe ainda — por isso não dá pra discriminar por pessoa.
-                </div>
-              )}
               <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>
                 Custo de ateliê (tecido + aviamento + mão de obra): <strong style={{ color: INK }}>{brl(p.custoAtelie)}</strong>
                 {" "}· Imposto ({(parseFloat(aliquotaImposto) || 0).toFixed(1)}%): <strong style={{ color: INK }}>{brl(p.imposto)}</strong>
