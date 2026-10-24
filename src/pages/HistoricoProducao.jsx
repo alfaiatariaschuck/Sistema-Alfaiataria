@@ -14,9 +14,26 @@ import {
   TIPOS_SAIDA_SEM_VENDA,
   inputStyle,
 } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, mediaEsperaCliente } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, hojeISO, mediaEsperaCliente } from "../lib/helpers";
 import { custoEquipeMensal, custoMaoDeObraPeca, custoMensalDe, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
+
+// "YYYY-MM" de N meses atrás (0 = mês atual) — usado pros atalhos de
+// período (Últimos 3/6/12 meses) do consolidado.
+function mesAtrasISO(n) {
+  const hoje = new Date(hojeISO() + "T00:00:00");
+  const d = new Date(hoje.getFullYear(), hoje.getMonth() - n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// Quantos meses de calendário existem entre início e fim (inclusive) —
+// pra multiplicar folha/ateliê (custo fixo mensal) pelo período
+// selecionado, não só aplicar o valor de 1 mês num período maior.
+function qtdMesesEntre(mesInicio, mesFim) {
+  const [anoI, mesI] = mesInicio.split("-").map(Number);
+  const [anoF, mesF] = mesFim.split("-").map(Number);
+  return Math.max(1, (anoF - anoI) * 12 + (mesF - mesI) + 1);
+}
 
 // Dias de produção pura (máquina/trabalho manual), sem prova nem
 // espera — vem das horas de desenvolvimento da planilha de parâmetros
@@ -77,7 +94,8 @@ function BarraVendasEntregas({ dados }) {
 // já sem pausas) por tipo de peça e por responsável, com gráficos —
 // pensado pra apresentação/reunião de equipe, não pra edição de nada.
 export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false, mostrarComparativos = true, custoAviamentosPorPecaBase = {} }) {
-  const [mesDetalhe, setMesDetalhe] = useState("2026-09");
+  const [mesInicio, setMesInicio] = useState("2026-09");
+  const [mesFim, setMesFim] = useState("2026-09");
   const [margemMinimaPct, setMargemMinimaPct] = useState(30);
   const { aliquotaImposto, aluguelAtelie, luzAtelie } = useConfigCustosFixos();
 
@@ -109,7 +127,10 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
     const pctImposto = (parseFloat(aliquotaImposto) || 0) / 100;
     const pctMargemMinima = (parseFloat(margemMinimaPct) || 0) / 100;
     return pecas
-      .filter((p) => (p.dataPedido || "").slice(0, 7) === mesDetalhe)
+      .filter((p) => {
+        const mes = (p.dataPedido || "").slice(0, 7);
+        return mes >= mesInicio && mes <= mesFim;
+      })
       .map((p) => {
         const itensTecido = (p.tecidos || []).filter((t) => t.codigo || t.metragem || t.valorMetro);
         const custoTecido = custoTecidoDe(p.tecidos);
@@ -143,7 +164,7 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
         };
       })
       .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
-  }, [pecas, mesDetalhe, custoAviamentosPorPecaBase, custoHoraGeral, aliquotaImposto, margemMinimaPct]);
+  }, [pecas, mesInicio, mesFim, custoAviamentosPorPecaBase, custoHoraGeral, aliquotaImposto, margemMinimaPct]);
 
   // Total do mês — mesmos campos do detalhe, somados, pra ver o teto
   // consolidado de remuneração de uma vez (não só peça a peça).
@@ -183,29 +204,31 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
   // então pra um mês passado isso é uma aproximação, não o valor exato
   // daquele mês.
   const folhaEMes = useMemo(() => {
+    const qtdMeses = qtdMesesEntre(mesInicio, mesFim);
     const membros = (equipe || [])
       .filter((m) => m.ativo)
-      .map((m) => ({ ...m, custoMensal: custoMensalDe(m) }))
-      .sort((a, b) => b.custoMensal - a.custoMensal);
-    const custoFolha = membros.reduce((s, m) => s + m.custoMensal, 0);
-    const custoEstrutura = (parseFloat(aluguelAtelie) || 0) + (parseFloat(luzAtelie) || 0);
+      .map((m) => ({ ...m, custoMensal: custoMensalDe(m), custoPeriodo: custoMensalDe(m) * qtdMeses }))
+      .sort((a, b) => b.custoPeriodo - a.custoPeriodo);
+    const custoFolha = membros.reduce((s, m) => s + m.custoPeriodo, 0);
+    const custoEstrutura = ((parseFloat(aluguelAtelie) || 0) + (parseFloat(luzAtelie) || 0)) * qtdMeses;
     const pctMargemMinima = (parseFloat(margemMinimaPct) || 0) / 100;
     const margemConsolidada = totalDetalheMes.valorVenda - totalDetalheMes.custoTecido - totalDetalheMes.custoAviamento - custoFolha - custoEstrutura - totalDetalheMes.imposto;
     const margemMinimaConsolidada = totalDetalheMes.valorVenda * pctMargemMinima;
     return {
+      qtdMeses,
       membros,
       custoFolha,
       custoEstrutura,
       margemConsolidada,
       espacoConsolidado: margemConsolidada - margemMinimaConsolidada,
     };
-  }, [equipe, aluguelAtelie, luzAtelie, margemMinimaPct, totalDetalheMes]);
+  }, [equipe, aluguelAtelie, luzAtelie, margemMinimaPct, totalDetalheMes, mesInicio, mesFim]);
 
   // Resumo mensal de tecido lançado — visão rápida de quantas peças
   // (vendidas, excluindo doação/permuta/uso próprio) já têm tecido com
   // R$/metro cadastrado em cada mês, pra priorizar onde lançar valor
-  // retroativo primeiro. Clicar num mês abre o detalhe peça a peça logo
-  // abaixo (mesmo estado, mesDetalhe).
+  // retroativo primeiro. Clicar num mês seleciona ele sozinho (início =
+  // fim) no período do detalhe peça a peça logo abaixo.
   const resumoTecidoPorMes = useMemo(() => {
     const porMes = new Map();
     pecas.forEach((p) => {
@@ -713,11 +736,14 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
                 {resumoTecidoPorMes.map((m) => (
                   <tr
                     key={m.mes}
-                    onClick={() => setMesDetalhe(m.mes)}
+                    onClick={() => {
+                      setMesInicio(m.mes);
+                      setMesFim(m.mes);
+                    }}
                     style={{
                       borderBottom: `1px solid ${LINE}`,
                       cursor: "pointer",
-                      background: m.mes === mesDetalhe ? "#F3EEDF" : "transparent",
+                      background: m.mes >= mesInicio && m.mes <= mesFim ? "#F3EEDF" : "transparent",
                     }}
                   >
                     <td className="fx-mono" style={{ padding: "6px 8px", fontWeight: 700, color: INK }}>
@@ -743,34 +769,69 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
 
       {mostrarMargem && (
         <Card style={{ padding: 20 }} className="mb-6">
-          <div className="flex items-center justify-between flex-wrap gap-3 mb-1">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
             <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
-              Detalhe por peça — mês
+              Detalhe por peça — período
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <label style={{ fontSize: 11, color: TEXT_MUTED, display: "flex", alignItems: "center", gap: 6 }}>
-                Margem mínima desejada
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  style={{ ...inputStyle, width: 60 }}
-                  value={margemMinimaPct}
-                  onChange={(e) => setMargemMinimaPct(e.target.value)}
-                />
-                %
-              </label>
-              <input type="month" style={{ ...inputStyle, width: "auto" }} value={mesDetalhe} onChange={(e) => setMesDetalhe(e.target.value)} />
-            </div>
+            <label style={{ fontSize: 11, color: TEXT_MUTED, display: "flex", alignItems: "center", gap: 6 }}>
+              Margem mínima desejada
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                style={{ ...inputStyle, width: 60 }}
+                value={margemMinimaPct}
+                onChange={(e) => setMargemMinimaPct(e.target.value)}
+              />
+              %
+            </label>
           </div>
-          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
-            Cada peça pedida nesse mês, exatamente como está lançada — valor de venda, cada item de tecido com seu R$/metro (ou
-            "sem valor cadastrado" se faltar), o aviamento pela composição do tipo, o custo de ateliê (tecido + aviamento +
-            mão de obra real da equipe, rateada pela hora de referência do tipo), o imposto (alíquota de {(parseFloat(aliquotaImposto) || 0).toFixed(1)}%
-            configurada em Custos, sobre a venda) e a margem líquida. "Espaço pra remuneração" é quanto ainda dá pra
-            aumentar o custo de mão de obra da equipe nessa peça sem a margem cair abaixo do mínimo ao lado — é um teto
-            pro estudo, não um valor já pago.
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            {[
+              { label: "Este mês", meses: 0 },
+              { label: "Últimos 3 meses", meses: 2 },
+              { label: "Últimos 4 meses", meses: 3 },
+              { label: "Últimos 6 meses", meses: 5 },
+              { label: "Últimos 12 meses", meses: 11 },
+            ].map((opc) => (
+              <button
+                key={opc.label}
+                onClick={() => {
+                  setMesInicio(mesAtrasISO(opc.meses));
+                  setMesFim(mesAtrasISO(0));
+                }}
+                style={{
+                  fontSize: 11,
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  border: `1px solid ${LINE}`,
+                  background: mesFim === mesAtrasISO(0) && mesInicio === mesAtrasISO(opc.meses) ? BRASS : "#fff",
+                  color: mesFim === mesAtrasISO(0) && mesInicio === mesAtrasISO(opc.meses) ? "#fff" : TEXT_MUTED,
+                  cursor: "pointer",
+                }}
+              >
+                {opc.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <label style={{ fontSize: 11, color: TEXT_MUTED, display: "flex", alignItems: "center", gap: 6 }}>
+              De
+              <input type="month" style={{ ...inputStyle, width: "auto" }} value={mesInicio} onChange={(e) => setMesInicio(e.target.value)} />
+            </label>
+            <label style={{ fontSize: 11, color: TEXT_MUTED, display: "flex", alignItems: "center", gap: 6 }}>
+              Até
+              <input type="month" style={{ ...inputStyle, width: "auto" }} value={mesFim} onChange={(e) => setMesFim(e.target.value)} />
+            </label>
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16, marginTop: 8 }}>
+            Cada peça pedida no período selecionado, exatamente como está lançada — valor de venda, cada item de tecido com seu
+            R$/metro (ou "sem valor cadastrado" se faltar), o aviamento pela composição do tipo, o custo de ateliê (tecido +
+            aviamento + mão de obra real da equipe, rateada pela hora de referência do tipo), o imposto (alíquota de{" "}
+            {(parseFloat(aliquotaImposto) || 0).toFixed(1)}% configurada em Custos, sobre a venda) e a margem líquida. "Espaço
+            pra remuneração" é quanto ainda dá pra aumentar o custo de mão de obra da equipe nessa peça sem a margem cair
+            abaixo do mínimo ao lado — é um teto pro estudo, não um valor já pago.
           </div>
           {detalheMes.length > 0 && (
             <div
@@ -778,16 +839,17 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
               style={{ background: "#F3EEDF", borderRadius: 8, padding: "14px" }}
             >
               <div style={{ fontSize: 11, fontWeight: 700, color: INK, marginBottom: 2 }}>
-                Consolidado do mês ({detalheMes.length} peça(s) vendida(s))
+                Consolidado do período ({mesInicio === mesFim ? mesInicio : `${mesInicio} a ${mesFim}`}) — {detalheMes.length} peça(s) vendida(s)
               </div>
               <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 10 }}>
-                Folha e estrutura do ateliê usam a equipe e os custos cadastrados hoje (aluguel/luz em Configurações)
-                — se {mesDetalhe} for mês passado, é uma aproximação do patamar atual, não o valor exato daquele mês.
+                Folha e estrutura do ateliê usam a equipe e os custos cadastrados hoje (aluguel/luz em Configurações),
+                multiplicados por {folhaEMes.qtdMeses} mês(es) do período — se parte do período for passado, é uma
+                aproximação do patamar atual, não o valor exato de cada mês.
               </div>
 
               <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px", marginBottom: 10 }}>
                 <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 6 }}>
-                  <Users size={12} /> Folha da equipe (gasto mensal fixo, por pessoa)
+                  <Users size={12} /> Folha da equipe no período ({folhaEMes.qtdMeses} mês(es), por pessoa)
                 </div>
                 {folhaEMes.membros.filter((m) => m.custoMensal > 0).length === 0 ? (
                   <div style={{ fontSize: 11, color: "#9C4A1E" }}>Ninguém com remuneração cadastrada em Equipe ainda.</div>
@@ -801,14 +863,14 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
                             {m.nome}
                             <span style={{ fontWeight: 400, color: TEXT_MUTED }}>
                               {" "}
-                              — {m.tipoRemuneracao === "mensal" ? "mensalista" : `diarista, ${m.diasPorSemana}x/semana`}
+                              — {m.tipoRemuneracao === "mensal" ? "mensalista" : `diarista, ${m.diasPorSemana}x/semana`}, {brl(m.custoMensal)}/mês
                             </span>
                           </span>
-                          <span style={{ color: INK }}>{brl(m.custoMensal)}</span>
+                          <span style={{ color: INK }}>{brl(m.custoPeriodo)}</span>
                         </div>
                       ))}
                     <div className="flex items-center justify-between fx-mono" style={{ fontSize: 12, fontWeight: 700, borderTop: `1px solid ${LINE}`, paddingTop: 4, marginTop: 2 }}>
-                      <span style={{ color: INK }}>Total da folha</span>
+                      <span style={{ color: INK }}>Total da folha no período</span>
                       <span style={{ color: INK }}>{brl(folhaEMes.custoFolha)}</span>
                     </div>
                   </div>
