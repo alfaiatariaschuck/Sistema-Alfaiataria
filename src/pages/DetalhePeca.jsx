@@ -27,6 +27,7 @@ import {
   PECA_SECOES,
   STATUS_ALFAIATARIA,
   TIPOS_SAIDA_PECA,
+  TIPOS_PECA,
   STATUS_STYLE,
   STATUS_TECIDO,
   TEXT_MUTED,
@@ -197,6 +198,17 @@ export default function DetalhePeca({
           <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
             Status da peça
           </div>
+          <Field label="Tipo de peça">
+            <select style={inputStyle} value={p.tipoPeca} onChange={(e) => set("tipoPeca", e.target.value)}>
+              {TIPOS_PECA.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+            <span style={{ fontSize: 10, color: TEXT_MUTED }}>
+              Corrige o tipo lançado errado (ex.: Traje → Blazer). Medidas, previsão e custo de mão de obra passam a
+              seguir o novo tipo; revise o tecido/aviamento lançado se a composição mudar muito.
+            </span>
+          </Field>
           <Field label="Status">
             <select style={inputStyle} value={p.status} onChange={(e) => set("status", e.target.value)}>
               {STATUS_ALFAIATARIA.map((s) => (
