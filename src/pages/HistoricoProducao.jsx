@@ -14,7 +14,7 @@ import {
   TIPOS_SAIDA_SEM_VENDA,
   inputStyle,
 } from "../lib/constants";
-import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, hojeISO, mediaEsperaCliente } from "../lib/helpers";
+import { brl, custoAviamentoComposicao, custoTecidoDe, diasEntre, diasProducaoReal, fmtData, hojeISO, mediaEsperaCliente } from "../lib/helpers";
 import { custoEquipeMensal, custoMaoDeObraPeca, custoMensalDe, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
@@ -97,6 +97,7 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
   const [mesInicio, setMesInicio] = useState("2026-09");
   const [mesFim, setMesFim] = useState("2026-09");
   const [margemMinimaPct, setMargemMinimaPct] = useState(30);
+  const [mostrarBacklog, setMostrarBacklog] = useState(false);
   const { aliquotaImposto, aluguelAtelie, luzAtelie } = useConfigCustosFixos();
 
   // Custo de mão de obra por hora (equipe real, rateada) — mesmo número
@@ -237,7 +238,14 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
       const mes = (p.dataEntrega || "").slice(0, 7);
       return p.status === "Entregue" && mes >= mesInicio && mes <= mesFim;
     }).length;
-    return { vendidas, entregues, diferenca: vendidas - entregues };
+    // Quais peças especificamente compõem o backlog — vendidas dentro do
+    // período e que ainda não saíram (até hoje, não só até o fim do
+    // período), pra dar pra ver quem é, não só o número.
+    const emAberto = detalheMes
+      .filter((p) => p.status !== "Entregue")
+      .map((p) => ({ ...p, diasEmAberto: diasEntre(p.dataPedido, hojeISO()) }))
+      .sort((a, b) => (b.diasEmAberto || 0) - (a.diasEmAberto || 0));
+    return { vendidas, entregues, diferenca: vendidas - entregues, emAberto };
   }, [pecas, detalheMes, mesInicio, mesFim]);
 
   // Resumo mensal de tecido lançado — visão rápida de quantas peças
@@ -881,7 +889,38 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
                     ? `entregou ${Math.abs(desempenhoPeriodo.diferenca)} a mais do que vendeu (reduzindo backlog antigo)`
                     : "vendeu e entregou igual"}
                 </span>
+                {desempenhoPeriodo.emAberto.length > 0 && (
+                  <button
+                    onClick={() => setMostrarBacklog((v) => !v)}
+                    style={{ fontSize: 11, color: BRASS, fontWeight: 600, textDecoration: "underline" }}
+                  >
+                    {mostrarBacklog ? "ocultar" : "ver"} as {desempenhoPeriodo.emAberto.length} peça(s) em aberto
+                  </button>
+                )}
               </div>
+              {mostrarBacklog && desempenhoPeriodo.emAberto.length > 0 && (
+                <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px", marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 6 }}>
+                    Vendidas no período que ainda não foram entregues até hoje (não só até o fim do período selecionado):
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {desempenhoPeriodo.emAberto.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between fx-mono" style={{ fontSize: 12 }}>
+                        <span style={{ color: INK }}>
+                          <strong>{p.cliente}</strong>
+                          <span style={{ color: TEXT_MUTED, fontWeight: 400 }}>
+                            {" "}
+                            — {p.tipoPeca} · pedido {fmtData(p.dataPedido)} · {p.status}
+                          </span>
+                        </span>
+                        <span style={{ color: (p.diasEmAberto || 0) > 30 ? "#9C4A1E" : TEXT_MUTED, fontWeight: 700 }}>
+                          {p.diasEmAberto ?? "—"}d em aberto
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 10 }}>
                 Vendida = pedido lançado no período (pode entregar depois). Entregue = peça marcada "Entregue" com data
                 de entrega no período (pode ter sido vendida antes) — não é a mesma peça virando entregue, é o ritmo de
