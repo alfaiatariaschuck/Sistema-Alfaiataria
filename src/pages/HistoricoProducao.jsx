@@ -93,12 +93,19 @@ function BarraVendasEntregas({ dados }) {
 // Histórico de produção da alfaiataria: médias reais (início -> entrega,
 // já sem pausas) por tipo de peça e por responsável, com gráficos —
 // pensado pra apresentação/reunião de equipe, não pra edição de nada.
-export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false, mostrarComparativos = true, custoAviamentosPorPecaBase = {} }) {
+export default function HistoricoProducao({
+  pecas,
+  equipe,
+  mostrarMargem = false,
+  mostrarComparativos = true,
+  custoAviamentosPorPecaBase = {},
+  receitaMesOutraLinha = 0,
+}) {
   const [mesInicio, setMesInicio] = useState("2026-09");
   const [mesFim, setMesFim] = useState("2026-09");
   const [margemMinimaPct, setMargemMinimaPct] = useState(30);
   const [mostrarBacklog, setMostrarBacklog] = useState(false);
-  const { aliquotaImposto, aluguelAtelie, luzAtelie } = useConfigCustosFixos();
+  const { aliquotaImposto, aluguelAtelie, luzAtelie, prolabore, custosFixosPJ, planoSaudePJ } = useConfigCustosFixos();
 
   // Custo de mão de obra por hora (equipe real, rateada) — mesmo número
   // canônico usado no resto do sistema (Painel, Consolidado, Agente de
@@ -212,18 +219,56 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
       .sort((a, b) => b.custoPeriodo - a.custoPeriodo);
     const custoFolha = membros.reduce((s, m) => s + m.custoPeriodo, 0);
     const custoEstrutura = ((parseFloat(aluguelAtelie) || 0) + (parseFloat(luzAtelie) || 0)) * qtdMeses;
+
+    // Custos compartilhados da empresa (pró-labore, contador, sistemas,
+    // marketing, plano de saúde) — mesma lógica da tela Custos do
+    // Ateliê: pró-labore meio a meio com a camisaria, o resto rateado
+    // pela receita do MÊS ATUAL de cada linha (não dá pra saber a
+    // receita da camisaria em meses passados daqui, então usa a fatia
+    // de hoje como aproximação pro período inteiro, igual à folha).
+    const receitaMesAtualPropria = (pecas || [])
+      .filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && (p.dataPedido || "").slice(0, 7) === hojeISO().slice(0, 7))
+      .reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
+    const receitaTotalAmbasLinhas = receitaMesAtualPropria + (parseFloat(receitaMesOutraLinha) || 0);
+    const fatiaAtelie = receitaTotalAmbasLinhas > 0 ? receitaMesAtualPropria / receitaTotalAmbasLinhas : 0.5;
+    const prolaboreMetade = (parseFloat(prolabore) || 0) * 0.5;
+    const custoCompartilhadoRateavel = (parseFloat(custosFixosPJ) || 0) + (parseFloat(planoSaudePJ) || 0);
+    const custoCompartilhado = (prolaboreMetade + custoCompartilhadoRateavel * fatiaAtelie) * qtdMeses;
+
     const pctMargemMinima = (parseFloat(margemMinimaPct) || 0) / 100;
-    const margemConsolidada = totalDetalheMes.valorVenda - totalDetalheMes.custoTecido - totalDetalheMes.custoAviamento - custoFolha - custoEstrutura - totalDetalheMes.imposto;
+    const margemConsolidada =
+      totalDetalheMes.valorVenda -
+      totalDetalheMes.custoTecido -
+      totalDetalheMes.custoAviamento -
+      custoFolha -
+      custoEstrutura -
+      custoCompartilhado -
+      totalDetalheMes.imposto;
     const margemMinimaConsolidada = totalDetalheMes.valorVenda * pctMargemMinima;
     return {
       qtdMeses,
       membros,
       custoFolha,
       custoEstrutura,
+      custoCompartilhado,
+      fatiaAtelie,
       margemConsolidada,
       espacoConsolidado: margemConsolidada - margemMinimaConsolidada,
     };
-  }, [equipe, aluguelAtelie, luzAtelie, margemMinimaPct, totalDetalheMes, mesInicio, mesFim]);
+  }, [
+    pecas,
+    equipe,
+    aluguelAtelie,
+    luzAtelie,
+    prolabore,
+    custosFixosPJ,
+    planoSaudePJ,
+    receitaMesOutraLinha,
+    margemMinimaPct,
+    totalDetalheMes,
+    mesInicio,
+    mesFim,
+  ]);
 
   // Vendidas vs entregues NESSE período (não é a mesma peça virando
   // "entregue" — uma vendida no período pode entregar só depois, e uma
@@ -924,9 +969,11 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
               <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 10 }}>
                 Vendida = pedido lançado no período (pode entregar depois). Entregue = peça marcada "Entregue" com data
                 de entrega no período (pode ter sido vendida antes) — não é a mesma peça virando entregue, é o ritmo de
-                cada lado nesse intervalo. Folha e estrutura do ateliê usam a equipe e os custos cadastrados hoje
-                (aluguel/luz em Configurações), multiplicados por {folhaEMes.qtdMeses} mês(es) do período — se parte do
-                período for passado, é uma aproximação do patamar atual, não o valor exato de cada mês.
+                cada lado nesse intervalo. Folha, estrutura do ateliê e custos compartilhados usam a equipe e os custos
+                cadastrados hoje (Configurações), multiplicados por {folhaEMes.qtdMeses} mês(es) do período — se parte
+                do período for passado, é uma aproximação do patamar atual, não o valor exato de cada mês. A fatia dos
+                custos compartilhados (abaixo) usa a proporção de receita do mês atual entre alfaiataria e camisaria
+                ({(folhaEMes.fatiaAtelie * 100).toFixed(0)}% pro ateliê) — mesma régua, sem histórico de meses passados.
               </div>
 
               <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px", marginBottom: 10 }}>
@@ -968,7 +1015,13 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
                 </div>
                 <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
                   <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
-                    <TrendingUp size={12} /> Margem líquida do período
+                    <Wallet size={12} /> Custos compartilhados (sua fatia — pró-labore, contador, etc.)
+                  </div>
+                  <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: INK }}>{brl(folhaEMes.custoCompartilhado)}</div>
+                </div>
+                <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px" }}>
+                  <div className="flex items-center gap-1" style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
+                    <TrendingUp size={12} /> Margem líquida do período (já com tudo — é o que sobra de verdade)
                   </div>
                   <div className="fx-mono" style={{ fontSize: 18, fontWeight: 700, color: folhaEMes.margemConsolidada >= 0 ? "#2C6E31" : "#9C4A1E" }}>
                     {brl(folhaEMes.margemConsolidada)}

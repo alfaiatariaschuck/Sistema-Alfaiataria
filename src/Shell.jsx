@@ -1204,7 +1204,13 @@ export default function Shell() {
                 />
               )}
               {tab === "historico-producao" && !loadingPecas && (
-                <HistoricoProducao pecas={pecas} equipe={equipe} mostrarMargem custoAviamentosPorPecaBase={custoPorPecaBase} />
+                <HistoricoProducao
+                  pecas={pecas}
+                  equipe={equipe}
+                  mostrarMargem
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
+                  receitaMesOutraLinha={receitaMesCamisaria}
+                />
               )}
               {tab === "equipe" && (
                 <Equipe equipe={equipe} loading={loadingEquipe} onAdicionar={adicionarMembro} onCampo={atualizarMembro} onRemover={removerMembro} />
