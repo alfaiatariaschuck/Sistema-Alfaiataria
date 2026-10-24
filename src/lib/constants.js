@@ -248,7 +248,9 @@ export const DIAS_REFERENCIA_TIPO_PECA = {
 // até confirmar com o Tales.
 export const HORAS_REFERENCIA_TIPO_PECA = {
   Costume: 23.5,
-  Traje: 26.5,
+  // 32h confirmado pelo Ícaro (mapeamento de processo com o Tales,
+  // 24/10/2026) — valor anterior (26,5h) estava desatualizado.
+  Traje: 32,
   Blazer: 16,
   Casaco: 16,
   Bomber: 23.5,
