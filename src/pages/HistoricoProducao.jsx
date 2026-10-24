@@ -16,6 +16,7 @@ import {
 } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, mediaEsperaCliente } from "../lib/helpers";
 import { custoEquipeMensal, custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
+import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 // Dias de produção pura (máquina/trabalho manual), sem prova nem
 // espera — vem das horas de desenvolvimento da planilha de parâmetros
@@ -77,6 +78,8 @@ function BarraVendasEntregas({ dados }) {
 // pensado pra apresentação/reunião de equipe, não pra edição de nada.
 export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false, mostrarComparativos = true, custoAviamentosPorPecaBase = {} }) {
   const [mesDetalhe, setMesDetalhe] = useState("2026-09");
+  const [margemMinimaPct, setMargemMinimaPct] = useState(30);
+  const { aliquotaImposto } = useConfigCustosFixos();
 
   // Custo de mão de obra por hora (equipe real, rateada) — mesmo número
   // canônico usado no resto do sistema (Painel, Consolidado, Agente de
@@ -89,7 +92,17 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
   // de tecido com seu R$/metro, e o aviamento pela composição do tipo).
   // Serve pra auditar de onde vem um "Material médio" baixo — mostra
   // item de tecido sem R$/metro cadastrado em vez de esconder como R$0.
+  //
+  // Desmembramento até a margem líquida (pedido do Tales, 24/10/2026):
+  // imposto é a alíquota configurada em Custos (mesma usada na
+  // Camisaria) sobre o valor de venda, não sobre o lucro — é assim que o
+  // DAS do Simples Nacional funciona. "Espaço pra remuneração" é quanto
+  // ainda dá pra aumentar o custo de mão de obra da equipe nessa peça
+  // sem a margem cair abaixo do mínimo desejado (editável, default 30%)
+  // — serve de teto pro estudo de remuneração, não é um valor já pago.
   const detalheMes = useMemo(() => {
+    const pctImposto = (parseFloat(aliquotaImposto) || 0) / 100;
+    const pctMargemMinima = (parseFloat(margemMinimaPct) || 0) / 100;
     return pecas
       .filter((p) => (p.dataPedido || "").slice(0, 7) === mesDetalhe)
       .map((p) => {
@@ -98,23 +111,61 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
         const custoAviamento = custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase);
         const custoMaoDeObra = custoMaoDeObraPeca(p.tipoPeca, custoHoraGeral);
         const custoAtelie = custoTecido + custoAviamento + custoMaoDeObra;
+        const valorVenda = parseFloat(p.valorVenda) || 0;
+        const imposto = valorVenda * pctImposto;
+        const margemLiquida = valorVenda - custoAtelie - imposto;
+        const margemMinima = valorVenda * pctMargemMinima;
+        const espacoRemuneracao = margemLiquida - margemMinima;
         return {
           id: p.id,
           cliente: p.cliente || "Sem nome",
           tipoPeca: p.tipoPeca,
           status: p.status,
           dataPedido: p.dataPedido,
-          valorVenda: parseFloat(p.valorVenda) || 0,
+          valorVenda,
           itensTecido,
           custoTecido,
           composicaoAviamento: COMPOSICAO_AVIAMENTOS[p.tipoPeca] || [],
           custoAviamento,
           custoMaoDeObra,
           custoAtelie,
+          imposto,
+          margemLiquida,
+          margemMinima,
+          espacoRemuneracao,
         };
       })
       .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
-  }, [pecas, mesDetalhe, custoAviamentosPorPecaBase, custoHoraGeral]);
+  }, [pecas, mesDetalhe, custoAviamentosPorPecaBase, custoHoraGeral, aliquotaImposto, margemMinimaPct]);
+
+  // Total do mês — mesmos campos do detalhe, somados, pra ver o teto
+  // consolidado de remuneração de uma vez (não só peça a peça).
+  const totalDetalheMes = useMemo(() => {
+    return detalheMes.reduce(
+      (acc, p) => ({
+        valorVenda: acc.valorVenda + p.valorVenda,
+        custoTecido: acc.custoTecido + p.custoTecido,
+        custoAviamento: acc.custoAviamento + p.custoAviamento,
+        custoMaoDeObra: acc.custoMaoDeObra + p.custoMaoDeObra,
+        custoAtelie: acc.custoAtelie + p.custoAtelie,
+        imposto: acc.imposto + p.imposto,
+        margemLiquida: acc.margemLiquida + p.margemLiquida,
+        margemMinima: acc.margemMinima + p.margemMinima,
+        espacoRemuneracao: acc.espacoRemuneracao + p.espacoRemuneracao,
+      }),
+      {
+        valorVenda: 0,
+        custoTecido: 0,
+        custoAviamento: 0,
+        custoMaoDeObra: 0,
+        custoAtelie: 0,
+        imposto: 0,
+        margemLiquida: 0,
+        margemMinima: 0,
+        espacoRemuneracao: 0,
+      }
+    );
+  }, [detalheMes]);
 
   // Resumo mensal de tecido lançado — visão rápida de quantas peças
   // (vendidas, excluindo doação/permuta/uso próprio) já têm tecido com
@@ -662,14 +713,57 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
             <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
               Detalhe por peça — mês
             </div>
-            <input type="month" style={{ ...inputStyle, width: "auto" }} value={mesDetalhe} onChange={(e) => setMesDetalhe(e.target.value)} />
+            <div className="flex items-center gap-2 flex-wrap">
+              <label style={{ fontSize: 11, color: TEXT_MUTED, display: "flex", alignItems: "center", gap: 6 }}>
+                Margem mínima desejada
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  style={{ ...inputStyle, width: 60 }}
+                  value={margemMinimaPct}
+                  onChange={(e) => setMargemMinimaPct(e.target.value)}
+                />
+                %
+              </label>
+              <input type="month" style={{ ...inputStyle, width: "auto" }} value={mesDetalhe} onChange={(e) => setMesDetalhe(e.target.value)} />
+            </div>
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
             Cada peça pedida nesse mês, exatamente como está lançada — valor de venda, cada item de tecido com seu R$/metro (ou
-            "sem valor cadastrado" se faltar), o aviamento pela composição do tipo, e o custo de ateliê (tecido + aviamento +
-            mão de obra real da equipe, rateada pela hora de referência do tipo). Serve pra auditar de onde vem um material
-            médio baixo demais, e quanto custou de verdade cada peça pro ateliê.
+            "sem valor cadastrado" se faltar), o aviamento pela composição do tipo, o custo de ateliê (tecido + aviamento +
+            mão de obra real da equipe, rateada pela hora de referência do tipo), o imposto (alíquota de {(parseFloat(aliquotaImposto) || 0).toFixed(1)}%
+            configurada em Custos, sobre a venda) e a margem líquida. "Espaço pra remuneração" é quanto ainda dá pra
+            aumentar o custo de mão de obra da equipe nessa peça sem a margem cair abaixo do mínimo ao lado — é um teto
+            pro estudo, não um valor já pago.
           </div>
+          {detalheMes.length > 0 && (
+            <div
+              className="mb-4"
+              style={{ background: "#F3EEDF", borderRadius: 8, padding: "12px 14px", display: "flex", flexWrap: "wrap", gap: "6px 20px" }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, color: INK }}>Total do mês ({detalheMes.length} peça(s)):</span>
+              <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                venda <strong style={{ color: INK }}>{brl(totalDetalheMes.valorVenda)}</strong>
+              </span>
+              <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                custo ateliê <strong style={{ color: INK }}>{brl(totalDetalheMes.custoAtelie)}</strong>
+              </span>
+              <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                imposto <strong style={{ color: INK }}>{brl(totalDetalheMes.imposto)}</strong>
+              </span>
+              <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                margem líquida <strong style={{ color: INK }}>{brl(totalDetalheMes.margemLiquida)}</strong>
+              </span>
+              <span className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                espaço pra remuneração ({margemMinimaPct}% mín.){" "}
+                <strong style={{ color: totalDetalheMes.espacoRemuneracao >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                  {brl(totalDetalheMes.espacoRemuneracao)}
+                </strong>
+              </span>
+            </div>
+          )}
           {detalheMes.length === 0 && <Empty texto="Nenhuma peça pedida nesse mês." />}
           {detalheMes.map((p) => (
             <div key={p.id} className="py-3" style={{ borderTop: `1px solid ${LINE}` }}>
@@ -694,10 +788,20 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
               </div>
               <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>
                 Aviamento ({p.composicaoAviamento.join(" + ") || "sem composição"}): <strong style={{ color: INK }}>{brl(p.custoAviamento)}</strong>
-                {" "}· Mão de obra (equipe, rateada): <strong style={{ color: INK }}>{brl(p.custoMaoDeObra)}</strong>
+                {" "}· Mão de obra (custo atual real da equipe, rateado pela hora — o que já é pago hoje): <strong style={{ color: INK }}>{brl(p.custoMaoDeObra)}</strong>
+              </div>
+              <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>
+                Custo de ateliê (tecido + aviamento + mão de obra): <strong style={{ color: INK }}>{brl(p.custoAtelie)}</strong>
+                {" "}· Imposto ({(parseFloat(aliquotaImposto) || 0).toFixed(1)}%): <strong style={{ color: INK }}>{brl(p.imposto)}</strong>
+              </div>
+              <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>
+                Margem líquida: <strong style={{ color: INK }}>{brl(p.margemLiquida)}</strong>
+                {p.valorVenda > 0 && <span> ({((p.margemLiquida / p.valorVenda) * 100).toFixed(1)}% da venda)</span>}
               </div>
               <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-                Custo de ateliê (tecido + aviamento + mão de obra): <strong style={{ color: INK }}>{brl(p.custoAtelie)}</strong>
+                Margem mínima desejada ({margemMinimaPct}%): <strong style={{ color: INK }}>{brl(p.margemMinima)}</strong>
+                {" "}· Espaço pra remuneração da equipe:{" "}
+                <strong style={{ color: p.espacoRemuneracao >= 0 ? "#2C6E31" : "#9C4A1E" }}>{brl(p.espacoRemuneracao)}</strong>
               </div>
             </div>
           ))}
