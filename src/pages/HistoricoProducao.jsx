@@ -224,6 +224,22 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
     };
   }, [equipe, aluguelAtelie, luzAtelie, margemMinimaPct, totalDetalheMes, mesInicio, mesFim]);
 
+  // Vendidas vs entregues NESSE período (não é a mesma peça virando
+  // "entregue" — uma vendida no período pode entregar só depois, e uma
+  // entregue no período pode ter sido vendida antes; cada lado conta o
+  // que aconteceu dentro do intervalo). Serve de termômetro rápido de
+  // desempenho do ateliê junto do consolidado financeiro (pedido do
+  // Tales, 24/10/2026): se entregou bem menos do que vendeu, o backlog
+  // tá crescendo nesse período.
+  const desempenhoPeriodo = useMemo(() => {
+    const vendidas = detalheMes.length;
+    const entregues = (pecas || []).filter((p) => {
+      const mes = (p.dataEntrega || "").slice(0, 7);
+      return p.status === "Entregue" && mes >= mesInicio && mes <= mesFim;
+    }).length;
+    return { vendidas, entregues, diferenca: vendidas - entregues };
+  }, [pecas, detalheMes, mesInicio, mesFim]);
+
   // Resumo mensal de tecido lançado — visão rápida de quantas peças
   // (vendidas, excluindo doação/permuta/uso próprio) já têm tecido com
   // R$/metro cadastrado em cada mês, pra priorizar onde lançar valor
@@ -839,12 +855,39 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
               style={{ background: "#F3EEDF", borderRadius: 8, padding: "14px" }}
             >
               <div style={{ fontSize: 11, fontWeight: 700, color: INK, marginBottom: 2 }}>
-                Consolidado do período ({mesInicio === mesFim ? mesInicio : `${mesInicio} a ${mesFim}`}) — {detalheMes.length} peça(s) vendida(s)
+                Consolidado do período ({mesInicio === mesFim ? mesInicio : `${mesInicio} a ${mesFim}`})
+              </div>
+              <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: 12, marginBottom: 8 }}>
+                <span style={{ color: TEXT_MUTED }}>
+                  Vendidas no período: <strong style={{ color: INK }}>{desempenhoPeriodo.vendidas}</strong>
+                </span>
+                <span style={{ color: TEXT_MUTED }}>·</span>
+                <span style={{ color: TEXT_MUTED }}>
+                  Entregues no período: <strong style={{ color: INK }}>{desempenhoPeriodo.entregues}</strong>
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: desempenhoPeriodo.diferenca > 0 ? "#F6E3D9" : "#DCEBDD",
+                    color: desempenhoPeriodo.diferenca > 0 ? "#9C4A1E" : "#2C6E31",
+                  }}
+                >
+                  {desempenhoPeriodo.diferenca > 0
+                    ? `backlog +${desempenhoPeriodo.diferenca}`
+                    : desempenhoPeriodo.diferenca < 0
+                    ? `entregou ${Math.abs(desempenhoPeriodo.diferenca)} a mais do que vendeu (reduzindo backlog antigo)`
+                    : "vendeu e entregou igual"}
+                </span>
               </div>
               <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 10 }}>
-                Folha e estrutura do ateliê usam a equipe e os custos cadastrados hoje (aluguel/luz em Configurações),
-                multiplicados por {folhaEMes.qtdMeses} mês(es) do período — se parte do período for passado, é uma
-                aproximação do patamar atual, não o valor exato de cada mês.
+                Vendida = pedido lançado no período (pode entregar depois). Entregue = peça marcada "Entregue" com data
+                de entrega no período (pode ter sido vendida antes) — não é a mesma peça virando entregue, é o ritmo de
+                cada lado nesse intervalo. Folha e estrutura do ateliê usam a equipe e os custos cadastrados hoje
+                (aluguel/luz em Configurações), multiplicados por {folhaEMes.qtdMeses} mês(es) do período — se parte do
+                período for passado, é uma aproximação do patamar atual, não o valor exato de cada mês.
               </div>
 
               <div style={{ background: "#fff", borderRadius: 6, padding: "10px 12px", marginBottom: 10 }}>
