@@ -60,7 +60,13 @@ export default function Equipe({ equipe, loading, onAdicionar, onCampo, onRemove
           {equipe.map((m, i) => (
             <div key={m.id} className="px-4 py-3" style={{ borderBottom: i < equipe.length - 1 ? `1px solid ${LINE}` : "none", opacity: m.ativo ? 1 : 0.5 }}>
               <div className="flex items-center justify-between mb-2">
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{m.nome}</div>
+                <input
+                  value={m.nome}
+                  onChange={(e) => onCampo(m.id, "nome", e.target.value)}
+                  style={{ fontWeight: 600, fontSize: 14, border: "none", background: "transparent", padding: "2px 4px", minWidth: 120 }}
+                  onFocus={(e) => (e.target.style.background = "#F3EEDF")}
+                  onBlur={(e) => (e.target.style.background = "transparent")}
+                />
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-1.5" style={{ fontSize: 12, color: TEXT_MUTED }}>
                     <input
