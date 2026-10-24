@@ -15,7 +15,7 @@ import {
   inputStyle,
 } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, diasProducaoReal, fmtData, mediaEsperaCliente } from "../lib/helpers";
-import { custoEquipeMensal, custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
+import { custoEquipeMensal, custoMaoDeObraPeca, custoMensalDe, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 
 // Dias de produção pura (máquina/trabalho manual), sem prova nem
@@ -100,6 +100,20 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
   // ainda dá pra aumentar o custo de mão de obra da equipe nessa peça
   // sem a margem cair abaixo do mínimo desejado (editável, default 30%)
   // — serve de teto pro estudo de remuneração, não é um valor já pago.
+  // Quem entra no rateio da mão de obra — só ativo e com remuneração
+  // cadastrada (sem isso o custo já é 0, não tem o que ratear). Pedido
+  // do Tales (24/10/2026): mostrar não só o total de mão de obra da
+  // peça, mas quanto disso é de cada pessoa — participação de cada um
+  // é a fração do custo mensal dela sobre o custo mensal de TODA a
+  // equipe, aplicada em cima do valor de mão de obra já calculado pra
+  // essa peça (não é "quem trabalhou nessa peça", é rateio pelo peso
+  // de cada um na folha).
+  const membrosRateio = useMemo(
+    () => (equipe || []).filter((m) => m.ativo && custoMensalDe(m) > 0),
+    [equipe]
+  );
+  const custoEquipeMensalTotal = useMemo(() => custoEquipeMensal(equipe), [equipe]);
+
   const detalheMes = useMemo(() => {
     const pctImposto = (parseFloat(aliquotaImposto) || 0) / 100;
     const pctMargemMinima = (parseFloat(margemMinimaPct) || 0) / 100;
@@ -109,7 +123,21 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
         const itensTecido = (p.tecidos || []).filter((t) => t.codigo || t.metragem || t.valorMetro);
         const custoTecido = custoTecidoDe(p.tecidos);
         const custoAviamento = custoAviamentoComposicao(p.tipoPeca, custoAviamentosPorPecaBase);
+        const horasReferencia = HORAS_REFERENCIA_TIPO_PECA[p.tipoPeca] || 0;
         const custoMaoDeObra = custoMaoDeObraPeca(p.tipoPeca, custoHoraGeral);
+        const maoDeObraPorPessoa = membrosRateio.map((m) => {
+          const custoMensalMembro = custoMensalDe(m);
+          const participacao = custoEquipeMensalTotal > 0 ? custoMensalMembro / custoEquipeMensalTotal : 0;
+          return {
+            nome: m.nome,
+            tipoRemuneracao: m.tipoRemuneracao,
+            valorRemuneracao: parseFloat(m.valorRemuneracao) || 0,
+            diasPorSemana: m.diasPorSemana,
+            custoMensal: custoMensalMembro,
+            participacaoPct: participacao * 100,
+            valorNestaPeca: participacao * custoMaoDeObra,
+          };
+        });
         const custoAtelie = custoTecido + custoAviamento + custoMaoDeObra;
         const valorVenda = parseFloat(p.valorVenda) || 0;
         const imposto = valorVenda * pctImposto;
@@ -127,6 +155,8 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
           custoTecido,
           composicaoAviamento: COMPOSICAO_AVIAMENTOS[p.tipoPeca] || [],
           custoAviamento,
+          horasReferencia,
+          maoDeObraPorPessoa,
           custoMaoDeObra,
           custoAtelie,
           imposto,
@@ -136,7 +166,7 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
         };
       })
       .sort((a, b) => (a.dataPedido || "").localeCompare(b.dataPedido || ""));
-  }, [pecas, mesDetalhe, custoAviamentosPorPecaBase, custoHoraGeral, aliquotaImposto, margemMinimaPct]);
+  }, [pecas, mesDetalhe, custoAviamentosPorPecaBase, custoHoraGeral, aliquotaImposto, margemMinimaPct, membrosRateio, custoEquipeMensalTotal]);
 
   // Total do mês — mesmos campos do detalhe, somados, pra ver o teto
   // consolidado de remuneração de uma vez (não só peça a peça).
@@ -788,8 +818,35 @@ export default function HistoricoProducao({ pecas, equipe, mostrarMargem = false
               </div>
               <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>
                 Aviamento ({p.composicaoAviamento.join(" + ") || "sem composição"}): <strong style={{ color: INK }}>{brl(p.custoAviamento)}</strong>
-                {" "}· Mão de obra (custo atual real da equipe, rateado pela hora — o que já é pago hoje): <strong style={{ color: INK }}>{brl(p.custoMaoDeObra)}</strong>
               </div>
+              <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>
+                Mão de obra (custo atual real da equipe — o que já é pago hoje): <strong style={{ color: INK }}>{brl(p.custoMaoDeObra)}</strong>
+                <span style={{ fontSize: 11 }}>
+                  {" "}— conta: {p.horasReferencia}h de referência do tipo "{p.tipoPeca}" × {brl(custoHoraGeral)}/h (custo mensal de toda a
+                  equipe ÷ média de horas produzidas por mês, últimos 6 meses fechados)
+                </span>
+              </div>
+              {p.maoDeObraPorPessoa.length > 0 ? (
+                <div style={{ marginLeft: 14, marginBottom: 2, paddingLeft: 10, borderLeft: `2px solid ${LINE}` }}>
+                  <div style={{ fontSize: 10, color: TEXT_MUTED, marginBottom: 2 }}>
+                    Rateio desse total de mão de obra por pessoa (pelo peso de cada um na folha da equipe, não por quem exatamente fez essa peça):
+                  </div>
+                  {p.maoDeObraPorPessoa.map((pm) => (
+                    <div key={pm.nome} style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 1 }}>
+                      <strong style={{ color: INK }}>{pm.nome}</strong>
+                      {" — "}
+                      {pm.tipoRemuneracao === "mensal" && `mensalista, ${brl(pm.valorRemuneracao)}/mês`}
+                      {pm.tipoRemuneracao === "diaria" && `diarista, ${brl(pm.valorRemuneracao)}/dia × ${pm.diasPorSemana}x/semana`}
+                      {pm.tipoRemuneracao !== "mensal" && pm.tipoRemuneracao !== "diaria" && "sem forma de pagamento cadastrada"}
+                      {" "}· {pm.participacaoPct.toFixed(0)}% da folha da equipe → <strong style={{ color: INK }}>{brl(pm.valorNestaPeca)}</strong> dessa peça
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: "#9C4A1E", marginLeft: 14, marginBottom: 2 }}>
+                  Ninguém com remuneração cadastrada em Equipe ainda — por isso não dá pra discriminar por pessoa.
+                </div>
+              )}
               <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>
                 Custo de ateliê (tecido + aviamento + mão de obra): <strong style={{ color: INK }}>{brl(p.custoAtelie)}</strong>
                 {" "}· Imposto ({(parseFloat(aliquotaImposto) || 0).toFixed(1)}%): <strong style={{ color: INK }}>{brl(p.imposto)}</strong>
