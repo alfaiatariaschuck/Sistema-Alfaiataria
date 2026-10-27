@@ -210,7 +210,15 @@ export default function DetalhePeca({
             </span>
           </Field>
           <Field label="Status">
-            <select style={inputStyle} value={p.status} onChange={(e) => set("status", e.target.value)}>
+            <select
+              style={inputStyle}
+              value={p.status}
+              onChange={(e) => {
+                const novoStatus = e.target.value;
+                set("status", novoStatus);
+                if (novoStatus === "Entregue" && !p.dataEntrega) set("dataEntrega", hojeISO());
+              }}
+            >
               {STATUS_ALFAIATARIA.map((s) => (
                 <option key={s}>{s}</option>
               ))}
@@ -329,6 +337,38 @@ export default function DetalhePeca({
               </>
             )}
           </div>
+          {p.status === "Entregue" && (
+            <div className="mb-4 flex items-center gap-2 flex-wrap">
+              {!p.dataEntrega ? (
+                <>
+                  <button
+                    onClick={() => set("dataEntrega", hojeISO())}
+                    style={{ background: "#EDEAE0", color: BRASS, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                  >
+                    Marcar entrega (hoje)
+                  </button>
+                  <span style={{ fontSize: 12, color: TEXT_MUTED }}>ou já foi entregue antes:</span>
+                  <input
+                    type="date"
+                    onChange={(e) => e.target.value && set("dataEntrega", e.target.value)}
+                    style={{ ...inputStyle, fontSize: 12, padding: "5px 8px", width: 140 }}
+                    title="Peça marcada como Entregue sem data registrada — preencha a data real de entrega"
+                  />
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: 12, color: TEXT_MUTED }}>Entrega:</span>
+                  <input
+                    type="date"
+                    value={p.dataEntrega}
+                    onChange={(e) => e.target.value && set("dataEntrega", e.target.value)}
+                    style={{ ...inputStyle, fontSize: 12, padding: "5px 8px", width: 140 }}
+                    title="Corrigir data de entrega"
+                  />
+                </>
+              )}
+            </div>
+          )}
           {p.pausas && p.pausas.length > 0 && (
             <div className="mb-4">
               <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, marginBottom: 6, textTransform: "uppercase" }}>
