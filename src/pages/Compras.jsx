@@ -48,6 +48,8 @@ export default function Compras({
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
   const [desfazerDisponivel, setDesfazerDisponivel] = useState(null);
   const desfazerTimeoutRef = useRef(null);
+  const [recemBaixado, setRecemBaixado] = useState(null);
+  const recemBaixadoTimeoutRef = useRef(null);
 
   function chaveDe(item) {
     return item.origem + "-" + item.pedidoId + "-" + item.tecidoId;
@@ -199,8 +201,17 @@ export default function Compras({
   }
 
   const itensBaixaPendente = useMemo(
-    () => itens.filter((i) => encontrarEstoquePorCodigo(i.codigo) && (i.metrosBaixados === null || i.metrosBaixados === undefined)),
-    [itens, estoqueTecidos]
+    () =>
+      itens.filter((i) => {
+        if (!encontrarEstoquePorCodigo(i.codigo)) return false;
+        const temBaixa = i.metrosBaixados !== null && i.metrosBaixados !== undefined;
+        // Item recém-baixado continua aparecendo por alguns segundos, com a
+        // confirmação em verde — dá tempo de ver que registrou antes de
+        // sumir da lista (mesma lógica do "desfazer" em Pendente de compra).
+        const recemBaixadoAqui = chaveDe(i) === recemBaixado;
+        return !temBaixa || recemBaixadoAqui;
+      }),
+    [itens, estoqueTecidos, recemBaixado]
   );
 
   const porCodigo = new Map();
@@ -219,6 +230,13 @@ export default function Compras({
     if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "metros_baixados", valor);
     else if (item.origem === "plano") onTecidoPlano(item.pedidoId, item.tecidoId, "metros_baixados", valor);
     else onTecidoPeca(item.pedidoId, item.tecidoId, "metros_baixados", valor);
+
+    const chave = chaveDe(item);
+    if (recemBaixadoTimeoutRef.current) clearTimeout(recemBaixadoTimeoutRef.current);
+    setRecemBaixado(chave);
+    recemBaixadoTimeoutRef.current = setTimeout(() => {
+      setRecemBaixado((atual) => (atual === chave ? null : atual));
+    }, 4000);
   }
 
   function alternarComprado(item) {
