@@ -1,8 +1,9 @@
 import React, { useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock, Copy, Search, Undo2 } from "lucide-react";
+import { CheckCircle2, Clock, Copy, PackageMinus, Search, Undo2 } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { BRASS, BRASS_SOFT, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, metragemParaNumero, pedidoFechado } from "../lib/helpers";
+import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 
 // Junta variações de digitação (maiúscula/minúscula, espaço a mais) do
 // mesmo fornecedor conhecido num nome só, pra tudo ficar concentrado num
@@ -26,7 +27,20 @@ function textoParaFornecedor(fornecedor, lista) {
   return linhas.join("\n");
 }
 
-export default function Compras({ pedidos, pecas, planos = [], onTecidoPedido, onTecidoPeca, onTecidoPlano, irParaPedido, irParaPeca, irParaPlano }) {
+export default function Compras({
+  pedidos,
+  pecas,
+  planos = [],
+  onTecidoPedido,
+  onTecidoPeca,
+  onTecidoPlano,
+  irParaPedido,
+  irParaPeca,
+  irParaPlano,
+  estoqueTecidos = [],
+  onDarBaixaEstoque,
+}) {
+  const [aba, setAba] = useState("compra");
   const [busca, setBusca] = useState("");
   const [filtroFornecedor, setFiltroFornecedor] = useState("Todos");
   const [filtroStatus, setFiltroStatus] = useState("Pendente");
@@ -56,6 +70,7 @@ export default function Compras({ pedidos, pecas, planos = [], onTecidoPedido, o
         valorMetro: t.valorMetro ?? "",
         fornecedor: normalizarFornecedor(t.fornecedor),
         comprado: !!t.comprado,
+        metrosBaixados: t.metrosBaixados,
         dataPedido: p.dataPedido,
         jaEntregue,
       });
@@ -77,6 +92,7 @@ export default function Compras({ pedidos, pecas, planos = [], onTecidoPedido, o
         valorMetro: t.valorMetro ?? "",
         fornecedor: normalizarFornecedor(t.fornecedor),
         comprado: !!t.comprado,
+        metrosBaixados: t.metrosBaixados,
         dataPedido: p.dataPedido,
         tipoPeca: p.tipoPeca,
         jaEntregue,
@@ -104,6 +120,7 @@ export default function Compras({ pedidos, pecas, planos = [], onTecidoPedido, o
         valorMetro: t.valorMetro ?? "",
         fornecedor: normalizarFornecedor(t.fornecedor),
         comprado: !!t.comprado,
+        metrosBaixados: t.metrosBaixados,
         dataPedido: pl.dataVenda,
         jaEntregue,
       });
@@ -170,6 +187,40 @@ export default function Compras({ pedidos, pecas, planos = [], onTecidoPedido, o
   }, 0);
   const pendentesSemPreco = itensPendentes.filter((i) => metragemParaNumero(i.metragem) === null || !parseFloat(i.valorMetro)).length;
 
+  // Baixa de estoque: igual ao jeito que a Fabi manda (foto do caderno,
+  // agrupado por código de tecido, cliente + metros usados por linha) —
+  // só entram itens cujo código bate com algo cadastrado no Estoque de
+  // Tecido (senão não tem o que dar baixa) e que ainda não tiveram baixa
+  // registrada. Não filtra por "já entregue": o tecido já foi cortado
+  // independente do status da peça/pedido ter avançado até Entregue.
+  function encontrarEstoquePorCodigo(codigo) {
+    const chave = (codigo || "").trim().toLowerCase();
+    return estoqueTecidos.find((e) => e.codigo.trim().toLowerCase() === chave) || null;
+  }
+
+  const itensBaixaPendente = useMemo(
+    () => itens.filter((i) => encontrarEstoquePorCodigo(i.codigo) && (i.metrosBaixados === null || i.metrosBaixados === undefined)),
+    [itens, estoqueTecidos]
+  );
+
+  const porCodigo = new Map();
+  itensBaixaPendente.forEach((i) => {
+    const chave = i.codigo.trim();
+    if (!porCodigo.has(chave)) porCodigo.set(chave, []);
+    porCodigo.get(chave).push(i);
+  });
+
+  function motivoDe(item) {
+    const origemLabel = item.origem === "camisa" ? "camisaria" : item.origem === "plano" ? "plano de assinatura" : "alfaiataria";
+    return `Pedido de ${item.cliente} (${origemLabel})`;
+  }
+
+  function registrarMetrosBaixados(item, valor) {
+    if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "metros_baixados", valor);
+    else if (item.origem === "plano") onTecidoPlano(item.pedidoId, item.tecidoId, "metros_baixados", valor);
+    else onTecidoPeca(item.pedidoId, item.tecidoId, "metros_baixados", valor);
+  }
+
   function alternarComprado(item) {
     if (item.origem === "camisa") onTecidoPedido(item.pedidoId, item.tecidoId, "comprado", !item.comprado);
     else if (item.origem === "plano") onTecidoPlano(item.pedidoId, item.tecidoId, "comprado", !item.comprado);
@@ -224,6 +275,81 @@ export default function Compras({ pedidos, pecas, planos = [], onTecidoPedido, o
     <div>
       <PageTitle eyebrow={`${pendentes} item(ns) pendente(s)`} title="Compras" />
 
+      <div className="flex items-center gap-2 mb-5">
+        {[
+          { id: "compra", label: "Pendente de compra" },
+          { id: "baixa", label: `Baixa de estoque${itensBaixaPendente.length > 0 ? ` (${itensBaixaPendente.length})` : ""}` },
+        ].map((op) => (
+          <button
+            key={op.id}
+            onClick={() => setAba(op.id)}
+            style={{
+              background: aba === op.id ? INK : "transparent",
+              color: aba === op.id ? "#FFF" : TEXT_MUTED,
+              border: `1px solid ${aba === op.id ? INK : LINE}`,
+              padding: "6px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {op.label}
+          </button>
+        ))}
+      </div>
+
+      {aba === "baixa" ? (
+        <div>
+          {itensBaixaPendente.length === 0 && (
+            <Card style={{ padding: 20 }}>
+              <Empty texto="Nenhum item com tecido em estoque esperando baixa no momento." />
+            </Card>
+          )}
+          {[...porCodigo.entries()].map(([codigo, lista]) => {
+            const itemEstoque = encontrarEstoquePorCodigo(codigo);
+            return (
+              <Card key={codigo} style={{ padding: 0, marginBottom: 16, overflow: "hidden" }}>
+                <div className="flex items-center justify-between" style={{ background: INK, padding: "10px 16px" }}>
+                  <div className="flex items-center gap-1.5">
+                    <PackageMinus size={14} color="#FFF" />
+                    <span className="fx-mono" style={{ color: "#FFF", fontSize: 13, fontWeight: 700 }}>
+                      {codigo}
+                    </span>
+                    <span style={{ color: "#8593A3", fontSize: 12 }}> · {lista.length} peça(s) · saldo {itemEstoque.saldoMetros.toFixed(1)}m</span>
+                  </div>
+                </div>
+                {lista.map((item, i) => (
+                  <div
+                    key={item.origem + "-" + item.pedidoId + "-" + item.tecidoId}
+                    className="flex items-center justify-between gap-3 px-4 py-3 flex-wrap"
+                    style={{ borderBottom: i < lista.length - 1 ? `1px solid ${LINE}` : "none" }}
+                  >
+                    <button onClick={() => abrirItem(item)} className="text-left">
+                      <div className="flex items-center gap-1.5">
+                        <span style={{ fontWeight: 600, fontSize: 13 }}>{item.cliente}</span>
+                        {item.origem === "alfaiataria" && <Pill text={item.tipoPeca} style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />}
+                        {item.origem === "plano" && <Pill text="Plano de Assinatura" style={{ bg: BRASS_SOFT, fg: "#A9793E" }} />}
+                      </div>
+                      <div className="fx-mono" style={{ fontSize: 11, color: TEXT_MUTED }}>
+                        Qtd {item.qtd} {item.metragem ? `· Medida lançada: ${item.metragem}` : ""}
+                      </div>
+                    </button>
+                    <BaixaEstoqueTecido
+                      codigo={item.codigo}
+                      estoque={estoqueTecidos}
+                      onDarBaixa={onDarBaixaEstoque}
+                      motivo={motivoDe(item)}
+                      metrosBaixados={item.metrosBaixados}
+                      onRegistrarMetrosBaixados={(valor) => registrarMetrosBaixados(item, valor)}
+                    />
+                  </div>
+                ))}
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <>
       {pendentes > 0 && (
         <Card style={{ padding: 16 }} className="mb-5">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -408,6 +534,8 @@ export default function Compras({ pedidos, pecas, planos = [], onTecidoPedido, o
           ))}
         </Card>
       ))}
+        </>
+      )}
     </div>
   );
 }
