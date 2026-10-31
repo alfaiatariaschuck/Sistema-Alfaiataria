@@ -150,8 +150,7 @@ export default function TabelaControleProducao({
             const atrasado = p.status !== "Entregue" && p.previsaoEfetiva && p.previsaoEfetiva < hoje;
             const emRisco = p.status !== "Entregue" && !atrasado && p.previsaoEfetiva && p.previsaoEfetiva <= limiteRisco;
             const pausado = p.situacao === "Pausado";
-            const corLinhaEvento =
-              p.statusEvento === "atrasado" ? "#FBE1D6" : p.statusEvento === "risco" ? "#FCEFC7" : undefined;
+            const corLinhaEvento = p.statusEvento === "risco" ? "#FCEFC7" : undefined;
             return (
               <tr key={p.id} style={{ borderBottom: `1px solid ${LINE}`, background: corLinhaEvento }} className="fx-row-hover">
                 <td style={{ padding: "12px", color: TEXT_MUTED }}>
