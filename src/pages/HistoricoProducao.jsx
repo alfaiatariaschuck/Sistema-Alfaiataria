@@ -342,6 +342,12 @@ export default function HistoricoProducao({
   const [mostrarBacklog, setMostrarBacklog] = useState(false);
   const [mostrarFolhaDetalhe, setMostrarFolhaDetalhe] = useState(false);
   const [mostrarCompartilhadosDetalhe, setMostrarCompartilhadosDetalhe] = useState(false);
+  // Tipos marcados pra NÃO entrar na margem média geral / margem por cliente
+  // (ex.: Calça e Colete, que são trabalho de apoio e distorcem o "ticket
+  // médio" de quem fez o Paletó) — pedido do Tales (31/10/2026): continua
+  // tudo somado por padrão (nada aqui muda o cálculo de hoje), ele decide
+  // manualmente o que excluir. Não afeta o consolidado do mês (detalheMes).
+  const [tiposExcluidosMargem, setTiposExcluidosMargem] = useState(() => new Set());
   const { aliquotaImposto, aluguelAtelie, luzAtelie, prolabore, custosFixosPJ, planoSaudePJ } = useConfigCustosFixos();
 
   // Custo de mão de obra por hora (equipe real, rateada) — mesmo número
@@ -813,9 +819,18 @@ export default function HistoricoProducao({
       .sort((a, b) => b.valor - a.valor);
   }, [comMargem]);
 
+  // Só os tipos marcados pra entrar na soma — por padrão todos, igual ao
+  // cálculo de sempre; some(a) peça(s) excluída(s) continua(m) visível(is)
+  // separadamente em "margemPorTipo"/"precoCustoPorTipo" abaixo, só não
+  // entra(m) no total/média geral nem na margem por cliente.
+  const comMargemConsiderada = useMemo(
+    () => comMargem.filter((p) => !tiposExcluidosMargem.has(p.tipoPeca)),
+    [comMargem, tiposExcluidosMargem]
+  );
+
   const margemPorCliente = useMemo(() => {
     const mapa = new Map();
-    comMargem.forEach((p) => {
+    comMargemConsiderada.forEach((p) => {
       const nome = p.cliente || "Sem nome";
       mapa.set(nome, (mapa.get(nome) || 0) + p.margem);
     });
@@ -823,7 +838,7 @@ export default function HistoricoProducao({
       .map(([nome, total]) => ({ chave: nome, valor: Math.round(total) }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 10);
-  }, [comMargem]);
+  }, [comMargemConsiderada]);
 
   // Preço médio de venda e custo médio (tecido + aviamentos + mão de obra
   // do Ícaro) por tipo de peça — separado material de mão de obra (não só
@@ -865,10 +880,10 @@ export default function HistoricoProducao({
   }, [comMargem]);
 
   const margemResumo = useMemo(() => {
-    if (!comMargem.length) return null;
-    const total = comMargem.reduce((s, p) => s + p.margem, 0);
-    return { total, media: total / comMargem.length };
-  }, [comMargem]);
+    if (!comMargemConsiderada.length) return null;
+    const total = comMargemConsiderada.reduce((s, p) => s + p.margem, 0);
+    return { total, media: total / comMargemConsiderada.length };
+  }, [comMargemConsiderada]);
 
   // Retrabalho: peças que precisaram de ajuste extra além do fluxo
   // normal — sinaliza onde a produção está perdendo tempo/qualidade
@@ -1392,7 +1407,30 @@ export default function HistoricoProducao({
               </div>
               <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 20 }}>
                 Venda menos o custo real (tecido + aviamentos pela composição do tipo + mão de obra real da equipe, rateada pela hora). Margem líquida aproximada.
-                {margemResumo && ` Margem total (entregues): ${brl(margemResumo.total)}.`}
+                {margemResumo && ` Margem total (considerada): ${brl(margemResumo.total)}.`}
+              </div>
+              <div className="mb-4 flex items-center gap-2 flex-wrap" style={{ fontSize: 12 }}>
+                <span style={{ color: TEXT_MUTED }}>Entram no total/margem por cliente:</span>
+                {margemPorTipo.map((d) => {
+                  const marcado = !tiposExcluidosMargem.has(d.chave);
+                  return (
+                    <label key={d.chave} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={marcado}
+                        onChange={() =>
+                          setTiposExcluidosMargem((prev) => {
+                            const novo = new Set(prev);
+                            if (novo.has(d.chave)) novo.delete(d.chave);
+                            else novo.add(d.chave);
+                            return novo;
+                          })
+                        }
+                      />
+                      {d.chave}
+                    </label>
+                  );
+                })}
               </div>
               <BarraSimples dados={margemPorTipo} sufixoValor="" formatarTooltip={(d) => `${d.chave}: ${brl(d.valor)} de margem em média (${d.qtd} peça(s))`} />
             </Card>
