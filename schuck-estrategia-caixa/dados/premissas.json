@@ -26,7 +26,7 @@
     "inclui_cartao_pessoal": true,
     "observacao": "Tales retira conforme a necessidade da sua conta de pró-labore, sem data nem valor fixo. Não alertar 'Pix fora de data' — isso não existe mais como regra. Continuar comparando o total retirado no mês contra o que ele lança em Contas a Pagar como pró-labore, pra sinalizar se a diferença for grande (em outubro/2026 foi de ~R$4.900 líquido, tirado a mais do que lançado)."
   },
-  "dividas": {"emprestimo_restante": 2400, "quitar_em": "2026-10", "divida_ativa": "nenhuma (MK Tecidos quitada em set/26)", "status_quitacao_out26": "Tales diz que pagou tudo junto pra Ana, ~R$5 mil e algo, mas não achei esse lançamento no extrato BTG de outubro — pode ter sido pago por outra conta/pessoal. Confirmar antes de marcar como quitado."},
+  "dividas": {"emprestimo_restante": 0, "quitado_em": "2026-10", "divida_ativa": "nenhuma (MK Tecidos quitada em set/26; empréstimo da Ana quitado em out/26)", "status_quitacao_out26": "Confirmado pelo Tales (31/10/2026): pago pra Ana, junto com o cartão dela, total ~R$5 mil e pouco — não aparece separado no extrato BTG da conta PJ (valor combinado, possivelmente por outra conta/forma de pagamento), por isso não tem um lançamento único pra apontar aqui."},
   "expansao": {"valor_max": 15000, "parcelas": 6, "inicio": "2026-10", "alternativa": "pré-venda de ~35 camisas corporativas"},
   "regras": {"pct_conta_producao": 0.41, "meta_reserva_1_meses": 1, "meta_reserva_1_valor": 38628, "meta_reserva_2_valor": 77257},
   "politica_cobranca": "100% à vista no pedido (raramente 50/50)",
