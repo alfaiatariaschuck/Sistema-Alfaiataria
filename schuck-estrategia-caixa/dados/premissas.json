@@ -7,7 +7,8 @@
     "taxas_comissao_unit": {"valor": 59.5, "fonte": "Sistema set/26: (margem - líquido) / 73"},
     "liquido_unit": {"valor": 424},
     "historico": [{"mes": "2026-08", "qtd": 48, "valor": 39002.52, "margem": 25937.12, "liquido": 22816.92},
-                  {"mes": "2026-09", "qtd": 73, "valor": 54334.59, "margem": 35272.31, "liquido": 30925.54}],
+                  {"mes": "2026-09", "qtd": 73, "valor": 54334.59, "margem": 35272.31, "liquido": 30925.54},
+                  {"mes": "2026-10", "qtd": 68, "qtd_tales": 63, "qtd_deivid": 5, "fonte": "confirmado pelo Tales 31/10/2026 — valor/margem/líquido ainda não confirmados pelo sistema"}],
     "media_3_meses_qtd": 58,
     "capacidade_alvo_pos_expansao": 116,
     "vendedores": ["Tales", "Deivid (em formação)"]
