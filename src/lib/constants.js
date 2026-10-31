@@ -86,6 +86,12 @@ export const STATUS_SAPATOS = ["Pedido registrado", "Enviado ao fornecedor", "A 
 // peça estava — por isso agora é um campo próprio, independente.
 export const TIPOS_SAIDA_PECA = ["Venda", "Doação", "Permuta", "Uso próprio"];
 
+// Costureiras da camisaria — fonte única. Cada uma tem pedido atribuído
+// via campo "costureira", um painel individual (Shell.jsx) e entra no
+// comparativo agregado (ComparativoCosteiras). Trocar o time aqui é
+// suficiente — os seletores de pedido e os painéis seguem essa lista.
+export const COSTUREIRAS = ["Fabiana", "Cleci", "Aline"];
+
 // Tipos de saída que consomem tecido/mão de obra de verdade mas não são
 // venda pra cliente pagante — não contam em faturamento, quantidade
 // vendida nem meta, mas o custo de produção continua contando normal (a

@@ -15,7 +15,7 @@ import DadosPessoaisCliente from "../components/DadosPessoaisCliente";
 import HistoricoCliente from "../components/HistoricoCliente";
 import VincularIndicador from "../components/VincularIndicador";
 import EditarNomeCliente from "../components/EditarNomeCliente";
-import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, STATUS_TECIDO, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
+import { BRASS, BRASS_SOFT, COSTUREIRAS, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, STATUS_TECIDO, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, statusPedidoSemVenda, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
@@ -478,7 +478,7 @@ export default function DetalhePedido({
             <div className="mt-3">
               <Field label="Costureira">
                 <select style={{ ...inputStyle, maxWidth: 200 }} value={p.costureira || "Fabiana"} onChange={(e) => set("costureira", e.target.value)}>
-                  {["Fabiana", "Milena"].map((nome) => (
+                  {COSTUREIRAS.map((nome) => (
                     <option key={nome} value={nome}>
                       {nome}
                     </option>

@@ -9,7 +9,7 @@ import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
 import CampoAutocomplete from "../components/CampoAutocomplete";
 import AvisoClienteParecido from "../components/AvisoClienteParecido";
 import TaxaCartaoRecebido from "../components/TaxaCartaoRecebido";
-import { BRASS, BRASS_SOFT, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, ORIGENS_CLIENTE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
+import { BRASS, BRASS_SOFT, COSTUREIRAS, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK, INK_SOFT, LINE, MEDIDA_LABELS, ORIGENS_CLIENTE, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, somarDias, statusDividido, temposMediosProducao, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { pedidoVazio } from "../hooks/usePedidos";
 import { buscarDadosPessoaisCliente } from "../lib/clientes";
@@ -378,7 +378,7 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, cli
           <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${LINE}` }}>
             <Field label="Costureira">
               <select style={{ ...inputStyle, maxWidth: 200 }} value={p.costureira} onChange={(e) => set("costureira", e.target.value)}>
-                {["Fabiana", "Milena"].map((nome) => (
+                {COSTUREIRAS.map((nome) => (
                   <option key={nome} value={nome}>
                     {nome}
                   </option>

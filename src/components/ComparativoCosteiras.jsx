@@ -1,16 +1,14 @@
 import React from "react";
 import { GitCompare } from "lucide-react";
 import { Card } from "./ui";
-import { TEXT_MUTED, LINE, BRASS } from "../lib/constants";
+import { TEXT_MUTED, LINE, BRASS, COSTUREIRAS } from "../lib/constants";
 import { statusPedidoSemVenda, tempoMedioProducaoGenerico } from "../lib/helpers";
 
-const COSTUREIRAS = ["Fabiana", "Milena"];
-
-// Comparativo entre os dois ateliês de camisaria — só aparece no Painel
+// Comparativo entre os ateliês de camisaria — só aparece no Painel
 // Camisaria agregado (visão do Tales), nunca nos painéis individuais de
-// cada costureira. Enquanto a Milena não estiver produzindo de verdade,
-// a coluna dela fica em "—" naturalmente (sem pedido nenhum com
-// costureira = Milena ainda).
+// cada costureira. Enquanto uma costureira não estiver produzindo de
+// verdade, a coluna dela fica em "—" naturalmente (sem pedido nenhum
+// com esse nome ainda).
 export default function ComparativoCosteiras({ pedidos }) {
   const linhas = COSTUREIRAS.map((nome) => {
     const doAteie = (pedidos || []).filter((p) => (p.costureira || "Fabiana") === nome && !statusPedidoSemVenda(p.status));

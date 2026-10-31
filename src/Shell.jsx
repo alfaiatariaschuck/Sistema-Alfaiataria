@@ -109,7 +109,8 @@ import CalendarioProvas from "./components/CalendarioProvas";
 const NAV = [
   { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true, grupo: "Camisaria" },
   { id: "painel-camisaria-fabiana", label: "Painel Camisaria Fabiana", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
-  { id: "painel-camisaria-milena", label: "Painel Camisaria Milena", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
+  { id: "painel-camisaria-cleci", label: "Painel Camisaria Cleci", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
+  { id: "painel-camisaria-aline", label: "Painel Camisaria Aline", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true, grupo: "Camisaria" },
   { id: "pedidos", label: "Pedidos Tales", icon: ClipboardList, primary: true, grupo: "Camisaria" },
   { id: "pedidos-deivid", label: "Pedidos Deivid", icon: ClipboardList, primary: false, grupo: "Camisaria" },
@@ -972,9 +973,9 @@ export default function Shell() {
                   mostrarExtras={false}
                 />
               )}
-              {tab === "painel-camisaria-milena" && (
+              {tab === "painel-camisaria-cleci" && (
                 <Dashboard
-                  pedidos={pedidos.filter((p) => p.costureira === "Milena")}
+                  pedidos={pedidos.filter((p) => p.costureira === "Cleci")}
                   pecas={pecas}
                   despesas={despesas}
                   estoqueTecidos={estoqueTecidos}
@@ -982,8 +983,23 @@ export default function Shell() {
                   irParaTab={setTab}
                   onMarcarTecido={(id, valor) => atualizarCampoPedido(id, "statusTecido", valor)}
                   eyebrow="Visão geral — camisaria"
-                  titulo="Painel Camisaria Milena"
-                  nomeCosteira="Milena"
+                  titulo="Painel Camisaria Cleci"
+                  nomeCosteira="Cleci"
+                  mostrarExtras={false}
+                />
+              )}
+              {tab === "painel-camisaria-aline" && (
+                <Dashboard
+                  pedidos={pedidos.filter((p) => p.costureira === "Aline")}
+                  pecas={pecas}
+                  despesas={despesas}
+                  estoqueTecidos={estoqueTecidos}
+                  irPara={irPara}
+                  irParaTab={setTab}
+                  onMarcarTecido={(id, valor) => atualizarCampoPedido(id, "statusTecido", valor)}
+                  eyebrow="Visão geral — camisaria"
+                  titulo="Painel Camisaria Aline"
+                  nomeCosteira="Aline"
                   mostrarExtras={false}
                 />
               )}
