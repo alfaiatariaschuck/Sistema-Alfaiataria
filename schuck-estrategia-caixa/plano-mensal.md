@@ -26,9 +26,9 @@ Metas vindas da planilha `dados/Schuck_Fluxo_de_Caixa.xlsx` (cenário: máquinas
 
 ## Novembro/26 — Mudar e ampliar
 **Foco:** mudança de sala sem parar a produção.
-- [ ] Mudança por etapas, com a produção de camisas em andamento.
+- [x] Mudança de sala feita (confirmado pelo Tales, 31/10/2026).
 - [ ] Instalar as máquinas novas e medir a capacidade real (camisas/semana).
-- [ ] Aluguel novo (R$ 2.400) começa.
+- [x] Aluguel novo em vigor: R$ 2.300/mês (valor real, era estimado em R$ 2.400).
 - [ ] Campanha de fim de ano para a base: camisas para presente e festas.
 - [ ] Treinar o Deivid com meta própria de vendas.
 **Métricas:** 85 camisas · saldo ≥ R$ 18 mil · capacidade medida ≥ 25 camisas/semana.

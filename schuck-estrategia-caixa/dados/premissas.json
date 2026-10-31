@@ -15,7 +15,7 @@
   },
   "alfaiataria": {"receita_mensal": 20000, "custo_direto_pct": 0.35, "status": "ESTIMATIVA - confirmar"},
   "custos_fixos_mensais": {
-    "aluguel_atual": 1677.03, "aluguel_novo": 2400, "aluguel_novo_inicio": "2026-11 (a confirmar)",
+    "aluguel_atual": 2300, "aluguel_anterior": 1800, "aluguel_novo_inicio": "confirmado pelo Tales — mudança de sala já feita", "aluguel_fonte": "Tales confirmou valor real (1.800 → 2.300); valores antigos (1.677,03 / 2.400) eram estimativa do plano, substituídos",
     "multi_locacoes": {"valor": 3674.63, "status": "confirmar o que é"},
     "equipe_fixa": {"valor": 7000, "detalhe": "Ícaro R$1.000/sem + Jair R$750/sem"},
     "luz_telefone_internet": 632.68, "plano_saude": 573.22, "contador": 400, "sistemas": 698,
