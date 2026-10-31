@@ -22,10 +22,9 @@
     "impostos_das": 800, "transporte_estacionamento": 1400, "marketing": 1050
   },
   "socio": {
-    "retirada_fixa_mensal": 20000,
-    "datas": [5, 20],
+    "modelo_retirada": "sob demanda — regra de datas fixas (5/20, R$20 mil cada) abandonada por decisão do Tales em 31/10/2026, não funcionava na prática",
     "inclui_cartao_pessoal": true,
-    "pre_requisito": "Só dá pra rodar retirada fixa nos dias 5/20 depois de abrir a conta/reserva Produção (confirmado pelo Tales em 30/09/2026) — até lá, Pix avulso pro Tales todo dia é esperado (é a única conta que existe). Não alertar 'Pix fora de data' enquanto a conta Produção não estiver aberta."
+    "observacao": "Tales retira conforme a necessidade da sua conta de pró-labore, sem data nem valor fixo. Não alertar 'Pix fora de data' — isso não existe mais como regra. Continuar comparando o total retirado no mês contra o que ele lança em Contas a Pagar como pró-labore, pra sinalizar se a diferença for grande (em outubro/2026 foi de ~R$4.900 líquido, tirado a mais do que lançado)."
   },
   "dividas": {"emprestimo_restante": 2400, "quitar_em": "2026-10", "divida_ativa": "nenhuma (MK Tecidos quitada em set/26)", "status_quitacao_out26": "Tales diz que pagou tudo junto pra Ana, ~R$5 mil e algo, mas não achei esse lançamento no extrato BTG de outubro — pode ter sido pago por outra conta/pessoal. Confirmar antes de marcar como quitado."},
   "expansao": {"valor_max": 15000, "parcelas": 6, "inicio": "2026-10", "alternativa": "pré-venda de ~35 camisas corporativas"},

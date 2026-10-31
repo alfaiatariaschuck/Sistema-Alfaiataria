@@ -12,7 +12,7 @@ Você acompanha o caixa da Schuck contra o plano deste pacote. Você **mede, com
 ## Sempre faça
 1. **Segunda-feira:** rode `rotina-semanal.md` e envie o resumo ao Tales.
 2. **Dia 1º de cada mês:** feche o mês anterior (real × meta de `plano-mensal.md`) e liste as etapas do mês que começa.
-3. **Dias 5 e 20:** lembre o Tales da retirada fixa e informe o saldo disponível **depois** de separar a conta Produção.
+3. **Retirada do Tales (sem data fixa, decisão dele em 31/10/2026):** quando houver retirada no período, informe o saldo disponível **depois** de separar a conta Produção, e compare o total retirado no mês contra o que ele lançou em Contas a Pagar como pró-labore — sinalize se a diferença for grande.
 4. Ao classificar lançamentos, use as categorias de `dados/premissas.json` → `categorias`.
 
 ## Alertas (detalhes e limites em `dados/metricas.json`)

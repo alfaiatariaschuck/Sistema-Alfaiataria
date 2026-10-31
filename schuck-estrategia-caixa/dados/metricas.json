@@ -14,7 +14,7 @@
     {"id": "camisas_semana", "nome": "Camisas vendidas na semana", "formula": "meta do mês / semanas do mês", "frequencia": "semanal", "alerta_amarelo": "< 80% da meta"},
     {"id": "ticket_camisa", "nome": "Preço médio por camisa", "frequencia": "mensal", "alerta_amarelo": "< 650"},
     {"id": "liquido_camisa", "nome": "Líquido por camisa", "frequencia": "mensal", "alerta_amarelo": "< 380"},
-    {"id": "pix_socio_fora_data", "nome": "Pix para o Tales fora dos dias 5 e 20", "frequencia": "semanal", "alerta_amarelo": "> 0"},
+    {"id": "retirada_vs_lancado", "nome": "Total retirado no mês (Pix pro Tales, líquido de TEF de volta) vs pró-labore lançado em Contas a Pagar", "frequencia": "mensal", "alerta_amarelo": "diferença > 20% do lançado"},
     {"id": "gasto_nao_previsto", "nome": "Gasto fora das categorias previstas", "frequencia": "semanal", "alerta_amarelo": "> 1000 por lançamento"},
     {"id": "reserva_vs_meta", "nome": "Reserva / Meta 1", "formula": "saldo livre / 38628", "frequencia": "mensal", "alerta_verde": ">= 100%"}
   ]
