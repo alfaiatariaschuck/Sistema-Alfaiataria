@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, ChevronDown, ChevronUp, MessageCircle, Package, Pencil, Plus, Shirt, TrendingDown, TrendingUp, Trash2, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, ChevronDown, ChevronUp, FileText, MessageCircle, Package, Pencil, Plus, Shirt, TrendingDown, TrendingUp, Trash2, Wallet } from "lucide-react";
 import { Card, Empty, Field, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData, mediaCamisasVendidasPorMes, precoVendaMedioPorTecido } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import { supabase } from "../supabaseClient";
+import RelatorioEstoqueImprimivel from "./RelatorioEstoqueImprimivel";
 
 const VERMELHO = "#9C4A1E";
 const VERDE = "#2C6E31";
@@ -39,6 +40,7 @@ export default function EstoqueCamisaria({
   const [precoVendaEditado, setPrecoVendaEditado] = useState("");
   const [erro, setErro] = useState(null);
   const [telefoneFabi, setTelefoneFabi] = useState(null);
+  const [mostrarRelatorio, setMostrarRelatorio] = useState(false);
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
 
   useEffect(() => {
@@ -180,21 +182,34 @@ export default function EstoqueCamisaria({
               Só código e quantos metros tem disponível de cada um — sem valor nem nenhuma informação de gestão.
             </div>
           </div>
-          {telefoneFabi ? (
-            <a
-              href={`https://wa.me/${telefoneFabi.replace(/\D/g, "")}?text=${encodeURIComponent(mensagemEstoqueFabi())}`}
-              target="_blank"
-              rel="noreferrer"
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setMostrarRelatorio(true)}
               className="flex items-center gap-2"
-              style={{ background: "#25D366", color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, width: "fit-content", flexShrink: 0 }}
+              style={{ background: INK, color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, width: "fit-content", flexShrink: 0 }}
             >
-              <MessageCircle size={15} /> Enviar pra Fabi
-            </a>
-          ) : (
-            <span style={{ fontSize: 12, color: TEXT_MUTED }}>Telefone da Fabi não cadastrado — adicione em Configurações.</span>
-          )}
+              <FileText size={15} /> Ver relatório pra imprimir/enviar
+            </button>
+            {telefoneFabi ? (
+              <a
+                href={`https://wa.me/${telefoneFabi.replace(/\D/g, "")}?text=${encodeURIComponent(mensagemEstoqueFabi())}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2"
+                style={{ background: "#25D366", color: "#FFF", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, width: "fit-content", flexShrink: 0 }}
+              >
+                <MessageCircle size={15} /> Enviar pra Fabi
+              </a>
+            ) : (
+              <span style={{ fontSize: 12, color: TEXT_MUTED, alignSelf: "center" }}>Telefone da Fabi não cadastrado — adicione em Configurações.</span>
+            )}
+          </div>
         </div>
       </Card>
+
+      {mostrarRelatorio && (
+        <RelatorioEstoqueImprimivel estoque={estoque} onFechar={() => setMostrarRelatorio(false)} />
+      )}
 
       {totalCamisasPossiveis > 0 && (
         <Card style={{ padding: 20 }} className="mb-6">
