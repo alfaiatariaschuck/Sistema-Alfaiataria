@@ -75,6 +75,7 @@ import Consolidado from "./pages/Consolidado";
 import Entregues from "./pages/Entregues";
 import Backup from "./pages/Backup";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
+import Orcamento from "./pages/Orcamento";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import PainelSapatos from "./pages/PainelSapatos";
 import PedidoSapatos from "./pages/PedidoSapatos";
@@ -123,6 +124,7 @@ const NAV = [
 
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false, grupo: "Alfaiataria" },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true, grupo: "Alfaiataria" },
+  { id: "orcamento", label: "Orçamento", icon: Calculator, primary: false, grupo: "Alfaiataria" },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true, grupo: "Alfaiataria" },
   { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true, grupo: "Alfaiataria" },
   { id: "calendario-provas", label: "Calendário de Provas", icon: CalendarDays, primary: false, grupo: "Alfaiataria" },
@@ -1147,6 +1149,15 @@ export default function Shell() {
                   equipe={equipe}
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                   estoqueTecidos={estoqueTecidos}
+                  modelosAlfaiataria={modelosAlfaiataria}
+                  onCriarModeloAlfaiataria={adicionarModeloAlfaiataria}
+                />
+              )}
+              {tab === "orcamento" && !loadingPecas && (
+                <Orcamento
+                  pecas={pecas}
+                  equipe={equipe}
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
                   modelosAlfaiataria={modelosAlfaiataria}
                   onCriarModeloAlfaiataria={adicionarModeloAlfaiataria}
                 />
