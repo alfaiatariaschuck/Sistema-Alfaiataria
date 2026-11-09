@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Gift, Hourglass, Package, PackageCheck, Shirt, ShoppingBag, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Gift, Hourglass, Package, PackageCheck, Shirt, ShoppingBag, Target, Timer, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import AniversariantesDoMes from "../components/AniversariantesDoMes";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
@@ -92,12 +92,7 @@ export default function Dashboard({
   const camisasEntregues = abertos.reduce((s, p) => s + (parseFloat(p.qtEntregue) || 0), 0);
   const saldoAEntregar = Math.max(0, camisasEmProducao - camisasEntregues);
 
-  // Margem = valor vendido - valor pago à Fabiana, somado em todos os pedidos
-  // (doação já fica de fora, ela não entra na venda nem no custo dela).
   const naoDoacaoLista = pedidos.filter(naoDoacao);
-  const totalVendido = naoDoacaoLista.reduce((s, p) => s + (parseFloat(p.aReceber.valor) || 0), 0);
-  const totalCustoFabi = naoDoacaoLista.reduce((s, p) => s + (parseFloat(p.pagoFabiana.valor) || 0), 0);
-  const margem = totalVendido - totalCustoFabi;
 
   // Tempo médio de produção, separado por tipo de cliente (novo vs recompra).
   const { novos: tempoMedioNovos, recompra: tempoMedioRecompra } = temposMediosProducao(pedidos);
@@ -154,7 +149,6 @@ export default function Dashboard({
         <StatCard label="Pedidos atrasados" value={atrasados.length} icon={AlertTriangle} accent={atrasados.length > 0 ? VERMELHO : undefined} />
         <StatCard label={`Pago à ${nomeCosteiraLabel}`} value={brl(somaFabPaga)} icon={CheckCircle2} />
         <StatCard label={`Devido à ${nomeCosteiraLabel}`} value={brl(somaFab)} icon={Wallet} />
-        <StatCard label="Margem estimada" value={brl(margem)} icon={TrendingUp} />
         <StatCard label="Tempo médio — cliente novo" value={tempoMedioNovos !== null ? `${tempoMedioNovos}d` : "—"} icon={Timer} />
         <StatCard label="Tempo médio — recompra" value={tempoMedioRecompra !== null ? `${tempoMedioRecompra}d` : "—"} icon={Timer} />
         <StatCard label="Espera média por prova" value={esperaMediaProva !== null ? `${esperaMediaProva}d` : "—"} icon={Hourglass} />
