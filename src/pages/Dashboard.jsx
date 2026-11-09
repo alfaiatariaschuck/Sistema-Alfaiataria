@@ -6,6 +6,7 @@ import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
 import DoacoesPorAno from "../components/DoacoesPorAno";
 import ComparativoCosteiras from "../components/ComparativoCosteiras";
 import VendidasEntreguesPorMes from "../components/VendidasEntreguesPorMes";
+import PagoDevidoCosteiraPorMes from "../components/PagoDevidoCosteiraPorMes";
 import { BRASS, BRASS_SOFT, INK_SOFT, LINE, STATUS, STATUS_STYLE, STATUS_TECIDO, TEXT_MUTED } from "../lib/constants";
 import { brl, diasAte, fmtData, hojeISO, mediaEsperaCliente, pedidoFechado, statusPedidoSemVenda, temposMediosProducao, valorRecebidoEfetivo } from "../lib/helpers";
 import CentralAlertas from "../components/CentralAlertas";
@@ -168,6 +169,8 @@ export default function Dashboard({
       )}
 
       <VendidasEntreguesPorMes pedidos={pedidos} titulo={`Vendidas x Entregues por mês — ${titulo}`} />
+
+      <PagoDevidoCosteiraPorMes pedidos={pedidos} nomeCosteiraLabel={nomeCosteiraLabel} />
 
       <TempoProducaoPorMes lista={pedidos} titulo={`Tempo médio de produção por mês — ${titulo}`} />
 
