@@ -20,8 +20,6 @@ export function pecaVazia() {
     horaProva: "",
     status: "Aguardando Produção",
     tipoSaida: "Venda",
-    valorTotal: "",
-    pago: "",
     formaPagamento: "",
     formaPagamentoEntrada: "",
     formaPagamentoRestante: "",
@@ -72,8 +70,6 @@ function rowParaPeca(row) {
     horaProva: row.hora_prova || "",
     status: row.status,
     tipoSaida: row.tipo_saida || "Venda",
-    valorTotal: row.valor_total ?? "",
-    pago: row.valor_pago ?? 0,
     formaPagamento: row.forma_pagamento || "",
     formaPagamentoEntrada: row.forma_pagamento_entrada || "",
     formaPagamentoRestante: row.forma_pagamento_restante || "",
@@ -145,8 +141,6 @@ const CAMPO_PARA_COLUNA = {
   retrabalhoObs: "retrabalho_obs",
   status: "status",
   tipoSaida: "tipo_saida",
-  valorTotal: "valor_total",
-  pago: "valor_pago",
   formaPagamento: "forma_pagamento",
   formaPagamentoEntrada: "forma_pagamento_entrada",
   formaPagamentoRestante: "forma_pagamento_restante",
@@ -222,8 +216,6 @@ export function usePedidosAlfaiataria() {
           data_cobranca: p.dataCobranca || null,
           status: p.status,
           tipo_saida: p.tipoSaida || "Venda",
-          valor_total: p.valorTotal === "" ? null : Number(p.valorTotal),
-          valor_pago: p.pago === "" ? 0 : Number(p.pago),
           forma_pagamento: p.formaPagamento || null,
           forma_pagamento_entrada: p.formaPagamentoEntrada || null,
           forma_pagamento_restante: p.formaPagamentoRestante || null,
@@ -295,14 +287,14 @@ export function usePedidosAlfaiataria() {
     setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
     const coluna = CAMPO_PARA_COLUNA[campo];
     if (!coluna) return;
-    const CAMPOS_NUMERICOS = ["valorTotal", "pago", "valorVenda", "valorLiquidoRecebido", "valorEntrada", "valorRestante"];
+    const CAMPOS_NUMERICOS = ["valorVenda", "valorLiquidoRecebido", "valorEntrada", "valorRestante"];
     // Colunas de data no Postgres não aceitam string vazia (só data
     // válida ou nulo) — um input de data pode disparar onChange com ""
     // no meio da digitação, antes de completar a data, então isso
     // precisa virar null igual já fazíamos pros campos numéricos.
     const CAMPOS_DATA = ["dataPedido", "previsaoEntrega", "dataLimiteEvento", "dataEntrega", "dataInicioProducao", "dataPausaInicio", "dataCobranca", "dataProva"];
     const valorFinal = CAMPOS_NUMERICOS.includes(campo)
-      ? (valor === "" ? (campo === "pago" ? 0 : null) : Number(valor))
+      ? (valor === "" ? null : Number(valor))
       : CAMPOS_DATA.includes(campo)
         ? (valor === "" ? null : valor)
         : valor;

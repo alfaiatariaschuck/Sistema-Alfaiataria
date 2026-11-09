@@ -627,10 +627,6 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
               });
               return s + (parseFloat(p.pagoFabiana.valor) - pago);
             }, 0);
-          const devidoIcaro = pecas
-            .filter((p) => (parseFloat(p.valorTotal) || 0) - (parseFloat(p.pago) || 0) > 0)
-            .reduce((s, p) => s + ((parseFloat(p.valorTotal) || 0) - (parseFloat(p.pago) || 0)), 0);
-
           const aberto = expandido === c.nome;
           const ultimasMedidas =
             maisRecente?.tipo === "camisa"
@@ -682,12 +678,6 @@ export default function Clientes({ clientes, irParaPedido, irParaPeca, onCadastr
                   Devendo por mão de obra (camisaria): <strong>{brl(devidoFabiana)}</strong>
                 </div>
               )}
-              {devidoIcaro > 0 && (
-                <div className="mb-2" style={{ fontSize: 12, color: "#9C4A1E" }}>
-                  Devendo ao Icaro: <strong>{brl(devidoIcaro)}</strong>
-                </div>
-              )}
-
               {mostrarCampanha && (
                 <div className="mb-2 flex items-center gap-3 flex-wrap">
                   <AvisarClienteWhatsapp

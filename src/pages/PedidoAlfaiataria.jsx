@@ -265,26 +265,6 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, clientesBase
                 <span style={{ fontSize: 10, color: TEXT_MUTED }}>Não conta como faturamento/venda, mas o custo de produção continua contando normal.</span>
               )}
             </Field>
-            <Field label="Valor devido ao Icaro (R$)">
-              <input
-                type="number"
-                step="0.01"
-                style={inputStyle}
-                placeholder="preencher depois, se preferir"
-                value={novaPeca.valorTotal}
-                onChange={(e) => setNovaPeca({ ...novaPeca, valorTotal: e.target.value })}
-              />
-            </Field>
-            <Field label="Valor pago (R$)">
-              <input
-                type="number"
-                step="0.01"
-                style={inputStyle}
-                placeholder="preencher depois, se preferir"
-                value={novaPeca.pago}
-                onChange={(e) => setNovaPeca({ ...novaPeca, pago: e.target.value })}
-              />
-            </Field>
           </div>
 
           <div className="mt-4 pt-4 mb-4" style={{ borderTop: `1px solid ${LINE}` }}>

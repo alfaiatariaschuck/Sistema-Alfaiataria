@@ -6,21 +6,12 @@ import { BRASS, BRASS_SOFT, LINE, STATUS_ALFAIATARIA, STATUS_STYLE, STATUS_TECID
 import { diasAte, fmtData, statusParaEtapa } from "../lib/helpers";
 import DetalhePeca from "./DetalhePeca";
 
-function statusPagamentoDe(p) {
-  const total = parseFloat(p.valorTotal) || 0;
-  const pago = parseFloat(p.pago) || 0;
-  if (total > 0 && pago >= total) return "Pago";
-  if (pago > 0) return "Parcial";
-  return "Pendente";
-}
-
 const STATUS_ATIVOS = STATUS_ALFAIATARIA.filter((s) => s !== "Entregue");
 const VERMELHO = "#9C4A1E";
 const DIAS_LIMITE = 45;
 
 export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada, ...acoes }) {
   const [busca, setBusca] = useState("");
-  const [filtroPagamento, setFiltroPagamento] = useState("Todos");
   const [statusFiltro, setStatusFiltro] = useState(new Set());
   const [marcandoTodos, setMarcandoTodos] = useState(false);
 
@@ -29,9 +20,8 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
     .filter((p) => p.status !== "Entregue")
     .filter((p) => {
       const bateBusca = p.cliente.toLowerCase().includes(busca.toLowerCase());
-      const batePagamento = filtroPagamento === "Todos" || statusPagamentoDe(p) === filtroPagamento;
       const bateStatus = statusFiltro.size === 0 || statusFiltro.has(p.status);
-      return bateBusca && batePagamento && bateStatus;
+      return bateBusca && bateStatus;
     });
 
   const atual = pecas.find((p) => p.id === selecionada);
@@ -75,12 +65,6 @@ export default function PedidosAlfaiataria({ pecas, selecionada, setSelecionada,
             style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: 14 }}
           />
         </div>
-        <select value={filtroPagamento} onChange={(e) => setFiltroPagamento(e.target.value)} style={{ ...inputStyle, maxWidth: 180 }}>
-          <option>Todos</option>
-          <option>Pendente</option>
-          <option>Parcial</option>
-          <option>Pago</option>
-        </select>
         {naoCompletasFiltradas.length > 0 && (
           <button
             onClick={marcarTecidoEmTodosFiltrados}

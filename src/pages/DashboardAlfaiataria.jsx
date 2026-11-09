@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, Gift, Phone, Scissors, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
+import { AlertTriangle, Gift, Phone, Scissors, Target, Timer, TrendingUp, Users, Wallet } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import TempoProducaoPorMes from "../components/TempoProducaoPorMes";
 import DoacoesPorAno from "../components/DoacoesPorAno";
@@ -37,8 +37,6 @@ export default function DashboardAlfaiataria({ pecas, irPara, equipe, custoAviam
   const naoDoacao = (p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida);
   const doacoes = pecas.filter((p) => p.tipoSaida === "Doação");
   const abertas = pecas.filter((p) => p.status !== "Entregue" && naoDoacao(p));
-  const totalGeral = pecas.reduce((s, p) => s + (parseFloat(p.valorTotal) || 0), 0);
-  const pagoGeral = pecas.reduce((s, p) => s + (parseFloat(p.pago) || 0), 0);
   const totalVenda = pecas.filter(naoDoacao).reduce((s, p) => s + (parseFloat(p.valorVenda) || 0), 0);
   // Margem de verdade: material (tecido+aviamento) + mão de obra real da
   // equipe (Equipe, não o campo solto "valor devido ao Ícaro" — a
@@ -82,9 +80,6 @@ export default function DashboardAlfaiataria({ pecas, irPara, equipe, custoAviam
         <StatCard label="Total de clientes" value={new Set(pecas.map((p) => p.cliente.trim().toLowerCase())).size} icon={Users} />
         <StatCard label="Peças em aberto" value={abertas.length} icon={Scissors} />
         <StatCard label="Vendido (R$)" value={brl(totalVenda)} icon={Wallet} />
-        <StatCard label="Total devido (Icaro)" value={brl(totalGeral)} icon={Wallet} />
-        <StatCard label="Pago ao Icaro" value={brl(pagoGeral)} icon={CheckCircle2} />
-        <StatCard label="Saldo devedor (Icaro)" value={brl(totalGeral - pagoGeral)} icon={Clock} />
         <StatCard label="Margem estimada" value={brl(margem)} icon={TrendingUp} />
         <StatCard label="Tempo médio de produção" value={tempoMedio !== null ? `${tempoMedio}d` : "—"} icon={Timer} />
         <StatCard label="Peças atrasadas" value={atrasadas.length} icon={AlertTriangle} accent={atrasadas.length > 0 ? VERMELHO : undefined} />

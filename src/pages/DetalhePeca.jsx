@@ -37,18 +37,6 @@ import { brl, diasEsperaCliente, diasProducaoReal, fmtData, hojeISO, previsaoEfe
 import { aliasesDeCampos } from "../lib/vozMedidas";
 import FichaImprimivelAlfaiataria from "./FichaImprimivelAlfaiataria";
 
-function statusPagamentoDe(p) {
-  const total = parseFloat(p.valorTotal) || 0;
-  const pago = parseFloat(p.pago) || 0;
-  if (total > 0 && pago >= total) return "Pago";
-  if (pago > 0) return "Parcial";
-  return "Pendente";
-}
-const STATUS_PAGAMENTO_STYLE = {
-  Pago: { bg: "#DCEBDD", fg: "#2C6E31" },
-  Parcial: { bg: "#FCEFC7", fg: "#8A6A0C" },
-  Pendente: { bg: "#F6E3D9", fg: "#9C4A1E" },
-};
 const NOME_SECAO = { corpo: "Paletó", calca: "Calça", colete: "Colete" };
 
 export default function DetalhePeca({
@@ -102,10 +90,6 @@ export default function DetalhePeca({
       set("statusPagamentoVenda", statusDividido(next.statusEntrada, next.statusRestante, "Recebido"));
     }
   }
-
-  const total = parseFloat(p.valorTotal) || 0;
-  const pago = parseFloat(p.pago) || 0;
-  const saldo = total - pago;
 
   return (
     <div>
@@ -483,25 +467,6 @@ export default function DetalhePeca({
           <span style={{ fontSize: 10, color: TEXT_MUTED }}>Aparece no Calendário de Provas. Deixe em branco se não houver prova marcada.</span>
         </Card>
 
-        <Card style={{ padding: 20 }}>
-          <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
-            Financeiro (Icaro)
-          </div>
-          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <Field label="Valor devido ao Icaro (R$)">
-              <input type="number" step="0.01" style={inputStyle} value={p.valorTotal} onChange={(e) => set("valorTotal", e.target.value)} />
-            </Field>
-            <Field label="Valor pago (R$)">
-              <input type="number" step="0.01" style={inputStyle} value={p.pago} onChange={(e) => set("pago", e.target.value)} />
-            </Field>
-          </div>
-          <div className="flex items-center justify-between mt-2">
-            <span className="fx-mono" style={{ fontSize: 13, color: TEXT_MUTED }}>
-              saldo {brl(saldo)}
-            </span>
-            <Pill text={statusPagamentoDe(p)} style={STATUS_PAGAMENTO_STYLE[statusPagamentoDe(p)]} />
-          </div>
-        </Card>
       </div>
 
       <Card style={{ padding: 20 }} className="mt-6">
