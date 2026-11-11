@@ -17,13 +17,20 @@ function normalizarFornecedor(nome) {
 
 // A Observação (ex: "colarinho windsor") é uma nota interna pro corte/
 // costura — não deve ir pro fornecedor junto do pedido de tecido.
+// Cada item vira um bloco próprio (nome em negrito numa linha, dados na
+// linha de baixo) com uma linha em branco entre um item e outro — sem
+// isso, tudo colado em "• " vira uma parede de texto no WhatsApp, difícil
+// do fornecedor ler no celular.
 function textoParaFornecedor(fornecedor, lista) {
   const linhas = [`*Pedido de tecido — ${fornecedor}*`, ""];
-  lista.forEach((item) => {
-    const partes = [`Código ${item.codigo || "—"}`, `Qtd ${item.qtd}`];
-    if (item.metragem) partes.push(`Medida ${item.metragem}`);
-    linhas.push(`• ${item.cliente} — ${partes.join(" · ")}`);
+  lista.forEach((item, i) => {
+    const partes = [`Código: ${item.codigo || "—"}`, `Qtd: ${item.qtd}`];
+    if (item.metragem) partes.push(`Medida: ${item.metragem}`);
+    linhas.push(`${i + 1}. *${item.cliente}*`);
+    linhas.push(partes.join(" · "));
+    linhas.push("");
   });
+  linhas.push(`Total: ${lista.length} item(ns)`);
   return linhas.join("\n");
 }
 
