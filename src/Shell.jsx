@@ -13,6 +13,7 @@ import {
   FileText,
   Footprints,
   Gauge,
+  Gift,
   GitCompare,
   Layers,
   LayoutDashboard,
@@ -66,6 +67,7 @@ import Dashboard from "./pages/Dashboard";
 import DashboardAlfaiataria from "./pages/DashboardAlfaiataria";
 import NovoPedido from "./pages/NovoPedido";
 import Pedidos from "./pages/Pedidos";
+import Doacoes from "./pages/Doacoes";
 import Clientes from "./pages/Clientes";
 import RankingIndicacao from "./pages/RankingIndicacao";
 import Compras from "./pages/Compras";
@@ -115,6 +117,7 @@ const NAV = [
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true, grupo: "Camisaria" },
   { id: "pedidos", label: "Pedidos Tales", icon: ClipboardList, primary: true, grupo: "Camisaria" },
   { id: "pedidos-deivid", label: "Pedidos Deivid", icon: ClipboardList, primary: false, grupo: "Camisaria" },
+  { id: "doacoes", label: "Doações", icon: Gift, primary: false, grupo: "Camisaria" },
   { id: "entregues-deivid", label: "Entregues Deivid", icon: Archive, primary: false, grupo: "Camisaria" },
   { id: "modelos-camisa", label: "Tecidos de Camisa", icon: Shirt, primary: false, grupo: "Camisaria" },
   { id: "planos-assinatura", label: "Planos de Assinatura", icon: PackageCheck, primary: false, grupo: "Camisaria" },
@@ -1051,6 +1054,9 @@ export default function Shell() {
                   setSelecionado={fecharOuAbrirPedido}
                   {...acoesPedido}
                 />
+              )}
+              {tab === "doacoes" && (
+                <Doacoes pedidos={pedidos} selecionado={selecionado} setSelecionado={fecharOuAbrirPedido} {...acoesPedido} />
               )}
               {tab === "entregues-deivid" && !loadingPecas && (
                 <Entregues
