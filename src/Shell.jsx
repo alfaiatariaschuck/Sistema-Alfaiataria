@@ -494,67 +494,46 @@ export default function Shell() {
     irPara(id);
   }
 
-  // Lança sozinho a conta a pagar da Fabiana em Contas a Pagar quando o
-  // pedido entra em produção — usa o valor já preenchido em "Valor a
-  // pagar à Fabiana" no próprio pedido, sem precisar digitar de novo.
-  // Vencimento = dia em que entrou em produção (ajustável depois, como
-  // qualquer despesa). Só cria uma vez por pedido (pedidoId trava
-  // duplicata mesmo se o status for alternado depois) e só se já
-  // tiver um valor definido — pedido sem "Valor Fabiana" preenchido
-  // ainda não gera despesa.
-  async function criarDespesaFabianaSeNecessario(pedido) {
-    const valorTotal = parseFloat(pedido?.pagoFabiana?.valor) || 0;
-    if (valorTotal <= 0) return;
-    // "Valor a pagar à Fabiana" é o total do pedido inteiro (todas as
-    // camisas). Quantidade de camisas que já foi pra produção — se o
-    // dono não preencher (caso comum, pedido inteiro vai junto), cai
-    // pra quantidade total do pedido. Só diverge quando ele preenche à
-    // mão (ex: só 1 das 3 camisas foi pra prova agora) — nesse caso a
-    // despesa recebe só a fração proporcional do valor total, e o
-    // resto só entra quando a quantidade aumentar (prova aprovada,
-    // mais camisas replicadas).
-    const quantidadePedido = parseInt(pedido?.quantidade, 10) || 1;
-    const qtdCamisas = parseInt(pedido?.pagoFabiana?.qtdCamisas, 10) || quantidadePedido;
-    const valorParaDespesa = qtdCamisas < quantidadePedido ? (valorTotal / quantidadePedido) * qtdCamisas : valorTotal;
-    const existente = despesas.find((d) => d.pedidoId === pedido.id);
-    if (existente) {
-      // Já existe despesa lançada pra esse pedido — não duplica, só
-      // atualiza o total (sem mexer no que já foi pago) quando o valor
-      // ou a quantidade de camisas mudou depois (ex: prova aprovada,
-      // mais camisas entraram em produção e o saldo cresceu).
-      const mudouValor = Math.abs((parseFloat(existente.valor) || 0) - valorParaDespesa) > 0.005;
-      const mudouQtd = (existente.quantidadeCamisas || null) !== qtdCamisas;
-      if (mudouValor || mudouQtd) {
-        const resultado = await atualizarValorTotalDespesa(existente.id, valorParaDespesa, qtdCamisas);
-        await sincronizarPagamentoFabiana(resultado);
-      }
-      return;
-    }
-    const nomeCosteira = pedido.costureira || "Fabiana";
-    await criarDespesa({
-      descricao: `Mão de obra ${nomeCosteira} — ${pedido.cliente}`,
-      categoria: "Salários",
-      fornecedor: nomeCosteira,
-      valor: valorParaDespesa,
-      frete: 0,
-      vencimento: hojeISO(),
-      recorrente: false,
-      linha: "Camisaria",
-      valorCamisaria: "",
-      valorAlfaiataria: "",
-      pedidoId: pedido.id,
-      quantidadeCamisas: qtdCamisas,
-    });
-  }
-
-  // Tenta lançar a despesa da Fabiana e, se der errado (ex: SQL da
-  // migração ainda não rodado no banco), avisa em vez de falhar calado
-  // — antes um erro aqui sumia sem deixar rastro nenhum.
-  async function tentarCriarDespesaFabiana(pedido) {
+  // Gera (ou atualiza) a despesa da Fabiana em Contas a Pagar — ação
+  // manual, disparada só pelo botão "Gerar no Contas a Pagar" na ficha
+  // do pedido (pedido explícito do Tales: o cálculo automático de antes
+  // — disparado sozinho ao mudar status/quantidade — ficava confuso e
+  // difícil de acompanhar). O dono escolhe quantas camisas está pagando
+  // agora e o valor; a baixa (marcar como paga) continua sendo feita só
+  // em Contas a Pagar, de onde o status volta sozinho pro pedido
+  // (sincronizarPagamentoFabiana, abaixo).
+  async function gerarDespesaFabianaDoPedido(pedidoId, { quantidade, valor }) {
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    if (!pedido) return;
+    const valorNum = parseFloat(valor) || 0;
+    if (valorNum <= 0) return;
+    const qtdNum = parseInt(quantidade, 10) || parseInt(pedido.quantidade, 10) || 1;
     try {
-      await criarDespesaFabianaSeNecessario(pedido);
+      const existente = despesas.find((d) => d.pedidoId === pedidoId);
+      if (existente) {
+        const resultado = await atualizarValorTotalDespesa(existente.id, valorNum, qtdNum);
+        await sincronizarPagamentoFabiana(resultado);
+      } else {
+        const nomeCosteira = pedido.costureira || "Fabiana";
+        await criarDespesa({
+          descricao: `Mão de obra ${nomeCosteira} — ${pedido.cliente}`,
+          categoria: "Salários",
+          fornecedor: nomeCosteira,
+          valor: valorNum,
+          frete: 0,
+          vencimento: hojeISO(),
+          recorrente: false,
+          linha: "Camisaria",
+          valorCamisaria: "",
+          valorAlfaiataria: "",
+          pedidoId,
+          quantidadeCamisas: qtdNum,
+        });
+      }
+      await atualizarSubcampo(pedidoId, "pagoFabiana", "valor", valorNum.toFixed(2));
+      await atualizarSubcampo(pedidoId, "pagoFabiana", "qtdCamisas", qtdNum);
     } catch (e) {
-      setErroAutomacao(`Não consegui lançar a despesa da Fabiana automaticamente (${e.message}). Lance manualmente em Contas a Pagar dessa vez.`);
+      setErroAutomacao(`Não consegui gerar a despesa da Fabiana (${e.message}). Lance manualmente em Contas a Pagar dessa vez.`);
     }
   }
 
@@ -586,35 +565,16 @@ export default function Shell() {
   // "Últimas Pagas". Cobre o caso de "marquei como pago sem querer, não
   // paguei ela de verdade": zera o valor pago da despesa (mesma conta
   // do botão "Reabrir" de lá) e o pedido sincroniza sozinho de volta
-  // pra Pendente. Se o pedido nunca teve despesa lançada pra ele (ex:
-  // o status de pagamento foi marcado "Pago" direto aqui, sem nunca ter
-  // passado por Contas a Pagar — pedidos antigos, de antes desse
-  // vínculo existir), não tem o que reabrir — nesse caso lança a
-  // despesa agora, como pendente, e corrige o status aqui também (senão
-  // ficaria "Pago" no pedido sem nenhuma despesa correspondente).
+  // pra Pendente. Se o pedido nunca teve despesa gerada (nunca clicou
+  // em "Gerar no Contas a Pagar"), não tem o que reabrir — só corrige o
+  // status aqui pra não ficar "Pago" sem despesa nenhuma por trás.
   async function reabrirPagamentoFabianaDoPedido(pedidoId) {
     const despesa = despesas.find((d) => d.pedidoId === pedidoId);
     if (despesa) {
       await atualizarValorPagoDespesa(despesa.id, 0);
       return;
     }
-    const pedido = pedidos.find((p) => p.id === pedidoId);
-    if (!pedido) return;
-    await tentarCriarDespesaFabiana(pedido);
     await atualizarSubcampo(pedidoId, "pagoFabiana", "statusPagamento", "Pendente");
-  }
-
-  // Reconfere a despesa da Fabiana desse pedido sem esperar o dono
-  // editar nada — chamado sempre que o detalhe de um pedido é aberto,
-  // pra corrigir sozinho qualquer despesa que tenha ficado com valor
-  // ou quantidade desatualizados (ex: uma despesa criada antes de um
-  // ajuste de cálculo, ou uma edição que não disparou o gatilho a
-  // tempo). Não faz nada se o pedido não estiver em produção.
-  async function verificarDespesaFabianaDoPedido(pedidoId) {
-    const pedido = pedidos.find((p) => p.id === pedidoId);
-    if (pedido && pedido.status === "Em Produção") {
-      await tentarCriarDespesaFabiana(pedido);
-    }
   }
 
   // Medida é campo solto demais pra passar por atualizarSubcampo (que só
@@ -641,64 +601,15 @@ export default function Shell() {
 
   async function atualizarCampoPedido(pedidoId, campo, valor) {
     await atualizarCampo(pedidoId, campo, valor);
-    if (campo === "status" && valor === "Em Produção") {
-      const pedido = pedidos.find((p) => p.id === pedidoId);
-      if (pedido) await tentarCriarDespesaFabiana(pedido);
-    }
-    // Se o pedido já usa "valor por camisa" e a quantidade muda depois
-    // (ex: cliente pediu mais uma), o total ("Valor Fabiana") tem que
-    // acompanhar sozinho — foi exatamente a falta disso que causou o
-    // valor errado de despesa relatado (total pensado pra uma
-    // quantidade, quantidade mudou, total ficou desatualizado).
-    if (campo === "quantidade") {
-      const pedido = pedidos.find((p) => p.id === pedidoId);
-      const unit = parseFloat(pedido?.valorPorCamisaFabiana);
-      if (pedido && unit > 0) {
-        const total = (unit * (parseFloat(valor) || 0)).toFixed(2);
-        await atualizarSubcampo(pedidoId, "pagoFabiana", "valor", total);
-        if (pedido.status === "Em Produção") {
-          await tentarCriarDespesaFabiana({ ...pedido, quantidade: valor, pagoFabiana: { ...pedido.pagoFabiana, valor: total } });
-        }
-      }
-    }
   }
 
-  // Cobre o caso de preencher/corrigir "Valor a pagar à Fabiana" DEPOIS
-  // que o pedido já estava em produção (na hora da mudança de status
-  // esse valor ainda estava vazio, então não tinha o que lançar) — ao
-  // editar o valor, se o pedido já estiver em produção e ainda não
-  // tiver despesa lançada, tenta lançar agora.
   async function atualizarSubcampoPedido(pedidoId, grupo, sub, valor) {
     await atualizarSubcampo(pedidoId, grupo, sub, valor);
-    if (grupo === "pagoFabiana" && (sub === "valor" || sub === "qtdCamisas")) {
-      const pedido = pedidos.find((p) => p.id === pedidoId);
-      if (pedido && pedido.status === "Em Produção") {
-        await tentarCriarDespesaFabiana({ ...pedido, pagoFabiana: { ...pedido.pagoFabiana, [sub]: valor } });
-      }
-    }
-  }
-
-  // Ação única pro "Valor por camisa" da Fabiana — usada tanto na ficha
-  // do pedido quanto na lista de Pendências (Pedidos.jsx), pra sempre
-  // seguir a mesma conta: total = valor por camisa × quantidade. Fica
-  // aqui (e não num useEffect dentro da página) porque tem que funcionar
-  // igual não importa de onde for chamada, sem depender de qual tela
-  // está montada no momento.
-  async function definirValorPorCamisaFabianaDoPedido(pedidoId, valorPorCamisa) {
-    const pedido = pedidos.find((p) => p.id === pedidoId);
-    if (!pedido) return;
-    const unit = parseFloat(valorPorCamisa) || 0;
-    const total = (unit * (parseFloat(pedido.quantidade) || 0)).toFixed(2);
-    await atualizarCampo(pedidoId, "valorPorCamisaFabiana", valorPorCamisa);
-    await atualizarSubcampo(pedidoId, "pagoFabiana", "valor", total);
-    if (pedido.status === "Em Produção") {
-      await tentarCriarDespesaFabiana({ ...pedido, valorPorCamisaFabiana: valorPorCamisa, pagoFabiana: { ...pedido.pagoFabiana, valor: total } });
-    }
   }
 
   const acoesPedido = {
     onCampo: atualizarCampoPedido,
-    onDefinirValorPorCamisaFabiana: definirValorPorCamisaFabianaDoPedido,
+    onGerarDespesaFabiana: gerarDespesaFabianaDoPedido,
     onSub: atualizarSubcampoPedido,
     onMedida: atualizarMedidaPedido,
     onDescricao: atualizarDescricaoPedido,
@@ -717,7 +628,7 @@ export default function Shell() {
     modelosCamisa,
     onCriarModeloCamisa: adicionarModelo,
     custoAviamentosPorPecaBase: custoPorPecaBase,
-    onVerificarDespesaFabiana: verificarDespesaFabianaDoPedido,
+    despesas,
     onRenomearCliente: renomearClienteGlobal,
     clientesBase,
     nomesClientes,

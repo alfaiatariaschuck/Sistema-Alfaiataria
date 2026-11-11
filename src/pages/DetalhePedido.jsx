@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { CheckCircle2, Clock, Printer, RefreshCw, Save, Trash2, Undo2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
@@ -16,7 +16,7 @@ import HistoricoCliente from "../components/HistoricoCliente";
 import VincularIndicador from "../components/VincularIndicador";
 import EditarNomeCliente from "../components/EditarNomeCliente";
 import { BRASS, BRASS_SOFT, COSTUREIRAS, DESC_CAMPOS, FORMAS_PAGAMENTO, FORNECEDORES_TECIDO, INK_SOFT, LINE, MEDIDA_LABELS, STATUS, STATUS_TECIDO, TEXT_MUTED, inputStyle, rotuloMedida } from "../lib/constants";
-import { diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, statusPedidoSemVenda, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
+import { brl, diasProducaoRealPedido, finalDaMedida, fmtData, statusDividido, statusPedidoSemVenda, totalDividido, valorMetroDoEstoque } from "../lib/helpers";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 import FichaImprimivel from "./FichaImprimivel";
 
@@ -27,7 +27,8 @@ export default function DetalhePedido({
   onSub,
   onMedida,
   onDescricao,
-  onDefinirValorPorCamisaFabiana,
+  onGerarDespesaFabiana,
+  despesas = [],
   onPausar,
   onRetomar,
   onRemover,
@@ -39,7 +40,6 @@ export default function DetalhePedido({
   modelosCamisa = [],
   onCriarModeloCamisa,
   custoAviamentosPorPecaBase = {},
-  onVerificarDespesaFabiana,
   onReabrirPagamentoFabiana,
   onRenomearCliente,
   clientesBase = [],
@@ -51,15 +51,8 @@ export default function DetalhePedido({
   const [confirmado, setConfirmado] = useState(false);
   const [convertendo, setConvertendo] = useState(false);
   const [notaPausa, setNotaPausa] = useState("");
-
-  // Reconfere a despesa da Fabiana sozinho toda vez que esse pedido é
-  // aberto — corrige na hora qualquer despesa que tenha ficado
-  // desatualizada (valor ou quantidade de camisas), sem precisar
-  // reeditar um campo à toa só pra forçar o recálculo.
-  useEffect(() => {
-    if (onVerificarDespesaFabiana) onVerificarDespesaFabiana(p.id);
-    // eslint-disable-next-line
-  }, [p.id]);
+  const [qtdPagarFabiana, setQtdPagarFabiana] = useState("");
+  const [valorPagarFabiana, setValorPagarFabiana] = useState("");
 
   function set(campo, valor) {
     onCampo(p.id, campo, valor);
@@ -103,22 +96,13 @@ export default function DetalhePedido({
       setSub("aReceber", "statusPagamento", statusDividido(next.statusEntrada, next.statusRestante, "Recebido"));
     }
   }
-  function setPagamentoFabiana(patch) {
-    Object.entries(patch).forEach(([k, v]) => set(k, v));
-    const next = { ...p, ...patch };
-    if (next.pagamentoFabianaDividido) {
-      setSub("pagoFabiana", "valor", totalDividido(next.valorEntradaFabiana, next.valorRestanteFabiana));
-      setSub("pagoFabiana", "statusPagamento", statusDividido(next.statusEntradaFabiana, next.statusRestanteFabiana, "Pago"));
-    }
-  }
-  // Mesma sugestão (mão de obra padrão × quantidade) que já existe na
-  // hora de criar o pedido — só que aqui pro caso de pedidos lançados
-  // pelo vendedor, que nunca passam por aquela tela e chegam com esse
-  // campo vazio. Sem valor, a despesa da Fabiana não é lançada sozinha.
+  // Sugestão de valor pro botão "Gerar no Contas a Pagar" — mão de obra
+  // padrão configurada × quantas camisas o dono está escolhendo pagar
+  // agora (ou o total do pedido, se ainda não digitou nada).
   const maoDeObraNum = parseFloat(maoDeObraPadrao) || 0;
-  const qtdPedido = parseFloat(p.quantidade) || 0;
-  const sugestaoValorFabiana = maoDeObraNum > 0 && qtdPedido > 0 ? (maoDeObraNum * qtdPedido).toFixed(2) : null;
-  const sugestaoPorCamisa = maoDeObraNum > 0 ? maoDeObraNum.toFixed(2) : null;
+  const qtdParaSugestao = parseFloat(qtdPagarFabiana) || parseFloat(p.quantidade) || 0;
+  const sugestaoValorPagarFabiana = maoDeObraNum > 0 && qtdParaSugestao > 0 ? (maoDeObraNum * qtdParaSugestao).toFixed(2) : null;
+  const despesaFabiana = (despesas || []).find((d) => d.pedidoId === p.id);
 
   return (
     <div>
@@ -486,81 +470,72 @@ export default function DetalhePedido({
                 </select>
               </Field>
               <div className="fx-serif mb-2" style={{ fontSize: 13, fontWeight: 600 }}>
-                Valor a pagar à {p.costureira || "Fabiana"}
+                Pagamento à {p.costureira || "Fabiana"}
               </div>
-              <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
-                Valor total do pedido inteiro (todas as {p.quantidade || 1} camisas). Se só parte for pra produção
-                agora (ex: 1 pra prova), preencha "Qtd. camisas já em produção" — o Contas a Pagar recebe só a
-                fração proporcional; o resto entra sozinho quando você aumentar essa quantidade.
+              <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
+                Escolha quantas camisas está pagando agora e o valor, e clique em gerar — cria (ou atualiza) a
+                despesa em Contas a Pagar. A baixa (marcar como paga) é feita lá, não aqui; quando você der baixa
+                em Contas a Pagar, esse pedido mostra "Pago" sozinho.
               </div>
-              <Field label="Valor por camisa (R$) — preenchendo aqui, o total abaixo é calculado sozinho e acompanha a quantidade automaticamente">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  style={{ ...inputStyle, maxWidth: 160 }}
-                  placeholder="ex: 120"
-                  value={p.valorPorCamisaFabiana}
-                  onChange={(e) => onDefinirValorPorCamisaFabiana(p.id, e.target.value)}
-                />
-                {!p.valorPorCamisaFabiana && sugestaoPorCamisa && (
-                  <button
-                    type="button"
-                    onClick={() => onDefinirValorPorCamisaFabiana(p.id, sugestaoPorCamisa)}
-                    style={{ color: BRASS, fontSize: 11, fontWeight: 600 }}
-                  >
-                    usar padrão configurado: R$ {sugestaoPorCamisa}
-                  </button>
-                )}
-              </Field>
-              <Field label="Qtd. camisas já em produção (deixe em branco = todas)">
-                <input
-                  type="number"
-                  min="0"
-                  style={{ ...inputStyle, maxWidth: 160 }}
-                  placeholder={String(p.quantidade || 1)}
-                  value={p.pagoFabiana.qtdCamisas}
-                  onChange={(e) => setSub("pagoFabiana", "qtdCamisas", e.target.value)}
-                />
-              </Field>
-              {p.valorPorCamisaFabiana ? (
+              <div className="flex items-end gap-3 flex-wrap mb-2">
+                <Field label="Quantas camisas pagar">
+                  <input
+                    type="number"
+                    min="0"
+                    style={{ ...inputStyle, maxWidth: 130 }}
+                    placeholder={String(p.quantidade || 1)}
+                    value={qtdPagarFabiana}
+                    onChange={(e) => setQtdPagarFabiana(e.target.value)}
+                  />
+                </Field>
+                <Field label="Valor (R$)">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    style={{ ...inputStyle, maxWidth: 140 }}
+                    placeholder="0,00"
+                    value={valorPagarFabiana}
+                    onChange={(e) => setValorPagarFabiana(e.target.value)}
+                  />
+                  {sugestaoValorPagarFabiana && (
+                    <button
+                      type="button"
+                      onClick={() => setValorPagarFabiana(sugestaoValorPagarFabiana)}
+                      style={{ color: BRASS, fontSize: 11, fontWeight: 600 }}
+                    >
+                      usar padrão: R$ {sugestaoValorPagarFabiana}
+                    </button>
+                  )}
+                </Field>
+                <button
+                  type="button"
+                  disabled={!(parseFloat(valorPagarFabiana) > 0)}
+                  onClick={() => {
+                    onGerarDespesaFabiana(p.id, { quantidade: qtdPagarFabiana, valor: valorPagarFabiana });
+                    setQtdPagarFabiana("");
+                    setValorPagarFabiana("");
+                  }}
+                  style={{
+                    background: BRASS,
+                    color: "#FFF",
+                    padding: "9px 16px",
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    fontSize: 13,
+                    opacity: parseFloat(valorPagarFabiana) > 0 ? 1 : 0.5,
+                  }}
+                >
+                  Gerar no Contas a Pagar
+                </button>
+              </div>
+              {despesaFabiana && (
                 <div className="mb-3" style={{ fontSize: 11, color: TEXT_MUTED }}>
-                  Total calculado sozinho: R$ {p.valorPorCamisaFabiana} × {p.quantidade || 1} camisas — não precisa
-                  editar o campo abaixo, ele já acompanha a quantidade do pedido.
+                  Já gerado: R$ {brl(parseFloat(despesaFabiana.valor) || 0)}
+                  {despesaFabiana.quantidadeCamisas ? ` (${despesaFabiana.quantidadeCamisas} camisas)` : ""} — status{" "}
+                  <strong>{despesaFabiana.status}</strong> em Contas a Pagar.
                 </div>
-              ) : (
-                !p.pagoFabiana.valor && (
-                  <div className="mb-3 px-3 py-2" style={{ background: "#F6E3D9", color: "#9C4A1E", borderRadius: 6, fontSize: 12 }}>
-                    Sem "Valor {p.costureira || "Fabiana"}" preenchido, a despesa dela <strong>não é lançada automaticamente</strong> em
-                    Contas a Pagar ao marcar "Em Produção" — pedidos lançados pelo vendedor não têm esse campo, então
-                    chegam sempre em branco. Preencha "Valor por camisa" acima (recomendado) ou o total abaixo.
-                  </div>
-                )
               )}
-              <CampoPagamento
-                labelValor={`Valor ${p.costureira || "Fabiana"} (R$)`}
-                labelPago="Pago"
-                valor={p.pagoFabiana.valor}
-                statusPagamento={p.pagoFabiana.statusPagamento}
-                onValor={(v) => setSub("pagoFabiana", "valor", v)}
-                onStatus={(v) => setSub("pagoFabiana", "statusPagamento", v)}
-                dividido={p.pagamentoFabianaDividido}
-                onToggleDividido={(v) => setPagamentoFabiana({ pagamentoFabianaDividido: v })}
-                labelDividido="Pagamento dividido (ex: uma camisa de cada vez)"
-                valorEntrada={p.valorEntradaFabiana}
-                statusEntrada={p.statusEntradaFabiana}
-                onValorEntrada={(v) => setPagamentoFabiana({ valorEntradaFabiana: v })}
-                onStatusEntrada={(v) => setPagamentoFabiana({ statusEntradaFabiana: v })}
-                labelEntrada="1ª parte (R$)"
-                labelStatusEntrada="Status da 1ª parte"
-                valorRestante={p.valorRestanteFabiana}
-                statusRestante={p.statusRestanteFabiana}
-                onValorRestante={(v) => setPagamentoFabiana({ valorRestanteFabiana: v })}
-                onStatusRestante={(v) => setPagamentoFabiana({ statusRestanteFabiana: v })}
-                labelRestante="2ª parte (R$)"
-                labelStatusRestante="Status da 2ª parte"
-                labelFalta="Falta pagar"
-              />
               {p.pagoFabiana.statusPagamento === "Pago" && onReabrirPagamentoFabiana && (
                 <button
                   type="button"
