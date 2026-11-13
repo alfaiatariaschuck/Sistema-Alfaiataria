@@ -278,6 +278,36 @@ export default function Compras({
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
   }
 
+  // Mesmo relatório que aparece na tela, em formato de lista — pra mandar
+  // pra Fabi conferir o que ela já cortou/usou de cada rolo e confirmar de
+  // volta (por WhatsApp, ou imprimindo e preenchendo na mão).
+  function textoParaFabiana(codigo, itemEstoque, lista) {
+    const linhas = [`*Baixa de estoque — ${codigo}*`, `Saldo no rolo: ${itemEstoque.saldoMetros.toFixed(1)}m`, ""];
+    lista.forEach((item, i) => {
+      linhas.push(`${i + 1}. *${item.cliente}*`);
+      linhas.push(`Qtd ${item.qtd}${item.metragem ? ` · Medida: ${item.metragem}` : ""}`);
+      linhas.push("");
+    });
+    linhas.push("Me confirma quantos metros já usou de cada um, por favor.");
+    return linhas.join("\n");
+  }
+
+  async function copiarTextoFabiana(codigo, itemEstoque, lista) {
+    const texto = textoParaFabiana(codigo, itemEstoque, lista);
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado(`baixa:${codigo}`);
+      setTimeout(() => setCopiado(null), 2000);
+    } catch {
+      // clipboard indisponível — o botão de WhatsApp já leva o mesmo texto
+    }
+  }
+
+  function abrirWhatsappFabiana(codigo, itemEstoque, lista) {
+    const texto = textoParaFabiana(codigo, itemEstoque, lista);
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
+  }
+
   return (
     <div>
       <PageTitle eyebrow={`${pendentes} item(ns) pendente(s)`} title="Compras" />
@@ -314,15 +344,46 @@ export default function Compras({
           )}
           {[...porCodigo.entries()].map(([codigo, lista]) => {
             const itemEstoque = encontrarEstoquePorCodigo(codigo);
+            // "Comprometido" = soma das medidas já lançadas nos pedidos
+            // desta lista, esperando a Fabi confirmar o que ela de fato
+            // usou — o saldo do rolo (confirmado) ainda não desconta isso,
+            // então essa é uma estimativa de quanto já está reservado
+            // mesmo sem a baixa real ter acontecido ainda.
+            const comprometido = lista.reduce((s, item) => s + (metragemParaNumero(item.metragem) || 0), 0);
+            const disponivelReal = itemEstoque.saldoMetros - comprometido;
             return (
               <Card key={codigo} style={{ padding: 0, marginBottom: 16, overflow: "hidden" }}>
-                <div className="flex items-center justify-between" style={{ background: INK, padding: "10px 16px" }}>
-                  <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-between flex-wrap gap-2" style={{ background: INK, padding: "10px 16px" }}>
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <PackageMinus size={14} color="#FFF" />
                     <span className="fx-mono" style={{ color: "#FFF", fontSize: 13, fontWeight: 700 }}>
                       {codigo}
                     </span>
-                    <span style={{ color: "#8593A3", fontSize: 12 }}> · {lista.length} peça(s) · saldo {itemEstoque.saldoMetros.toFixed(1)}m</span>
+                    <span className="fx-mono" style={{ color: "#8593A3", fontSize: 12 }}>
+                      {" "}
+                      · {lista.length} peça(s) · saldo {itemEstoque.saldoMetros.toFixed(1)}m · comprometido {comprometido.toFixed(1)}m ·{" "}
+                      <span style={{ color: disponivelReal < 0 ? "#E0916B" : "#7FCB85", fontWeight: 700 }}>
+                        disponível real {disponivelReal.toFixed(1)}m
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => copiarTextoFabiana(codigo, itemEstoque, lista)}
+                      className="flex items-center gap-1"
+                      style={{ background: "rgba(255,255,255,0.12)", color: "#FFF", padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                    >
+                      <Copy size={12} /> {copiado === `baixa:${codigo}` ? "Copiado!" : "Copiar p/ Fabi"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => abrirWhatsappFabiana(codigo, itemEstoque, lista)}
+                      className="flex items-center gap-1"
+                      style={{ background: "#25D366", color: "#FFF", padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                    >
+                      WhatsApp
+                    </button>
                   </div>
                 </div>
                 {lista.map((item, i) => (
