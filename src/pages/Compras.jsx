@@ -5,6 +5,7 @@ import { BRASS, BRASS_SOFT, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputSty
 import { brl, metragemParaNumero, pedidoFechado } from "../lib/helpers";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
 import RelatorioBaixaEstoqueImprimivel from "./RelatorioBaixaEstoqueImprimivel";
+import ResumoBaixaEstoqueImprimivel from "./ResumoBaixaEstoqueImprimivel";
 
 // Junta variações de digitação (maiúscula/minúscula, espaço a mais) do
 // mesmo fornecedor conhecido num nome só, pra tudo ficar concentrado num
@@ -58,6 +59,7 @@ export default function Compras({
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
   const [desfazerDisponivel, setDesfazerDisponivel] = useState(null);
   const [imprimirCodigo, setImprimirCodigo] = useState(null);
+  const [mostrarResumo, setMostrarResumo] = useState(false);
   const desfazerTimeoutRef = useRef(null);
 
   function chaveDe(item) {
@@ -312,6 +314,41 @@ export default function Compras({
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
   }
 
+  // Resumo curto (só código + comprometido, todos os códigos juntos) —
+  // pedido do Tales (14/11/2026): a ficha detalhada por cliente não
+  // imprimiu completa no celular da Fabi, então pra ela se orientar
+  // rápido o melhor é essa versão mínima, que sempre cabe numa página
+  // (ou numa mensagem) só.
+  function linhasResumo() {
+    return [...porCodigo.entries()]
+      .map(([codigo, lista]) => ({
+        codigo,
+        comprometido: lista.reduce((s, item) => s + (metragemParaNumero(item.metragem) || 0), 0),
+      }))
+      .sort((a, b) => a.codigo.localeCompare(b.codigo));
+  }
+
+  function textoResumoFabiana() {
+    const linhas = [`*Resumo de estoque comprometido*`, ""];
+    linhasResumo().forEach((l) => linhas.push(`${l.codigo} — ${l.comprometido.toFixed(1)}m`));
+    linhas.push("", "Me avisa quando for cortar, pra eu dar baixa certinha.");
+    return linhas.join("\n");
+  }
+
+  async function copiarResumoFabiana() {
+    try {
+      await navigator.clipboard.writeText(textoResumoFabiana());
+      setCopiado("resumo-baixa");
+      setTimeout(() => setCopiado(null), 2000);
+    } catch {
+      // clipboard indisponível — o botão de WhatsApp já leva o mesmo texto
+    }
+  }
+
+  function abrirWhatsappResumoFabiana() {
+    window.open(`https://wa.me/?text=${encodeURIComponent(textoResumoFabiana())}`, "_blank");
+  }
+
   return (
     <div>
       <PageTitle eyebrow={`${pendentes} item(ns) pendente(s)`} title="Compras" />
@@ -341,11 +378,48 @@ export default function Compras({
 
       {aba === "baixa" ? (
         <div>
+          {itensBaixaPendente.length > 0 && (
+            <Card style={{ padding: 16 }} className="mb-5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  A ficha detalhada por cliente pode não imprimir inteira em alguns celulares — esse resumo (só código e
+                  comprometido) é mais curto e mais fácil dela se orientar rápido.
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={copiarResumoFabiana}
+                    className="flex items-center gap-1"
+                    style={{ background: BRASS_SOFT, color: BRASS, padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                  >
+                    <Copy size={12} /> {copiado === "resumo-baixa" ? "Copiado!" : "Copiar resumo"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={abrirWhatsappResumoFabiana}
+                    className="flex items-center gap-1"
+                    style={{ background: "#25D366", color: "#FFF", padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                  >
+                    WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarResumo(true)}
+                    className="flex items-center gap-1"
+                    style={{ background: INK, color: "#FFF", padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                  >
+                    <Printer size={12} /> Imprimir resumo
+                  </button>
+                </div>
+              </div>
+            </Card>
+          )}
           {itensBaixaPendente.length === 0 && (
             <Card style={{ padding: 20 }}>
               <Empty texto="Nenhum item com tecido em estoque esperando baixa no momento." />
             </Card>
           )}
+          {mostrarResumo && <ResumoBaixaEstoqueImprimivel linhas={linhasResumo()} onFechar={() => setMostrarResumo(false)} />}
           {[...porCodigo.entries()].map(([codigo, lista]) => {
             const itemEstoque = encontrarEstoquePorCodigo(codigo);
             // "Comprometido" = soma das medidas já lançadas nos pedidos
