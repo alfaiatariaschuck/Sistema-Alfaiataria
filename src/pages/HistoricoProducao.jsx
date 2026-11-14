@@ -885,6 +885,25 @@ export default function HistoricoProducao({
     return { total, media: total / comMargemConsiderada.length };
   }, [comMargemConsiderada]);
 
+  // Calça e Colete avulsos, separados do resto — pedido do Tales
+  // (14/11/2026): como só existem como esse tipo quando vendidos
+  // sozinhos (dentro de um Costume/Traje eles já entram como
+  // "Costume"/"Traje" na composição), o ticket médio e os dias de
+  // produção bem menores distorcem a leitura dos tipos "cheios" se
+  // ficarem misturados nos gráficos gerais. Só separa a visão aqui —
+  // não entra em pontuação/premiação (decisão em aberto, aguardando
+  // definição com a parte jurídica sobre vínculo empregatício).
+  const calcaColeteAvulso = useMemo(
+    () =>
+      ["Calça", "Colete"].map((tipo) => ({
+        tipo,
+        qtd: qtdPorTipo.find((d) => d.chave === tipo)?.valor ?? 0,
+        dias: porTipo.find((d) => d.chave === tipo)?.valor ?? null,
+        ticketMedio: precoCustoPorTipo.find((d) => d.tipo === tipo)?.precoMedio ?? null,
+      })),
+    [qtdPorTipo, porTipo, precoCustoPorTipo]
+  );
+
   // Retrabalho: peças que precisaram de ajuste extra além do fluxo
   // normal — sinaliza onde a produção está perdendo tempo/qualidade
   // além do previsto.
@@ -1032,6 +1051,39 @@ export default function HistoricoProducao({
           </Card>
         )}
       </div>
+
+      {calcaColeteAvulso.some((d) => d.qtd > 0) && (
+        <Card style={{ padding: 20 }} className="mb-6">
+          <div className="fx-serif mb-1" style={{ fontSize: 15, fontWeight: 600 }}>
+            Calça e Colete avulsos
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 16 }}>
+            Só peças vendidas sozinhas (não dentro de um Costume ou Traje, que já entram nesses tipos) — separado do
+            resto porque o ticket médio e o tempo de produção, bem menores, distorcem a leitura dos tipos "cheios" se
+            ficarem misturados.
+          </div>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+            {calcaColeteAvulso.map((d) => (
+              <div key={d.tipo} style={{ background: "#F3EEDF", borderRadius: 8, padding: "12px 14px" }}>
+                <div className="fx-serif mb-1" style={{ fontSize: 13, fontWeight: 600 }}>
+                  {d.tipo}
+                </div>
+                <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  Entregues: <strong style={{ color: INK }}>{d.qtd}</strong>
+                </div>
+                <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                  Dias médios: <strong style={{ color: INK }}>{d.dias !== null ? `${d.dias}d` : "—"}</strong>
+                </div>
+                {mostrarMargem && (
+                  <div style={{ fontSize: 12, color: TEXT_MUTED }}>
+                    Ticket médio: <strong style={{ color: INK }}>{d.ticketMedio !== null ? brl(d.ticketMedio) : "—"}</strong>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {mostrarComparativos && (
         <Card style={{ padding: 20 }} className="mb-6">
