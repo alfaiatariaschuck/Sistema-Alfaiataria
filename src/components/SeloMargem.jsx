@@ -7,7 +7,7 @@ import React from "react";
 export function veredictoMargem(margemPercentual) {
   if (margemPercentual == null || isNaN(margemPercentual)) return null;
   if (margemPercentual >= 60) return { texto: "Pode vender", bg: "#DCEBDD", fg: "#2C6E31" };
-  if (margemPercentual >= 55) return { texto: "Margem baixa", bg: "#F6E3D9", fg: "#9C4A1E" };
+  if (margemPercentual >= 55) return { texto: "Não aprovado", bg: "#F6E3D9", fg: "#9C4A1E" };
   return { texto: "Não autorizado", bg: "#9C2B2B", fg: "#FFFFFF" };
 }
 
