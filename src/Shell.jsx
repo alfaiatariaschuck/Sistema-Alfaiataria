@@ -1052,6 +1052,7 @@ export default function Shell() {
                   irParaPlano={irParaPlano}
                   estoqueTecidos={estoqueTecidos}
                   onDarBaixaEstoque={darBaixaEstoque}
+                  consumoPorTecido={consumoPorTecido}
                 />
               )}
               {tab === "painel-alfaiataria" && !loadingPecas && (

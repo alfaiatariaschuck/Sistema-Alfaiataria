@@ -1,9 +1,10 @@
 import React, { useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock, Copy, PackageMinus, Search, Undo2 } from "lucide-react";
+import { CheckCircle2, Clock, Copy, PackageMinus, Printer, Search, Undo2 } from "lucide-react";
 import { Card, Empty, PageTitle, Pill } from "../components/ui";
 import { BRASS, BRASS_SOFT, FORNECEDORES_TECIDO, INK, LINE, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, metragemParaNumero, pedidoFechado } from "../lib/helpers";
 import BaixaEstoqueTecido from "../components/BaixaEstoqueTecido";
+import RelatorioBaixaEstoqueImprimivel from "./RelatorioBaixaEstoqueImprimivel";
 
 // Junta variações de digitação (maiúscula/minúscula, espaço a mais) do
 // mesmo fornecedor conhecido num nome só, pra tudo ficar concentrado num
@@ -46,6 +47,7 @@ export default function Compras({
   irParaPlano,
   estoqueTecidos = [],
   onDarBaixaEstoque,
+  consumoPorTecido = [],
 }) {
   const [aba, setAba] = useState("compra");
   const [busca, setBusca] = useState("");
@@ -54,6 +56,7 @@ export default function Compras({
   const [copiado, setCopiado] = useState(null);
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
   const [desfazerDisponivel, setDesfazerDisponivel] = useState(null);
+  const [imprimirCodigo, setImprimirCodigo] = useState(null);
   const desfazerTimeoutRef = useRef(null);
 
   function chaveDe(item) {
@@ -384,6 +387,14 @@ export default function Compras({
                     >
                       WhatsApp
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setImprimirCodigo(codigo)}
+                      className="flex items-center gap-1"
+                      style={{ background: "rgba(255,255,255,0.12)", color: "#FFF", padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+                    >
+                      <Printer size={12} /> Imprimir
+                    </button>
                   </div>
                 </div>
                 {lista.map((item, i) => (
@@ -415,6 +426,26 @@ export default function Compras({
               </Card>
             );
           })}
+          {imprimirCodigo &&
+            (() => {
+              const lista = porCodigo.get(imprimirCodigo);
+              const itemEstoque = encontrarEstoquePorCodigo(imprimirCodigo);
+              if (!lista || !itemEstoque) return null;
+              const comprometido = lista.reduce((s, item) => s + (metragemParaNumero(item.metragem) || 0), 0);
+              const disponivelReal = itemEstoque.saldoMetros - comprometido;
+              const jaBaixado = consumoPorTecido.find((c) => c.estoqueId === itemEstoque.id)?.totalMetros || 0;
+              return (
+                <RelatorioBaixaEstoqueImprimivel
+                  codigo={imprimirCodigo}
+                  itemEstoque={itemEstoque}
+                  lista={lista}
+                  comprometido={comprometido}
+                  disponivelReal={disponivelReal}
+                  jaBaixado={jaBaixado}
+                  onFechar={() => setImprimirCodigo(null)}
+                />
+              );
+            })()}
         </div>
       ) : (
         <>
