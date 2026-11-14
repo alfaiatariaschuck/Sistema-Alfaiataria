@@ -895,7 +895,38 @@ function renderSwatches(){
   $('btn-org').hidden = !canWrite() || !mine.length;
   $('btn-add').hidden = !canWrite();
 }
-function canWrite(){ return store.mode==='local' || (store.mode==='db' && !!assets) }
+function canWrite(){ return store.mode==='local' || store.mode==='bridge' || (store.mode==='db' && !!assets) }
+
+/* ---------- ponte com o Sistema-Alfaiataria (quando embutido num iframe) ----------
+   O sistema (Shell.jsx) escuta "message" e responde no mesmo formato — ver
+   onMensagemProvador lá. Sem resposta num tempo curto (ex: abrindo este
+   arquivo sozinho, fora do sistema), cai no modo local de sempre. */
+const BRIDGE_SRC = 'provador-schuck', BRIDGE_TIMEOUT = 4000;
+let bridgePromise = null, bridgeResolvePing = null, bridgeReqId = 0;
+const bridgeWaiting = new Map();
+window.addEventListener('message', e=>{
+  if(e.origin!==window.location.origin) return;
+  const m = e.data; if(!m || typeof m!=='object' || m.source!=='sistema-alfaiataria') return;
+  if(m.type==='provador:pong'){ if(bridgeResolvePing) bridgeResolvePing(true); return }
+  if(bridgeWaiting.has(m.reqId)){ const {resolve,reject} = bridgeWaiting.get(m.reqId); bridgeWaiting.delete(m.reqId); m.error ? reject(new Error(m.error)) : resolve(m) }
+});
+function checkBridge(){
+  if(bridgePromise) return bridgePromise;
+  bridgePromise = new Promise(res=>{
+    bridgeResolvePing = res;
+    try{ window.parent.postMessage({source:BRIDGE_SRC, type:'provador:ping'}, '*') }catch(e){ res(false); return }
+    setTimeout(()=>res(false), BRIDGE_TIMEOUT);
+  });
+  return bridgePromise;
+}
+function bridgeCall(type, payload){
+  return new Promise((resolve,reject)=>{
+    const reqId = ++bridgeReqId;
+    bridgeWaiting.set(reqId, {resolve, reject});
+    try{ window.parent.postMessage({source:BRIDGE_SRC, type, reqId, payload}, '*') }catch(e){ bridgeWaiting.delete(reqId); reject(e); return }
+    setTimeout(()=>{ if(bridgeWaiting.has(reqId)){ bridgeWaiting.delete(reqId); reject(new Error('timeout')) } }, BRIDGE_TIMEOUT);
+  });
+}
 
 /* ---------- armazenamento ---------- */
 async function initStore(){
@@ -913,6 +944,16 @@ async function initStore(){
       if(S.fabric && !S.fabric.make){ const cur = saved.find(f=>f.id===S.fabric.id); if(cur){ cur.canvas=S.fabric.canvas; S.fabric=cur; updateTag() } }
       renderSwatches();
     }, err=>{ $('store-note').textContent='mostruário indisponível agora'; console.warn(err) });
+    return;
+  }
+  const temPonte = await checkBridge();
+  if(temPonte){
+    store.mode='bridge';
+    $('store-note').textContent='compartilhado entre todo mundo';
+    try{
+      const r = await bridgeCall('provador:list', {});
+      saved = (r.fabrics||[]).map(f=>({...f, src:f.url, thumb:f.url}));
+    }catch(e){ $('store-note').textContent='mostruário indisponível agora'; console.warn(e); saved=[] }
   } else {
     store.mode='local';
     $('store-note').textContent='salvo só neste aparelho';
@@ -930,6 +971,10 @@ async function addFabric({canvas, nome, codigo, cm, rot, peca, tipo}){
   const ar = canvas.height/canvas.width, sw = ar>1 ? Math.round(384/ar) : 384, sh = ar>1 ? 384 : Math.round(384*ar);
   const small = mkCanvas(sw,sh); small.getContext('2d').drawImage(canvas,0,0,sw,sh);
   const dataUrl = small.toDataURL('image/jpeg',.85);
+  if(store.mode==='bridge'){
+    const r = await bridgeCall('provador:add', {nome, codigo, cm, rot:!!rot, peca, tipo, imageDataUrl:dataUrl});
+    const fb = {...r.fabric, src:r.fabric.url, thumb:r.fabric.url, canvas}; saved.unshift(fb); renderSwatches(); return fb;
+  }
   const rec = {id:'loc-'+Date.now(), nome, codigo, cm, rot:!!rot, peca, tipo:tipo||null, data:dataUrl};
   const all = lsGet('schuck-tecidos')||[]; all.unshift(rec);
   if(!lsSet('schuck-tecidos',all)) throw {code:'quota'};
@@ -938,6 +983,7 @@ async function addFabric({canvas, nome, codigo, cm, rot, peca, tipo}){
 async function updateFabric(fb, patch){
   try{
     if(store.mode==='db'){ await db.collection('tecidos').doc(fb.id).update(patch) }
+    else if(store.mode==='bridge'){ await bridgeCall('provador:update', {id:fb.id, patch}); Object.assign(fb,patch); renderSwatches() }
     else { const all=(lsGet('schuck-tecidos')||[]).map(r=>r.id===fb.id?{...r,...patch}:r); lsSet('schuck-tecidos',all); Object.assign(fb,patch); renderSwatches() }
     if(S.fabric && S.fabric.id===fb.id){ Object.assign(S.fabric,patch); updateTag() }
     toast('Tecido atualizado.');
@@ -946,6 +992,7 @@ async function updateFabric(fb, patch){
 async function removeFabric(fb){
   try{
     if(store.mode==='db'){ await db.collection('tecidos').doc(fb.id).delete(); if(assets && fb.assetId){ try{ await assets.delete(fb.assetId) }catch(e){} } }
+    else if(store.mode==='bridge'){ await bridgeCall('provador:remove', {id:fb.id}); saved=saved.filter(f=>f.id!==fb.id); renderSwatches() }
     else { lsSet('schuck-tecidos',(lsGet('schuck-tecidos')||[]).filter(r=>r.id!==fb.id)); saved=saved.filter(f=>f.id!==fb.id); renderSwatches() }
     toast('Tecido excluído.');
   }catch(e){ toast('Não deu para excluir agora. Tente de novo.') }

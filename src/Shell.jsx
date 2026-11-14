@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   Archive,
@@ -54,6 +54,7 @@ import { useNomesClientes } from "./hooks/useNomesClientes";
 import { useHistoricoVendas } from "./hooks/useHistoricoVendas";
 import { useTelefonesClientes } from "./hooks/useTelefonesClientes";
 import { useEstoqueTecidos } from "./hooks/useEstoqueTecidos";
+import { useProvadorTecidos } from "./hooks/useProvadorTecidos";
 import { useDespesas } from "./hooks/useDespesas";
 import { useEquipeProducao } from "./hooks/useEquipeProducao";
 import { useFornecedores } from "./hooks/useFornecedores";
@@ -254,6 +255,62 @@ export default function Shell() {
     desfazerBaixa,
     removerTecido: removerEstoque,
   } = useEstoqueTecidos();
+  const {
+    tecidos: tecidosProvador,
+    adicionar: adicionarTecidoProvador,
+    atualizar: atualizarTecidoProvador,
+    remover: removerTecidoProvador,
+  } = useProvadorTecidos();
+
+  // Ponte com o Provador de Tecidos (iframe em public/provador/index.html,
+  // ferramenta da Ana) — ele fala com o sistema por postMessage pra guardar
+  // o mostruário no Supabase em vez de só no navegador. Guarda o estado mais
+  // recente numa ref pra não precisar reinscrever o listener a cada render.
+  const provadorStateRef = useRef(null);
+  provadorStateRef.current = {
+    tecidos: tecidosProvador,
+    adicionar: adicionarTecidoProvador,
+    atualizar: atualizarTecidoProvador,
+    remover: removerTecidoProvador,
+  };
+  useEffect(() => {
+    async function onMensagemProvador(e) {
+      if (e.origin !== window.location.origin) return;
+      const m = e.data;
+      if (!m || typeof m !== "object" || m.source !== "provador-schuck") return;
+      if (m.type === "provador:ping") {
+        try {
+          e.source.postMessage({ source: "sistema-alfaiataria", type: "provador:pong" }, "*");
+        } catch {
+          // iframe fechado/trocado entre o ping e a resposta — sem problema
+        }
+        return;
+      }
+      const reply = (extra) => {
+        try {
+          e.source.postMessage({ source: "sistema-alfaiataria", type: m.type + ":result", reqId: m.reqId, ...extra }, "*");
+        } catch {
+          // idem
+        }
+      };
+      const st = provadorStateRef.current;
+      try {
+        if (m.type === "provador:list") reply({ fabrics: st.tecidos });
+        else if (m.type === "provador:add") reply({ fabric: await st.adicionar(m.payload) });
+        else if (m.type === "provador:update") {
+          await st.atualizar(m.payload.id, m.payload.patch);
+          reply({});
+        } else if (m.type === "provador:remove") {
+          await st.remover(m.payload.id);
+          reply({});
+        }
+      } catch (err) {
+        reply({ error: err?.message || "erro desconhecido" });
+      }
+    }
+    window.addEventListener("message", onMensagemProvador);
+    return () => window.removeEventListener("message", onMensagemProvador);
+  }, []);
   const { despesas, criarDespesa, marcarPaga, atualizarValorPago, atualizarValorTotalDespesa, atualizarVencimentoDespesa, atualizarDespesa, removerDespesa } = useDespesas();
   const { equipe, loading: loadingEquipe, adicionarMembro, atualizarMembro, removerMembro } = useEquipeProducao();
   const { fornecedores, loading: loadingFornecedores, adicionarFornecedor, atualizarFornecedor, removerFornecedor } = useFornecedores();
