@@ -175,7 +175,10 @@ const NAV_SECUNDARIA = NAV.filter((n) => !n.primary);
 
 export default function Shell() {
   const { sair } = useAuth();
-  const [tab, setTab] = useState("dashboard");
+  // Começa no Provador (sem nada sigiloso) em vez do painel com valores —
+  // pedido do Tales (14/11/2026): ele abre o sistema direto na frente do
+  // cliente, então a primeira tela nunca pode ser financeira.
+  const [tab, setTab] = useState("provador");
   const [selecionado, setSelecionado] = useState(null);
   const [erroAutomacao, setErroAutomacao] = useState(null);
   const [selecionadaPeca, setSelecionadaPeca] = useState(null);
@@ -193,9 +196,11 @@ export default function Shell() {
   const [mostrarMais, setMostrarMais] = useState(false);
   // Só o grupo da aba atual começa aberto — os outros ficam recolhidos pra
   // lateral não ficar gigante; abrir/fechar não muda a aba selecionada.
-  const [gruposAbertos, setGruposAbertos] = useState(
-    () => new Set(["Provador de Tecidos", NAV.find((n) => n.id === "dashboard")?.grupo])
-  );
+  // Todo mundo começa fechado — pedido do Tales (14/11/2026): com o
+  // Camisaria sempre aberto, o menu já mostrava "Painel Camisaria
+  // Fabiana" (valores) de cara, mesmo sem clicar em nada. Agora só abre
+  // o que a pessoa clicar.
+  const [gruposAbertos, setGruposAbertos] = useState(() => new Set());
   // "Modo apresentação" (pedido do Tales, 14/11/2026) — ele usa o sistema
   // direto na frente do cliente, então esconde custo/margem (informação
   // gerencial) enquanto ligado; persiste no navegador pra não desligar

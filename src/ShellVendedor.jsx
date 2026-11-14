@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { BarChart3, Calculator, CalendarDays, ChevronRight, ClipboardList, Compass, LogOut, Plus, Ruler, Trophy } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { BarChart3, Calculator, CalendarDays, Camera, ChevronRight, ClipboardList, Compass, LogOut, Plus, Receipt, Ruler, Trophy } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePedidos } from "./hooks/usePedidos";
 import { useNomesClientes } from "./hooks/useNomesClientes";
+import { useProvadorTecidos } from "./hooks/useProvadorTecidos";
 import { salvarDadosPessoaisCliente } from "./lib/clientes";
 import { BRASS, CANVAS, INK, INK_SOFT, LINE, STATUS_STYLE, TEXT_MUTED } from "./lib/constants";
 import { brl, fmtData } from "./lib/helpers";
@@ -14,6 +15,7 @@ import MinhaComissaoVendedor from "./pages/MinhaComissaoVendedor";
 import FunilVendas from "./components/FunilVendas";
 import AgendaComercial from "./components/AgendaComercial";
 import RankingIndicacao from "./pages/RankingIndicacao";
+import Orcamento from "./pages/Orcamento";
 
 // App enxuto pro vendedor: só a ficha de pedido de camisa (criar e
 // editar o que ele mesmo lançou) — nada de painéis, financeiro,
@@ -25,6 +27,56 @@ export default function ShellVendedor() {
   const [selecionado, setSelecionado] = useState(null);
   const { pedidos, loading, saving, criarPedido, atualizarCampo, atualizarSubcampo, adicionarTecido, atualizarTecido } = usePedidos();
   const { nomesClientes, clientesBase, recarregarNomesClientes } = useNomesClientes();
+  const { tecidos: tecidosProvador, adicionar: adicionarTecidoProvador, atualizar: atualizarTecidoProvador, remover: removerTecidoProvador } = useProvadorTecidos();
+
+  // Mesma ponte do Shell do dono — o Provador de Tecidos (iframe) fala
+  // com o sistema por postMessage pra guardar o mostruário no Supabase,
+  // compartilhado com o dono, em vez de só no navegador do Deivid.
+  const provadorStateRef = useRef(null);
+  provadorStateRef.current = {
+    tecidos: tecidosProvador,
+    adicionar: adicionarTecidoProvador,
+    atualizar: atualizarTecidoProvador,
+    remover: removerTecidoProvador,
+  };
+  useEffect(() => {
+    async function onMensagemProvador(e) {
+      if (e.origin !== window.location.origin) return;
+      const m = e.data;
+      if (!m || typeof m !== "object" || m.source !== "provador-schuck") return;
+      if (m.type === "provador:ping") {
+        try {
+          e.source.postMessage({ source: "sistema-alfaiataria", type: "provador:pong" }, "*");
+        } catch {
+          // iframe fechado/trocado entre o ping e a resposta — sem problema
+        }
+        return;
+      }
+      const reply = (extra) => {
+        try {
+          e.source.postMessage({ source: "sistema-alfaiataria", type: m.type + ":result", reqId: m.reqId, ...extra }, "*");
+        } catch {
+          // idem
+        }
+      };
+      const st = provadorStateRef.current;
+      try {
+        if (m.type === "provador:list") reply({ fabrics: st.tecidos });
+        else if (m.type === "provador:add") reply({ fabric: await st.adicionar(m.payload) });
+        else if (m.type === "provador:update") {
+          await st.atualizar(m.payload.id, m.payload.patch);
+          reply({});
+        } else if (m.type === "provador:remove") {
+          await st.remover(m.payload.id);
+          reply({});
+        }
+      } catch (err) {
+        reply({ error: err?.message || "erro desconhecido" });
+      }
+    }
+    window.addEventListener("message", onMensagemProvador);
+    return () => window.removeEventListener("message", onMensagemProvador);
+  }, []);
 
   // Mesma correção aplicada no Shell do dono: "medidas" não é subcampo de
   // aReceber/pagoFabiana, então atualizarSubcampo ignorava o update em
@@ -192,10 +244,66 @@ export default function ShellVendedor() {
         >
           <Trophy size={15} /> Ranking de Indicação
         </button>
+        <button
+          onClick={() => {
+            setTab("provador");
+            setSelecionado(null);
+          }}
+          className="flex items-center gap-2"
+          style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+            background: tab === "provador" ? INK : "#EDEAE0",
+            color: tab === "provador" ? "#FFF" : INK_SOFT,
+          }}
+        >
+          <Camera size={15} /> Provador de Tecidos
+        </button>
+        <button
+          onClick={() => {
+            setTab("orcamento");
+            setSelecionado(null);
+          }}
+          className="flex items-center gap-2"
+          style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+            background: tab === "orcamento" ? INK : "#EDEAE0",
+            color: tab === "orcamento" ? "#FFF" : INK_SOFT,
+          }}
+        >
+          <Receipt size={15} /> Orçamento
+        </button>
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6">
         {tab === "novo" && <VendedorNovoPedido onSalvar={salvar} nomesClientes={nomesClientes} nomeVendedor={perfil?.nome} pedidos={pedidos} />}
+
+        {tab === "provador" && (
+          <div style={{ height: "calc(100vh - 230px)", minHeight: 480, borderRadius: 10, overflow: "hidden", border: `1px solid ${LINE}` }}>
+            <iframe src="/provador/index.html" title="Provador de Tecidos" style={{ width: "100%", height: "100%", border: "none" }} />
+          </div>
+        )}
+
+        {tab === "orcamento" && (
+          // modelosCamisa, custoAviamentosPorPecaBase e estoqueTecidos ficam de
+          // fora de propósito. modelos_camisa/aviamentos são dono-only por RLS
+          // (schema_v41/v46) — o login do Deivid não enxerga essas linhas mesmo
+          // se eu pedir aqui, então o custo de aviamento não entra na conta dele
+          // e o selo de margem fica um pouco otimista (real pode ser mais
+          // baixa). estoqueTecidos foi deixado de fora à parte: o Orcamento usa
+          // esse valor pra autocompletar o R$/metro quando o código bate com o
+          // estoque (valorMetroDoEstoque em Orcamento.jsx), o que revelaria o
+          // custo de compra do tecido pro Deivid — justamente o dado que "ele
+          // não pode ver minha margem jamais" pede pra esconder. Avisar o
+          // Tales sobre os dois pontos antes de confiar o selo do Deivid como
+          // exato.
+          <Orcamento apenasCamisa modoApresentacao pecas={[]} equipe={[]} />
+        )}
 
         {tab === "ranking-indicacao" && <RankingIndicacao clientesBase={clientesBase} podeMarcarEntregue={false} />}
 

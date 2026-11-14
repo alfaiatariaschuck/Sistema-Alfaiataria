@@ -16,8 +16,8 @@ function tecidoVazio() {
   return { codigo: "", nomenclatura: "", qtd: 1, metragem: "", valorMetro: "" };
 }
 
-function itemVazio() {
-  return { tipo: TIPOS_PECA[0], tecidos: [tecidoVazio()], valorVenda: "" };
+function itemVazio(tipoPadrao) {
+  return { tipo: tipoPadrao || TIPOS_PECA[0], tecidos: [tecidoVazio()], valorVenda: "" };
 }
 
 let proximoId = 1;
@@ -45,13 +45,15 @@ export default function Orcamento({
   onCriarModeloCamisa,
   estoqueTecidos = [],
   modoApresentacao = false,
+  apenasCamisa = false,
 }) {
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const custoHora = useMemo(() => custoPorHoraAlfaiataria(pecas, equipe), [pecas, equipe]);
-  const [itens, setItens] = useState(() => [{ id: novoId(), ...itemVazio() }]);
+  const tipoPadrao = apenasCamisa ? TIPO_CAMISA : TIPOS_PECA[0];
+  const [itens, setItens] = useState(() => [{ id: novoId(), ...itemVazio(tipoPadrao) }]);
 
   function addItem() {
-    setItens((prev) => [...prev, { id: novoId(), ...itemVazio() }]);
+    setItens((prev) => [...prev, { id: novoId(), ...itemVazio(tipoPadrao) }]);
   }
   function removerItem(id) {
     setItens((prev) => (prev.length > 1 ? prev.filter((it) => it.id !== id) : prev));
@@ -83,7 +85,7 @@ export default function Orcamento({
     );
   }
   function limpar() {
-    setItens([{ id: novoId(), ...itemVazio() }]);
+    setItens([{ id: novoId(), ...itemVazio(tipoPadrao) }]);
   }
 
   // Custo de cada peça — mesma conta usada nos pedidos de verdade
@@ -118,24 +120,31 @@ export default function Orcamento({
 
   return (
     <div>
-      <PageTitle eyebrow="Alfaiataria + Camisaria" title="Orçamento" />
+      <PageTitle eyebrow={apenasCamisa ? "Camisaria" : "Alfaiataria + Camisaria"} title="Orçamento" />
       <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 20 }}>
-        Monte o orçamento completo do cliente, misturando peças de alfaiataria e camisas no mesmo orçamento — essa
-        tela não salva nada no sistema. Adicione quantas peças precisar; o total embaixo soma tudo.
+        {apenasCamisa
+          ? "Monte o orçamento da camisa do cliente — essa tela não salva nada no sistema. Adicione quantas camisas precisar; o total embaixo soma tudo."
+          : "Monte o orçamento completo do cliente, misturando peças de alfaiataria e camisas no mesmo orçamento — essa tela não salva nada no sistema. Adicione quantas peças precisar; o total embaixo soma tudo."}
       </div>
 
       {itensComCusto.map((it) => (
         <Card key={it.id} style={{ padding: 20 }} className="mb-4">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <Field label="Tipo">
-              <select style={{ ...inputStyle, maxWidth: 180 }} value={it.tipo} onChange={(e) => setTipoItem(it.id, e.target.value)}>
-                {TIPOS_ITEM.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            {apenasCamisa ? (
+              <div className="fx-serif" style={{ fontSize: 14, fontWeight: 600 }}>
+                Camisa
+              </div>
+            ) : (
+              <Field label="Tipo">
+                <select style={{ ...inputStyle, maxWidth: 180 }} value={it.tipo} onChange={(e) => setTipoItem(it.id, e.target.value)}>
+                  {TIPOS_ITEM.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             {itensComCusto.length > 1 && (
               <button type="button" onClick={() => removerItem(it.id)} style={{ color: TEXT_MUTED, fontSize: 12 }}>
                 remover peça
