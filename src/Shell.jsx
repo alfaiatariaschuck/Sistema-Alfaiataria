@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Brain,
   Calculator,
+  Camera,
   ClipboardList,
   FileText,
   Footprints,
@@ -126,6 +127,7 @@ const NAV = [
   { id: "vendedor", label: "Vendedor", icon: UserCheck, primary: false, grupo: "Camisaria" },
 
   { id: "orcamento", label: "Orçamento", icon: Calculator, primary: true, grupo: "Alfaiataria" },
+  { id: "provador", label: "Provador de Tecidos", icon: Camera, primary: true, grupo: "Alfaiataria" },
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false, grupo: "Alfaiataria" },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true, grupo: "Alfaiataria" },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true, grupo: "Alfaiataria" },
@@ -1086,6 +1088,15 @@ export default function Shell() {
                   onCriarModeloCamisa={adicionarModelo}
                   estoqueTecidos={estoqueTecidos}
                 />
+              )}
+              {tab === "provador" && (
+                <div style={{ height: "calc(100vh - 170px)", minHeight: 480, borderRadius: 10, overflow: "hidden", border: "1px solid #E7E0D2" }}>
+                  <iframe
+                    src="/provador/index.html"
+                    title="Provador de Tecidos"
+                    style={{ width: "100%", height: "100%", border: "none" }}
+                  />
+                </div>
               )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
                 <PedidosAlfaiataria pecas={pecas} selecionada={selecionadaPeca} setSelecionada={fecharOuAbrirPeca} {...acoesPeca} />

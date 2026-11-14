@@ -1,0 +1,1567 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Provador Schuck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Jost:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a white tailoring "stage" with the garment on the left, the fitting steps as a quiet ledger on the right; stacks on phones. */
+:root{
+  --paper:#F2F3F6; --card:#FFFFFF; --ink:#141B2D; --muted:#5D6577; --line:#D6DAE3;
+  --navy:#1B2947; --navy-ink:#FFFFFF; --brass:#94713F; --soft:#E7EAF1; --danger:#9B2C2C;
+  --stage:#FFFFFF; --stage-line:#E3E6EC;
+  --f-display:"Bodoni Moda","Didot","Bodoni 72",Georgia,serif;
+  --f-body:"Jost","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0D1220; --card:#151C2E; --ink:#E8EBF2; --muted:#9AA3B6; --line:#2A3348;
+  --navy:#D5DCEC; --navy-ink:#121A2E; --brass:#C8A672; --soft:#1D2539; --danger:#E08A8A;
+  --stage:#FFFFFF; --stage-line:#2A3348; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#0D1220; --card:#151C2E; --ink:#E8EBF2; --muted:#9AA3B6; --line:#2A3348;
+  --navy:#D5DCEC; --navy-ink:#121A2E; --brass:#C8A672; --soft:#1D2539; --danger:#E08A8A;
+  --stage:#FFFFFF; --stage-line:#2A3348; color-scheme:dark }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:0 32px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:18px;border-bottom:1px solid var(--line);max-width:1240px;margin:0 auto}
+.mark{display:flex;flex-direction:column;align-items:center;line-height:1;user-select:none}
+.mark b{font-family:var(--f-display);font-weight:500;font-size:28px;letter-spacing:.14em;padding-left:.14em}
+.mark small{font-family:var(--f-display);font-size:9.5px;letter-spacing:.42em;padding-left:.42em;margin-top:5px}
+.top .ttl{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);text-align:right}
+
+.app{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:32px;padding-top:24px;align-items:start}
+@media (max-width:860px){.app{grid-template-columns:minmax(0,1fr);gap:20px}}
+
+/* stage */
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (max-width:860px){.stage{position:static}}
+.frame{background:var(--stage);border:1px solid var(--stage-line);border-radius:var(--r);display:flex;justify-content:center;align-items:center;padding:12px;position:relative}
+#cv{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100vh - 230px);aspect-ratio:1122/1402}
+@media (max-width:860px){#cv{max-height:62vh}}
+.zwrap{position:relative;overflow:hidden;touch-action:none;max-width:100%;line-height:0;cursor:zoom-in}
+.zwrap.zoomed{cursor:grab}.zwrap.dragging{cursor:grabbing}
+#cv{transform-origin:0 0}
+#dcv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.zctl{position:absolute;right:10px;top:10px;display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.92);border:1px solid #D6DAE3;border-radius:999px;padding:3px;color:#141B2D}
+.zctl button{border:0;background:transparent;min-width:34px;height:34px;border-radius:999px;cursor:pointer;font-size:18px;line-height:1;color:#141B2D}
+.zctl button:hover{background:#EEF0F4}
+.zctl .fit{font-size:12.5px;padding:0 10px;letter-spacing:.02em}
+.zctl output{font-family:var(--f-mono);font-size:12px;min-width:30px;text-align:center}
+.ctbox{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.seg{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:var(--r);padding:3px;background:var(--card);max-width:320px}
+.segb{border:0;background:transparent;min-height:38px;border-radius:4px;cursor:pointer;font-weight:500}
+.segb[aria-pressed="true"]{background:var(--navy);color:var(--navy-ink)}
+.models.four{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:1100px){.models.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:#5D6577;font-size:13px;letter-spacing:.08em}
+.tag{display:flex;align-items:center;gap:12px;min-width:0}
+.tag .sw{width:44px;height:44px;border-radius:4px;border:1px solid var(--line);background:var(--soft) center/cover;flex:none}
+.tag .tx{min-width:0;flex:1}
+.tag .nm{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 16px;border-radius:var(--r);border:1px solid var(--line);background:var(--card);cursor:pointer;font-weight:500;font-size:14px;text-decoration:none}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--navy);color:var(--navy-ink);border-color:var(--navy)}
+.btn.pri:hover{opacity:.92}
+.btn.ghost{background:transparent}
+.btn.sm{min-height:34px;padding:0 12px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.danger{color:var(--danger)}
+
+.loupe{display:flex;flex-direction:column;gap:6px}
+.loupe-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+#lcv{display:block;width:100%;height:150px;border-radius:var(--r);border:1px solid var(--stage-line);background:var(--soft)}
+.compare{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.cmp{position:relative;background:var(--stage);border:1px solid var(--stage-line);border-radius:var(--r);padding:6px;cursor:pointer;text-align:left}
+.cmp img{display:block;width:100%;aspect-ratio:1122/1402;object-fit:contain}
+.cmp .cap{font-size:11.5px;color:#3A4254;line-height:1.3;padding:6px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmp .x{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:1px solid #D6DAE3;background:#fff;color:#141B2D;cursor:pointer;font-size:14px;line-height:1}
+.cmp-empty{grid-column:1/-1;font-size:13px;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r);padding:12px 14px}
+
+/* panel */
+.panel{display:flex;flex-direction:column;gap:28px;min-width:0}
+.step{display:flex;flex-direction:column;gap:14px}
+.step h2{display:flex;align-items:baseline;gap:10px;margin:0;font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.1;text-wrap:balance}
+.step h2 i{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--brass);letter-spacing:.06em}
+.q{margin:0;color:var(--muted)}
+.models{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.model{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);cursor:pointer;text-align:left}
+.model img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#fff;border-radius:3px}
+.model b{font-weight:500}
+.model span{font-size:12.5px;color:var(--muted);line-height:1.3}
+.model[aria-pressed="true"],.choice[aria-pressed="true"]{border-color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy)}
+
+.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.choice{display:flex;flex-direction:column;gap:4px;padding:14px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);cursor:pointer;text-align:left}
+.choice b{font-weight:500}
+.choice span{font-size:12.5px;color:var(--muted);line-height:1.35}
+.choice svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:1.5;margin-bottom:4px}
+@media (max-width:420px){.choices,.models{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+
+.box{border:1px solid var(--line);border-radius:var(--r);background:var(--card);padding:16px;display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tips{margin:0;padding-left:18px;color:var(--muted);font-size:13px;display:grid;gap:2px}
+.note{font-size:12.5px;color:var(--muted)}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.inp{min-height:40px;border:1px solid var(--line);border-radius:var(--r);background:var(--paper);padding:0 12px;width:100%}
+.file-btn{position:relative;overflow:hidden}
+.file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+.cat-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cat-head .inp{flex:1;min-width:140px}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.swc{display:flex;flex-direction:column;gap:6px;min-width:0}
+.swb{display:flex;flex-direction:column;gap:6px;padding:0;border:0;background:none;cursor:pointer;text-align:left;min-width:0}
+.swb .im{width:100%;aspect-ratio:1/1;border-radius:4px;border:1px solid var(--line);background-color:var(--soft);background-repeat:repeat;background-position:0 0}
+.swb[aria-pressed="true"] .im{outline:2px solid var(--navy);outline-offset:2px}
+.swb .n{font-size:13px;font-weight:500;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.swb .c{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.ex-badge{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
+.org{display:flex;gap:4px;flex-wrap:wrap}
+.org .btn{min-height:28px;padding:0 8px;font-size:12px}
+.subhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:14px;font-size:13px;color:var(--muted)}
+
+.ctl{display:grid;gap:6px}
+.ctl-top{display:flex;justify-content:space-between;align-items:baseline}
+.ctl-top output{font-family:var(--f-mono);font-size:13px}
+input[type=range]{width:100%;accent-color:var(--navy)}
+.toggles{display:flex;gap:8px;flex-wrap:wrap}
+.punhos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.pun{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 6px;border:1px solid var(--line,#d9d4cc);border-radius:10px;background:#fff;cursor:pointer;font:inherit;color:inherit}
+.pun img{width:100%;max-width:92px;aspect-ratio:1/1;object-fit:cover;border-radius:6px;background:#f4f2ee}
+.pun span{font-size:13px;font-weight:500}
+.pun[aria-pressed="true"]{background:var(--navy);color:var(--navy-ink);border-color:var(--navy)}
+.pun:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+.resumo{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0;font-size:14px;padding-top:4px;border-top:1px solid var(--line)}
+.resumo dt{color:var(--muted);font-size:11px;letter-spacing:.14em;text-transform:uppercase;align-self:center;padding-top:8px}
+.resumo dd{margin:0;padding-top:8px;overflow-wrap:anywhere}
+.resumo .vz{color:var(--muted)}
+.mono-inp{text-transform:uppercase;letter-spacing:.24em;font-family:var(--f-mono);max-width:150px}
+textarea.inp{padding:10px 12px;min-height:84px;resize:vertical;line-height:1.4;font:inherit}
+.rs-det summary{cursor:pointer}
+.rs-det textarea{margin-top:8px;font-family:var(--f-mono);font-size:12px;min-height:150px}
+.tg[aria-pressed="true"]{background:var(--navy);color:var(--navy-ink);border-color:var(--navy)}
+
+/* cropper */
+.ov{position:fixed;inset:0;background:rgba(10,14,24,.62);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.sheet{background:var(--card);color:var(--ink);border-radius:10px;width:min(980px,100%);max-height:100%;overflow:auto;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:20px;padding:20px}
+@media (max-width:760px){.sheet{grid-template-columns:minmax(0,1fr)}}
+.sheet h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:24px}
+#cropwrap{background:#111;border-radius:var(--r);display:flex;justify-content:center;align-items:center;min-height:240px;touch-action:none}
+#cropcv{display:block;max-width:100%;touch-action:none;cursor:move}
+.prev{display:flex;gap:12px;align-items:center}
+#tilecv{width:120px;height:120px;border-radius:4px;border:1px solid var(--line);flex:none}
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;cursor:pointer}
+.chk input{margin-top:4px;accent-color:var(--navy)}
+.qlist{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:12.5px;color:var(--muted)}
+.qlist li{padding-left:18px;position:relative;line-height:1.35}
+.qlist li::before{content:"•";position:absolute;left:4px}
+.qlist li.w{color:var(--brass)}.qlist li.w::before{content:"!";font-weight:600;left:5px}
+.qlist li.ok{color:#3C8A55}.qlist li.ok::before{content:"✓";left:3px}
+.sel{min-height:40px;border:1px solid var(--line);border-radius:var(--r);background:var(--paper);padding:0 10px;width:100%}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:var(--r);font-size:14px;z-index:30;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:no-preference){.model,.choice,.btn,.swb .im{transition:border-color .15s,box-shadow .15s,opacity .15s}}
+</style>
+
+<header class="top">
+  <div class="mark" aria-label="Schuck Alfaiataria"><b>SCHUCK</b><small>ALFAIATARIA</small></div>
+  <div class="ttl">Provador<br>de tecidos</div>
+</header>
+
+<main class="app">
+  <section class="stage" aria-label="Visualização da peça">
+    <div class="frame">
+      <div class="zwrap" id="zwrap"><canvas id="cv" width="1122" height="1402"></canvas><canvas id="dcv" aria-hidden="true"></canvas></div>
+      <div class="loading" id="loading">Preparando a peça…</div>
+      <div class="zctl" role="group" aria-label="Zoom">
+        <button type="button" id="z-out" aria-label="Diminuir zoom">−</button>
+        <output id="z-val">1×</output>
+        <button type="button" id="z-in" aria-label="Aumentar zoom">+</button>
+        <button type="button" id="z-fit" class="fit">Peça inteira</button>
+      </div>
+    </div>
+    <div class="tag">
+      <div class="sw" id="tag-sw"></div>
+      <div class="tx">
+        <div class="nm" id="tag-nm">—</div>
+        <div class="meta" id="tag-meta">—</div>
+      </div>
+      <div class="actions">
+        <button class="btn sm" id="btn-cmp" type="button">Comparar</button>
+        <button class="btn sm" id="btn-save" type="button" hidden>Salvar imagem</button>
+      </div>
+    </div>
+    <div class="loupe">
+      <div class="loupe-head"><span class="lbl">Tecido de perto</span><span class="note" id="loupe-note"></span></div>
+      <canvas id="lcv" aria-label="Detalhe do tecido em escala ampliada"></canvas>
+    </div>
+    <div class="compare" id="compare"></div>
+  </section>
+
+  <section class="panel">
+    <div class="step">
+      <h2><i>I</i>Peça</h2>
+      <div class="seg" role="group" aria-label="Tipo de peça">
+        <button type="button" class="segb" id="pc-blazer" aria-pressed="true">Blazer</button>
+        <button type="button" class="segb" id="pc-camisa" aria-pressed="false">Camisa</button>
+      </div>
+      <span class="lbl" id="models-lbl">Modelo</span>
+      <div class="models" id="models"></div>
+      <div class="ctbox" id="vistabox" hidden>
+        <span class="lbl">Vista</span>
+        <div class="toggles">
+          <button class="btn sm tg" id="vs-lisa" type="button" aria-pressed="true">Lisa</button>
+          <button class="btn sm tg" id="vs-pesp" type="button" aria-pressed="false">Lisa com pesponto</button>
+          <button class="btn sm tg" id="vs-coberta" type="button" aria-pressed="false">Coberta</button>
+        </div>
+        <span class="note" id="vs-note">Frente lisa, sem costura à mostra.</span>
+      </div>
+      <div class="ctbox" id="punhobox" hidden>
+        <span class="lbl">Punho</span>
+        <div class="punhos" role="group" aria-label="Tipo de punho">
+          <button class="pun" id="pn-reto" type="button" aria-pressed="false"><img alt="" src="pecas/punho_reto.jpg"><span>Reto</span></button>
+          <button class="pun" id="pn-redondo" type="button" aria-pressed="true"><img alt="" src="pecas/punho_redondo.jpg"><span>Redondo</span></button>
+          <button class="pun" id="pn-chanfrado" type="button" aria-pressed="false"><img alt="" src="pecas/punho_chanfrado.jpg"><span>Chanfrado</span></button>
+          <button class="pun" id="pn-duplo" type="button" aria-pressed="false"><img alt="" src="pecas/punho_duplo.jpg"><span>Duplo</span></button>
+        </div>
+        <span class="note" id="pn-note">Quadradinho: o punho visto por trás, onde ficam os botões. Reto, redondo e chanfrado são iguais por fora; o duplo muda também a camisa.</span>
+      </div>
+      <div class="ctbox" id="ctbox" hidden>
+        <span class="lbl">Contraste em branco</span>
+        <div class="toggles">
+          <button class="btn sm tg" id="ct-ambos" type="button" aria-pressed="false">Colarinho e punhos brancos</button>
+          <button class="btn sm tg" id="ct-col" type="button" aria-pressed="false">Só colarinho</button>
+          <button class="btn sm tg" id="ct-cuf" type="button" aria-pressed="false">Só punhos</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <h2><i>II</i>Tecido</h2>
+      <p class="q">De onde vem o tecido?</p>
+      <div class="choices">
+        <button class="choice" id="ch-photo" type="button" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>
+          <b>Fotografar agora</b><span>Tire uma foto do tecido na loja</span>
+        </button>
+        <button class="choice" id="ch-cat" type="button" aria-pressed="true">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg>
+          <b>Tecido cadastrado</b><span>Escolha no mostruário salvo</span>
+        </button>
+      </div>
+
+      <div class="box" id="src-photo" hidden>
+        <div class="row">
+          <label class="btn pri file-btn">Abrir câmera
+            <input id="in-cam" type="file" accept="image/*" capture="environment">
+          </label>
+          <label class="btn file-btn">Escolher da galeria
+            <input id="in-gal" type="file" accept="image/*">
+          </label>
+        </div>
+        <ul class="tips">
+          <li>Estique o tecido numa superfície plana e fotografe de cima.</li>
+          <li>Use luz clara e sem a sombra do celular.</li>
+          <li>Enquadre um pedaço onde o padrão se repita.</li>
+          <li>Para o tamanho exato, deixe uma moeda de R$ 1 ou um cartão de banco ao lado do tecido.</li>
+          <li>Para a cor fiel, inclua um papel ou cartão branco na foto.</li>
+          <li>Chegue perto e espere o foco: quanto mais nítida a trama, mais fiel fica a peça.</li>
+        </ul>
+      </div>
+
+      <div class="box" id="src-cat">
+        <div class="cat-head">
+          <input class="inp" id="q" type="search" placeholder="Buscar por nome ou código" aria-label="Buscar tecido">
+          <label class="btn sm file-btn" id="btn-add">Cadastrar tecido
+            <input id="in-add" type="file" accept="image/*">
+          </label>
+          <button class="btn sm ghost" id="btn-org" type="button">Organizar</button>
+        </div>
+        <div class="subhead"><span class="lbl" id="lbl-saved">Mostruário Schuck</span><span class="note" id="store-note"></span></div>
+        <div class="swatches" id="sw-saved"></div>
+        <div class="subhead"><span class="lbl" id="lbl-ex">Tecidos de exemplo</span><span class="note">para demonstração</span></div>
+        <div class="swatches" id="sw-ex"></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <h2><i>III</i>Ajustes</h2>
+      <div class="box">
+        <div class="ctl">
+          <div class="ctl-top"><label class="lbl" for="rg-cm">Tamanho do recorte</label><output id="out-cm">10 cm</output></div>
+          <input id="rg-cm" type="range" min="0.2" max="40" step="0.1" value="10">
+          <span class="note">Quanto o pedaço fotografado mede de verdade. Ajuste até a risca ou o xadrez ficar na escala certa.</span>
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label class="lbl" for="rg-light">Luminosidade</label><output id="out-light">0%</output></div>
+          <input id="rg-light" type="range" min="-40" max="40" step="1" value="0">
+        </div>
+        <div class="toggles">
+          <button class="btn sm tg" id="tg-rot" type="button" aria-pressed="false">Girar padrão 90°</button>
+          <button class="btn sm tg" id="tg-mir" type="button" aria-pressed="false">Espelhar repetição</button>
+        </div>
+        <span class="note">Espelhar ajuda a esconder emendas em tecidos lisos ou de padrão simétrico.</span>
+        <div class="ctl">
+          <label class="lbl" for="sel-tipo">Tipo de tecido</label>
+          <select class="sel" id="sel-tipo"></select>
+          <span class="note">Define o brilho e a trama do fio. Ajuste abaixo se quiser.</span>
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label class="lbl" for="rg-sheen">Brilho</label><output id="out-sheen">34%</output></div>
+          <input id="rg-sheen" type="range" min="0" max="100" step="1" value="34">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label class="lbl" for="rg-tex">Textura da trama</label><output id="out-tex">55%</output></div>
+          <input id="rg-tex" type="range" min="0" max="100" step="1" value="55">
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <h2><i>IV</i>Resumo do pedido</h2>
+      <div class="box">
+        <div class="ctl">
+          <label class="lbl" for="mono">Monograma</label>
+          <input class="inp mono-inp" id="mono" type="text" maxlength="5" placeholder="Ex.: ABC" autocomplete="off" spellcheck="false">
+          <span class="note">Só as iniciais. Deixe em branco se não houver monograma.</span>
+        </div>
+        <div class="ctl">
+          <label class="lbl" for="obs">Observações</label>
+          <textarea class="inp" id="obs" maxlength="500" rows="3" placeholder="Algo que a oficina precise saber"></textarea>
+        </div>
+        <dl class="resumo" id="resumo"></dl>
+        <div class="toggles">
+          <button class="btn pri" id="rs-copy" type="button">Copiar pedido</button>
+          <button class="btn" id="rs-json" type="button">Copiar JSON</button>
+        </div>
+        <details class="rs-det" id="rs-det"><summary class="note">Ver JSON do pedido</summary><textarea class="inp" id="rs-out" readonly></textarea></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="ov" id="ov" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="crop-ttl">
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+      <h3 id="crop-ttl">Recortar o tecido</h3>
+      <div id="cropwrap"><canvas id="cropcv"></canvas></div>
+      <div class="ctl">
+        <div class="ctl-top"><label class="lbl" for="rg-crop">Tamanho da área</label><output id="out-crop"></output></div>
+        <input id="rg-crop" type="range" min="15" max="100" step="1" value="60">
+      </div>
+      <div class="row" role="group" aria-label="Ferramentas na foto">
+        <button type="button" class="btn sm tg" id="tl-move" aria-pressed="true">Mover área</button>
+        <button type="button" class="btn sm tg" id="tl-measure" aria-pressed="false">Medir com régua ou moeda</button>
+        <button type="button" class="btn sm tg" id="tl-wb" aria-pressed="false">Cartão branco</button>
+        <button type="button" class="btn sm ghost" id="tl-wb-clear" hidden>Desfazer cor</button>
+      </div>
+      <div class="row" id="ref-row" hidden>
+        <select class="sel" id="ref-sel" style="width:auto" aria-label="Objeto de referência"><option value="2.7">Moeda de R$ 1 (2,7 cm)</option><option value="8.56">Cartão de banco (8,56 cm)</option><option value="0">Outra medida</option></select>
+        <input class="inp" id="ref-cm" type="number" min="0.1" step="0.1" value="2.7" inputmode="decimal" style="width:84px" aria-label="Medida do objeto em centímetros"><span class="note">cm</span>
+      </div>
+      <span class="note" id="tl-help">Arraste o quadrado para a parte mais uniforme do tecido, longe de bordas e dobras.</span>
+    </div>
+    <div class="side">
+      <div class="prev">
+        <canvas id="tilecv" width="192" height="192"></canvas>
+        <span class="note" id="pat-info">Prévia da repetição. Se aparecer uma emenda forte, mova ou diminua a área.</span>
+      </div>
+      <div class="ctl">
+        <label class="lbl" for="in-cm">Quanto a área mede (cm)</label>
+        <input class="inp" id="in-cm" type="number" min="0.5" max="60" step="0.1" value="10" inputmode="decimal">
+        <span class="note" id="cal-info">Uma estimativa com régua ou fita já basta. Para mais precisão, use “Medir com régua ou moeda”.</span>
+      </div>
+      <label class="chk"><input type="checkbox" id="ck-eq" checked><span>Uniformizar a luz da foto</span></label>
+      <label class="chk"><input type="checkbox" id="ck-pat" checked><span>Detectar a repetição do padrão (emenda exata, sem mistura)</span></label>
+      <label class="chk"><input type="checkbox" id="ck-str" checked><span>Endireitar listras e quadrados inclinados</span></label>
+      <ul class="qlist" id="cap-warn" aria-live="polite"></ul>
+      <label class="chk" id="ck-save-wrap"><input type="checkbox" id="ck-save"><span>Salvar no mostruário</span></label>
+      <div id="save-fields" class="ctl" hidden>
+        <span class="lbl">Cadastrar para</span>
+        <div class="seg" role="group" aria-label="Peça do tecido">
+          <button type="button" class="segb" id="sv-blazer" aria-pressed="true">Blazer</button>
+          <button type="button" class="segb" id="sv-camisa" aria-pressed="false">Camisa</button>
+        </div>
+        <label class="lbl" for="in-nm">Nome do tecido</label>
+        <input class="inp" id="in-nm" type="text" maxlength="60" placeholder="Ex.: Lã fria cinza chumbo">
+        <label class="lbl" for="in-cd">Código (opcional)</label>
+        <input class="inp" id="in-cd" type="text" maxlength="30" placeholder="Ex.: SCH-0142">
+        <label class="lbl" for="sv-tipo">Tipo de tecido</label>
+        <select class="sel" id="sv-tipo"></select>
+      </div>
+      <div class="note" id="crop-err" style="color:var(--danger)" hidden></div>
+      <div class="row" style="margin-top:auto">
+        <button class="btn" id="crop-cancel" type="button">Cancelar</button>
+        <button class="btn pri" id="crop-ok" type="button">Vestir a peça</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const W = 1122, H = 1402;
+const PX_PER_CM = 16.3; // ombro a ombro da base ≈ 750 px ≈ 46 cm
+const MODELS = {
+  single:{peca:'blazer', nome:'Abotoamento simples', sub:'2 botões · lapela pontiaguda', base:'pecas/single_base.jpg', map:'pecas/single_map.png', thumb:'pecas/thumb_single.jpg'},
+  double:{peca:'blazer', nome:'Transpassado', sub:'6 botões · lapela pontiaguda', base:'pecas/double_base.jpg', map:'pecas/double_map.png', thumb:'pecas/thumb_double.jpg'},
+  padre:{peca:'camisa', nome:'Gola Padre', sub:'Gola', base:'pecas/camisa_padre_base.jpg', map:'pecas/camisa_padre_map.png', zona:'pecas/camisa_padre_zona.png', thumb:'pecas/thumb_padre.jpg', maps:{pesp:'pecas/camisa_padre_map_pesp.png', coberta:'pecas/camisa_padre_map_coberta.png'}},
+  classico:{peca:'camisa', nome:'Clássico-Francês', sub:'Colarinho', base:'pecas/camisa_classico_frances_base.jpg', map:'pecas/camisa_classico_frances_map.png', zona:'pecas/camisa_classico_frances_zona.png', thumb:'pecas/thumb_classico_frances.jpg', maps:{pesp:'pecas/camisa_classico_frances_map_pesp.png', coberta:'pecas/camisa_classico_frances_map_coberta.png'}},
+  americano:{peca:'camisa', nome:'Americano', sub:'Colarinho', base:'pecas/camisa_americano_base.jpg', map:'pecas/camisa_americano_map.png', zona:'pecas/camisa_americano_zona.png', thumb:'pecas/thumb_americano.jpg', maps:{pesp:'pecas/camisa_americano_map_pesp.png', coberta:'pecas/camisa_americano_map_coberta.png'}},
+  italiano:{peca:'camisa', nome:'Italiano', sub:'Colarinho', base:'pecas/camisa_italiano_base.jpg', map:'pecas/camisa_italiano_map.png', zona:'pecas/camisa_italiano_zona.png', thumb:'pecas/thumb_italiano.jpg', maps:{pesp:'pecas/camisa_italiano_map_pesp.png', coberta:'pecas/camisa_italiano_map_coberta.png'}},
+  mandarim:{peca:'camisa', nome:'Mandarim', sub:'Gola', base:'pecas/camisa_mandarim_base.jpg', map:'pecas/camisa_mandarim_map.png', zona:'pecas/camisa_mandarim_zona.png', thumb:'pecas/thumb_mandarim.jpg', maps:{pesp:'pecas/camisa_mandarim_map_pesp.png', coberta:'pecas/camisa_mandarim_map_coberta.png'}},
+  club:{peca:'camisa', nome:'Club Collar', sub:'Colarinho', base:'pecas/camisa_club_base.jpg', map:'pecas/camisa_club_map.png', zona:'pecas/camisa_club_zona.png', thumb:'pecas/thumb_club.jpg', maps:{pesp:'pecas/camisa_club_map_pesp.png', coberta:'pecas/camisa_club_map_coberta.png'}}
+};
+const PECAS = {blazer:{nome:'Blazer', ult:'single', lbl:'Modelo'}, camisa:{nome:'Camisa', ult:'classico', lbl:'Colarinho'}};
+const BRANCO = {id:'contraste-branco', nome:'Branco liso', cm:0.6, make(){const r=rng(31);const a=Array.from({length:64},()=>vary([246,246,248],5,r));return weave(a,a.map(c=>c.map(v=>v-3)),4,{plain:true,noise:5,seed:13})}};
+const S = {ctCol:false, ctCuf:false, model:'single', fabric:null, cm:10, rot:false, mirror:false, light:0, source:'cat', organizing:false, tipo:'lã', sheen:.34, tex:.55, vista:'lisa', punho:'redondo'};
+const data = {}; // model -> {shade, alpha, prot, base}
+let saved = [];  // fabrics do mostruário
+let store = {mode:'pending'}; // 'db' | 'local'
+let db = null, assets = null, downloads = null;
+const cmpList = [];
+
+/* ---------- utilidades ---------- */
+function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
+function mkCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
+function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src})}
+function rng(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
+function fmtCm(v){return (Math.round(v*10)/10).toString().replace('.',',')+' cm'}
+function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+
+/* ---------- bases das peças ---------- */
+async function loadModel(key, vista, punho){
+  const m0 = MODELS[key];
+  if(!(m0 && m0.peca==='camisa' && m0.maps && punho==='duplo')) return loadModelV(key, vista);
+  const v = (vista && vista!=='lisa') ? vista : '', vid = key+'|'+v+'|duplo';
+  if(data[vid]) return data[vid];
+  const bp = m0.base.replace('_base.jpg','_base_duplo.jpg'), zp = m0.zona.replace('_zona.png','_zona_duplo.png');
+  const mp0 = v ? m0.maps[v].replace('_map_'+v,'_map_duplo_'+v) : m0.map.replace('_map.png','_map_duplo.png');
+  const [bi, mi, zi] = await Promise.all([loadImg(bp), loadImg(mp0), loadImg(zp)]);
+  const c = mkCanvas(W,H), x = c.getContext('2d',{willReadFrequently:true});
+  x.drawImage(bi,0,0,W,H); const base = x.getImageData(0,0,W,H).data;
+  x.clearRect(0,0,W,H); x.drawImage(mi,0,0,W,H); const mp = x.getImageData(0,0,W,H).data;
+  x.clearRect(0,0,W,H); x.drawImage(zi,0,0,W,H); const zd = x.getImageData(0,0,W,H).data;
+  const n = W*H, shade = new Float32Array(n), alpha = new Float32Array(n), prot = new Float32Array(n), zc = new Float32Array(n), zu = new Float32Array(n);
+  for(let i=0,j=0;i<n;i++,j+=4){ shade[i]=mp[j]/255*2.5; alpha[i]=mp[j+1]/255; prot[i]=mp[j+2]/255; zc[i]=zd[j]/255; zu[i]=zd[j+1]/255 }
+  return data[vid] = {shade, alpha, prot, base, bi, mi, zc, zu, zi};
+}
+async function loadModelV(key, vista){
+  const vid = (vista && vista!=='lisa' && MODELS[key] && MODELS[key].maps) ? key+'|'+vista : key;
+  if(data[vid]) return data[vid];
+  if(vid!==key){
+    const b = await loadModel(key), mi2 = await loadImg(MODELS[key].maps[vista]);
+    const c2 = mkCanvas(W,H), x2 = c2.getContext('2d',{willReadFrequently:true});
+    x2.drawImage(mi2,0,0,W,H); const mp2 = x2.getImageData(0,0,W,H).data, n2 = W*H, sh2 = new Float32Array(n2), al2 = new Float32Array(n2), pr2 = new Float32Array(n2);
+    for(let i=0,j=0;i<n2;i++,j+=4){ sh2[i]=mp2[j]/255*2.5; al2[i]=mp2[j+1]/255; pr2[i]=mp2[j+2]/255 }
+    return data[vid] = {...b, shade:sh2, alpha:al2, prot:pr2, mi:mi2};
+  }
+  const m = MODELS[key];
+  const [bi, mi] = await Promise.all([loadImg(m.base), loadImg(m.map)]);
+  const c = mkCanvas(W,H), x = c.getContext('2d',{willReadFrequently:true});
+  x.drawImage(bi,0,0,W,H); const base = x.getImageData(0,0,W,H).data;
+  x.clearRect(0,0,W,H); x.drawImage(mi,0,0,W,H); const mp = x.getImageData(0,0,W,H).data;
+  const n = W*H, shade = new Float32Array(n), alpha = new Float32Array(n), prot = new Float32Array(n);
+  for(let i=0,j=0;i<n;i++,j+=4){shade[i]=mp[j]/255*2.5; alpha[i]=mp[j+1]/255; prot[i]=mp[j+2]/255}
+  let zc=null, zu=null, zi=null;
+  if(m.zona){
+    zi = await loadImg(m.zona); x.clearRect(0,0,W,H); x.drawImage(zi,0,0,W,H); const zd = x.getImageData(0,0,W,H).data;
+    zc = new Float32Array(n); zu = new Float32Array(n);
+    for(let i=0,j=0;i<n;i++,j+=4){ zc[i]=zd[j]/255; zu[i]=zd[j+1]/255 }
+  }
+  return data[key] = {shade, alpha, prot, base, bi, mi, zc, zu, zi};
+}
+
+/* ---------- tecidos de exemplo (tecelagem simulada) ---------- */
+function weave(warp, weft, tpx, opt={}){
+  const N = warp.length, size = N*tpx, c = mkCanvas(size,size), x = c.getContext('2d');
+  const img = x.createImageData(size,size), d = img.data, r = rng(opt.seed||7), noise = opt.noise||7;
+  for(let j=0;j<N;j++) for(let i=0;i<N;i++){
+    const up = opt.plain ? ((i+j)%2===0) : (((i+j)%4)<2);
+    const col = up ? warp[i] : weft[j];
+    for(let yy=0;yy<tpx;yy++) for(let xx=0;xx<tpx;xx++){
+      const px=i*tpx+xx, py=j*tpx+yy, k=(py*size+px)*4;
+      const edge = up ? (xx===0||xx===tpx-1) : (yy===0||yy===tpx-1);
+      const v = (r()-.5)*noise - (edge?6:0);
+      d[k]=col[0]+v; d[k+1]=col[1]+v; d[k+2]=col[2]+v; d[k+3]=255;
+    }
+  }
+  x.putImageData(img,0,0); return c;
+}
+function seq(parts){const o=[];parts.forEach(([col,n])=>{for(let i=0;i<n;i++)o.push(col)});return o}
+function vary(col,amt,r){return col.map(v=>v+(r()-.5)*amt)}
+const EXAMPLES = [
+  {id:'ex-marinho', peca:'blazer', nome:'Lã fria marinho', codigo:'EX-01', cm:3, make(){const r=rng(3);const a=Array.from({length:64},()=>vary([30,40,70],8,r));return weave(a,a.map(c=>c.map(v=>v-6)),4,{noise:8})}},
+  {id:'ex-giz', peca:'blazer', nome:'Risca de giz chumbo', codigo:'EX-02', cm:1.6, make(){const D=[62,63,68],L=[150,150,152],M=[96,97,101];const w=seq([[D,18],[M,1],[L,1],[M,1],[D,19]]);return weave(w,seq([[D,40]]),6,{noise:9})}},
+  {id:'ex-gales', peca:'blazer', nome:'Príncipe de Gales', codigo:'EX-03', cm:7.5, make(){const D=[58,58,62],L=[196,193,186],B=[70,92,140];const s=[...seq([[D,4],[L,4],[D,4],[L,4],[D,4],[L,4],[D,4],[L,4]]),...seq([[D,2],[L,2],[D,2],[L,2],[D,2],[L,2],[D,2],[L,2],[D,2],[L,2],[D,2],[L,2],[D,2],[L,2],[D,1],[B,1],[L,2]])];return weave(s,s,4,{noise:6})}},
+  {id:'ex-pied', peca:'blazer', nome:'Pied-de-poule', codigo:'EX-04', cm:4, make(){const D=[28,28,32],L=[226,222,213];const s=[];for(let k=0;k<8;k++)s.push(...seq([[D,4],[L,4]]));return weave(s,s,4,{noise:6})}},
+  {id:'ex-linho', peca:'blazer', nome:'Linho areia', codigo:'EX-05', cm:2, make(){const r=rng(11);const a=Array.from({length:64},()=>vary([198,182,152],22,r));const b=Array.from({length:64},()=>vary([190,174,144],22,r));return weave(a,b,4,{plain:true,noise:14,seed:5})}},
+  {id:'ex-oxford', peca:'camisa', nome:'Oxford azul', codigo:'EX-07', cm:1, make(){const r=rng(21);const a=Array.from({length:64},(_,i)=>i%2?vary([238,240,244],6,r):vary([128,160,206],10,r));const b=Array.from({length:64},()=>vary([236,238,242],6,r));return weave(a,b,4,{plain:true,noise:8,seed:9})}},
+  {id:'ex-bengal', peca:'camisa', nome:'Listra bengal azul', codigo:'EX-08', cm:1.3, make(){const B=[70,108,170],Wt=[242,243,246];const w=seq([[B,16],[Wt,16]]);return weave(w,seq([[Wt,32]]),8,{plain:true,noise:5})}},
+  {id:'ex-vichy', peca:'camisa', nome:'Vichy rosa', codigo:'EX-09', cm:0.8, make(){const P=[222,150,160],Wt=[246,244,244];const s=seq([[P,8],[Wt,8]]);return weave(s,s,8,{plain:true,noise:5})}},
+  {id:'ex-oliva', peca:'blazer', nome:'Janela oliva', codigo:'EX-06', cm:6.5, make(){const O=[84,86,58],T=[176,150,104];const s=seq([[O,30],[T,2],[O,32]]);return weave(s,s,4,{noise:9})}}
+];
+
+/* ---------- renderização ---------- */
+const cv = $('cv'), cx = cv.getContext('2d');
+const work = mkCanvas(W,H), wx = work.getContext('2d',{willReadFrequently:true});
+let raf = 0;
+function schedule(){ if(!raf) raf = requestAnimationFrame(()=>{raf=0; render()}) }
+function tileSource(){
+  let src = S.fabric.canvas, mult = 1;
+  if(S.mirror){
+    const t=src, m=mkCanvas(t.width*2,t.height*2), mx=m.getContext('2d');
+    mx.drawImage(t,0,0); mx.save(); mx.scale(-1,1); mx.drawImage(t,-t.width*2,0); mx.restore();
+    mx.save(); mx.scale(1,-1); mx.drawImage(t,0,-t.height*2); mx.scale(-1,1); mx.drawImage(t,-t.width*2,-t.height*2); mx.restore();
+    src = m; mult = 2;
+  }
+  return {src, mult};
+}
+function scaledTile(src, wPx){ // redimensiona com qualidade, em etapas para não perder nitidez
+  const ar = src.height/src.width || 1, w = Math.max(4, Math.round(wPx)), h = Math.max(4, Math.round(wPx*ar));
+  let cur = src;
+  while(cur.width/2 > w){ const t=mkCanvas(Math.round(cur.width/2),Math.round(cur.height/2)); const tx=t.getContext('2d'); tx.imageSmoothingQuality='high'; tx.drawImage(cur,0,0,t.width,t.height); cur=t }
+  const c = mkCanvas(w,h), x = c.getContext('2d'); x.imageSmoothingQuality='high'; x.drawImage(cur,0,0,w,h); return c;
+}
+const dcv = $('dcv'), dctx = dcv.getContext('2d');
+let dTimer = 0, dToken = 0;
+function scheduleDetail(){ clearTimeout(dTimer); dcv.style.visibility='hidden'; if(Z.s>1.05) dTimer = setTimeout(renderDetail, 140) }
+function renderDetail(){
+  const d = data[dk()]; if(!d || !S.fabric || !S.fabric.canvas || Z.s<=1.05) return;
+  const tok = ++dToken, dpr = Math.min(2, window.devicePixelRatio||1);
+  const ww = zw.clientWidth, wh = zw.clientHeight, ow = Math.round(ww*dpr), oh = Math.round(wh*dpr);
+  const k = Z.s*dpr*ww/W, ox = Z.x*dpr, oy = Z.y*dpr;
+  const mk = ()=>{ const c=mkCanvas(ow,oh), x=c.getContext('2d',{willReadFrequently:true}); x.imageSmoothingQuality='high'; return [c,x] };
+  const [, mx] = mk(); mx.setTransform(k,0,0,k,ox,oy); mx.drawImage(d.mi,0,0,W,H);
+  const [, bx] = mk(); bx.setTransform(k,0,0,k,ox,oy); bx.drawImage(d.bi,0,0,W,H);
+  const {src, mult} = tileSource();
+  const tile = scaledTile(src, Math.max(6, S.cm*PX_PER_CM)*mult*k);
+  const [, fx] = mk(); const pat = fx.createPattern(tile,'repeat');
+  if(pat.setTransform){ let mtx = new DOMMatrix().translate(ox,oy); if(S.rot) mtx = mtx.rotate(90); pat.setTransform(mtx) }
+  fx.fillStyle = pat; fx.fillRect(0,0,ow,oh);
+  const ct = contrastOn(d); let f2 = null, zz = null;
+  if(ct){
+    if(!BRANCO.canvas) BRANCO.canvas = BRANCO.make();
+    const [, wx2] = mk(); const p2 = wx2.createPattern(scaledTile(BRANCO.canvas, BRANCO.cm*PX_PER_CM*k),'repeat');
+    if(p2.setTransform) p2.setTransform(new DOMMatrix().translate(ox,oy));
+    wx2.fillStyle = p2; wx2.fillRect(0,0,ow,oh); f2 = wx2.getImageData(0,0,ow,oh).data;
+    const [, zx] = mk(); zx.setTransform(k,0,0,k,ox,oy); zx.drawImage(d.zi,0,0,W,H); zz = zx.getImageData(0,0,ow,oh).data;
+  }
+  const mp = mx.getImageData(0,0,ow,oh).data, bs = bx.getImageData(0,0,ow,oh).data, img = fx.getImageData(0,0,ow,oh), f = img.data;
+  const lf = 1 + S.light/100, gg = ghGain(), tx = texData(ow,oh,k,ox,oy);
+  for(let j=0;j<f.length;j+=4){
+    const a = mp[j+1]/255;
+    if(a===0){f[j]=f[j+1]=f[j+2]=255;f[j+3]=255;continue}
+    const sh = mp[j]/255*2.5, p = mp[j+2]/255, q = 1-p;
+    const z = ct ? Math.max(S.ctCol?zz[j]/255:0, S.ctCuf?zz[j+1]/255:0) : 0;
+    for(let c=0;c<3;c++){
+      let v = (z ? f[j+c]*(1-z) + f2[j+c]*z : f[j+c])*lf; if(tx) v *= tx[j>>2]; if(v>255) v=255;
+      const o = sh<=1 ? v*sh : v + (255-v)*(sh-1)*gg;
+      f[j+c] = 255*(1-a) + a*(q*o + p*bs[j+c]);
+    }
+    f[j+3]=255;
+  }
+  if(tok!==dToken || Z.s<=1.05) return;
+  dcv.width = ow; dcv.height = oh; dctx.putImageData(img,0,0); dcv.style.visibility='visible';
+}
+function drawLoupe(){
+  const c = $('lcv'); if(!S.fabric || !S.fabric.canvas) return;
+  const dpr = Math.min(2, window.devicePixelRatio||1), w = c.clientWidth, h = c.clientHeight; if(!w) return;
+  c.width = Math.round(w*dpr); c.height = Math.round(h*dpr);
+  const x = c.getContext('2d'); x.setTransform(dpr,0,0,dpr,0,0);
+  const pxcm = 60; // ~60 px por cm: bem mais perto que a peça
+  const {src, mult} = tileSource();
+  const tile = scaledTile(src, S.cm*pxcm*mult*dpr);
+  const pat = x.createPattern(tile,'repeat');
+  if(pat.setTransform){ let mtx = new DOMMatrix().scale(1/dpr); if(S.rot) mtx = mtx.rotate(90); pat.setTransform(mtx) }
+  x.save(); x.filter = S.light ? `brightness(${1+S.light/100})` : 'none'; x.fillStyle = pat; x.fillRect(0,0,w,h); x.restore();
+  // régua de 1 cm
+  const rx = 12, ry = h-14, cm = Math.min(5, Math.floor((w-40)/pxcm));
+  x.fillStyle='rgba(255,255,255,.88)'; x.fillRect(rx-6, ry-16, cm*pxcm+12, 24);
+  x.strokeStyle='#141B2D'; x.fillStyle='#141B2D'; x.lineWidth=1; x.beginPath(); x.moveTo(rx,ry+.5); x.lineTo(rx+cm*pxcm,ry+.5);
+  for(let i=0;i<=cm;i++){ x.moveTo(rx+i*pxcm+.5,ry-6); x.lineTo(rx+i*pxcm+.5,ry+.5) }
+  x.stroke(); x.font='10px "IBM Plex Mono", monospace'; x.fillText(cm+' cm', rx+cm*pxcm-28, ry-7);
+  $('loupe-note').textContent = 'escala ampliada · ' + S.fabric.nome;
+}
+function dk(){ const m = MODELS[S.model]; if(!(m.peca==='camisa' && m.maps)) return S.model; const v = (S.vista && S.vista!=='lisa') ? S.vista : '', d = S.punho==='duplo'; return d ? S.model+'|'+v+'|duplo' : (v ? S.model+'|'+v : S.model) }
+function contrastOn(d){ return !!(d && d.zc && MODELS[S.model].peca==='camisa' && (S.ctCol||S.ctCuf)) }
+function render(){
+  const d = data[dk()]; if(!d || !S.fabric || !S.fabric.canvas) return;
+  const {src, mult} = tileSource();
+  const sc = scaledTile(src, Math.max(6, S.cm*PX_PER_CM)*mult);
+  const pat = wx.createPattern(sc,'repeat');
+  if(S.rot && pat.setTransform) pat.setTransform(new DOMMatrix().rotate(90));
+  wx.setTransform(1,0,0,1,0,0); wx.fillStyle = pat; wx.fillRect(0,0,W,H);
+  const img = wx.getImageData(0,0,W,H), f = img.data;
+  const {shade, alpha, prot, base, zc, zu} = d, lf = 1 + S.light/100, n = W*H, gg = ghGain(), tx = texData(W,H,1,0,0);
+  const ct = contrastOn(d); let f2 = null;
+  if(ct){
+    if(!BRANCO.canvas) BRANCO.canvas = BRANCO.make();
+    const p2 = wx.createPattern(scaledTile(BRANCO.canvas, BRANCO.cm*PX_PER_CM),'repeat');
+    wx.fillStyle = p2; wx.fillRect(0,0,W,H); f2 = wx.getImageData(0,0,W,H).data;
+  }
+  for(let i=0,j=0;i<n;i++,j+=4){
+    const a = alpha[i];
+    if(a===0){f[j]=f[j+1]=f[j+2]=255;continue}
+    const p = prot[i], sh = shade[i], q = 1-p;
+    const z = ct ? Math.max(S.ctCol?zc[i]:0, S.ctCuf?zu[i]:0) : 0;
+    for(let c=0;c<3;c++){
+      let v = (z ? f[j+c]*(1-z) + f2[j+c]*z : f[j+c])*lf; if(tx) v *= tx[i]; if(v>255) v=255;
+      const o = sh<=1 ? v*sh : v + (255-v)*(sh-1)*gg;
+      f[j+c] = 255*(1-a) + a*(q*o + p*base[j+c]);
+    }
+    f[j+3]=255;
+  }
+  cx.putImageData(img,0,0);
+  $('loading').hidden = true;
+  drawLoupe(); scheduleDetail();
+}
+
+/* ---------- zoom (até 4×) ---------- */
+const ZMAX = 4, zw = $('zwrap'), Z = {s:1, x:0, y:0};
+const ptrs = new Map(); let pinch = null, pan = null, lastTap = 0;
+function zApply(){
+  const w = zw.clientWidth, h = zw.clientHeight;
+  Z.s = Math.min(ZMAX, Math.max(1, Z.s));
+  Z.x = Math.min(0, Math.max(w - w*Z.s, Z.x)); Z.y = Math.min(0, Math.max(h - h*Z.s, Z.y));
+  cv.style.transform = Z.s===1 ? '' : `translate(${Z.x}px,${Z.y}px) scale(${Z.s})`;
+  zw.classList.toggle('zoomed', Z.s>1);
+  $('z-val').textContent = (Math.round(Z.s*10)/10).toString().replace('.',',')+'×';
+  $('z-in').disabled = Z.s>=ZMAX; $('z-out').disabled = Z.s<=1;
+  scheduleDetail();
+}
+function zTo(ns, px, py){ // px,py: ponto no wrapper que fica fixo
+  ns = Math.min(ZMAX, Math.max(1, ns));
+  const k = ns / Z.s; Z.x = px - (px - Z.x)*k; Z.y = py - (py - Z.y)*k; Z.s = ns; zApply();
+}
+function zLocal(e){ const r = zw.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top} }
+zw.addEventListener('wheel', e=>{ e.preventDefault(); const p=zLocal(e); zTo(Z.s*Math.exp(-e.deltaY*0.0018), p.x, p.y) }, {passive:false});
+zw.addEventListener('pointerdown', e=>{
+  zw.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, zLocal(e));
+  if(ptrs.size===2){ const [a,b]=[...ptrs.values()]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y), s:Z.s}; pan=null }
+  else if(ptrs.size===1){
+    const p = zLocal(e), now = Date.now();
+    if(now-lastTap < 300){ zTo(Z.s>1 ? 1 : ZMAX, p.x, p.y); lastTap=0; return }
+    lastTap = now; pan = {x:p.x-Z.x, y:p.y-Z.y};
+  }
+});
+zw.addEventListener('pointermove', e=>{
+  if(!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, zLocal(e));
+  if(pinch && ptrs.size===2){ const [a,b]=[...ptrs.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y); zTo(pinch.s*d/pinch.d, (a.x+b.x)/2, (a.y+b.y)/2) }
+  else if(pan && Z.s>1){ const p=zLocal(e); Z.x=p.x-pan.x; Z.y=p.y-pan.y; zw.classList.add('dragging'); zApply() }
+});
+function zEnd(e){ ptrs.delete(e.pointerId); if(ptrs.size<2) pinch=null; if(!ptrs.size){ pan=null; zw.classList.remove('dragging') } }
+zw.addEventListener('pointerup', zEnd); zw.addEventListener('pointercancel', zEnd);
+$('z-in').onclick = ()=>zTo(Z.s+1, zw.clientWidth/2, zw.clientHeight/2);
+$('z-out').onclick = ()=>zTo(Z.s-1, zw.clientWidth/2, zw.clientHeight/2);
+$('z-fit').onclick = ()=>{ Z.s=1; Z.x=0; Z.y=0; zApply() };
+window.addEventListener('resize', ()=>{ zApply(); drawLoupe() });
+zApply();
+
+/* ---------- etiqueta da peça ---------- */
+function updateTag(){
+  const fb = S.fabric;
+  $('tag-sw').style.backgroundImage = fb ? `url(${fb.thumb||fb.src})` : ''; if(fb) swatchScale($('tag-sw'), fb, 3);
+  $('tag-nm').textContent = fb ? fb.nome : 'Escolha um tecido';
+  $('tag-meta').textContent = (fb && fb.codigo ? fb.codigo+' · ' : '') + PECAS[MODELS[S.model].peca].nome + ' ' + MODELS[S.model].nome + (MODELS[S.model].peca==='camisa' && (S.ctCol||S.ctCuf) ? ' · ' + (S.ctCol&&S.ctCuf ? 'colarinho e punhos brancos' : S.ctCol ? 'colarinho branco' : 'punhos brancos') : '') + (MODELS[S.model].peca==='camisa' && S.vista && S.vista!=='lisa' ? ' · vista ' + VISTAS[S.vista].nome.toLowerCase() : '') + (MODELS[S.model].peca==='camisa' ? ' · punho ' + PUNHOS[S.punho||'redondo'].toLowerCase() : '') + ' · recorte ' + fmtCm(S.cm);
+  renderResumo();
+}
+
+/* ---------- modelos ---------- */
+function pecaAtual(){ return MODELS[S.model].peca }
+function fabricsDe(peca){ return [...saved.filter(f=>(f.peca||'blazer')===peca), ...EXAMPLES.filter(f=>f.peca===peca)] }
+const lastFabric = {};
+async function setModel(k){
+  const antes = pecaAtual();
+  S.model=k; PECAS[MODELS[k].peca].ult=k; renderModels(); updateTag();
+  const peca = pecaAtual();
+  if(peca!==antes){
+    if(S.fabric) lastFabric[antes] = {fb:S.fabric, cm:S.cm};
+    const lf = lastFabric[peca], lista = fabricsDe(peca);
+    if(lf && lista.some(f=>f.id===lf.fb.id)){ S.cm = lf.cm; selectFabric(lf.fb, true) }
+    else if(lista.length) selectFabric(lista[0]);
+    renderSwatches();
+  }
+  if(!data[k]) $('loading').hidden=false;
+  try{ await loadModel(k, S.vista, S.punho) }catch(e){ $('loading').textContent='Não consegui carregar a peça. Recarregue a página.'; return }
+  if(S.model===k) schedule();
+}
+function renderModels(){
+  const peca = MODELS[S.model].peca;
+  $('pc-blazer').setAttribute('aria-pressed', peca==='blazer'); $('pc-camisa').setAttribute('aria-pressed', peca==='camisa');
+  $('models-lbl').textContent = PECAS[peca].lbl;
+  $('ctbox').hidden = peca!=='camisa'; $('vistabox').hidden = peca!=='camisa'; $('punhobox').hidden = peca!=='camisa'; syncCt(); syncVista();
+  const el = $('models'); el.innerHTML=''; el.classList.toggle('four', peca==='camisa');
+  Object.entries(MODELS).filter(([k,m])=>m.peca===peca).forEach(([k,m])=>{
+    const b = document.createElement('button'); b.type='button'; b.className='model'; b.setAttribute('aria-pressed', S.model===k);
+    b.innerHTML = `<img alt="" src="${m.thumb}"><b></b>${peca==='blazer'?'<span></span>':''}`;
+    b.querySelector('b').textContent=m.nome; if(peca==='blazer') b.querySelector('span').textContent=m.sub;
+    b.onclick = ()=>setModel(k);
+    el.appendChild(b);
+  });
+}
+function syncCt(){
+  $('ct-ambos').setAttribute('aria-pressed', S.ctCol&&S.ctCuf);
+  $('ct-col').setAttribute('aria-pressed', S.ctCol&&!S.ctCuf);
+  $('ct-cuf').setAttribute('aria-pressed', S.ctCuf&&!S.ctCol);
+}
+function setCt(col,cuf){ if(S.ctCol===col && S.ctCuf===cuf){ col=false; cuf=false } S.ctCol=col; S.ctCuf=cuf; syncCt(); updateTag(); schedule() }
+$('ct-ambos').onclick=()=>setCt(true,true); $('ct-col').onclick=()=>setCt(true,false); $('ct-cuf').onclick=()=>setCt(false,true);
+$('pc-blazer').onclick=()=>{ if(MODELS[S.model].peca!=='blazer') setModel(PECAS.blazer.ult) };
+$('pc-camisa').onclick=()=>{ if(MODELS[S.model].peca!=='camisa') setModel(PECAS.camisa.ult) };
+
+/* ---------- vista da camisa ---------- */
+const VISTAS = {
+  lisa:{nome:'Lisa', nota:'Frente lisa, sem costura à mostra.'},
+  pesp:{nome:'Lisa com pesponto', nota:'Frente lisa com uma costura fina e pontilhada ao lado dos botões, tom sobre tom. Aparece melhor de perto, no zoom.'},
+  coberta:{nome:'Coberta', nota:'Botões escondidos sob uma faixa de tecido. Só o botão do colarinho fica à mostra.'}
+};
+function syncVista(){ Object.keys(VISTAS).forEach(k=>$('vs-'+k).setAttribute('aria-pressed', S.vista===k)); $('vs-note').textContent = VISTAS[S.vista].nota }
+async function setVista(v){
+  S.vista = v; syncVista(); updateTag();
+  try{ await loadModel(S.model, v, S.punho) }catch(e){ toast('Não consegui carregar essa vista.'); S.vista = 'lisa'; syncVista(); updateTag(); schedule(); return }
+  if(S.vista===v) schedule();
+}
+/* ---------- punho da camisa (só a parte de trás; a frente é igual) ---------- */
+const PUNHOS = {reto:'Reto', redondo:'Redondo', chanfrado:'Chanfrado', duplo:'Duplo'};
+function syncPunho(){ Object.keys(PUNHOS).forEach(k=>$('pn-'+k).setAttribute('aria-pressed', (S.punho||'redondo')===k)) }
+async function setPunho(p){
+  const prev = S.punho || 'redondo'; S.punho = p; syncPunho(); updateTag();
+  try{ await loadModel(S.model, S.vista, p) }catch(e){ toast('Não consegui carregar esse punho.'); S.punho = prev; syncPunho(); updateTag(); schedule(); return }
+  if(S.punho===p) schedule();
+}
+Object.keys(PUNHOS).forEach(k=>{ $('pn-'+k).onclick=()=>setPunho(k) });
+
+/* ---------- resumo do pedido (para o sistema do Thales) ---------- */
+function pedido(){
+  const m = MODELS[S.model], cam = m.peca==='camisa', fb = S.fabric;
+  const o = { peca: m.peca, modelo: { id: S.model, nome: m.nome } };
+  if(cam){
+    o.vista = { id: S.vista||'lisa', nome: VISTAS[S.vista||'lisa'].nome };
+    o.punho = { id: S.punho||'redondo', nome: PUNHOS[S.punho||'redondo'] };
+    o.contraste_branco = { colarinho: !!S.ctCol, punhos: !!S.ctCuf };
+  }
+  o.tecido = fb ? { id: fb.id||null, nome: fb.nome||'', codigo: fb.codigo||'' } : null;
+  o.recorte_cm = Math.round(S.cm*10)/10;
+  o.monograma = (S.mono||'').trim();
+  o.observacoes = (S.obs||'').trim();
+  o.gerado_em = new Date().toISOString();
+  return o;
+}
+function pedidoTexto(o){
+  const m = MODELS[S.model], L = [];
+  L.push('PEDIDO — Schuck Alfaiataria');
+  L.push('Peça: ' + PECAS[o.peca].nome);
+  L.push((o.peca==='camisa' ? m.sub : 'Modelo') + ': ' + o.modelo.nome);
+  if(o.peca==='camisa'){
+    L.push('Vista: ' + o.vista.nome);
+    L.push('Punho: ' + o.punho.nome);
+    const c = o.contraste_branco;
+    L.push('Contraste em branco: ' + (c.colarinho&&c.punhos ? 'colarinho e punhos' : c.colarinho ? 'colarinho' : c.punhos ? 'punhos' : 'não'));
+  }
+  L.push('Tecido: ' + (o.tecido ? o.tecido.nome + (o.tecido.codigo ? ' (' + o.tecido.codigo + ')' : '') : 'não escolhido'));
+  L.push('Recorte: ' + fmtCm(o.recorte_cm));
+  L.push('Monograma: ' + (o.monograma || 'sem monograma'));
+  L.push('Observações: ' + (o.observacoes || '—'));
+  return L.join('\n');
+}
+function renderResumo(){
+  const dl = $('resumo'); if(!dl) return;
+  const o = pedido(), m = MODELS[S.model], rows = [];
+  rows.push(['Peça', PECAS[o.peca].nome]);
+  rows.push([o.peca==='camisa' ? m.sub : 'Modelo', o.modelo.nome]);
+  if(o.peca==='camisa'){
+    const c = o.contraste_branco;
+    rows.push(['Vista', o.vista.nome]); rows.push(['Punho', o.punho.nome]);
+    rows.push(['Contraste em branco', c.colarinho&&c.punhos ? 'Colarinho e punhos' : c.colarinho ? 'Colarinho' : c.punhos ? 'Punhos' : null]);
+  }
+  rows.push(['Tecido', o.tecido ? o.tecido.nome + (o.tecido.codigo ? ' · ' + o.tecido.codigo : '') : null]);
+  rows.push(['Recorte', fmtCm(o.recorte_cm)]);
+  rows.push(['Monograma', o.monograma || null]);
+  rows.push(['Observações', o.observacoes || null]);
+  dl.innerHTML = '';
+  rows.forEach(([k,v])=>{ const dt=document.createElement('dt'), dd=document.createElement('dd'); dt.textContent=k; if(v){ dd.textContent=v } else { dd.textContent='—'; dd.className='vz' } dl.append(dt,dd) });
+  $('rs-out').value = JSON.stringify(o, null, 2);
+}
+async function copiar(txt, ok){
+  try{ await navigator.clipboard.writeText(txt); toast(ok); return }catch(e){}
+  try{ const t=document.createElement('textarea'); t.value=txt; t.style.cssText='position:fixed;opacity:0;top:0'; document.body.appendChild(t); t.select(); const r=document.execCommand('copy'); t.remove(); if(r){ toast(ok); return } }catch(e){}
+  $('rs-out').value = txt; $('rs-det').open = true; $('rs-out').focus(); $('rs-out').select(); toast('Não consegui copiar sozinho. O texto está selecionado, é só copiar.');
+}
+$('mono').addEventListener('input', e=>{ const v = e.target.value.toUpperCase(); if(v!==e.target.value) e.target.value = v; S.mono = v; renderResumo() });
+$('obs').addEventListener('input', e=>{ S.obs = e.target.value; renderResumo() });
+$('rs-copy').onclick = ()=>copiar(pedidoTexto(pedido()), 'Pedido copiado.');
+$('rs-json').onclick = ()=>copiar(JSON.stringify(pedido(), null, 2), 'JSON copiado.');
+$('rg-cm').addEventListener('input', renderResumo);
+$('vs-lisa').onclick=()=>setVista('lisa'); $('vs-pesp').onclick=()=>setVista('pesp'); $('vs-coberta').onclick=()=>setVista('coberta');
+
+/* ---------- escolher tecido ---------- */
+async function fabricCanvas(fb){
+  if(fb.canvas) return fb.canvas;
+  if(fb.make){ fb.canvas = fb.make(); fb.thumb = fb.canvas.toDataURL('image/jpeg',.85); return fb.canvas }
+  const img = await loadImg(fb.src); const c = mkCanvas(img.naturalWidth,img.naturalHeight);
+  c.getContext('2d').drawImage(img,0,0); fb.canvas = c; return c;
+}
+async function selectFabric(fb, keepCm){
+  try{ await fabricCanvas(fb) }catch(e){ toast('Não foi possível abrir a foto desse tecido.'); return }
+  S.fabric = fb; if(!keepCm){ S.cm = fb.cm || 10 }
+  S.rot = !!fb.rot; S.mirror = !!fb.mirror; S.light = 0; applyTipo(fb.tipo || defaultTipo(fb.peca));
+  syncControls(); updateTag(); renderSwatches(); schedule();
+}
+function syncControls(){
+  $('rg-cm').value = S.cm; $('out-cm').textContent = fmtCm(S.cm);
+  $('rg-light').value = S.light; $('out-light').textContent = (S.light>0?'+':'')+S.light+'%';
+  $('tg-rot').setAttribute('aria-pressed',S.rot); $('tg-mir').setAttribute('aria-pressed',S.mirror);
+  syncTipoControls();
+}
+
+/* ---------- mostruário ---------- */
+// A miniatura mostra o tecido na mesma escala da peça: o quadrinho equivale a ~4 cm de tecido.
+function swatchScale(el, fb, viewCm){
+  const pct = Math.max(4, (fb.cm||10)/viewCm*100);
+  el.style.backgroundSize = `${pct}% auto`; el.style.backgroundRepeat='repeat'; el.style.backgroundPosition='0 0';
+  if(fb.rot) el.style.transform='rotate(90deg)'; else el.style.transform='';
+}
+function swatchEl(fb, isEx){
+  const w = document.createElement('div'); w.className='swc';
+  const b = document.createElement('button'); b.type='button'; b.className='swb';
+  b.setAttribute('aria-pressed', S.fabric && S.fabric.id===fb.id);
+  b.innerHTML = '<div class="im"></div><div class="n"></div><div class="c"></div>';
+  b.querySelector('.im').style.backgroundImage = `url(${fb.thumb||fb.src})`; swatchScale(b.querySelector('.im'), fb, 4);
+  b.querySelector('.n').textContent = fb.nome;
+  b.querySelector('.c').textContent = (fb.codigo? fb.codigo+' · ' : '') + fmtCm(fb.cm||10);
+  b.onclick = ()=>selectFabric(fb);
+  w.appendChild(b);
+  if(!isEx && S.organizing && canWrite()){
+    const o = document.createElement('div'); o.className='org';
+    const rn = document.createElement('button'); rn.className='btn'; rn.type='button'; rn.textContent='Renomear';
+    const dl = document.createElement('button'); dl.className='btn danger'; dl.type='button'; dl.textContent='Excluir';
+    rn.onclick = ()=>renameUI(w, fb); dl.onclick = ()=>deleteUI(o, fb);
+    const outra = (fb.peca||'blazer')==='blazer' ? 'camisa' : 'blazer';
+    const mv = document.createElement('button'); mv.className='btn'; mv.type='button'; mv.textContent='Mover p/ '+PECAS[outra].nome;
+    mv.onclick = async ()=>{ await updateFabric(fb,{peca:outra}); toast('Tecido movido para '+PECAS[outra].nome+'.') };
+    o.append(rn, mv, dl); w.appendChild(o);
+  }
+  return w;
+}
+function renameUI(w, fb){
+  const f = document.createElement('div'); f.className='ctl';
+  f.innerHTML = '<input class="inp" type="text" maxlength="60"><input class="inp" type="text" maxlength="30" placeholder="Código"><div class="org"><button class="btn pri" type="button">Salvar</button><button class="btn" type="button">Cancelar</button></div>';
+  const [i1,i2] = f.querySelectorAll('input'); i1.value=fb.nome; i2.value=fb.codigo||'';
+  i1.setAttribute('aria-label','Nome do tecido'); i2.setAttribute('aria-label','Código');
+  const [ok,cc] = f.querySelectorAll('button');
+  cc.onclick = renderSwatches;
+  ok.onclick = async ()=>{ const nome=i1.value.trim(); if(!nome){i1.focus();return}
+    await updateFabric(fb,{nome, codigo:i2.value.trim()}); };
+  w.querySelector('.org').replaceWith(f); i1.focus();
+}
+function deleteUI(o, fb){
+  o.innerHTML = '<span class="note" style="width:100%">Excluir este tecido?</span>';
+  const y = document.createElement('button'); y.className='btn danger'; y.type='button'; y.textContent='Excluir';
+  const n = document.createElement('button'); n.className='btn'; n.type='button'; n.textContent='Manter';
+  y.onclick = ()=>removeFabric(fb); n.onclick = renderSwatches; o.append(y,n);
+}
+function renderSwatches(){
+  const q = $('q').value.trim().toLowerCase();
+  const match = fb => !q || (fb.nome||'').toLowerCase().includes(q) || (fb.codigo||'').toLowerCase().includes(q);
+  const sv = $('sw-saved'); sv.innerHTML='';
+  const peca = pecaAtual(), nomePeca = PECAS[peca].nome.toLowerCase();
+  $('lbl-saved').textContent = 'Mostruário Schuck · ' + PECAS[peca].nome;
+  $('lbl-ex').textContent = 'Exemplos · ' + PECAS[peca].nome;
+  const mine = saved.filter(f=>(f.peca||'blazer')===peca);
+  const list = mine.filter(match);
+  if(store.mode==='pending'){ sv.innerHTML='<div class="empty" style="grid-column:1/-1">Carregando o mostruário…</div>' }
+  else if(!list.length){
+    const e=document.createElement('div'); e.className='empty'; e.style.gridColumn='1/-1';
+    e.textContent = mine.length ? 'Nenhum tecido com esse nome ou código.' : (canWrite() ? `Nenhum tecido de ${nomePeca} cadastrado ainda. Toque em "Cadastrar tecido" para adicionar o primeiro.` : `Nenhum tecido de ${nomePeca} cadastrado ainda.`);
+    sv.appendChild(e);
+  } else list.forEach(fb=>sv.appendChild(swatchEl(fb,false)));
+  const ex = $('sw-ex'); ex.innerHTML='';
+  EXAMPLES.filter(f=>f.peca===peca).filter(match).forEach(fb=>{ if(!fb.canvas) fabricCanvas(fb); ex.appendChild(swatchEl(fb,true)) });
+  $('btn-org').textContent = S.organizing ? 'Concluir' : 'Organizar';
+  $('btn-org').hidden = !canWrite() || !mine.length;
+  $('btn-add').hidden = !canWrite();
+}
+function canWrite(){ return store.mode==='local' || (store.mode==='db' && !!assets) }
+
+/* ---------- armazenamento ---------- */
+async function initStore(){
+  try{ [db, assets, downloads] = await Promise.all(['db','assets','downloads'].map(n=>window.claude?.use ? window.claude.use(n) : null)) }catch(e){}
+  if(downloads) $('btn-save').hidden = false;
+  if(db){
+    store.mode='db';
+    $('store-note').textContent = assets ? 'compartilhado entre os aparelhos' : 'somente leitura';
+    db.collection('tecidos').orderBy('criadoEm','desc').onSnapshot(snap=>{
+      const prev = Object.fromEntries(saved.map(f=>[f.id,f]));
+      saved = snap.docs.map(d=>{ const v=d.data(); const old=prev[d.id];
+        const fb = {id:d.id, nome:v.nome, codigo:v.codigo||'', cm:v.cm||10, rot:!!v.rot, peca:v.peca||'blazer', tipo:v.tipo||null, assetId:v.assetId, src:'/_blob/'+v.assetId};
+        if(old && old.assetId===v.assetId){ fb.canvas=old.canvas; fb.thumb=old.thumb }
+        fb.thumb = fb.thumb || fb.src; return fb });
+      if(S.fabric && !S.fabric.make){ const cur = saved.find(f=>f.id===S.fabric.id); if(cur){ cur.canvas=S.fabric.canvas; S.fabric=cur; updateTag() } }
+      renderSwatches();
+    }, err=>{ $('store-note').textContent='mostruário indisponível agora'; console.warn(err) });
+  } else {
+    store.mode='local';
+    $('store-note').textContent='salvo só neste aparelho';
+    saved = (lsGet('schuck-tecidos')||[]).map(f=>({...f, src:f.data, thumb:f.data}));
+  }
+  renderSwatches();
+}
+async function addFabric({canvas, nome, codigo, cm, rot, peca, tipo}){
+  if(store.mode==='db'){
+    const blob = await new Promise(r=>canvas.toBlob(r,'image/jpeg',.9));
+    const up = await assets.upload(blob,{type:'image/jpeg'});
+    const ref = await db.collection('tecidos').add({nome, codigo, cm, rot:!!rot, peca, tipo:tipo||null, assetId:up.id, criadoEm:Date.now()});
+    return {id:ref.id, nome, codigo, cm, rot, peca, tipo, assetId:up.id, src:up.url, thumb:up.url, canvas};
+  }
+  const ar = canvas.height/canvas.width, sw = ar>1 ? Math.round(384/ar) : 384, sh = ar>1 ? 384 : Math.round(384*ar);
+  const small = mkCanvas(sw,sh); small.getContext('2d').drawImage(canvas,0,0,sw,sh);
+  const dataUrl = small.toDataURL('image/jpeg',.85);
+  const rec = {id:'loc-'+Date.now(), nome, codigo, cm, rot:!!rot, peca, tipo:tipo||null, data:dataUrl};
+  const all = lsGet('schuck-tecidos')||[]; all.unshift(rec);
+  if(!lsSet('schuck-tecidos',all)) throw {code:'quota'};
+  const fb = {...rec, src:dataUrl, thumb:dataUrl, canvas}; saved.unshift(fb); renderSwatches(); return fb;
+}
+async function updateFabric(fb, patch){
+  try{
+    if(store.mode==='db'){ await db.collection('tecidos').doc(fb.id).update(patch) }
+    else { const all=(lsGet('schuck-tecidos')||[]).map(r=>r.id===fb.id?{...r,...patch}:r); lsSet('schuck-tecidos',all); Object.assign(fb,patch); renderSwatches() }
+    if(S.fabric && S.fabric.id===fb.id){ Object.assign(S.fabric,patch); updateTag() }
+    toast('Tecido atualizado.');
+  }catch(e){ toast('Não deu para salvar a alteração. Tente de novo.') }
+}
+async function removeFabric(fb){
+  try{
+    if(store.mode==='db'){ await db.collection('tecidos').doc(fb.id).delete(); if(assets && fb.assetId){ try{ await assets.delete(fb.assetId) }catch(e){} } }
+    else { lsSet('schuck-tecidos',(lsGet('schuck-tecidos')||[]).filter(r=>r.id!==fb.id)); saved=saved.filter(f=>f.id!==fb.id); renderSwatches() }
+    toast('Tecido excluído.');
+  }catch(e){ toast('Não deu para excluir agora. Tente de novo.') }
+}
+
+/* ---------- recorte da foto ---------- */
+const CR = {img:null, scale:1, sel:{x:0,y:0,s:100}, mode:'photo', drag:null, work:null, tool:'move', pts:[], cal:null, wb:null};
+const ccv = $('cropcv'), ccx = ccv.getContext('2d');
+async function openCropper(file, mode){
+  if(!file) return;
+  let img; const url = URL.createObjectURL(file);
+  try{ img = await loadImg(url) }catch(e){ toast('Não consegui abrir essa imagem. Tente outra foto.'); return }
+  CR.img = img; CR.mode = mode;
+  $('ov').hidden = false;
+  const wrap = $('cropwrap'), maxW = Math.max(240, wrap.clientWidth-0), maxH = Math.min(window.innerHeight*0.55, 560);
+  CR.scale = Math.min(maxW/img.naturalWidth, maxH/img.naturalHeight, 1);
+  ccv.width = Math.round(img.naturalWidth*CR.scale); ccv.height = Math.round(img.naturalHeight*CR.scale);
+  const pct = +$('rg-crop').value; const m = Math.min(ccv.width, ccv.height);
+  CR.sel.s = m*pct/100; CR.sel.x=(ccv.width-CR.sel.s)/2; CR.sel.y=(ccv.height-CR.sel.s)/2;
+  $('in-cm').value = 10;
+  $('ck-save').checked = mode==='add'; $('ck-save-wrap').hidden = mode==='add' || !canWrite();
+  $('save-fields').hidden = !(mode==='add'); $('in-nm').value=''; $('in-cd').value=''; $('crop-err').hidden=true;
+  setSavePeca(pecaAtual());
+  $('crop-ttl').textContent = mode==='add' ? 'Cadastrar tecido' : 'Recortar o tecido';
+  $('crop-ok').textContent = mode==='add' ? 'Salvar e vestir' : 'Vestir a peça';
+  resetCropTools();
+  drawCrop();
+}
+function drawCrop(){
+  const {img, sel} = CR; if(!img) return;
+  ccx.clearRect(0,0,ccv.width,ccv.height); ccx.drawImage(img,0,0,ccv.width,ccv.height);
+  ccx.fillStyle='rgba(0,0,0,.5)';
+  ccx.fillRect(0,0,ccv.width,sel.y); ccx.fillRect(0,sel.y+sel.s,ccv.width,ccv.height-sel.y-sel.s);
+  ccx.fillRect(0,sel.y,sel.x,sel.s); ccx.fillRect(sel.x+sel.s,sel.y,ccv.width-sel.x-sel.s,sel.s);
+  ccx.strokeStyle='#fff'; ccx.lineWidth=2; ccx.strokeRect(sel.x+1,sel.y+1,sel.s-2,sel.s-2);
+  ccx.strokeStyle='rgba(255,255,255,.4)'; ccx.lineWidth=1;
+  for(let k=1;k<3;k++){ const t=sel.s*k/3; ccx.beginPath(); ccx.moveTo(sel.x+t,sel.y); ccx.lineTo(sel.x+t,sel.y+sel.s); ccx.moveTo(sel.x,sel.y+t); ccx.lineTo(sel.x+sel.s,sel.y+t); ccx.stroke() }
+  drawOverlays();
+  $('out-crop').textContent = $('rg-crop').value+'%';
+  schedulePreview();
+}
+function cropTile(size){
+  const {img, sel, scale} = CR, c = mkCanvas(size,size), x = c.getContext('2d');
+  x.imageSmoothingQuality='high';
+  x.drawImage(img, sel.x/scale, sel.y/scale, sel.s/scale, sel.s/scale, 0, 0, size, size);
+  makeSeamless(c, $('ck-eq').checked);
+  return c;
+}
+// Remove a variação de luz (estimada de forma periódica) e funde as bordas, para o recorte repetir sem emendas.
+function makeSeamless(c, flatten){
+  const N=c.width, x=c.getContext('2d',{willReadFrequently:true}), im=x.getImageData(0,0,N,N), d=im.data, n=N*N;
+  const ch=[new Float32Array(n),new Float32Array(n),new Float32Array(n)];
+  for(let i=0,j=0;i<n;i++,j+=4){ch[0][i]=d[j];ch[1][i]=d[j+1];ch[2][i]=d[j+2]}
+  if(flatten){
+    const G=24, cell=N/G;
+    for(let k=0;k<3;k++){
+      const A=ch[k], g=new Float32Array(G*G), cnt=new Float32Array(G*G);
+      for(let y=0;y<N;y++){const gy=Math.min(G-1,(y/cell)|0); for(let xx=0;xx<N;xx++){const gi=gy*G+Math.min(G-1,(xx/cell)|0); g[gi]+=A[y*N+xx]; cnt[gi]++}}
+      for(let i=0;i<G*G;i++) g[i]/=cnt[i];
+      // ajusta uma superfície suave (polinômio de 2º grau) à luz da foto e a remove
+      const M=new Float64Array(36), V=new Float64Array(6), f=new Float64Array(6);
+      for(let gy=0;gy<G;gy++) for(let gx=0;gx<G;gx++){ const u=(gx+.5)/G*2-1, v=(gy+.5)/G*2-1;
+        f[0]=1;f[1]=u;f[2]=v;f[3]=u*u;f[4]=u*v;f[5]=v*v; const val=g[gy*G+gx];
+        for(let r=0;r<6;r++){ V[r]+=f[r]*val; for(let q=0;q<6;q++) M[r*6+q]+=f[r]*f[q] } }
+      for(let col=0;col<6;col++){ let piv=col; for(let r=col+1;r<6;r++) if(Math.abs(M[r*6+col])>Math.abs(M[piv*6+col])) piv=r;
+        for(let q=0;q<6;q++){ const t2=M[col*6+q]; M[col*6+q]=M[piv*6+q]; M[piv*6+q]=t2 } { const t2=V[col]; V[col]=V[piv]; V[piv]=t2 }
+        for(let r=0;r<6;r++) if(r!==col){ const fct=M[r*6+col]/M[col*6+col]; for(let q=0;q<6;q++) M[r*6+q]-=fct*M[col*6+q]; V[r]-=fct*V[col] } }
+      const co=[0,1,2,3,4,5].map(i=>V[i]/M[i*6+i]);
+      let mean=0; for(let i=0;i<G*G;i++) mean+=g[i]; mean/=G*G;
+      for(let y=0;y<N;y++){ const v=(y+.5)/N*2-1;
+        for(let xx=0;xx<N;xx++){ const u=(xx+.5)/N*2-1;
+          const L=co[0]+co[1]*u+co[2]*v+co[3]*u*u+co[4]*u*v+co[5]*v*v;
+          A[y*N+xx]=A[y*N+xx]*mean/Math.max(1,L) } }
+    }
+  }
+  // fusão das bordas: centro do recorte original + cópia deslocada pela metade nas bordas
+  const h=N>>1, band=N*0.3, out=d;
+  const mean=ch.map(A=>{let m=0;for(let i=0;i<n;i++)m+=A[i];return m/n});
+  for(let y=0;y<N;y++){ const ys=(y+h)%N, dy=Math.min(y,N-1-y);
+    for(let xx=0;xx<N;xx++){ const xs=(xx+h)%N, dx=Math.min(xx,N-1-xx);
+      let w=Math.min(1,Math.min(dx,dy)/band); w=w*w*(3-2*w);
+      const a=w, b=1-w, norm=1/Math.sqrt(a*a+b*b), i=y*N+xx, i2=ys*N+xs, j=i*4;
+      for(let k=0;k<3;k++){ const A=ch[k], m=mean[k]; let v=m+((A[i]-m)*a+(A[i2]-m)*b)*norm; out[j+k]=v<0?0:v>255?255:v }
+      out[j+3]=255 } }
+  x.putImageData(im,0,0);
+}
+function equalize(c){
+  const n=c.width, x=c.getContext('2d',{willReadFrequently:true});
+  const a=mkCanvas(32,32), ax=a.getContext('2d'); ax.imageSmoothingQuality='high'; ax.drawImage(c,0,0,32,32);
+  const b=mkCanvas(4,4), bx=b.getContext('2d'); bx.imageSmoothingQuality='high'; bx.drawImage(a,0,0,4,4);
+  const bl=mkCanvas(n,n), blx=bl.getContext('2d',{willReadFrequently:true}); blx.imageSmoothingQuality='high'; blx.drawImage(b,0,0,n,n);
+  const src=x.getImageData(0,0,n,n), d=src.data, g=blx.getImageData(0,0,n,n).data;
+  const mean=[0,0,0]; for(let i=0;i<d.length;i+=4){mean[0]+=d[i];mean[1]+=d[i+1];mean[2]+=d[i+2]}
+  const cnt=d.length/4; mean.forEach((v,k)=>mean[k]=v/cnt);
+  for(let i=0;i<d.length;i+=4) for(let k=0;k<3;k++){ d[i+k]=Math.min(255,d[i+k]*mean[k]/Math.max(1,g[i+k])) }
+  x.putImageData(src,0,0);
+}
+/* ===== Provador Schuck: recorte inteligente, medição, qualidade da foto, trama e brilho ===== */
+
+/* --- tipos de tecido: brilho e trama --- */
+const TIPOS = {
+  'lã':      {nome:'Lã',                  sheen:.34, tex:.55, tr:'twill'},
+  'linho':   {nome:'Linho',               sheen:.16, tex:.85, tr:'linen'},
+  'algodão': {nome:'Algodão / camisaria', sheen:.30, tex:.50, tr:'plain'},
+  'seda':    {nome:'Seda / acetinado',    sheen:.90, tex:.12, tr:'plain'},
+  'liso':    {nome:'Sem trama',           sheen:.36, tex:0,   tr:'plain'}
+};
+const EX_TIPO = {'ex-linho':'linho','ex-oxford':'algodão','ex-bengal':'algodão','ex-vichy':'algodão'};
+EXAMPLES.forEach(e=>{ e.tipo = EX_TIPO[e.id] || (e.peca==='camisa' ? 'algodão' : 'lã') });
+const TEXCM = 1; // a textura da trama se repete a cada 1 cm de tecido
+function tipoOpts(){ return Object.entries(TIPOS).map(([k,t])=>`<option value='${k}'>${t.nome}</option>`).join('') }
+$('sel-tipo').innerHTML = tipoOpts(); $('sv-tipo').innerHTML = tipoOpts();
+function defaultTipo(peca){ return (peca || (MODELS[S.model] && MODELS[S.model].peca)) === 'camisa' ? 'algodão' : 'lã' }
+function applyTipo(k){ if(!TIPOS[k]) k = defaultTipo(); S.tipo = k; S.sheen = TIPOS[k].sheen; S.tex = TIPOS[k].tex }
+function syncTipoControls(){
+  $('sel-tipo').value = S.tipo;
+  $('rg-sheen').value = Math.round(S.sheen*100); $('out-sheen').textContent = Math.round(S.sheen*100)+'%';
+  $('rg-tex').value = Math.round(S.tex*100); $('out-tex').textContent = Math.round(S.tex*100)+'%';
+}
+$('sel-tipo').addEventListener('change',e=>{ applyTipo(e.target.value); syncTipoControls(); schedule() });
+$('rg-sheen').addEventListener('input',e=>{ S.sheen = +e.target.value/100; $('out-sheen').textContent = e.target.value+'%'; schedule() });
+$('rg-tex').addEventListener('input',e=>{ S.tex = +e.target.value/100; $('out-tex').textContent = e.target.value+'%'; schedule() });
+
+// quanto o realce das luzes puxa para o branco (0,35 era o valor fixo antigo)
+function ghGain(){ return 0.08 + 0.75*S.sheen }
+
+const texCache = {};
+function texTile(tr){
+  if(texCache[tr]) return texCache[tr];
+  const r = rng(tr==='linen' ? 41 : tr==='twill' ? 43 : 47);
+  let c;
+  if(tr==='twill'){
+    const N=12, a=Array.from({length:N},()=>vary([150,150,150],26,r)), b=Array.from({length:N},()=>vary([112,112,112],26,r));
+    c = weave(a,b,8,{noise:14,seed:5});
+  } else if(tr==='linen'){
+    const N=14, a=Array.from({length:N},()=>vary([140,140,140],110,r)), b=Array.from({length:N},()=>vary([140,140,140],110,r));
+    c = weave(a,b,7,{plain:true,noise:30,seed:6});
+  } else {
+    const N=18, a=Array.from({length:N},()=>vary([150,150,150],22,r)), b=Array.from({length:N},()=>vary([120,120,120],22,r));
+    c = weave(a,b,6,{plain:true,noise:12,seed:7});
+  }
+  const d = c.getContext('2d').getImageData(0,0,c.width,c.height).data; let m = 0;
+  for(let i=0;i<d.length;i+=4) m += d[i];
+  return texCache[tr] = {c, mean: m/(d.length/4)};
+}
+// multiplicador de luz (≈1 ± 10%) que simula os fios do tecido, na escala real (1 cm = TEXCM)
+function texData(w,h,k,ox,oy){
+  if(!(S.tex>0) || !TIPOS[S.tipo]) return null;
+  const T = texTile(TIPOS[S.tipo].tr), tile = scaledTile(T.c, Math.max(4, TEXCM*PX_PER_CM*k));
+  const c = mkCanvas(w,h), x = c.getContext('2d',{willReadFrequently:true});
+  const pat = x.createPattern(tile,'repeat');
+  if(pat.setTransform) pat.setTransform(new DOMMatrix().translate(ox||0, oy||0));
+  x.fillStyle = pat; x.fillRect(0,0,w,h);
+  const d = x.getImageData(0,0,w,h).data, out = new Float32Array(w*h), amp = S.tex*0.5/T.mean;
+  for(let i=0,j=0;i<out.length;i++,j+=4) out[i] = 1 + (d[j]-T.mean)*amp;
+  return out;
+}
+
+/* --- fotos: utilidades --- */
+function natW(img){ return img.naturalWidth || img.width }
+function natH(img){ return img.naturalHeight || img.height }
+function makeWork(img){
+  const f = Math.min(1, 2048/Math.max(natW(img), natH(img)));
+  const c = mkCanvas(Math.max(1,Math.round(natW(img)*f)), Math.max(1,Math.round(natH(img)*f)));
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img,0,0,c.width,c.height);
+  return {c, f};
+}
+function lumArr(c){
+  const d = c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height).data, n = c.width*c.height, L = new Float32Array(n);
+  for(let i=0,j=0;i<n;i++,j+=4) L[i] = 0.299*d[j] + 0.587*d[j+1] + 0.114*d[j+2];
+  return L;
+}
+function applyWB(c){
+  const g = CR.wb; if(!g) return;
+  const x = c.getContext('2d',{willReadFrequently:true}), im = x.getImageData(0,0,c.width,c.height), d = im.data;
+  for(let i=0;i<d.length;i+=4){ d[i]=Math.min(255,d[i]*g.r); d[i+1]=Math.min(255,d[i+1]*g.g); d[i+2]=Math.min(255,d[i+2]*g.b) }
+  x.putImageData(im,0,0);
+}
+// Desenha a área escolhida, girada em 'ang' (rad), num quadrado de lado 'size'.
+// O quadrado de saída é o maior que cabe dentro da área girada: nenhum canto fica vazio.
+function renderRegion(size, ang, full){
+  const src = full ? CR.img : CR.work.c, f = full ? 1 : CR.work.f;
+  const sNat = CR.sel.s/CR.scale, cxN = (CR.sel.x + CR.sel.s/2)/CR.scale, cyN = (CR.sel.y + CR.sel.s/2)/CR.scale;
+  const inner = sNat/(Math.abs(Math.cos(ang)) + Math.abs(Math.sin(ang))), k = size/inner;
+  const c = mkCanvas(size,size), x = c.getContext('2d',{willReadFrequently:true});
+  x.imageSmoothingQuality = 'high';
+  x.translate(size/2,size/2); x.rotate(-ang); x.scale(k/f,k/f); x.translate(-cxN*f,-cyN*f);
+  x.drawImage(src,0,0);
+  applyWB(c);
+  return {canvas:c, k, inner};
+}
+
+/* --- inclinação do padrão (risca/xadrez fotografado torto) --- */
+const MIN_PERIOD_CM = 0.12, ANG_RATIO = 2.5, ANG_MAX = 20*Math.PI/180;
+// gira um quadrado pequeno e devolve o maior quadrado interno, no tamanho 'out'
+function rotSmall(base, a, out){
+  const inner = base.width/(Math.abs(Math.cos(a)) + Math.abs(Math.sin(a))), c = mkCanvas(out,out), x = c.getContext('2d',{willReadFrequently:true});
+  x.imageSmoothingQuality = 'high'; x.translate(out/2,out/2); x.rotate(-a); const k = out/inner; x.scale(k,k); x.translate(-base.width/2,-base.height/2); x.drawImage(base,0,0);
+  return c;
+}
+function profVar(a){ let m=0; for(let i=0;i<a.length;i++) m+=a[i]; m/=a.length; let v=0; for(let i=0;i<a.length;i++) v+=(a[i]-m)*(a[i]-m); return v/a.length }
+// quanto os traços do padrão estão alinhados aos eixos: os perfis de linhas e colunas ficam mais "nítidos"
+function alignScore(base, a, n){
+  n = n || 128; const L = lumArr(rotSmall(base,a,n)), [px,py] = projections(L,n,n);
+  return profVar(px) + profVar(py);
+}
+// procura o giro (±20°) que deixa listra ou xadrez alinhado; sem pico claro, não gira
+function estimateAngle(){
+  const base = renderRegion(256, 0, false).canvas, D = Math.PI/180, all = [];
+  let best = 0, bs = -1;
+  for(let g=-20; g<=20; g+=2){ const sc = alignScore(base, g*D, 96); all.push(sc); if(sc>bs){ bs=sc; best=g*D } }
+  const med = all.slice().sort((p,q)=>p-q)[all.length>>1], ratio = bs/(med+1e-6);
+  if(!(ratio >= ANG_RATIO) || bs < 8 || Math.abs(best) >= ANG_MAX - 1e-6) return {dev:0, coh:ratio};
+  const c0 = best; bs = -1;
+  for(let a = c0-2*D; a <= c0+2*D+1e-9; a += 0.5*D){ const sc = alignScore(base,a); if(sc>bs){ bs=sc; best=a } }
+  const c1 = best;
+  for(let a = c1-0.5*D; a <= c1+0.5*D+1e-9; a += 0.1*D){ const sc = alignScore(base,a); if(sc>bs){ bs=sc; best=a } }
+  return {dev:best, coh:ratio};
+}
+
+/* --- repetição do padrão --- */
+function detrend(sig){
+  const N = sig.length; let sx=0, sy=0, sxx=0, sxy=0;
+  for(let i=0;i<N;i++){ sx+=i; sy+=sig[i]; sxx+=i*i; sxy+=i*sig[i] }
+  const den = N*sxx - sx*sx, b = den ? (N*sxy - sx*sy)/den : 0, a = (sy - b*sx)/N, o = new Float64Array(N);
+  for(let i=0;i<N;i++) o[i] = sig[i] - (a + b*i);
+  return o;
+}
+function parab(r,i){
+  if(i<=1 || i>=r.length-2) return i;
+  const y1=r[i-1], y2=r[i], y3=r[i+1], den = y1-2*y2+y3;
+  return den ? i + 0.5*(y1-y3)/den : i;
+}
+// período (em px, com fração) de um sinal 1D; null se não houver repetição regular
+function findPeriod(sig, minL){
+  const N = sig.length, a = detrend(sig); let e = 0;
+  for(let i=0;i<N;i++) e += a[i]*a[i];
+  if(e/N < 4) return null; // quase sem variação (menos de ~2 níveis de cinza)
+  const maxL = Math.floor(N*0.6), pre = new Float64Array(N+1);
+  for(let i=0;i<N;i++) pre[i+1] = pre[i] + a[i]*a[i];
+  const r = new Float64Array(maxL+3);
+  for(let L=1; L<=maxL+2 && L<N-4; L++){
+    let s = 0; for(let i=0;i<N-L;i++) s += a[i]*a[i+L];
+    r[L] = s/Math.sqrt((pre[N-L])*(pre[N]-pre[L]) + 1e-9);
+  }
+  let best = 0; const peaks = [];
+  for(let L=minL; L<=maxL; L++) if(r[L]>r[L-1] && r[L]>=r[L+1] && r[L]>0.3){ peaks.push(L); if(r[L]>best) best = r[L] }
+  if(best < 0.5) return null;
+  const L0 = peaks.find(L => r[L] >= 0.85*best);
+  if(L0 > N*0.5) return null; // precisa de pelo menos 2 repetições na área
+  let P = parab(r,L0), q = r[L0];
+  // refina com o múltiplo mais distante que ainda correlaciona: o erro do período se divide pelo múltiplo
+  for(let m=2; m*P <= maxL && m < 120; m++){
+    const t = Math.round(m*P), w = Math.min(Math.max(2, Math.round(0.02*t)), Math.max(1, Math.floor(P/3))); let bi=-1, bv=-2;
+    for(let l=t-w; l<=t+w; l++) if(l>=1 && l<=maxL && r[l]>bv){ bv=r[l]; bi=l }
+    if(bi>0 && bv >= 0.6*r[L0]) P = parab(r,bi)/m; else break;
+  }
+  return {P, r:q};
+}
+function sampleAt(sig, x){ const i = Math.floor(x), f = x-i; return sig[Math.max(0,Math.min(sig.length-1,i))]*(1-f) + sig[Math.max(0,Math.min(sig.length-1,i+1))]*f }
+function nccSeg(sig, xa, xb, P){
+  const n = Math.max(8, Math.round(P)); let ma=0, mb=0; const A=[], B=[];
+  for(let i=0;i<n;i++){ const t = i*P/n; A.push(sampleAt(sig,xa+t)); B.push(sampleAt(sig,xb+t)); ma+=A[i]; mb+=B[i] }
+  ma/=n; mb/=n; let s=0, sa=0, sb=0;
+  for(let i=0;i<n;i++){ const u=A[i]-ma, v=B[i]-mb; s+=u*v; sa+=u*u; sb+=v*v }
+  return s/Math.sqrt(sa*sb + 1e-9);
+}
+// quantas repetições cabem num ladrilho sem acumular deriva (1ª repetição = última?)
+function chooseN(sig, P){
+  const N = sig.length, nmax = Math.floor(N/P);
+  if(nmax < 1) return 0;
+  const cand = [...new Set([nmax, Math.floor(nmax*.75), Math.floor(nmax/2), Math.floor(nmax/3), 2, 1])].filter(n=>n>=1 && n<=nmax).sort((a,b)=>b-a);
+  for(const n of cand){
+    if(n===1) return 1;
+    const x0 = (N - n*P)/2, last = nccSeg(sig, x0, x0+(n-1)*P, P), second = nccSeg(sig, x0, x0+P, P);
+    if(last >= 0.6 && (n<3 || last >= 0.88*second)) return n;
+  }
+  return 1;
+}
+
+/* --- ladrilho sem emenda --- */
+// luz da foto: tira a variação suave (sombra, luz de um lado só)
+function solve6(M,V){
+  const A = []; for(let i=0;i<6;i++){ A.push([...M.slice(i*6,i*6+6), V[i]]) }
+  for(let c=0;c<6;c++){
+    let p=c; for(let r=c+1;r<6;r++) if(Math.abs(A[r][c])>Math.abs(A[p][c])) p=r;
+    [A[c],A[p]] = [A[p],A[c]];
+    if(Math.abs(A[c][c])<1e-12) return null;
+    for(let r=0;r<6;r++) if(r!==c){ const f = A[r][c]/A[c][c]; for(let q=c;q<7;q++) A[r][q] -= f*A[c][q] }
+  }
+  return A.map((row,i)=>row[6]/row[i]);
+}
+function flattenLight(c){
+  const Wd=c.width, Ht=c.height, x=c.getContext('2d',{willReadFrequently:true}), im=x.getImageData(0,0,Wd,Ht), d=im.data;
+  const G=24, cw=Wd/G, chh=Ht/G;
+  for(let k=0;k<3;k++){
+    const g=new Float64Array(G*G), cnt=new Float64Array(G*G);
+    for(let y=0;y<Ht;y++){ const gy=Math.min(G-1,(y/chh)|0); for(let xx=0;xx<Wd;xx++){ const gi=gy*G+Math.min(G-1,(xx/cw)|0); g[gi]+=d[(y*Wd+xx)*4+k]; cnt[gi]++ } }
+    let mean=0; for(let i=0;i<G*G;i++){ g[i]/=Math.max(1,cnt[i]); mean+=g[i] } mean/=G*G;
+    const M=new Float64Array(36), V=new Float64Array(6), f=new Float64Array(6);
+    for(let gy=0;gy<G;gy++) for(let gx=0;gx<G;gx++){
+      const u=(gx+.5)/G*2-1, v=(gy+.5)/G*2-1; f[0]=1;f[1]=u;f[2]=v;f[3]=u*u;f[4]=u*v;f[5]=v*v;
+      for(let r=0;r<6;r++){ V[r]+=f[r]*g[gy*G+gx]; for(let q=0;q<6;q++) M[r*6+q]+=f[r]*f[q] }
+    }
+    const co = solve6(M,V); if(!co) continue;
+    for(let y=0;y<Ht;y++){ const v=(y+.5)/Ht*2-1;
+      for(let xx=0;xx<Wd;xx++){ const u=(xx+.5)/Wd*2-1, L=co[0]+co[1]*u+co[2]*v+co[3]*u*u+co[4]*u*v+co[5]*v*v, j=(y*Wd+xx)*4+k;
+        const val = d[j]*mean/Math.max(20,L); d[j] = val>255?255:val } }
+  }
+  x.putImageData(im,0,0);
+}
+// emenda suave só nos eixos onde o padrão não se repete de forma regular
+function blendEdges(c,bx,by){
+  const Wd=c.width, Ht=c.height, x=c.getContext('2d',{willReadFrequently:true}), im=x.getImageData(0,0,Wd,Ht), d=im.data, s=new Uint8ClampedArray(d), n=Wd*Ht;
+  const m=[0,0,0]; for(let i=0;i<n;i++){ m[0]+=s[i*4]; m[1]+=s[i*4+1]; m[2]+=s[i*4+2] } for(let k=0;k<3;k++) m[k]/=n;
+  const hx=Wd>>1, hy=Ht>>1, bandX=Wd*0.3, bandY=Ht*0.3;
+  for(let y=0;y<Ht;y++){ const ys = by ? (y+hy)%Ht : y, ky = by ? Math.min(y,Ht-1-y)/bandY : 1;
+    for(let xx=0;xx<Wd;xx++){ const xs = bx ? (xx+hx)%Wd : xx, kx = bx ? Math.min(xx,Wd-1-xx)/bandX : 1;
+      let w = Math.min(1,kx,ky); w = w*w*(3-2*w);
+      const a=w, b=1-w, norm=1/Math.sqrt(a*a+b*b), j=(y*Wd+xx)*4, j2=(ys*Wd+xs)*4;
+      for(let k=0;k<3;k++){ const v = m[k] + ((s[j+k]-m[k])*a + (s[j2+k]-m[k])*b)*norm; d[j+k] = v<0?0:v>255?255:v }
+    } }
+  x.putImageData(im,0,0);
+}
+// realce de nitidez que respeita a repetição (as bordas "dão a volta")
+function sharpenWrap(c, amt){
+  const Wd=c.width, Ht=c.height, x=c.getContext('2d',{willReadFrequently:true}), im=x.getImageData(0,0,Wd,Ht), d=im.data, s=new Uint8ClampedArray(d);
+  for(let y=0;y<Ht;y++){ const y0=((y-1+Ht)%Ht)*Wd, y1=y*Wd, y2=((y+1)%Ht)*Wd;
+    for(let xx=0;xx<Wd;xx++){ const xl=(xx-1+Wd)%Wd, xr=(xx+1)%Wd, j=(y1+xx)*4;
+      for(let k=0;k<3;k++){
+        const bl = (s[(y0+xl)*4+k]+s[(y0+xx)*4+k]+s[(y0+xr)*4+k]+s[(y1+xl)*4+k]+s[j+k]+s[(y1+xr)*4+k]+s[(y2+xl)*4+k]+s[(y2+xx)*4+k]+s[(y2+xr)*4+k])/9;
+        const v = s[j+k] + amt*(s[j+k]-bl); d[j+k] = v<0?0:v>255?255:v;
+      } } }
+  x.putImageData(im,0,0);
+}
+function projections(L,w,h){
+  const px = new Float64Array(w), py = new Float64Array(h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const v = L[y*w+x]; px[x]+=v; py[y]+=v }
+  for(let x=0;x<w;x++) px[x]/=h; for(let y=0;y<h;y++) py[y]/=w;
+  return [px,py];
+}
+function cmPerNatPx(){
+  if(CR.cal) return CR.cal.cmPerCanvasPx*CR.scale;
+  const v = parseFloat(String($('in-cm').value).replace(',','.')) || 10;
+  return Math.max(0.1, Math.min(60, v))/(CR.sel.s/CR.scale);
+}
+// monta o ladrilho de tecido a partir da área escolhida
+function buildTile(preview){
+  const eq = $('ck-eq').checked, det = $('ck-pat').checked, str = $('ck-str').checked, info = {ang:0, perX:null, perY:null};
+  if(str){ const o = estimateAngle(); info.dev = o.dev; info.coh = o.coh; info.ang = o.dev }
+  const sNat = CR.sel.s/CR.scale, inner = sNat/(Math.abs(Math.cos(info.ang)) + Math.abs(Math.sin(info.ang)));
+  const size = preview ? 320 : Math.round(Math.max(512, Math.min(1536, inner)));
+  const R = renderRegion(size, info.ang, !preview), B = R.canvas;
+  if(eq) flattenLight(B);
+  let sx=0, sy=0, sw=size, sh=size;
+  if(det){
+    const [px,py] = projections(lumArr(B), size, size), cmB = R.k ? cmPerNatPx()/R.k : 0;
+    let fx = findPeriod(px,5), fy = findPeriod(py,5);
+    if(fx && fx.P*cmB < MIN_PERIOD_CM) fx = null;   // fios da trama: não é desenho do tecido
+    if(fy && fy.P*cmB < MIN_PERIOD_CM) fy = null;
+    if(fx){ const n = chooseN(px, fx.P); if(n){ info.perX = {P:fx.P, n, r:fx.r}; sw = n*fx.P; sx = (size-sw)/2 } }
+    if(fy){ const n = chooseN(py, fy.P); if(n){ info.perY = {P:fy.P, n, r:fy.r}; sh = n*fy.P; sy = (size-sh)/2 } }
+  }
+  const tw = Math.max(8,Math.round(sw)), th = Math.max(8,Math.round(sh)), T = mkCanvas(tw,th), tx = T.getContext('2d',{willReadFrequently:true});
+  tx.imageSmoothingQuality = 'high'; tx.drawImage(B, sx, sy, sw, sh, 0, 0, tw, th);
+  const bx = !info.perX, by = !info.perY;
+  if(bx || by) blendEdges(T, bx, by);
+  sharpenWrap(T, 0.4);
+  const cmPx = cmPerNatPx(), toCm = bpx => bpx/R.k*cmPx;
+  if(info.perX) info.perX.cm = toCm(info.perX.P);
+  if(info.perY) info.perY.cm = toCm(info.perY.P);
+  info.mode = (info.perX||info.perY) ? ((info.perX&&info.perY) ? 'exato' : 'parcial') : 'suave';
+  return {canvas:T, cm: toCm(sw), info};
+}
+
+/* --- qualidade da foto --- */
+const SHARP_MIN = 0.2;
+// diferença de luz entre as pontas da área: ajusta uma superfície suave à luminosidade e compara o mais claro com o mais escuro
+function lightRatio(L, n){
+  const G = 8, cell = n/G, g = new Float64Array(G*G), cnt = new Float64Array(G*G);
+  for(let y=0;y<n;y++){ const gy = Math.min(G-1,(y/cell)|0); for(let x=0;x<n;x++){ const gi = gy*G + Math.min(G-1,(x/cell)|0); g[gi] += L[y*n+x]; cnt[gi]++ } }
+  const M = new Float64Array(36), V = new Float64Array(6), f = new Float64Array(6);
+  for(let gy=0;gy<G;gy++) for(let gx=0;gx<G;gx++){
+    const u = (gx+.5)/G*2-1, v = (gy+.5)/G*2-1; f[0]=1;f[1]=u;f[2]=v;f[3]=u*u;f[4]=u*v;f[5]=v*v; const val = g[gy*G+gx]/Math.max(1,cnt[gy*G+gx]);
+    for(let r=0;r<6;r++){ V[r]+=f[r]*val; for(let q=0;q<6;q++) M[r*6+q]+=f[r]*f[q] }
+  }
+  const co = solve6(M,V); if(!co) return 1;
+  let lo = 1e9, hi = -1e9;
+  for(const u of [-1,0,1]) for(const v of [-1,0,1]){ const y = co[0]+co[1]*u+co[2]*v+co[3]*u*u+co[4]*u*v+co[5]*v*v; if(y<lo) lo=y; if(y>hi) hi=y }
+  return hi/Math.max(lo,1);
+}
+function assessPhoto(){
+  const out = [], img = CR.img;
+  const cxN = (CR.sel.x + CR.sel.s/2)/CR.scale, cyN = (CR.sel.y + CR.sel.s/2)/CR.scale, half = Math.max(16, Math.min(160, CR.sel.s/CR.scale/2));
+  const sz = Math.round(half*2), c = mkCanvas(sz,sz), x = c.getContext('2d',{willReadFrequently:true});
+  x.drawImage(img, cxN-half, cyN-half, sz, sz, 0, 0, sz, sz);
+  const L = lumArr(c); let s=0, s2=0, n=0, mean=0;
+  for(let i=0;i<L.length;i++) mean += L[i]; mean /= L.length;
+  let vr = 0; for(let i=0;i<L.length;i++) vr += (L[i]-mean)*(L[i]-mean); vr /= L.length;
+  for(let yy=1;yy<sz-1;yy++) for(let xx=1;xx<sz-1;xx++){ const i = yy*sz+xx, lap = 4*L[i]-L[i-1]-L[i+1]-L[i-sz]-L[i+sz]; s += lap; s2 += lap*lap; n++ }
+  const lv = s2/n - (s/n)*(s/n), std = Math.sqrt(vr), sharp = lv/Math.max(1,vr);
+  const R = renderRegion(96, 0, false).canvas, d = R.getContext('2d').getImageData(0,0,96,96).data, Lr = lumArr(R);
+  let glare = 0; for(let i=0;i<d.length;i+=4) if(d[i]>=243 && d[i+1]>=243 && d[i+2]>=240) glare++;
+  glare /= d.length/4;
+  const sorted = Array.from(Lr).sort((p,q)=>p-q), p98 = sorted[Math.floor(sorted.length*0.98)], ratio = lightRatio(Lr, 96);
+  if(std > 12 && sharp < SHARP_MIN && !(glare > 0.015)) out.push({t:'w', s:'A foto parece um pouco desfocada. Chegue mais perto, espere o foco e tire de novo para a trama ficar nítida.'});
+  if(glare > 0.015) out.push({t:'w', s:'Há reflexo ou brilho estourado no tecido. Mude o ângulo ou a luz para tirar o brilho.'});
+  if(p98 < 50) out.push({t:'w', s:'A foto está muito escura. Use mais luz, de preferência natural.'});
+  if(ratio > 1.35) out.push({t:'w', s:'A luz está desigual (sombra ou luz de um lado só). O app corrige uma parte, mas luz uniforme dá resultado mais fiel.'});
+  if(!out.length) out.push({t:'ok', s:'Foto boa para o provador.'});
+  out.push(CR.cal ? {t:'ok', s:'Tamanho medido com a referência.'} : {t:'', s:'Sem referência de tamanho: vale o número digitado. Use “Medir com régua ou moeda” para mais precisão.'});
+  out.push(CR.wb ? {t:'ok', s:'Cor acertada com o cartão branco.'} : {t:'', s:'Sem cartão branco: a cor segue a da foto.'});
+  out.metrics = {lv, std, sharp, glare, p98, ratio};
+  return out;
+}
+function updateQuality(){
+  if(!CR.img || $('ov').hidden) return;
+  let list; try{ list = assessPhoto() }catch(e){ console.warn(e); return }
+  const ul = $('cap-warn'); ul.innerHTML = '';
+  list.forEach(q=>{ const li = document.createElement('li'); if(q.t) li.className = q.t; li.textContent = q.s; ul.appendChild(li) });
+}
+
+/* --- ferramentas na foto: medir e cartão branco --- */
+function fmtN(v,d){ return (Math.round(v*Math.pow(10,d))/Math.pow(10,d)).toString().replace('.',',') }
+function setTool(t){
+  CR.tool = t;
+  ['move','measure','wb'].forEach(k=>$('tl-'+k).setAttribute('aria-pressed', CR.tool===k));
+  $('ref-row').hidden = t!=='measure';
+  $('tl-help').textContent = {
+    move:'Arraste o quadrado para a parte mais uniforme do tecido.',
+    measure:'Toque nas duas pontas do objeto de referência (moeda, régua, cartão) que está na foto.',
+    wb:'Toque sobre o cartão ou papel branco que aparece na foto.'
+  }[t];
+  ccv.style.cursor = t==='move' ? 'move' : 'crosshair';
+  drawCrop();
+}
+function updateInCmFromCal(){
+  if(!CR.cal) return;
+  const v = CR.sel.s*CR.cal.cmPerCanvasPx;
+  $('in-cm').value = v>=10 ? Math.round(v*10)/10 : Math.round(v*100)/100;
+  $('cal-info').textContent = `Escala medida: a área mede ${fmtN(v,1)} cm.`;
+}
+function applyCal(){
+  const [a,b] = CR.pts, dist = Math.hypot(a.x-b.x, a.y-b.y), D = parseFloat(String($('ref-cm').value).replace(',','.'));
+  if(dist < 8){ toast('Os dois pontos estão muito perto. Toque nas pontas do objeto.'); CR.pts = []; return }
+  if(!(D>0)){ toast('Digite a medida do objeto de referência em cm.'); return }
+  CR.cal = {cmPerCanvasPx: D/dist};
+  updateInCmFromCal();
+}
+function toolTap(p){
+  if(CR.tool==='measure'){
+    if(CR.pts.length>=2){ CR.pts = []; CR.cal = null; $('cal-info').textContent = CAL_DEFAULT }
+    CR.pts.push({x:p.x, y:p.y});
+    if(CR.pts.length===2) applyCal();
+    drawCrop();
+  } else if(CR.tool==='wb'){
+    const r = 5, f = CR.work.f/CR.scale, cx = Math.round(p.x*f), cy = Math.round(p.y*f);
+    const c = mkCanvas(2*r+1, 2*r+1), x = c.getContext('2d',{willReadFrequently:true});
+    x.drawImage(CR.work.c, cx-r, cy-r, 2*r+1, 2*r+1, 0, 0, 2*r+1, 2*r+1);
+    const d = x.getImageData(0,0,2*r+1,2*r+1).data; let rr=0, gg=0, bb=0, n=0;
+    for(let i=0;i<d.length;i+=4){ rr+=d[i]; gg+=d[i+1]; bb+=d[i+2]; n++ } rr/=n; gg/=n; bb/=n;
+    if(Math.max(rr,gg,bb) < 80){ toast('Esse ponto está escuro demais. Toque no branco do cartão.'); return }
+    const t = Math.max(rr,gg,bb);
+    CR.wb = {r:t/Math.max(rr,1), g:t/Math.max(gg,1), b:t/Math.max(bb,1), x:p.x, y:p.y};
+    $('tl-wb-clear').hidden = false; toast('Cor acertada com o cartão branco.');
+    drawCrop();
+  }
+}
+const CAL_DEFAULT = 'Uma estimativa com régua ou fita já basta. Para mais precisão, use “Medir com régua ou moeda”.';
+function drawOverlays(){
+  if(CR.cal) updateInCmFromCal();
+  if(CR.pts && CR.pts.length){
+    ccx.save(); ccx.lineWidth = 2; ccx.strokeStyle = '#FFD84D'; ccx.fillStyle = '#FFD84D';
+    if(CR.pts.length===2){ ccx.beginPath(); ccx.moveTo(CR.pts[0].x,CR.pts[0].y); ccx.lineTo(CR.pts[1].x,CR.pts[1].y); ccx.stroke() }
+    CR.pts.forEach(q=>{ ccx.beginPath(); ccx.arc(q.x,q.y,5,0,Math.PI*2); ccx.fill(); ccx.strokeStyle='#141B2D'; ccx.stroke(); ccx.strokeStyle='#FFD84D' });
+    if(CR.pts.length===2){ const mx=(CR.pts[0].x+CR.pts[1].x)/2, my=(CR.pts[0].y+CR.pts[1].y)/2, t=fmtN(parseFloat(String($('ref-cm').value).replace(',','.'))||0,1)+' cm';
+      ccx.font='12px sans-serif'; const w=ccx.measureText(t).width+10; ccx.fillStyle='rgba(20,27,45,.85)'; ccx.fillRect(mx-w/2,my-22,w,18); ccx.fillStyle='#fff'; ccx.fillText(t,mx-w/2+5,my-9) }
+    ccx.restore();
+  }
+  if(CR.wb){ ccx.save(); ccx.strokeStyle='#5CE1E6'; ccx.lineWidth=2; ccx.strokeRect(CR.wb.x-9,CR.wb.y-9,18,18); ccx.restore() }
+  clearTimeout(CR.qt); CR.qt = setTimeout(updateQuality, 250);
+}
+let prevT = 0;
+function schedulePreview(){
+  if(!CR.img) return;
+  clearTimeout(prevT);
+  prevT = setTimeout(()=>{ prevT = 0; if(!CR.img || $('ov').hidden) return;
+    try{ const R = buildTile(true); drawTilePreview(R); showPatInfo(R) }catch(e){ console.warn(e) } }, 70);
+}
+function drawTilePreview(R){
+  const tc = $('tilecv').getContext('2d'), t = R.canvas, ar = t.height/t.width;
+  tc.clearRect(0,0,192,192); tc.imageSmoothingQuality = 'high';
+  let cw = 64, ch = cw*ar; if(ch > 192){ ch = 192; cw = ch/ar }
+  for(let yy=0; yy<192; yy+=ch) for(let xx=0; xx<192; xx+=cw) tc.drawImage(t, xx, yy, cw+0.6, ch+0.6);
+}
+function showPatInfo(R){
+  const i = R.info; let t = '';
+  if(i.mode==='exato') t = `Padrão detectado: repete a cada ${fmtN(i.perX.cm,2)} cm na horizontal e ${fmtN(i.perY.cm,2)} cm na vertical. Emenda exata, sem mistura.`;
+  else if(i.mode==='parcial') t = i.perX ? `Listra detectada: repete a cada ${fmtN(i.perX.cm,2)} cm na horizontal. Emenda exata nesse sentido.` : `Listra detectada: repete a cada ${fmtN(i.perY.cm,2)} cm na vertical. Emenda exata nesse sentido.`;
+  else t = 'Sem repetição regular (tecido liso ou padrão irregular): as bordas foram suavizadas para disfarçar a emenda.';
+  if(Math.abs(i.ang) > 0.0035) t += ` Foto endireitada em ${fmtN(Math.abs(i.ang)*180/Math.PI,1)}°.`;
+  $('pat-info').textContent = t;
+}
+function resetCropTools(){
+  CR.work = makeWork(CR.img); CR.pts = []; CR.cal = null; CR.wb = null;
+  $('tl-wb-clear').hidden = true; $('cal-info').textContent = CAL_DEFAULT;
+  $('ck-pat').checked = true; $('ck-str').checked = true;
+  $('sv-tipo').value = defaultTipo();
+  CR.tool = 'move';
+  ['move','measure','wb'].forEach(k=>$('tl-'+k).setAttribute('aria-pressed', k==='move'));
+  $('ref-row').hidden = true; $('tl-help').textContent = 'Arraste o quadrado para a parte mais uniforme do tecido.';
+  ccv.style.cursor = 'move';
+}
+$('tl-move').onclick = ()=>setTool('move');
+$('tl-measure').onclick = ()=>setTool(CR.tool==='measure' ? 'move' : 'measure');
+$('tl-wb').onclick = ()=>setTool(CR.tool==='wb' ? 'move' : 'wb');
+$('tl-wb-clear').onclick = ()=>{ CR.wb = null; $('tl-wb-clear').hidden = true; drawCrop() };
+$('ref-sel').addEventListener('change',e=>{ if(+e.target.value>0) $('ref-cm').value = e.target.value; if(CR.pts && CR.pts.length===2) applyCal(); drawCrop() });
+$('ref-cm').addEventListener('input',()=>{ $('ref-sel').value = ['2.7','8.56'].includes(String($('ref-cm').value)) ? String($('ref-cm').value) : '0'; if(CR.pts && CR.pts.length===2) applyCal(); drawCrop() });
+$('in-cm').addEventListener('input',()=>{ CR.cal = null; CR.pts = []; $('cal-info').textContent = CAL_DEFAULT; drawCrop() });
+$('ck-pat').addEventListener('change',drawCrop); $('ck-str').addEventListener('change',drawCrop);
+$('sv-blazer').addEventListener('click',()=>{ $('sv-tipo').value = 'lã' });
+$('sv-camisa').addEventListener('click',()=>{ $('sv-tipo').value = 'algodão' });
+
+function cropPoint(e){ const r=ccv.getBoundingClientRect(); return {x:(e.clientX-r.left)*ccv.width/r.width, y:(e.clientY-r.top)*ccv.height/r.height} }
+function clampSel(){ const s=CR.sel; s.x=Math.max(0,Math.min(ccv.width-s.s,s.x)); s.y=Math.max(0,Math.min(ccv.height-s.s,s.y)) }
+ccv.addEventListener('pointerdown',e=>{ const p=cropPoint(e), s=CR.sel;
+  if(CR.tool!=='move'){ toolTap(p); return }
+  if(p.x<s.x||p.x>s.x+s.s||p.y<s.y||p.y>s.y+s.s){ s.x=p.x-s.s/2; s.y=p.y-s.s/2; clampSel() }
+  CR.drag={dx:p.x-s.x, dy:p.y-s.y}; ccv.setPointerCapture(e.pointerId); drawCrop() });
+ccv.addEventListener('pointermove',e=>{ if(!CR.drag) return; const p=cropPoint(e); CR.sel.x=p.x-CR.drag.dx; CR.sel.y=p.y-CR.drag.dy; clampSel(); drawCrop() });
+ccv.addEventListener('pointerup',()=>CR.drag=null); ccv.addEventListener('pointercancel',()=>CR.drag=null);
+$('rg-crop').addEventListener('input',()=>{ const s=CR.sel, cxm=s.x+s.s/2, cym=s.y+s.s/2; s.s=Math.min(ccv.width,ccv.height)*$('rg-crop').value/100; s.x=cxm-s.s/2; s.y=cym-s.s/2; clampSel(); drawCrop() });
+$('ck-eq').addEventListener('change',drawCrop);
+let savePeca='blazer';
+function setSavePeca(p){ savePeca=p; $('sv-blazer').setAttribute('aria-pressed',p==='blazer'); $('sv-camisa').setAttribute('aria-pressed',p==='camisa') }
+$('sv-blazer').onclick=()=>setSavePeca('blazer'); $('sv-camisa').onclick=()=>setSavePeca('camisa');
+$('ck-save').addEventListener('change',()=>{ $('save-fields').hidden=!$('ck-save').checked });
+function closeCropper(){ $('ov').hidden=true; if(CR.img) URL.revokeObjectURL(CR.img.src); CR.img=null; ['in-cam','in-gal','in-add'].forEach(i=>$(i).value='') }
+$('crop-cancel').onclick = closeCropper;
+$('ov').addEventListener('keydown',e=>{ if(e.key==='Escape') closeCropper() });
+$('crop-ok').onclick = async ()=>{
+  let cm = Math.max(0.5, Math.min(60, parseFloat(String($('in-cm').value).replace(',','.'))||10));
+  const wantSave = $('ck-save').checked, nome = $('in-nm').value.trim(), codigo = $('in-cd').value.trim();
+  if(wantSave && !nome){ $('crop-err').textContent='Dê um nome ao tecido para salvar no mostruário.'; $('crop-err').hidden=false; $('in-nm').focus(); return }
+  const srcPx = CR.sel.s/CR.scale, size = Math.round(Math.max(512, Math.min(1536, srcPx)));
+  let canvas;
+  try{ const R = buildTile(false); canvas = R.canvas; if(R.cm>0) cm = R.cm }
+  catch(err){ console.warn(err); canvas = cropTile(size) }
+  cm = Math.max(0.2, Math.min(40, Math.round(cm*100)/100));
+  const tipo = $('sv-tipo').value;
+  let fb = {id:'foto-'+Date.now(), nome: nome || 'Tecido fotografado', codigo, cm, tipo, canvas, thumb: canvas.toDataURL('image/jpeg',.8)};
+  if(wantSave){
+    $('crop-ok').disabled = true; $('crop-ok').textContent='Salvando…';
+    try{ fb = await addFabric({canvas, nome, codigo, cm, tipo, peca:savePeca}); fb.canvas=canvas; toast('Tecido salvo no mostruário.') }
+    catch(e){ console.warn(e); $('crop-err').textContent = e && e.code==='quota' ? 'O espaço deste aparelho acabou. Exclua tecidos antigos e tente de novo.' : 'Não deu para salvar no mostruário agora. A peça será vestida mesmo assim.'; $('crop-err').hidden=false }
+    $('crop-ok').disabled = false;
+  }
+  closeCropper();
+  if(wantSave && fb.peca && fb.peca!==pecaAtual()){ toast('Tecido salvo no mostruário de '+PECAS[fb.peca].nome+'.'); renderSwatches(); return }
+  selectFabric(fb);
+};
+$('in-cam').addEventListener('change',e=>openCropper(e.target.files[0],'photo'));
+$('in-gal').addEventListener('change',e=>openCropper(e.target.files[0],'photo'));
+$('in-add').addEventListener('change',e=>openCropper(e.target.files[0],'add'));
+
+/* ---------- origem do tecido ---------- */
+function setSource(s){ S.source=s; $('ch-photo').setAttribute('aria-pressed',s==='photo'); $('ch-cat').setAttribute('aria-pressed',s==='cat'); $('src-photo').hidden = s!=='photo'; $('src-cat').hidden = s!=='cat' }
+$('ch-photo').onclick=()=>setSource('photo'); $('ch-cat').onclick=()=>setSource('cat');
+$('q').addEventListener('input',renderSwatches);
+$('btn-org').onclick=()=>{ S.organizing=!S.organizing; renderSwatches() };
+
+/* ---------- ajustes ---------- */
+$('rg-cm').addEventListener('input',e=>{ S.cm=+e.target.value; $('out-cm').textContent=fmtCm(S.cm); updateTag(); schedule() });
+$('rg-light').addEventListener('input',e=>{ S.light=+e.target.value; $('out-light').textContent=(S.light>0?'+':'')+S.light+'%'; schedule() });
+$('tg-rot').onclick=()=>{ S.rot=!S.rot; syncControls(); schedule() };
+$('tg-mir').onclick=()=>{ S.mirror=!S.mirror; syncControls(); schedule() };
+
+/* ---------- comparar ---------- */
+function renderCompare(){
+  const el=$('compare'); el.innerHTML='';
+  if(!cmpList.length){ el.innerHTML='<div class="cmp-empty">Toque em <b>Comparar</b> para guardar este visual e ver até 3 opções lado a lado.</div>'; return }
+  cmpList.forEach((c,i)=>{
+    const b=document.createElement('div'); b.className='cmp'; b.tabIndex=0; b.setAttribute('role','button');
+    b.innerHTML='<img alt=""><div class="cap"></div><button class="x" type="button" aria-label="Remover da comparação">×</button>';
+    b.querySelector('img').src=c.img; b.querySelector('.cap').textContent=c.label;
+    const open=()=>{ S.model=c.st.model; S.cm=c.st.cm; renderModels(); updateTag(); loadModel(S.model, c.st.vista, c.st.punho).then(()=>{ selectFabric(c.st.fabric,true).then(()=>{ S.rot=c.st.rot; S.mirror=c.st.mirror; S.light=c.st.light; S.ctCol=c.st.ctCol; S.ctCuf=c.st.ctCuf; S.vista=c.st.vista||'lisa'; S.punho=c.st.punho||'redondo'; syncPunho(); syncVista(); syncCt(); updateTag(); syncControls(); schedule() }) }) };
+    b.onclick=e=>{ if(e.target.classList.contains('x')){ cmpList.splice(i,1); renderCompare(); return } open() };
+    b.onkeydown=e=>{ if(e.key==='Enter') open() };
+    el.appendChild(b);
+  });
+}
+$('btn-cmp').onclick=()=>{
+  if(!S.fabric) return;
+  const t=mkCanvas(360,450); t.getContext('2d').drawImage(cv,0,0,360,450);
+  if(cmpList.length>=3) cmpList.shift();
+  cmpList.push({img:t.toDataURL('image/jpeg',.85), label:S.fabric.nome+' · '+MODELS[S.model].nome, st:{...S}});
+  renderCompare(); toast('Visual guardado para comparar.');
+};
+$('btn-save').onclick=async()=>{
+  if(!downloads||!S.fabric) return;
+  const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));
+  const slug=(S.fabric.nome||'tecido').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  try{ const r=await downloads.save({filename:`schuck-${MODELS[S.model].peca}-${S.model}-${slug}.jpg`, data:blob}); if(r.status==='saved') toast('Imagem salva.') }
+  catch(e){ if(e&&e.code!=='cancelled'&&e.code!=='declined') toast('Não deu para salvar a imagem agora.') }
+};
+
+/* ---------- início ---------- */
+renderModels(); renderCompare(); setSource('cat'); renderSwatches();
+(async()=>{
+  try{ await loadModel('single') }catch(e){ $('loading').textContent='Não consegui carregar a peça. Recarregue a página.'; return }
+  const first = EXAMPLES[1]; await selectFabric(first);
+  loadModel('double').catch(()=>{});
+})();
+initStore();
+})();
+</script>
+
+</body></html>
