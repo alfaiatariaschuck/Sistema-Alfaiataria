@@ -100,10 +100,16 @@ textarea {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  /* Evita que uma tabela (medidas, características, tecido) comece numa
-     página e continue cortada na próxima — a tabela inteira pula pra
-     página seguinte se não couber no que resta da atual. */
-  #ficha-print table,
+  /* Evita que uma LINHA da tabela (medidas, características, tecido)
+     comece numa página e continue cortada na próxima. Importante: isso
+     é só na linha (tr), nunca na tabela inteira — marcar a tabela
+     inteira como "não quebrar" faz alguns motores de impressão/PDF (em
+     especial o de "Salvar como PDF" de navegador no Android) cortarem
+     o resto da tabela fora em vez de continuar na página seguinte,
+     quando a tabela é mais alta que uma página inteira. Foi assim que
+     a ficha de Baixa de estoque da Fabi "só puxou a primeira parte"
+     quando tinha muitos clientes pro mesmo código (14/11/2026).
+  */
   #ficha-print tr {
     page-break-inside: avoid;
     break-inside: avoid;
