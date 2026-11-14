@@ -66,7 +66,7 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, cli
           colarinhoObs: "",
           punho: "",
           monograma: "",
-          manga: "",
+          manga: "Longa",
           vista: "",
         },
       ],

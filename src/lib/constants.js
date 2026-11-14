@@ -381,9 +381,9 @@ export function rotuloMedida(label) {
 // Assinatura), sem quebrar nada lá.
 // Colarinho e Punho usam as mesmas nomenclaturas do Provador de Tecidos
 // da Ana, pra não ter dois nomes diferentes pra mesma coisa. "Vista"
-// substitui o antigo "Frente" (que misturava vista com entretela/
-// estrutura) — a parte de entretela/estrutura por vista ainda não foi
-// adicionada aqui, aguardando a tabela que o Tales vai passar.
+// substitui o antigo "Frente" — cada opção já informa sempre entretela/
+// estrutura/pesponto (tabela passada pelo Tales, 14/11/2026), pra
+// produção nunca precisar adivinhar isso de outro lugar.
 export const DESC_CAMPOS = [
   { campo: "pesponto", label: "Pesponto", opcoes: ["Fino", "Largo", "Sem"] },
   { campo: "colarinho", label: "Colarinho", opcoes: ["Gola Padre", "Clássico-Francês", "Americano", "Italiano", "Mandarim", "Club Collar"] },
@@ -391,7 +391,18 @@ export const DESC_CAMPOS = [
   { campo: "punho", label: "Punho", opcoes: ["Reto", "Redondo", "Chanfrado", "Duplo"] },
   { campo: "monograma", label: "Monograma" },
   { campo: "manga", label: "Manga", opcoes: ["Longa", "Curta"] },
-  { campo: "vista", label: "Vista", opcoes: ["Lisa", "Lisa com pesponto", "Coberta"] },
+  {
+    campo: "vista",
+    label: "Vista",
+    opcoes: [
+      "Lisa — Entretela + Estrutura + Pesponto",
+      "Lisa — Entretela + Estrutura, sem Pesponto",
+      "Lisa — Entretela, sem Estrutura, com Pesponto",
+      "Lisa — Entretela, sem Estrutura, sem Pesponto",
+      "Coberta — sem Entretela",
+      "Coberta — Entretela + Estrutura",
+    ],
+  },
 ];
 export const DESC_LABELS = DESC_CAMPOS.map((c) => c.label);
 

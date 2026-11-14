@@ -60,7 +60,7 @@ export function pedidoVazio() {
         colarinhoObs: "",
         punho: "",
         monograma: "",
-        manga: "",
+        manga: "Longa", // raramente é curta — já vem marcado, mas dá pra trocar
         vista: "",
       },
     ],
@@ -438,7 +438,7 @@ export function usePedidos() {
     return comIndicador(async () => {
       const { data, error } = await supabase
         .from("tecidos")
-        .insert({ pedido_id: pedidoId, qtd: 1, comprado: false, ordem })
+        .insert({ pedido_id: pedidoId, qtd: 1, comprado: false, ordem, manga: "Longa" })
         .select()
         .single();
       if (error) {
@@ -466,7 +466,7 @@ export function usePedidos() {
                     colarinhoObs: "",
                     punho: "",
                     monograma: "",
-                    manga: "",
+                    manga: "Longa",
                     vista: "",
                   },
                 ],
