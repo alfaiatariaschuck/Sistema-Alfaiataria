@@ -47,6 +47,7 @@ export default function Compras({
   irParaPlano,
   estoqueTecidos = [],
   onDarBaixaEstoque,
+  onDesfazerBaixaEstoque,
   consumoPorTecido = [],
 }) {
   const [aba, setAba] = useState("compra");
@@ -417,6 +418,7 @@ export default function Compras({
                       codigo={item.codigo}
                       estoque={estoqueTecidos}
                       onDarBaixa={onDarBaixaEstoque}
+                      onDesfazerBaixa={onDesfazerBaixaEstoque}
                       motivo={motivoDe(item)}
                       metrosBaixados={item.metrosBaixados}
                       onRegistrarMetrosBaixados={(valor) => registrarMetrosBaixados(item, valor)}

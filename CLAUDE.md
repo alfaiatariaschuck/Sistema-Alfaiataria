@@ -34,3 +34,12 @@ Sempre que um novo login for criado no Supabase (Authentication → Users), faze
 - Fabiana e Milena (camisaria) ainda não têm login — quando tiverem, precisam do mesmo
   tratamento acima (hoje não existe um papel "costureira" em `perfis`, só
   `dono` / `vendedor` / `producao`).
+- Quando a Fabiana tiver login (pedido do Tales, 14/11/2026): o painel de "Baixa de
+  estoque" dela deve ser visualmente IGUAL ao que o dono já tem hoje (`Compras.jsx`, aba
+  "Baixa de estoque" — código, saldo, comprometido, disponível real, por cliente, com
+  opção de desfazer caso digite errado), mas restrito a SÓ isso. Ela não deve enxergar o
+  resto de Compras (valores pagos a fornecedor, pendente de compra, preço por metro) nem
+  nada fora da baixa de estoque — mesmo motivo do item 3 do checklist acima (ela é PJ,
+  então nada de dado financeiro/comparativo que não seja estritamente o que ela precisa
+  pra fazer a baixa). Até lá, ela recebe esse mesmo relatório impresso/por WhatsApp (ver
+  "Copiar p/ Fabi" / "Imprimir" na aba Baixa de estoque).

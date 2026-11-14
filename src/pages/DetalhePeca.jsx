@@ -56,6 +56,7 @@ export default function DetalhePeca({
   onTecido,
   estoqueTecidos,
   onDarBaixaEstoque,
+  onDesfazerBaixaEstoque,
   custoAviamentosPorPecaBase = {},
   modelosAlfaiataria = [],
   onCriarModeloAlfaiataria,
@@ -673,6 +674,7 @@ export default function DetalhePeca({
                 codigo={t.codigo}
                 estoque={estoqueTecidos}
                 onDarBaixa={onDarBaixaEstoque}
+                onDesfazerBaixa={onDesfazerBaixaEstoque}
                 motivo={`Pedido de ${p.cliente} (alfaiataria)`}
                 metrosBaixados={t.metrosBaixados}
                 onRegistrarMetrosBaixados={(valor) => onTecido(p.id, t.id, "metros_baixados", valor)}

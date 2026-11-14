@@ -249,6 +249,7 @@ export default function Shell() {
     atualizarValorMetro,
     atualizarPrecoVenda,
     darBaixa: darBaixaEstoque,
+    desfazerBaixa,
     removerTecido: removerEstoque,
   } = useEstoqueTecidos();
   const { despesas, criarDespesa, marcarPaga, atualizarValorPago, atualizarValorTotalDespesa, atualizarVencimentoDespesa, atualizarDespesa, removerDespesa } = useDespesas();
@@ -625,6 +626,7 @@ export default function Shell() {
     onConverterPlano: converterPedidoEmPlano,
     estoqueTecidos,
     onDarBaixaEstoque: darBaixaEstoque,
+    onDesfazerBaixaEstoque: desfazerBaixa,
     modelosCamisa,
     onCriarModeloCamisa: adicionarModelo,
     custoAviamentosPorPecaBase: custoPorPecaBase,
@@ -687,6 +689,7 @@ export default function Shell() {
     onCriarModeloAlfaiataria: adicionarModeloAlfaiataria,
     estoqueTecidos,
     onDarBaixaEstoque: darBaixaEstoque,
+    onDesfazerBaixaEstoque: desfazerBaixa,
     custoAviamentosPorPecaBase: custoPorPecaBase,
     onRenomearCliente: renomearClienteGlobal,
     clientesBase,
@@ -1052,6 +1055,7 @@ export default function Shell() {
                   irParaPlano={irParaPlano}
                   estoqueTecidos={estoqueTecidos}
                   onDarBaixaEstoque={darBaixaEstoque}
+                  onDesfazerBaixaEstoque={desfazerBaixa}
                   consumoPorTecido={consumoPorTecido}
                 />
               )}

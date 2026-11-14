@@ -9,10 +9,11 @@ const VERDE = "#2C6E31";
 // item do pedido (metrosBaixados) e o widget trava nesse estado — não dá
 // pra clicar "Dar baixa" de novo pro mesmo item, mesmo reabrindo o pedido
 // depois (era assim que o estoque ficava negativo: reabria e baixava de novo).
-export default function BaixaEstoqueTecido({ codigo, estoque, onDarBaixa, motivo, metrosBaixados, onRegistrarMetrosBaixados }) {
+export default function BaixaEstoqueTecido({ codigo, estoque, onDarBaixa, motivo, metrosBaixados, onRegistrarMetrosBaixados, onDesfazerBaixa }) {
   const [metros, setMetros] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [desfazendo, setDesfazendo] = useState(false);
 
   const item = (estoque || []).find((e) => e.codigo.trim().toLowerCase() === (codigo || "").trim().toLowerCase());
   if (!item) return null;
@@ -35,13 +36,42 @@ export default function BaixaEstoqueTecido({ codigo, estoque, onDarBaixa, motivo
     }
   }
 
+  // Digitou errado? Devolve os metros pro saldo (fica registrado como
+  // correção no histórico, não apaga a baixa errada) e libera o item
+  // de novo como pendente de baixa.
+  async function desfazer() {
+    setErro(null);
+    setDesfazendo(true);
+    try {
+      await onDesfazerBaixa(item.id, parseFloat(metrosBaixados), motivo ? `Correção de baixa — ${motivo}` : undefined);
+      await onRegistrarMetrosBaixados(null);
+    } catch (e) {
+      setErro("Não consegui desfazer (" + e.message + ").");
+    } finally {
+      setDesfazendo(false);
+    }
+  }
+
   if (jaBaixado) {
     return (
       <div className="mt-2 p-2" style={{ background: "#DCEBDD", borderRadius: 6, border: `1px dashed ${VERDE}` }}>
-        <div className="flex items-center gap-1.5" style={{ fontSize: 11, color: VERDE, fontWeight: 600 }}>
-          <PackageMinus size={12} color={VERDE} /> Baixa de {parseFloat(metrosBaixados).toFixed(1)}m já registrada neste item — saldo
-          atual de {item.codigo}: {item.saldoMetros.toFixed(1)}m.
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5" style={{ fontSize: 11, color: VERDE, fontWeight: 600 }}>
+            <PackageMinus size={12} color={VERDE} /> Baixa de {parseFloat(metrosBaixados).toFixed(1)}m já registrada neste item — saldo
+            atual de {item.codigo}: {item.saldoMetros.toFixed(1)}m.
+          </div>
+          {onDesfazerBaixa && (
+            <button
+              type="button"
+              onClick={desfazer}
+              disabled={desfazendo}
+              style={{ fontSize: 11, color: VERDE, fontWeight: 600, textDecoration: "underline", flexShrink: 0 }}
+            >
+              {desfazendo ? "desfazendo…" : "digitei errado, desfazer"}
+            </button>
+          )}
         </div>
+        {erro && <div style={{ fontSize: 11, color: "#9C4A1E", marginTop: 4 }}>{erro}</div>}
       </div>
     );
   }

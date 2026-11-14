@@ -37,6 +37,7 @@ export default function DetalhePedido({
   onConverterPlano,
   estoqueTecidos,
   onDarBaixaEstoque,
+  onDesfazerBaixaEstoque,
   modelosCamisa = [],
   onCriarModeloCamisa,
   custoAviamentosPorPecaBase = {},
@@ -703,6 +704,7 @@ export default function DetalhePedido({
                 codigo={t.codigo}
                 estoque={estoqueTecidos}
                 onDarBaixa={onDarBaixaEstoque}
+                onDesfazerBaixa={onDesfazerBaixaEstoque}
                 motivo={`Pedido de ${p.cliente} (camisaria)`}
                 metrosBaixados={t.metrosBaixados}
                 onRegistrarMetrosBaixados={(valor) => onTecido(p.id, t.id, "metros_baixados", valor)}

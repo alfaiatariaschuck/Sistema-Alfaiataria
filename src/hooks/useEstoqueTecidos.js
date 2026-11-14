@@ -174,6 +174,28 @@ export function useEstoqueTecidos() {
     });
   }
 
+  // Desfaz uma baixa lançada errada — devolve os metros pro saldo e
+  // registra uma entrada de correção (não apaga a saída original, pra
+  // manter o histórico rastreável de que aconteceu um erro e foi
+  // corrigido). Quem chama ainda precisa limpar o metrosBaixados do
+  // item (pedido/peça/plano) separadamente, pra ele voltar a aparecer
+  // como pendente de baixa.
+  async function desfazerBaixa(estoqueId, metros, motivo) {
+    return comIndicador(async () => {
+      const item = estoque.find((e) => e.id === estoqueId);
+      if (!item) throw new Error("Tecido não encontrado no estoque");
+      const novoSaldo = item.saldoMetros + Number(metros);
+      const { error: errUpd } = await supabase.from("estoque_tecidos").update({ saldo_metros: novoSaldo, atualizado_em: new Date().toISOString() }).eq("id", estoqueId);
+      if (errUpd) throw errUpd;
+      const { error: errMov } = await supabase
+        .from("estoque_movimentos")
+        .insert({ estoque_id: estoqueId, tipo: "entrada", metros: Number(metros), motivo: motivo || "Baixa desfeita (corrigindo erro de digitação)" });
+      if (errMov) throw errMov;
+      await recarregar();
+      return novoSaldo;
+    });
+  }
+
   async function removerTecido(estoqueId) {
     return comIndicador(async () => {
       const { error } = await supabase.from("estoque_tecidos").delete().eq("id", estoqueId);
@@ -198,6 +220,7 @@ export function useEstoqueTecidos() {
     atualizarValorMetro,
     atualizarPrecoVenda,
     darBaixa,
+    desfazerBaixa,
     removerTecido,
   };
 }
