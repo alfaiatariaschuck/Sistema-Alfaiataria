@@ -3,6 +3,7 @@ import { Card, Field, PageTitle } from "../components/ui";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
 import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
+import SeloMargem from "../components/SeloMargem";
 import { BRASS, LINE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe, estimativaCustoPedidoCamisa, valorMetroDoEstoque } from "../lib/helpers";
 import { custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
@@ -43,6 +44,7 @@ export default function Orcamento({
   modelosCamisa = [],
   onCriarModeloCamisa,
   estoqueTecidos = [],
+  modoApresentacao = false,
 }) {
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const custoHora = useMemo(() => custoPorHoraAlfaiataria(pecas, equipe), [pecas, equipe]);
@@ -237,6 +239,7 @@ export default function Orcamento({
               margemPadrao={margemPadrao}
               valorVenda={it.valorVenda}
               onUsarSugestao={(v) => setCampoItem(it.id, "valorVenda", v)}
+              modoApresentacao={modoApresentacao}
             />
           ) : (
             <EstimativaCustoPeca
@@ -245,6 +248,7 @@ export default function Orcamento({
               custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
               custoHora={custoHora}
               valorVenda={it.valorVenda}
+              modoApresentacao={modoApresentacao}
             />
           )}
         </Card>
@@ -258,24 +262,36 @@ export default function Orcamento({
         <div className="fx-serif mb-2" style={{ fontSize: 15, fontWeight: 600 }}>
           Total do orçamento
         </div>
-        <div className="flex items-center gap-4 flex-wrap" style={{ fontSize: 13 }}>
-          <span>
-            <span style={{ color: TEXT_MUTED }}>Custo total estimado: </span>
-            <strong className="fx-mono">{brl(totais.custo)}</strong>
-          </span>
-          <span>
-            <span style={{ color: TEXT_MUTED }}>Soma do valor de venda: </span>
-            <strong className="fx-mono">{brl(totais.venda)}</strong>
-          </span>
-          {totais.venda > 0 && (
-            <span>
-              <span style={{ color: TEXT_MUTED }}>Margem total: </span>
-              <strong className="fx-mono" style={{ color: margemTotal >= 0 ? "#2C6E31" : "#9C4A1E" }}>
-                {brl(margemTotal)} ({margemTotalPct.toFixed(0)}%)
-              </strong>
-            </span>
-          )}
-        </div>
+        {modoApresentacao ? (
+          <SeloMargem margemPercentual={margemTotalPct} />
+        ) : (
+          <>
+            <div style={{ fontSize: 9.5, letterSpacing: 0.6, textTransform: "uppercase", color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>
+              Informações gerenciais
+            </div>
+            <div className="flex items-center gap-4 flex-wrap" style={{ fontSize: 13 }}>
+              <span>
+                <span style={{ color: TEXT_MUTED }}>Custo total estimado: </span>
+                <strong className="fx-mono">{brl(totais.custo)}</strong>
+              </span>
+              <span>
+                <span style={{ color: TEXT_MUTED }}>Soma do valor de venda: </span>
+                <strong className="fx-mono">{brl(totais.venda)}</strong>
+              </span>
+              {totais.venda > 0 && (
+                <>
+                  <span>
+                    <span style={{ color: TEXT_MUTED }}>Margem total: </span>
+                    <strong className="fx-mono" style={{ color: margemTotal >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                      {brl(margemTotal)} ({margemTotalPct.toFixed(0)}%)
+                    </strong>
+                  </span>
+                  <SeloMargem margemPercentual={margemTotalPct} />
+                </>
+              )}
+            </div>
+          </>
+        )}
       </Card>
 
       <button type="button" onClick={limpar} style={{ color: TEXT_MUTED, fontSize: 12, textDecoration: "underline" }}>

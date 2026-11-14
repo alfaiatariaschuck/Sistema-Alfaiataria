@@ -67,6 +67,7 @@ export default function DetalhePeca({
   onIndicadorVinculado,
   pecasTodas,
   equipe,
+  modoApresentacao = false,
 }) {
   const custoHora = useMemo(() => custoPorHoraAlfaiataria(pecasTodas, equipe), [pecasTodas, equipe]);
   const [mostrarFicha, setMostrarFicha] = useState(false);
@@ -719,6 +720,7 @@ export default function DetalhePeca({
           custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
           custoHora={custoHora}
           valorVenda={p.valorVenda}
+          modoApresentacao={modoApresentacao}
         />
       </Card>
 

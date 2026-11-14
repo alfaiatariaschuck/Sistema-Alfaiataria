@@ -3,6 +3,7 @@ import { TEXT_MUTED } from "../lib/constants";
 import { brl, custoAviamentoComposicao, custoTecidoDe } from "../lib/helpers";
 import { custoMaoDeObraPeca } from "../lib/custoEquipe";
 import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
+import SeloMargem from "./SeloMargem";
 
 // Mostra, na peça de alfaiataria, o custo real (tecido + aviamento da
 // composição do tipo de peça + mão de obra real da equipe, rateada pela
@@ -11,7 +12,12 @@ import { useConfigCustosFixos } from "../hooks/useConfigCustosFixos";
 // ela. Sem "preço sugerido" — alfaiataria não tem um catálogo de preço
 // por tecido feito Tecidos de Camisa, é sob medida.
 // Uso interno — nunca aparece na ficha do Icaro.
-export default function EstimativaCustoPeca({ tecidos, tipoPeca, custoAviamentosPorPecaBase = {}, custoHora, valorVenda }) {
+//
+// "Modo apresentação" (pedido do Tales, 14/11/2026): ele mesmo usa o
+// sistema na frente do cliente, então quando ligado, esconde R$ e %
+// (informação gerencial) e mostra só o selo colorido (SeloMargem) —
+// que não revela o número, só o veredito.
+export default function EstimativaCustoPeca({ tecidos, tipoPeca, custoAviamentosPorPecaBase = {}, custoHora, valorVenda, modoApresentacao = false }) {
   const { aliquotaImposto } = useConfigCustosFixos();
   const custoTecido = custoTecidoDe(tecidos);
   const custoAviamento = custoAviamentoComposicao(tipoPeca, custoAviamentosPorPecaBase);
@@ -27,20 +33,35 @@ export default function EstimativaCustoPeca({ tecidos, tipoPeca, custoAviamentos
   const margemPercentual = temVenda && venda > 0 ? (margem / venda) * 100 : null;
   const impostoReservar = temVenda ? venda * ((parseFloat(aliquotaImposto) || 0) / 100) : null;
 
+  if (modoApresentacao) {
+    if (margemPercentual == null) return null;
+    return (
+      <div className="mt-3">
+        <SeloMargem margemPercentual={margemPercentual} />
+      </div>
+    );
+  }
+
   return (
     <div className="mt-3 p-3" style={{ background: "#F3EEDF", borderRadius: 8 }}>
+      <div style={{ fontSize: 9.5, letterSpacing: 0.6, textTransform: "uppercase", color: TEXT_MUTED, fontWeight: 700, marginBottom: 6 }}>
+        Informações gerenciais
+      </div>
       <div className="flex items-center gap-4 flex-wrap" style={{ fontSize: 12 }}>
         <span>
           <span style={{ color: TEXT_MUTED }}>Custo total: </span>
           <strong className="fx-mono">{brl(custo)}</strong>
         </span>
         {margemPercentual != null && (
-          <span>
-            <span style={{ color: TEXT_MUTED }}>Margem dessa venda: </span>
-            <strong className="fx-mono" style={{ color: margemPercentual >= 0 ? "#2C6E31" : "#9C4A1E" }}>
-              {brl(margem)} ({margemPercentual.toFixed(0)}%)
-            </strong>
-          </span>
+          <>
+            <span>
+              <span style={{ color: TEXT_MUTED }}>Margem dessa venda: </span>
+              <strong className="fx-mono" style={{ color: margemPercentual >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                {brl(margem)} ({margemPercentual.toFixed(0)}%)
+              </strong>
+            </span>
+            <SeloMargem margemPercentual={margemPercentual} />
+          </>
         )}
         {impostoReservar != null && (
           <span>

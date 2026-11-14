@@ -45,6 +45,7 @@ export default function DetalhePedido({
   clientesBase = [],
   nomesClientes,
   onIndicadorVinculado,
+  modoApresentacao = false,
 }) {
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const [mostrarFicha, setMostrarFicha] = useState(false);
@@ -747,6 +748,7 @@ export default function DetalhePedido({
           margemPadrao={margemPadrao}
           valorVenda={p.aReceber.valor}
           onUsarSugestao={(valor) => setSub("aReceber", "valor", valor)}
+          modoApresentacao={modoApresentacao}
         />
       </Card>
 

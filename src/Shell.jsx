@@ -11,6 +11,8 @@ import {
   Calculator,
   Camera,
   ClipboardList,
+  Eye,
+  EyeOff,
   FileText,
   Footprints,
   Gauge,
@@ -194,6 +196,24 @@ export default function Shell() {
   const [gruposAbertos, setGruposAbertos] = useState(
     () => new Set(["Provador de Tecidos", NAV.find((n) => n.id === "dashboard")?.grupo])
   );
+  // "Modo apresentação" (pedido do Tales, 14/11/2026) — ele usa o sistema
+  // direto na frente do cliente, então esconde custo/margem (informação
+  // gerencial) enquanto ligado; persiste no navegador pra não desligar
+  // sozinho se a página recarregar no meio de um atendimento.
+  const [modoApresentacao, setModoApresentacao] = useState(() => {
+    try {
+      return localStorage.getItem("modoApresentacao") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("modoApresentacao", modoApresentacao ? "1" : "0");
+    } catch {
+      // localStorage indisponível — modo não persiste entre recarregamentos, sem problema
+    }
+  }, [modoApresentacao]);
 
   useEffect(() => {
     const grupo = NAV.find((n) => n.id === tab)?.grupo;
@@ -717,7 +737,7 @@ export default function Shell() {
     clientesBase,
     nomesClientes,
     onIndicadorVinculado: recarregarNomesClientes,
-    onAbrirProvador: (cliente) => setProvadorModal({ origem: "camisa", id: selecionado, cliente }),
+    modoApresentacao,
   };
 
   function atualizarMedidaPeca(pecaId, secKey, label, valor) {
@@ -779,6 +799,7 @@ export default function Shell() {
     nomesClientes,
     onIndicadorVinculado: recarregarNomesClientes,
     onAbrirProvador: (cliente) => setProvadorModal({ origem: "alfaiataria", id: selecionadaPeca, cliente }),
+    modoApresentacao,
   };
 
   // Mantém o handler do postMessage (registrado uma vez, ver useEffect lá em
@@ -793,6 +814,30 @@ export default function Shell() {
 
   return (
     <div style={{ background: CANVAS, minHeight: "100vh", fontFamily: "'Inter', sans-serif", color: INK }}>
+      <button
+        type="button"
+        onClick={() => setModoApresentacao((v) => !v)}
+        title="Esconde custo e margem (informações gerenciais) enquanto estiver ligado — útil na frente do cliente."
+        className="flex items-center gap-1.5"
+        style={{
+          position: "fixed",
+          top: 12,
+          right: 12,
+          zIndex: 50,
+          padding: "8px 14px",
+          borderRadius: 999,
+          border: "none",
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.25)",
+          background: modoApresentacao ? "#9C2B2B" : "#FFFFFF",
+          color: modoApresentacao ? "#FFFFFF" : INK,
+        }}
+      >
+        {modoApresentacao ? <EyeOff size={14} /> : <Eye size={14} />}
+        {modoApresentacao ? "Modo cliente — ligado" : "Modo cliente"}
+      </button>
       <div className="flex min-h-screen">
         <aside style={{ background: INK, width: 220, flexShrink: 0 }} className="hidden md:flex flex-col">
           <div className="px-6 pt-8 pb-6">
@@ -1027,6 +1072,7 @@ export default function Shell() {
                   modelosCamisa={modelosCamisa}
                   onCriarModeloCamisa={adicionarModelo}
                   custoAviamentosPorPecaBase={custoPorPecaBase}
+                  modoApresentacao={modoApresentacao}
                 />
               )}
               {tab === "estoque-camisaria" && (
@@ -1167,6 +1213,7 @@ export default function Shell() {
                   estoqueTecidos={estoqueTecidos}
                   modelosAlfaiataria={modelosAlfaiataria}
                   onCriarModeloAlfaiataria={adicionarModeloAlfaiataria}
+                  modoApresentacao={modoApresentacao}
                 />
               )}
               {tab === "orcamento" && !loadingPecas && (
@@ -1179,6 +1226,7 @@ export default function Shell() {
                   modelosCamisa={modelosCamisa}
                   onCriarModeloCamisa={adicionarModelo}
                   estoqueTecidos={estoqueTecidos}
+                  modoApresentacao={modoApresentacao}
                 />
               )}
               {tab === "provador" && (

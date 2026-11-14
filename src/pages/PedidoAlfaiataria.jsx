@@ -32,7 +32,18 @@ import { pecaVazia } from "../hooks/usePedidosAlfaiataria";
 import { custoPorHoraAlfaiataria } from "../lib/custoEquipe";
 import { buscarDadosPessoaisCliente } from "../lib/clientes";
 
-export default function PedidoAlfaiataria({ onCriar, nomesClientes, clientesBase = [], pecas, equipe, custoAviamentosPorPecaBase = {}, estoqueTecidos, modelosAlfaiataria = [], onCriarModeloAlfaiataria }) {
+export default function PedidoAlfaiataria({
+  onCriar,
+  nomesClientes,
+  clientesBase = [],
+  pecas,
+  equipe,
+  custoAviamentosPorPecaBase = {},
+  estoqueTecidos,
+  modelosAlfaiataria = [],
+  onCriarModeloAlfaiataria,
+  modoApresentacao = false,
+}) {
   const [novaPeca, setNovaPeca] = useState(pecaVazia());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
   const [salvando, setSalvando] = useState(false);
@@ -471,6 +482,7 @@ export default function PedidoAlfaiataria({ onCriar, nomesClientes, clientesBase
             custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
             custoHora={custoHora}
             valorVenda={novaPeca.valorVenda}
+            modoApresentacao={modoApresentacao}
           />
         </Card>
 

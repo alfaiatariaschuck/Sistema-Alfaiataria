@@ -15,7 +15,18 @@ import { pedidoVazio } from "../hooks/usePedidos";
 import { buscarDadosPessoaisCliente } from "../lib/clientes";
 import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
 
-export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, clientesBase = [], pedidos, estoqueTecidos, modelosCamisa = [], onCriarModeloCamisa, custoAviamentosPorPecaBase = {} }) {
+export default function NovoPedido({
+  onSalvar,
+  onSalvarPlano,
+  nomesClientes,
+  clientesBase = [],
+  pedidos,
+  estoqueTecidos,
+  modelosCamisa = [],
+  onCriarModeloCamisa,
+  custoAviamentosPorPecaBase = {},
+  modoApresentacao = false,
+}) {
   const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const [p, setP] = useState(pedidoVazio());
   const [dadosPessoais, setDadosPessoais] = useState(dadosPessoaisVazio());
@@ -679,6 +690,7 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, cli
             margemPadrao={margemPadrao}
             valorVenda={p.aReceber.valor}
             onUsarSugestao={(valor) => set("aReceber", { ...p.aReceber, valor })}
+            modoApresentacao={modoApresentacao}
           />
         </Card>
 
