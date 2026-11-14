@@ -78,6 +78,7 @@ import Entregues from "./pages/Entregues";
 import Backup from "./pages/Backup";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import Orcamento from "./pages/Orcamento";
+import OrcamentoCamisaria from "./pages/OrcamentoCamisaria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import PainelSapatos from "./pages/PainelSapatos";
 import PedidoSapatos from "./pages/PedidoSapatos";
@@ -110,6 +111,7 @@ import BuscaGlobal from "./components/BuscaGlobal";
 import CalendarioProvas from "./components/CalendarioProvas";
 
 const NAV = [
+  { id: "orcamento-camisaria", label: "Orçamento", icon: Calculator, primary: true, grupo: "Camisaria" },
   { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true, grupo: "Camisaria" },
   { id: "painel-camisaria-fabiana", label: "Painel Camisaria Fabiana", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
   { id: "painel-camisaria-cleci", label: "Painel Camisaria Cleci", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
@@ -125,9 +127,9 @@ const NAV = [
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false, grupo: "Camisaria" },
   { id: "vendedor", label: "Vendedor", icon: UserCheck, primary: false, grupo: "Camisaria" },
 
+  { id: "orcamento", label: "Orçamento", icon: Calculator, primary: true, grupo: "Alfaiataria" },
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false, grupo: "Alfaiataria" },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true, grupo: "Alfaiataria" },
-  { id: "orcamento", label: "Orçamento", icon: Calculator, primary: false, grupo: "Alfaiataria" },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true, grupo: "Alfaiataria" },
   { id: "controle-producao", label: "Controle de Produção", icon: Gauge, primary: true, grupo: "Alfaiataria" },
   { id: "calendario-provas", label: "Calendário de Provas", icon: CalendarDays, primary: false, grupo: "Alfaiataria" },
@@ -863,6 +865,13 @@ export default function Shell() {
             <div style={{ color: "#6E7883" }}>Carregando…</div>
           ) : (
             <>
+              {tab === "orcamento-camisaria" && (
+                <OrcamentoCamisaria
+                  modelosCamisa={modelosCamisa}
+                  onCriarModeloCamisa={adicionarModelo}
+                  custoAviamentosPorPecaBase={custoPorPecaBase}
+                />
+              )}
               {tab === "dashboard" && (
                 <Dashboard
                   pedidos={pedidos}
