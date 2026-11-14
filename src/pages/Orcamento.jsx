@@ -2,136 +2,285 @@ import React, { useMemo, useState } from "react";
 import { Card, Field, PageTitle } from "../components/ui";
 import SeletorNomenclaturaTecido from "../components/SeletorNomenclaturaTecido";
 import EstimativaCustoPeca from "../components/EstimativaCustoPeca";
+import EstimativaCustoPedido from "../components/EstimativaCustoPedido";
 import { BRASS, LINE, TEXT_MUTED, TIPOS_PECA, inputStyle } from "../lib/constants";
-import { custoPorHoraAlfaiataria } from "../lib/custoEquipe";
+import { brl, custoAviamentoComposicao, custoTecidoDe, estimativaCustoPedidoCamisa, valorMetroDoEstoque } from "../lib/helpers";
+import { custoMaoDeObraPeca, custoPorHoraAlfaiataria } from "../lib/custoEquipe";
+import { useConfigPrecoCamisa } from "../hooks/useConfigPrecoCamisa";
+
+const TIPO_CAMISA = "Camisa";
+const TIPOS_ITEM = [...TIPOS_PECA, TIPO_CAMISA];
 
 function tecidoVazio() {
-  return { nomenclatura: "", metragem: "", valorMetro: "" };
+  return { codigo: "", nomenclatura: "", qtd: 1, metragem: "", valorMetro: "" };
 }
 
-// Calculadora rápida de orçamento — mesma conta de custo (tecido +
-// aviamento da composição do tipo de peça + mão de obra real da
-// equipe) já usada em "Pedido Alfaiataria", só que sem precisar criar
-// uma peça de verdade: é pra simular a margem de um orçamento antes de
-// fechar com o cliente. Não salva nada no banco — some ao sair da aba.
-export default function Orcamento({ pecas, equipe, custoAviamentosPorPecaBase = {}, modelosAlfaiataria = [], onCriarModeloAlfaiataria }) {
-  const [tipoPeca, setTipoPeca] = useState(TIPOS_PECA[0]);
-  const [tecidos, setTecidos] = useState([tecidoVazio()]);
-  const [valorVenda, setValorVenda] = useState("");
+function itemVazio() {
+  return { tipo: TIPOS_PECA[0], tecidos: [tecidoVazio()], valorVenda: "" };
+}
+
+let proximoId = 1;
+function novoId() {
+  return proximoId++;
+}
+
+// Calculadora de orçamento unificada (Alfaiataria + Camisaria) — pedido
+// do Tales (14/11/2026): antes eram duas telas separadas, uma só pra
+// peça de alfaiataria e outra só pra camisa; essa junta as duas, com
+// quantas peças o orçamento do cliente precisar (ex.: um Costume + 2
+// Camisas no mesmo orçamento). Cada peça tem seu próprio código de
+// tecido (igual na ficha) e seu próprio valor de venda; o total embaixo
+// soma tudo. Não salva nada no banco — some ao sair da aba. "Gerar
+// orçamento" (virar PDF/mensagem pro cliente) é um ponto de melhoria
+// futuro, ainda sem formato decidido — combinado com o Tales de deixar
+// pra depois.
+export default function Orcamento({
+  pecas,
+  equipe,
+  custoAviamentosPorPecaBase = {},
+  modelosAlfaiataria = [],
+  onCriarModeloAlfaiataria,
+  modelosCamisa = [],
+  onCriarModeloCamisa,
+  estoqueTecidos = [],
+}) {
+  const { metragemPadrao, maoDeObraPadrao, margemPadrao } = useConfigPrecoCamisa();
   const custoHora = useMemo(() => custoPorHoraAlfaiataria(pecas, equipe), [pecas, equipe]);
+  const [itens, setItens] = useState(() => [{ id: novoId(), ...itemVazio() }]);
 
-  function setTecido(i, campo, valor) {
-    setTecidos((prev) => {
-      const t = [...prev];
-      t[i] = { ...t[i], [campo]: valor };
-      return t;
-    });
+  function addItem() {
+    setItens((prev) => [...prev, { id: novoId(), ...itemVazio() }]);
   }
-
-  function addTecido() {
-    setTecidos((prev) => [...prev, tecidoVazio()]);
+  function removerItem(id) {
+    setItens((prev) => (prev.length > 1 ? prev.filter((it) => it.id !== id) : prev));
   }
-
-  function removerTecido(i) {
-    setTecidos((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
+  function setCampoItem(id, campo, valor) {
+    setItens((prev) => prev.map((it) => (it.id === id ? { ...it, [campo]: valor } : it)));
   }
-
+  function setTipoItem(id, tipo) {
+    setItens((prev) => prev.map((it) => (it.id === id ? { ...it, tipo, tecidos: [tecidoVazio()] } : it)));
+  }
+  function setTecidoItem(id, i, campo, valor) {
+    setItens((prev) =>
+      prev.map((it) => {
+        if (it.id !== id) return it;
+        const tecidos = [...it.tecidos];
+        tecidos[i] = { ...tecidos[i], [campo]: valor };
+        return { ...it, tecidos };
+      })
+    );
+  }
+  function addTecidoItem(id) {
+    setItens((prev) => prev.map((it) => (it.id === id ? { ...it, tecidos: [...it.tecidos, tecidoVazio()] } : it)));
+  }
+  function removerTecidoItem(id, i) {
+    setItens((prev) =>
+      prev.map((it) =>
+        it.id === id ? { ...it, tecidos: it.tecidos.length > 1 ? it.tecidos.filter((_, idx) => idx !== i) : it.tecidos } : it
+      )
+    );
+  }
   function limpar() {
-    setTipoPeca(TIPOS_PECA[0]);
-    setTecidos([tecidoVazio()]);
-    setValorVenda("");
+    setItens([{ id: novoId(), ...itemVazio() }]);
   }
+
+  // Custo de cada peça — mesma conta usada nos pedidos de verdade
+  // (Alfaiataria: tecido + aviamento da composição do tipo + mão de obra
+  // rateada; Camisaria: a conta de Tecidos de Camisa) — só pra poder
+  // somar tudo no total do orçamento, embaixo.
+  const itensComCusto = useMemo(() => {
+    return itens.map((it) => {
+      let custo = 0;
+      if (it.tipo === TIPO_CAMISA) {
+        const custoAviamentoCamisa = custoAviamentosPorPecaBase["Camisa"] || 0;
+        const { custoEstimado } = estimativaCustoPedidoCamisa(it.tecidos, modelosCamisa, {
+          metragemPadrao,
+          maoDeObraPadrao,
+          margemPadrao,
+          custoAviamentoCamisa,
+        });
+        custo = custoEstimado || 0;
+      } else {
+        custo = custoTecidoDe(it.tecidos) + custoAviamentoComposicao(it.tipo, custoAviamentosPorPecaBase) + custoMaoDeObraPeca(it.tipo, custoHora);
+      }
+      return { ...it, custo, venda: parseFloat(it.valorVenda) || 0 };
+    });
+  }, [itens, custoAviamentosPorPecaBase, modelosCamisa, metragemPadrao, maoDeObraPadrao, margemPadrao, custoHora]);
+
+  const totais = useMemo(
+    () => itensComCusto.reduce((acc, it) => ({ custo: acc.custo + it.custo, venda: acc.venda + it.venda }), { custo: 0, venda: 0 }),
+    [itensComCusto]
+  );
+  const margemTotal = totais.venda - totais.custo;
+  const margemTotalPct = totais.venda > 0 ? (margemTotal / totais.venda) * 100 : null;
 
   return (
     <div>
-      <PageTitle eyebrow="Alfaiataria" title="Orçamento" />
+      <PageTitle eyebrow="Alfaiataria + Camisaria" title="Orçamento" />
       <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 20 }}>
-        Simule a margem de um pedido antes de fechar com o cliente — essa tela não salva nada no sistema.
+        Monte o orçamento completo do cliente, misturando peças de alfaiataria e camisas no mesmo orçamento — essa
+        tela não salva nada no sistema. Adicione quantas peças precisar; o total embaixo soma tudo.
       </div>
 
-      <Card style={{ padding: 20 }} className="mb-5">
-        <Field label="Tipo de peça">
-          <select style={inputStyle} value={tipoPeca} onChange={(e) => setTipoPeca(e.target.value)}>
-            {TIPOS_PECA.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </Card>
-
-      <Card style={{ padding: 20 }} className="mb-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="fx-serif" style={{ fontSize: 16, fontWeight: 600 }}>
-            Tecido
+      {itensComCusto.map((it) => (
+        <Card key={it.id} style={{ padding: 20 }} className="mb-4">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <Field label="Tipo">
+              <select style={{ ...inputStyle, maxWidth: 180 }} value={it.tipo} onChange={(e) => setTipoItem(it.id, e.target.value)}>
+                {TIPOS_ITEM.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {itensComCusto.length > 1 && (
+              <button type="button" onClick={() => removerItem(it.id)} style={{ color: TEXT_MUTED, fontSize: 12 }}>
+                remover peça
+              </button>
+            )}
           </div>
-          <button type="button" onClick={addTecido} style={{ color: BRASS, fontSize: 13, fontWeight: 600 }}>
-            + adicionar item
-          </button>
-        </div>
 
-        {tecidos.map((t, i) => (
-          <div key={i} className="mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
-            <div className="flex items-center gap-2 flex-wrap">
-              <SeletorNomenclaturaTecido
-                value={t.nomenclatura}
-                onChange={(nome) => setTecido(i, "nomenclatura", nome)}
-                modelos={modelosAlfaiataria}
-                onCriarModelo={onCriarModeloAlfaiataria}
-                onValorReferencia={(valor) => {
-                  if (t.valorMetro === "" || t.valorMetro == null) setTecido(i, "valorMetro", valor);
-                }}
-              />
-              <input
-                style={{ ...inputStyle, maxWidth: 110 }}
-                placeholder="Metragem (ex: 3,5m)"
-                value={t.metragem}
-                onChange={(e) => setTecido(i, "metragem", e.target.value)}
-              />
+          <div className="flex items-center justify-between mb-2">
+            <div className="fx-serif" style={{ fontSize: 14, fontWeight: 600 }}>
+              Tecido
+            </div>
+            <button type="button" onClick={() => addTecidoItem(it.id)} style={{ color: BRASS, fontSize: 12, fontWeight: 600 }}>
+              + adicionar tecido
+            </button>
+          </div>
+
+          {it.tecidos.map((t, i) => (
+            <div key={i} className="mb-2 pb-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  style={{ ...inputStyle, maxWidth: 110 }}
+                  placeholder="Código"
+                  value={t.codigo}
+                  onChange={(e) => {
+                    const novoCodigo = e.target.value;
+                    setTecidoItem(it.id, i, "codigo", novoCodigo);
+                    if (t.valorMetro === "" || t.valorMetro == null) {
+                      const preco = valorMetroDoEstoque(novoCodigo, estoqueTecidos);
+                      if (preco) setTecidoItem(it.id, i, "valorMetro", preco);
+                    }
+                  }}
+                />
+                <SeletorNomenclaturaTecido
+                  value={t.nomenclatura}
+                  onChange={(nome) => setTecidoItem(it.id, i, "nomenclatura", nome)}
+                  modelos={it.tipo === TIPO_CAMISA ? modelosCamisa : modelosAlfaiataria}
+                  onCriarModelo={it.tipo === TIPO_CAMISA ? onCriarModeloCamisa : onCriarModeloAlfaiataria}
+                  onValorReferencia={(valor) => {
+                    if (t.valorMetro === "" || t.valorMetro == null) setTecidoItem(it.id, i, "valorMetro", valor);
+                  }}
+                />
+                {it.tipo === TIPO_CAMISA && (
+                  <input
+                    type="number"
+                    min="1"
+                    style={{ ...inputStyle, maxWidth: 70 }}
+                    placeholder="Qtd"
+                    value={t.qtd}
+                    onChange={(e) => setTecidoItem(it.id, i, "qtd", e.target.value)}
+                  />
+                )}
+                <input
+                  style={{ ...inputStyle, maxWidth: 110 }}
+                  placeholder="Medida (ex: 1,5m)"
+                  value={t.metragem}
+                  onChange={(e) => setTecidoItem(it.id, i, "metragem", e.target.value)}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  style={{ ...inputStyle, maxWidth: 110 }}
+                  placeholder="R$/metro"
+                  value={t.valorMetro}
+                  onChange={(e) => setTecidoItem(it.id, i, "valorMetro", e.target.value)}
+                />
+                {it.tecidos.length > 1 && (
+                  <button type="button" onClick={() => removerTecidoItem(it.id, i)} style={{ color: TEXT_MUTED, fontSize: 12 }}>
+                    remover
+                  </button>
+                )}
+              </div>
+              {estoqueTecidos && estoqueTecidos.some((e) => e.codigo.trim().toLowerCase() === (t.codigo || "").trim().toLowerCase()) && (
+                <div className="mt-2 p-2" style={{ background: "#F3EEDF", borderRadius: 6, fontSize: 11, color: TEXT_MUTED }}>
+                  Esse código tem estoque cadastrado.
+                </div>
+              )}
+            </div>
+          ))}
+
+          <div className="mt-3" style={{ maxWidth: 220 }}>
+            <Field label="Valor de venda dessa peça (R$)">
               <input
                 type="number"
                 min="0"
                 step="0.01"
-                style={{ ...inputStyle, maxWidth: 110 }}
-                placeholder="R$/metro"
-                value={t.valorMetro}
-                onChange={(e) => setTecido(i, "valorMetro", e.target.value)}
+                style={inputStyle}
+                value={it.valorVenda}
+                onChange={(e) => setCampoItem(it.id, "valorVenda", e.target.value)}
               />
-              {tecidos.length > 1 && (
-                <button type="button" onClick={() => removerTecido(i)} style={{ color: TEXT_MUTED, fontSize: 12 }}>
-                  remover
-                </button>
-              )}
-            </div>
+            </Field>
           </div>
-        ))}
 
-        <div className="mt-4" style={{ maxWidth: 220 }}>
-          <Field label="Valor de venda (R$) — opcional, pra ver a margem">
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              style={inputStyle}
-              value={valorVenda}
-              onChange={(e) => setValorVenda(e.target.value)}
+          {it.tipo === TIPO_CAMISA ? (
+            <EstimativaCustoPedido
+              tecidos={it.tecidos}
+              modelosCamisa={modelosCamisa}
+              custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
+              metragemPadrao={metragemPadrao}
+              maoDeObraPadrao={maoDeObraPadrao}
+              margemPadrao={margemPadrao}
+              valorVenda={it.valorVenda}
+              onUsarSugestao={(v) => setCampoItem(it.id, "valorVenda", v)}
             />
-          </Field>
+          ) : (
+            <EstimativaCustoPeca
+              tecidos={it.tecidos}
+              tipoPeca={it.tipo}
+              custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
+              custoHora={custoHora}
+              valorVenda={it.valorVenda}
+            />
+          )}
+        </Card>
+      ))}
+
+      <button type="button" onClick={addItem} className="mb-5" style={{ color: BRASS, fontSize: 13, fontWeight: 600 }}>
+        + adicionar peça
+      </button>
+
+      <Card style={{ padding: 20 }} className="mb-5">
+        <div className="fx-serif mb-2" style={{ fontSize: 15, fontWeight: 600 }}>
+          Total do orçamento
         </div>
-
-        <EstimativaCustoPeca
-          tecidos={tecidos}
-          tipoPeca={tipoPeca}
-          custoAviamentosPorPecaBase={custoAviamentosPorPecaBase}
-          custoHora={custoHora}
-          valorVenda={valorVenda}
-        />
-
-        <button type="button" onClick={limpar} className="mt-4" style={{ color: TEXT_MUTED, fontSize: 12, textDecoration: "underline" }}>
-          limpar e começar outro orçamento
-        </button>
+        <div className="flex items-center gap-4 flex-wrap" style={{ fontSize: 13 }}>
+          <span>
+            <span style={{ color: TEXT_MUTED }}>Custo total estimado: </span>
+            <strong className="fx-mono">{brl(totais.custo)}</strong>
+          </span>
+          <span>
+            <span style={{ color: TEXT_MUTED }}>Soma do valor de venda: </span>
+            <strong className="fx-mono">{brl(totais.venda)}</strong>
+          </span>
+          {totais.venda > 0 && (
+            <span>
+              <span style={{ color: TEXT_MUTED }}>Margem total: </span>
+              <strong className="fx-mono" style={{ color: margemTotal >= 0 ? "#2C6E31" : "#9C4A1E" }}>
+                {brl(margemTotal)} ({margemTotalPct.toFixed(0)}%)
+              </strong>
+            </span>
+          )}
+        </div>
       </Card>
+
+      <button type="button" onClick={limpar} style={{ color: TEXT_MUTED, fontSize: 12, textDecoration: "underline" }}>
+        limpar e começar outro orçamento
+      </button>
     </div>
   );
 }

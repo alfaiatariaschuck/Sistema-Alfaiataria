@@ -78,7 +78,6 @@ import Entregues from "./pages/Entregues";
 import Backup from "./pages/Backup";
 import PedidoAlfaiataria from "./pages/PedidoAlfaiataria";
 import Orcamento from "./pages/Orcamento";
-import OrcamentoCamisaria from "./pages/OrcamentoCamisaria";
 import PedidosAlfaiataria from "./pages/PedidosAlfaiataria";
 import PainelSapatos from "./pages/PainelSapatos";
 import PedidoSapatos from "./pages/PedidoSapatos";
@@ -111,7 +110,6 @@ import BuscaGlobal from "./components/BuscaGlobal";
 import CalendarioProvas from "./components/CalendarioProvas";
 
 const NAV = [
-  { id: "orcamento-camisaria", label: "Orçamento", icon: Calculator, primary: true, grupo: "Camisaria" },
   { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true, grupo: "Camisaria" },
   { id: "painel-camisaria-fabiana", label: "Painel Camisaria Fabiana", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
   { id: "painel-camisaria-cleci", label: "Painel Camisaria Cleci", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
@@ -865,13 +863,6 @@ export default function Shell() {
             <div style={{ color: "#6E7883" }}>Carregando…</div>
           ) : (
             <>
-              {tab === "orcamento-camisaria" && (
-                <OrcamentoCamisaria
-                  modelosCamisa={modelosCamisa}
-                  onCriarModeloCamisa={adicionarModelo}
-                  custoAviamentosPorPecaBase={custoPorPecaBase}
-                />
-              )}
               {tab === "dashboard" && (
                 <Dashboard
                   pedidos={pedidos}
@@ -1086,6 +1077,9 @@ export default function Shell() {
                   custoAviamentosPorPecaBase={custoPorPecaBase}
                   modelosAlfaiataria={modelosAlfaiataria}
                   onCriarModeloAlfaiataria={adicionarModeloAlfaiataria}
+                  modelosCamisa={modelosCamisa}
+                  onCriarModeloCamisa={adicionarModelo}
+                  estoqueTecidos={estoqueTecidos}
                 />
               )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (
