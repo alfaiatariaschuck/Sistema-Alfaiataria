@@ -112,7 +112,7 @@ import BuscaGlobal from "./components/BuscaGlobal";
 import CalendarioProvas from "./components/CalendarioProvas";
 
 const NAV = [
-  { id: "provador", label: "Provador de Tecidos", icon: Camera, primary: true, grupo: "Camisaria" },
+  { id: "provador", label: "Provador de Tecidos", icon: Camera, primary: true, grupo: "Provador de Tecidos" },
   { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true, grupo: "Camisaria" },
   { id: "painel-camisaria-fabiana", label: "Painel Camisaria Fabiana", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
   { id: "painel-camisaria-cleci", label: "Painel Camisaria Cleci", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
@@ -167,7 +167,7 @@ const NAV = [
   { id: "backup", label: "Backup", icon: ShieldCheck, primary: false, grupo: "Sistema" },
   { id: "config", label: "Configurações", icon: Settings, primary: false, grupo: "Sistema" },
 ];
-const GRUPOS_NAV = ["Camisaria", "Alfaiataria", "Sapatos", "Geral", "Sistema"];
+const GRUPOS_NAV = ["Provador de Tecidos", "Camisaria", "Alfaiataria", "Sapatos", "Geral", "Sistema"];
 const NAV_PRIMARIA = NAV.filter((n) => n.primary);
 const NAV_SECUNDARIA = NAV.filter((n) => !n.primary);
 
@@ -191,7 +191,9 @@ export default function Shell() {
   const [mostrarMais, setMostrarMais] = useState(false);
   // Só o grupo da aba atual começa aberto — os outros ficam recolhidos pra
   // lateral não ficar gigante; abrir/fechar não muda a aba selecionada.
-  const [gruposAbertos, setGruposAbertos] = useState(() => new Set([NAV.find((n) => n.id === "dashboard")?.grupo]));
+  const [gruposAbertos, setGruposAbertos] = useState(
+    () => new Set(["Provador de Tecidos", NAV.find((n) => n.id === "dashboard")?.grupo])
+  );
 
   useEffect(() => {
     const grupo = NAV.find((n) => n.id === tab)?.grupo;
