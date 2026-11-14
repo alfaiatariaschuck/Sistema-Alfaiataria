@@ -4,12 +4,12 @@ import { Printer, X } from "lucide-react";
 import { fmtData, hojeISO } from "../lib/helpers";
 import { imprimirComNome } from "../lib/imprimirFicha";
 
-// Resumo simples da baixa de estoque — só código e comprometido, pra
-// Fabi se orientar rápido. Pedido do Tales (14/11/2026): a ficha
-// detalhada por cliente não imprimiu completa no celular dela, então
-// "o melhor a fazer é só dar o resumo pra ela se orientar, código do
-// tecido e comprometido" — uma tabela curta, uma linha por código,
-// sempre cabe numa página só.
+// Resumo simples da baixa de estoque — código, saldo atual, pedidos
+// lançados, saldo comprometido e saldo virtual, pra Fabi se orientar
+// rápido. Pedido do Tales (14/11/2026): a ficha detalhada por cliente
+// não imprimiu completa no celular dela, então "o melhor a fazer é só
+// dar o resumo pra ela se orientar" — uma tabela curta, uma linha por
+// código, sempre cabe numa página só.
 export default function ResumoBaixaEstoqueImprimivel({ linhas, onFechar }) {
   function imprimir() {
     imprimirComNome(`Resumo baixa de estoque - ${hojeISO()}`);
@@ -40,27 +40,35 @@ export default function ResumoBaixaEstoqueImprimivel({ linhas, onFechar }) {
           <div className="fx-serif" style={{ fontSize: 22, fontWeight: 700, letterSpacing: 1 }}>
             SCHUCK ALFAIATARIA
           </div>
-          <div style={{ fontSize: 13, color: "#555", marginTop: 2 }}>Resumo — comprometido por código</div>
+          <div style={{ fontSize: 13, color: "#555", marginTop: 2 }}>Resumo — saldo e comprometido por código</div>
           <div style={{ fontSize: 12, color: "#555" }}>gerado em {fmtData(hojeISO())}</div>
         </div>
 
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr>
               <th style={{ textAlign: "left", padding: "8px", borderBottom: "1px solid #111" }}>Código</th>
-              <th style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #111" }}>Comprometido</th>
+              <th style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #111" }}>Saldo atual</th>
+              <th style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #111" }}>Pedidos</th>
+              <th style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #111" }}>Saldo comprometido</th>
+              <th style={{ textAlign: "right", padding: "8px", borderBottom: "1px solid #111" }}>Saldo virtual</th>
             </tr>
           </thead>
           <tbody>
             {linhas.map((l, i) => (
               <tr key={l.codigo} style={{ background: i % 2 === 0 ? "#F7F5EF" : "#FFF" }}>
-                <td style={{ padding: "10px 8px", fontWeight: 700, fontSize: 16 }}>{l.codigo}</td>
-                <td style={{ padding: "10px 8px", textAlign: "right", fontWeight: 700, fontSize: 16 }}>{l.comprometido.toFixed(1)}m</td>
+                <td style={{ padding: "10px 8px", fontWeight: 700, fontSize: 15 }}>{l.codigo}</td>
+                <td style={{ padding: "10px 8px", textAlign: "right" }}>{l.saldoAtual.toFixed(1)}m</td>
+                <td style={{ padding: "10px 8px", textAlign: "right" }}>{l.qtdPedidos}</td>
+                <td style={{ padding: "10px 8px", textAlign: "right" }}>{l.saldoComprometido.toFixed(1)}m</td>
+                <td style={{ padding: "10px 8px", textAlign: "right", fontWeight: 700, color: l.saldoVirtual < 0 ? "#9C4A1E" : "#111" }}>
+                  {l.saldoVirtual.toFixed(1)}m
+                </td>
               </tr>
             ))}
             {linhas.length === 0 && (
               <tr>
-                <td colSpan={2} style={{ padding: "10px 8px", color: "#888" }}>
+                <td colSpan={5} style={{ padding: "10px 8px", color: "#888" }}>
                   Nenhum item pendente de baixa no momento.
                 </td>
               </tr>

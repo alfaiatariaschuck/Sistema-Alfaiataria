@@ -314,23 +314,40 @@ export default function Compras({
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
   }
 
-  // Resumo curto (só código + comprometido, todos os códigos juntos) —
-  // pedido do Tales (14/11/2026): a ficha detalhada por cliente não
-  // imprimiu completa no celular da Fabi, então pra ela se orientar
-  // rápido o melhor é essa versão mínima, que sempre cabe numa página
-  // (ou numa mensagem) só.
+  // Resumo curto (código, saldo atual, pedidos lançados, saldo
+  // comprometido e saldo virtual) — pedido do Tales (14/11/2026): a
+  // ficha detalhada por cliente não imprimiu completa no celular da
+  // Fabi, então pra ela se orientar rápido o melhor é essa versão
+  // mínima, que sempre cabe numa página (ou numa mensagem) só. "Saldo
+  // comprometido" é a metragem estimada já lançada nos pedidos, ainda
+  // sem baixa confirmada; "saldo virtual" é o que sobra descontando
+  // isso do saldo atual (pode ficar negativo — é só um alerta visual).
   function linhasResumo() {
     return [...porCodigo.entries()]
-      .map(([codigo, lista]) => ({
-        codigo,
-        comprometido: lista.reduce((s, item) => s + (metragemParaNumero(item.metragem) || 0), 0),
-      }))
+      .map(([codigo, lista]) => {
+        const itemEstoque = encontrarEstoquePorCodigo(codigo);
+        const saldoAtual = itemEstoque?.saldoMetros ?? 0;
+        const saldoComprometido = lista.reduce((s, item) => s + (metragemParaNumero(item.metragem) || 0), 0);
+        return {
+          codigo,
+          saldoAtual,
+          qtdPedidos: lista.length,
+          saldoComprometido,
+          saldoVirtual: saldoAtual - saldoComprometido,
+        };
+      })
       .sort((a, b) => a.codigo.localeCompare(b.codigo));
   }
 
   function textoResumoFabiana() {
     const linhas = [`*Resumo de estoque comprometido*`, ""];
-    linhasResumo().forEach((l) => linhas.push(`${l.codigo} — ${l.comprometido.toFixed(1)}m`));
+    linhasResumo().forEach((l) =>
+      linhas.push(
+        `${l.codigo} — saldo atual ${l.saldoAtual.toFixed(1)}m · ${l.qtdPedidos} pedido(s) · saldo comprometido ${l.saldoComprometido.toFixed(
+          1
+        )}m · saldo virtual ${l.saldoVirtual.toFixed(1)}m`
+      )
+    );
     linhas.push("", "Me avisa quando for cortar, pra eu dar baixa certinha.");
     return linhas.join("\n");
   }
