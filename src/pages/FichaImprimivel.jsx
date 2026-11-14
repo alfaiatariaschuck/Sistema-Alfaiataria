@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Printer } from "lucide-react";
-import { DESC_LABELS, INK, MEDIDA_LABELS, inputStyle, rotuloMedida } from "../lib/constants";
+import { DESC_CAMPOS, INK, MEDIDA_LABELS, inputStyle, rotuloMedida } from "../lib/constants";
 import { finalDaMedida, fmtData, hojeISO } from "../lib/helpers";
 import { imprimirComNome } from "../lib/imprimirFicha";
 import { supabase } from "../supabaseClient";
@@ -102,16 +102,17 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
       const fin = finalDaMedida(label, bruto);
       if (fin !== null) linhas.push(`${rotuloMedida(label)}: ${bruto} cm → ${fin} cm`);
     });
-    linhas.push(``);
-    linhas.push(`*Características*`);
-    DESC_LABELS.forEach((label) => {
-      if (p.descricao[label]) linhas.push(`${label}: ${p.descricao[label]}`);
-    });
     const tecidosComCodigo = p.tecidos.filter((t) => t.codigo);
     if (tecidosComCodigo.length) {
       linhas.push(``);
-      linhas.push(`*Tecido*`);
-      tecidosComCodigo.forEach((t) => linhas.push(`Código ${t.codigo} · Qtd ${t.qtd}${t.numero ? " · Obs: " + t.numero : ""}`));
+      linhas.push(`*Tecido e características*`);
+      tecidosComCodigo.forEach((t) => {
+        linhas.push(`Código ${t.codigo} · Qtd ${t.qtd}${t.numero ? " · Obs: " + t.numero : ""}`);
+        const carac = DESC_CAMPOS.map((c) => (t[c.campo] ? `${c.label}: ${t[c.campo]}` : null))
+          .filter(Boolean)
+          .join(" · ");
+        if (carac) linhas.push(carac);
+      });
     }
     if (p.observacoes) {
       linhas.push(``);
@@ -257,25 +258,14 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
           <TabelaMedidas labels={MEDIDA_LABELS.slice(Math.ceil(MEDIDA_LABELS.length / 2))} medidas={p.medidas} nomeCosteira={nomeCosteira} />
         </div>
 
-        <TituloSecao>Características</TituloSecao>
-        <table style={TABELA_ESTILO}>
-          <tbody>
-            {DESC_LABELS.map((label, i) => (
-              <tr key={label} style={{ background: i % 2 === 0 ? "#F7F5EF" : "#FFF" }}>
-                <td style={{ ...CELULA_ESTILO, fontWeight: 700, width: "38%" }}>{label}</td>
-                <td style={CELULA_ESTILO}>{p.descricao[label] || "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <TituloSecao>Tecido</TituloSecao>
+        <TituloSecao>Tecido e características (uma camisa por linha)</TituloSecao>
         <table style={TABELA_ESTILO}>
           <thead>
             <tr>
               <th style={CABECALHO_ESTILO}>Código</th>
               <th style={CABECALHO_ESTILO}>Qtd</th>
               <th style={CABECALHO_ESTILO}>Observação</th>
+              <th style={CABECALHO_ESTILO}>Características</th>
             </tr>
           </thead>
           <tbody>
@@ -284,11 +274,16 @@ export default function FichaImprimivel({ pedido: p, onFechar, onMarcarEnviado }
                 <td style={CELULA_ESTILO}>{t.codigo}</td>
                 <td style={CELULA_ESTILO}>{t.qtd}</td>
                 <td style={CELULA_ESTILO}>{t.numero || "—"}</td>
+                <td style={CELULA_ESTILO}>
+                  {DESC_CAMPOS.map((c) => (t[c.campo] ? `${c.label}: ${t[c.campo]}` : null))
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </td>
               </tr>
             ))}
             {p.tecidos.filter((t) => t.codigo).length === 0 && (
               <tr>
-                <td colSpan={3} style={{ ...CELULA_ESTILO, color: "#888" }}>
+                <td colSpan={4} style={{ ...CELULA_ESTILO, color: "#888" }}>
                   Nenhum tecido informado.
                 </td>
               </tr>

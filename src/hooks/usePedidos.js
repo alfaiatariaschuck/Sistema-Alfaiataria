@@ -47,7 +47,23 @@ export function pedidoVazio() {
     statusRestanteFabiana: "Pendente",
     medidas: medidasVazias(),
     descricao: descricaoVazia(),
-    tecidos: [{ codigo: "", nomenclatura: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
+    tecidos: [
+      {
+        codigo: "",
+        nomenclatura: "",
+        qtd: 1,
+        numero: "",
+        fornecedor: "",
+        comprado: false,
+        pesponto: "",
+        colarinho: "",
+        colarinhoObs: "",
+        punho: "",
+        monograma: "",
+        manga: "",
+        vista: "",
+      },
+    ],
     observacoes: "",
     enviadoFabi: false,
     medidasNovas: false,
@@ -113,6 +129,13 @@ function rowParaPedido(row) {
         valorMetro: t.valor_metro ?? "",
         comprado: !!t.comprado,
         metrosBaixados: t.metros_baixados ?? null,
+        pesponto: t.pesponto || "",
+        colarinho: t.colarinho || "",
+        colarinhoObs: t.colarinho_obs || "",
+        punho: t.punho || "",
+        monograma: t.monograma || "",
+        manga: t.manga || "",
+        vista: t.vista || "",
       })),
     observacoes: row.observacoes || "",
     configVisual: row.config_visual || null,
@@ -268,6 +291,13 @@ export function usePedidos() {
           valor_metro: t.valorMetro === "" || t.valorMetro == null ? null : Number(t.valorMetro),
           comprado: !!t.comprado,
           ordem: i,
+          pesponto: t.pesponto || null,
+          colarinho: t.colarinho || null,
+          colarinho_obs: t.colarinhoObs || null,
+          punho: t.punho || null,
+          monograma: t.monograma || null,
+          manga: t.manga || null,
+          vista: t.vista || null,
         }));
       if (tecidosParaInserir.length) {
         const { error: errTec } = await supabase.from("tecidos").insert(tecidosParaInserir);
@@ -418,7 +448,29 @@ export function usePedidos() {
       setPedidos((prev) =>
         prev.map((p) =>
           p.id === pedidoId
-            ? { ...p, tecidos: [...p.tecidos, { id: data.id, codigo: "", nomenclatura: "", qtd: 1, numero: "", fornecedor: "", comprado: false, metrosBaixados: null }] }
+            ? {
+                ...p,
+                tecidos: [
+                  ...p.tecidos,
+                  {
+                    id: data.id,
+                    codigo: "",
+                    nomenclatura: "",
+                    qtd: 1,
+                    numero: "",
+                    fornecedor: "",
+                    comprado: false,
+                    metrosBaixados: null,
+                    pesponto: "",
+                    colarinho: "",
+                    colarinhoObs: "",
+                    punho: "",
+                    monograma: "",
+                    manga: "",
+                    vista: "",
+                  },
+                ],
+              }
             : p
         )
       );
@@ -432,8 +484,9 @@ export function usePedidos() {
         p.id === pedidoId ? { ...p, tecidos: p.tecidos.map((t) => (t.id === tecidoId ? { ...t, [campo]: valor } : t)) } : p
       )
     );
-    // valorMetro é "valor_metro" (numeric) no banco — string vazia dá erro, tem que virar null.
-    const coluna = campo === "valorMetro" ? "valor_metro" : campo;
+    // valorMetro/colarinhoObs têm nome de coluna diferente do campo em JS — string
+    // vazia em valorMetro (numeric) também dá erro, tem que virar null.
+    const coluna = campo === "valorMetro" ? "valor_metro" : campo === "colarinhoObs" ? "colarinho_obs" : campo;
     const valorFinal = campo === "qtd" ? Number(valor) || 1 : campo === "valorMetro" ? (valor === "" ? null : Number(valor)) : valor;
     await comIndicador(async () => {
       const { error } = await supabase.from("tecidos").update({ [coluna]: valorFinal }).eq("id", tecidoId);

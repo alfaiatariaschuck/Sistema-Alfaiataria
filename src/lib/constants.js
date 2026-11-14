@@ -374,24 +374,24 @@ export function rotuloMedida(label) {
 }
 
 // Cada campo pode ter "opcoes" (vira seleção com opção de digitar "Outro") ou não (texto livre)
+// "campo" é a chave (camelCase) usada quando a característica vive por
+// item de Tecido (um por camisa, não mais um bloco só pro pedido
+// inteiro — pedido do Tales, 14/11/2026); "label" continua existindo
+// pros lugares que ainda usam o bloco único antigo (Vendedor, Planos de
+// Assinatura), sem quebrar nada lá.
+// Colarinho e Punho usam as mesmas nomenclaturas do Provador de Tecidos
+// da Ana, pra não ter dois nomes diferentes pra mesma coisa. "Vista"
+// substitui o antigo "Frente" (que misturava vista com entretela/
+// estrutura) — a parte de entretela/estrutura por vista ainda não foi
+// adicionada aqui, aguardando a tabela que o Tales vai passar.
 export const DESC_CAMPOS = [
-  { label: "Pesponto", opcoes: ["Fino", "Largo", "Sem"] },
-  { label: "Colarinho (estilo)", opcoes: ["Inglês", "Francês", "Italiano", "Super Italiano", "Militar"] },
-  { label: "Colarinho - Observação" }, // texto livre, ao lado do estilo
-  { label: "Punho", opcoes: ["Redondo", "Duplo", "Chanfrado", "Simples", "Francês (abotoadura)"] },
-  { label: "Monograma" },
-  { label: "Manga", opcoes: ["Longa", "Curta"] },
-  {
-    label: "Frente",
-    opcoes: [
-      "Estruturada com barbatana",
-      "Somente Entretela",
-      "Lisa",
-      "Fechado Lisa",
-      "Fechado com Estrutura mais Barbatana",
-      "Fechado com Entretela",
-    ],
-  },
+  { campo: "pesponto", label: "Pesponto", opcoes: ["Fino", "Largo", "Sem"] },
+  { campo: "colarinho", label: "Colarinho", opcoes: ["Gola Padre", "Clássico-Francês", "Americano", "Italiano", "Mandarim", "Club Collar"] },
+  { campo: "colarinhoObs", label: "Colarinho - Observação" }, // texto livre, ao lado do estilo
+  { campo: "punho", label: "Punho", opcoes: ["Reto", "Redondo", "Chanfrado", "Duplo"] },
+  { campo: "monograma", label: "Monograma" },
+  { campo: "manga", label: "Manga", opcoes: ["Longa", "Curta"] },
+  { campo: "vista", label: "Vista", opcoes: ["Lisa", "Lisa com pesponto", "Coberta"] },
 ];
 export const DESC_LABELS = DESC_CAMPOS.map((c) => c.label);
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Camera, CheckCircle2, Clock, Printer, RefreshCw, Save, Trash2, Undo2 } from "lucide-react";
+import { CheckCircle2, Clock, Printer, RefreshCw, Save, Trash2, Undo2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoDescricao } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
@@ -26,7 +26,6 @@ export default function DetalhePedido({
   onCampo,
   onSub,
   onMedida,
-  onDescricao,
   onGerarDespesaFabiana,
   despesas = [],
   onPausar,
@@ -38,7 +37,6 @@ export default function DetalhePedido({
   estoqueTecidos,
   onDarBaixaEstoque,
   onDesfazerBaixaEstoque,
-  onAbrirProvador,
   modelosCamisa = [],
   onCriarModeloCamisa,
   custoAviamentosPorPecaBase = {},
@@ -55,6 +53,16 @@ export default function DetalhePedido({
   const [notaPausa, setNotaPausa] = useState("");
   const [qtdPagarFabiana, setQtdPagarFabiana] = useState("");
   const [valorPagarFabiana, setValorPagarFabiana] = useState("");
+  const [caracAbertas, setCaracAbertas] = useState(() => new Set());
+
+  function alternarCarac(tecidoId) {
+    setCaracAbertas((prev) => {
+      const next = new Set(prev);
+      if (next.has(tecidoId)) next.delete(tecidoId);
+      else next.add(tecidoId);
+      return next;
+    });
+  }
 
   function set(campo, valor) {
     onCampo(p.id, campo, valor);
@@ -143,16 +151,6 @@ export default function DetalhePedido({
         >
           <Printer size={15} /> Gerar ficha em PDF (para a Fabi)
         </button>
-        {onAbrirProvador && (
-          <button
-            type="button"
-            onClick={() => onAbrirProvador(p.cliente)}
-            className="flex items-center gap-2"
-            style={{ background: "transparent", border: `1px solid ${LINE}`, color: INK_SOFT, padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
-          >
-            <Camera size={15} /> Provador de Tecidos
-          </button>
-        )}
         <button
           type="button"
           onClick={() => set("enviadoFabi", !p.enviadoFabi)}
@@ -197,26 +195,6 @@ export default function DetalhePedido({
         />
         <LinkAcompanhamento tipo="camisaria" pedidoId={p.id} />
       </div>
-
-      {p.configVisual && (
-        <Card style={{ padding: 16 }} className="mb-5">
-          <div className="flex items-start gap-3 flex-wrap">
-            {p.configVisual.imagemUrl && (
-              <img
-                src={p.configVisual.imagemUrl}
-                alt="Configuração escolhida pelo cliente"
-                style={{ width: 120, height: 150, objectFit: "cover", borderRadius: 8, border: `1px solid ${LINE}`, flexShrink: 0 }}
-              />
-            )}
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div className="fx-serif mb-1" style={{ fontSize: 13, fontWeight: 600 }}>
-                Configuração escolhida no Provador
-              </div>
-              <div style={{ fontSize: 12, color: TEXT_MUTED, whiteSpace: "pre-line" }}>{p.configVisual.texto}</div>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {mostrarFicha && (
         <FichaImprimivel pedido={p} onFechar={() => setMostrarFicha(false)} onMarcarEnviado={() => set("enviadoFabi", true)} />
@@ -626,17 +604,6 @@ export default function DetalhePedido({
       </Card>
 
       <Card style={{ padding: 20 }} className="mt-6">
-        <div className="fx-serif mb-3" style={{ fontSize: 15, fontWeight: 600 }}>
-          Características
-        </div>
-        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-          {DESC_CAMPOS.map((campo) => (
-            <CampoDescricao key={campo.label} campo={campo} valor={p.descricao[campo.label]} onChange={(v) => onDescricao(p.id, campo.label, v)} />
-          ))}
-        </div>
-      </Card>
-
-      <Card style={{ padding: 20 }} className="mt-6">
         <div className="flex items-center justify-between mb-1">
           <div className="fx-serif" style={{ fontSize: 15, fontWeight: 600 }}>
             Tecido
@@ -741,6 +708,34 @@ export default function DetalhePedido({
                 onRegistrarMetrosBaixados={(valor) => onTecido(p.id, t.id, "metros_baixados", valor)}
               />
             )}
+            <div className="mt-2 pt-2" style={{ borderTop: `1px dashed ${LINE}` }}>
+              <button
+                type="button"
+                onClick={() => alternarCarac(t.id)}
+                className="flex items-center justify-between w-full"
+                style={{ fontSize: 12, fontWeight: 600, color: TEXT_MUTED }}
+              >
+                <span>
+                  Características desta camisa
+                  {!caracAbertas.has(t.id) && (
+                    <span style={{ fontWeight: 400 }}>
+                      {" — "}
+                      {DESC_CAMPOS.map((c) => t[c.campo])
+                        .filter(Boolean)
+                        .join(" · ") || "não preenchido"}
+                    </span>
+                  )}
+                </span>
+                <span>{caracAbertas.has(t.id) ? "▴" : "▾"}</span>
+              </button>
+              {caracAbertas.has(t.id) && (
+                <div className="grid gap-3 mt-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+                  {DESC_CAMPOS.map((campo) => (
+                    <CampoDescricao key={campo.campo} campo={campo} valor={t[campo.campo] || ""} onChange={(v) => onTecido(p.id, t.id, campo.campo, v)} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         ))}
         <EstimativaCustoPedido

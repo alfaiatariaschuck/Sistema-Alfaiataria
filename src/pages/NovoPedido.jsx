@@ -42,9 +42,6 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, cli
   function marcarMedidasNovas() {
     setP((prev) => ({ ...prev, medidasNovas: !prev.medidasNovas }));
   }
-  function setDesc(label, valor) {
-    setP((prev) => ({ ...prev, descricao: { ...prev.descricao, [label]: valor } }));
-  }
   function setTecido(i, campo, valor) {
     setP((prev) => {
       const t = [...prev.tecidos];
@@ -53,7 +50,27 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, cli
     });
   }
   function addTecido() {
-    setP((prev) => ({ ...prev, tecidos: [...prev.tecidos, { codigo: "", nomenclatura: "", qtd: 1, numero: "", fornecedor: "", comprado: false }] }));
+    setP((prev) => ({
+      ...prev,
+      tecidos: [
+        ...prev.tecidos,
+        {
+          codigo: "",
+          nomenclatura: "",
+          qtd: 1,
+          numero: "",
+          fornecedor: "",
+          comprado: false,
+          pesponto: "",
+          colarinho: "",
+          colarinhoObs: "",
+          punho: "",
+          monograma: "",
+          manga: "",
+          vista: "",
+        },
+      ],
+    }));
   }
   function setPagamento(patch) {
     setP((prev) => {
@@ -121,13 +138,8 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, cli
     if (!ultimo) return;
     setP((prev) => {
       const medidasVazias = Object.values(prev.medidas).every((v) => v === "");
-      const descricaoVazia = Object.values(prev.descricao).every((v) => v === "");
-      if (!medidasVazias && !descricaoVazia) return prev;
-      return {
-        ...prev,
-        medidas: medidasVazias ? { ...prev.medidas, ...ultimo.medidas } : prev.medidas,
-        descricao: descricaoVazia ? { ...prev.descricao, ...ultimo.descricao } : prev.descricao,
-      };
+      if (!medidasVazias) return prev;
+      return { ...prev, medidas: { ...prev.medidas, ...ultimo.medidas } };
     });
     // eslint-disable-next-line
   }, [p.cliente]);
@@ -565,17 +577,6 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, cli
         </Card>
 
         <Card style={{ padding: 20 }} className="mb-5">
-          <div className="fx-serif mb-3" style={{ fontSize: 16, fontWeight: 600 }}>
-            Características
-          </div>
-          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-            {DESC_CAMPOS.map((campo) => (
-              <CampoDescricao key={campo.label} campo={campo} valor={p.descricao[campo.label]} onChange={(v) => setDesc(campo.label, v)} />
-            ))}
-          </div>
-        </Card>
-
-        <Card style={{ padding: 20 }} className="mb-5">
           <div className="flex items-center justify-between mb-1">
             <div className="fx-serif" style={{ fontSize: 16, fontWeight: 600 }}>
               Tecido
@@ -657,6 +658,16 @@ export default function NovoPedido({ onSalvar, onSalvarPlano, nomesClientes, cli
                   Esse código tem estoque cadastrado — depois de salvar o pedido, abra o detalhe dele pra dar baixa nos metros usados.
                 </div>
               )}
+              <div className="mt-3 pt-2" style={{ borderTop: `1px dashed ${LINE}` }}>
+                <div className="fx-serif mb-2" style={{ fontSize: 12, fontWeight: 600 }}>
+                  Características desta camisa
+                </div>
+                <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+                  {DESC_CAMPOS.map((campo) => (
+                    <CampoDescricao key={campo.campo} campo={campo} valor={t[campo.campo] || ""} onChange={(v) => setTecido(i, campo.campo, v)} />
+                  ))}
+                </div>
+              </div>
             </div>
           ))}
           <EstimativaCustoPedido
