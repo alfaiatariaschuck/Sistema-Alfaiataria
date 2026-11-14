@@ -273,8 +273,8 @@ textarea.inp{padding:10px 12px;min-height:84px;resize:vertical;line-height:1.4;f
           <li>Estique o tecido numa superfície plana e fotografe de cima.</li>
           <li>Use luz clara e sem a sombra do celular.</li>
           <li>Enquadre um pedaço onde o padrão se repita.</li>
-          <li>Para o tamanho exato, deixe uma moeda de R$ 1 ou um cartão de banco ao lado do tecido.</li>
-          <li>Para a cor fiel, inclua um papel ou cartão branco na foto.</li>
+          <li><b>Na foto:</b> coloque o cartão branco (10 x 5 cm) ao lado do tecido, no mesmo enquadramento. Ele serve para o tamanho e a cor.</li>
+          <li><b>Na hora de recortar:</b> o cartão fica de fora. O recorte pega só o tecido.</li>
           <li>Chegue perto e espere o foco: quanto mais nítida a trama, mais fiel fica a peça.</li>
         </ul>
       </div>
@@ -354,6 +354,10 @@ textarea.inp{padding:10px 12px;min-height:84px;resize:vertical;line-height:1.4;f
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="crop-ttl">
     <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
       <h3 id="crop-ttl">Recortar o tecido</h3>
+      <ol class="tips" id="cr-steps" style="background:rgba(255,255,255,.05);border-radius:10px;padding:10px 12px 10px 30px">
+        <li><b>Cartão na foto:</b> a foto já foi tirada com o cartão branco ao lado do tecido. Toque em “Cartão branco (10 cm)” e marque as duas pontas do lado maior.</li>
+        <li><b>Cartão fora do recorte:</b> depois, arraste o quadrado só para cima do <b>tecido</b>. O cartão não pode ficar dentro do quadrado.</li>
+      </ol>
       <div id="cropwrap"><canvas id="cropcv"></canvas></div>
       <div class="ctl">
         <div class="ctl-top"><label class="lbl" for="rg-crop">Tamanho da área</label><output id="out-crop"></output></div>
@@ -361,13 +365,12 @@ textarea.inp{padding:10px 12px;min-height:84px;resize:vertical;line-height:1.4;f
       </div>
       <div class="row" role="group" aria-label="Ferramentas na foto">
         <button type="button" class="btn sm tg" id="tl-move" aria-pressed="true">Mover área</button>
-        <button type="button" class="btn sm tg" id="tl-measure" aria-pressed="false">Medir com régua ou moeda</button>
-        <button type="button" class="btn sm tg" id="tl-wb" aria-pressed="false">Cartão branco</button>
-        <button type="button" class="btn sm ghost" id="tl-wb-clear" hidden>Desfazer cor</button>
+        <button type="button" class="btn sm tg" id="tl-card" aria-pressed="false">Cartão branco (10 cm)</button>
+        <button type="button" class="btn sm ghost" id="tl-wb-clear" hidden>Refazer cartão</button>
       </div>
       <div class="row" id="ref-row" hidden>
         <select class="sel" id="ref-sel" style="width:auto" aria-label="Objeto de referência"><option value="2.7">Moeda de R$ 1 (2,7 cm)</option><option value="8.56">Cartão de banco (8,56 cm)</option><option value="0">Outra medida</option></select>
-        <input class="inp" id="ref-cm" type="number" min="0.1" step="0.1" value="2.7" inputmode="decimal" style="width:84px" aria-label="Medida do objeto em centímetros"><span class="note">cm</span>
+        <input class="inp" id="ref-cm" type="number" min="0.1" step="0.1" value="10" inputmode="decimal" style="width:84px" aria-label="Medida do objeto em centímetros"><span class="note">cm</span>
       </div>
       <span class="note" id="tl-help">Arraste o quadrado para a parte mais uniforme do tecido, longe de bordas e dobras.</span>
     </div>
@@ -379,7 +382,7 @@ textarea.inp{padding:10px 12px;min-height:84px;resize:vertical;line-height:1.4;f
       <div class="ctl">
         <label class="lbl" for="in-cm">Quanto a área mede (cm)</label>
         <input class="inp" id="in-cm" type="number" min="0.5" max="60" step="0.1" value="10" inputmode="decimal">
-        <span class="note" id="cal-info">Uma estimativa com régua ou fita já basta. Para mais precisão, use “Medir com régua ou moeda”.</span>
+        <span class="note" id="cal-info">Sem o cartão branco, vale o número digitado. Com ele, tamanho e cor saem fiéis.</span>
       </div>
       <label class="chk"><input type="checkbox" id="ck-eq" checked><span>Uniformizar a luz da foto</span></label>
       <label class="chk"><input type="checkbox" id="ck-pat" checked><span>Detectar a repetição do padrão (emenda exata, sem mistura)</span></label>
@@ -1403,8 +1406,9 @@ function assessPhoto(){
   if(p98 < 50) out.push({t:'w', s:'A foto está muito escura. Use mais luz, de preferência natural.'});
   if(ratio > 1.35) out.push({t:'w', s:'A luz está desigual (sombra ou luz de um lado só). O app corrige uma parte, mas luz uniforme dá resultado mais fiel.'});
   if(!out.length) out.push({t:'ok', s:'Foto boa para o provador.'});
-  out.push(CR.cal ? {t:'ok', s:'Tamanho medido com a referência.'} : {t:'', s:'Sem referência de tamanho: vale o número digitado. Use “Medir com régua ou moeda” para mais precisão.'});
+  out.push(CR.cal ? {t:'ok', s:'Tamanho medido com o cartão branco.'} : {t:'', s:'Sem cartão branco: vale o número digitado. Use “Cartão branco (10 cm)” para mais precisão.'});
   out.push(CR.wb ? {t:'ok', s:'Cor acertada com o cartão branco.'} : {t:'', s:'Sem cartão branco: a cor segue a da foto.'});
+  if(cardInSel()) out.unshift({t:'w', s:'O cartão branco está dentro do quadrado. Mova o quadrado só para o tecido, senão o cartão aparece repetido na peça.'});
   out.metrics = {lv, std, sharp, glare, p98, ratio};
   return out;
 }
@@ -1419,12 +1423,11 @@ function updateQuality(){
 function fmtN(v,d){ return (Math.round(v*Math.pow(10,d))/Math.pow(10,d)).toString().replace('.',',') }
 function setTool(t){
   CR.tool = t;
-  ['move','measure','wb'].forEach(k=>$('tl-'+k).setAttribute('aria-pressed', CR.tool===k));
-  $('ref-row').hidden = t!=='measure';
+  ['move','card'].forEach(k=>$('tl-'+k).setAttribute('aria-pressed', CR.tool===k));
+  $('ref-row').hidden = true;
   $('tl-help').textContent = {
     move:'Arraste o quadrado para a parte mais uniforme do tecido.',
-    measure:'Toque nas duas pontas do objeto de referência (moeda, régua, cartão) que está na foto.',
-    wb:'Toque sobre o cartão ou papel branco que aparece na foto.'
+    card:'Toque nas duas pontas do lado maior (10 cm) do cartão branco que está na foto.'
   }[t];
   ccv.style.cursor = t==='move' ? 'move' : 'crosshair';
   drawCrop();
@@ -1442,7 +1445,45 @@ function applyCal(){
   CR.cal = {cmPerCanvasPx: D/dist};
   updateInCmFromCal();
 }
+function cardInSel(){
+  if(!CR.cal || !CR.pts || CR.pts.length!==2) return false;
+  const a = CR.pts[0], b = CR.pts[1], buf = 2.5/CR.cal.cmPerCanvasPx, s = CR.sel;
+  for(let i=0;i<=20;i++){
+    const px = a.x+(b.x-a.x)*i/20, py = a.y+(b.y-a.y)*i/20;
+    const dx = Math.max(s.x-px, 0, px-(s.x+s.s)), dy = Math.max(s.y-py, 0, py-(s.y+s.s));
+    if(Math.hypot(dx,dy) <= buf) return true;
+  }
+  return false;
+}
+function sampleWB(p){
+  const r = 5, f = CR.work.f/CR.scale, cx = Math.round(p.x*f), cy = Math.round(p.y*f);
+  const c = mkCanvas(2*r+1, 2*r+1), x = c.getContext('2d',{willReadFrequently:true});
+  x.drawImage(CR.work.c, cx-r, cy-r, 2*r+1, 2*r+1, 0, 0, 2*r+1, 2*r+1);
+  const d = x.getImageData(0,0,2*r+1,2*r+1).data; let rr=0, gg=0, bb=0, n=0;
+  for(let i=0;i<d.length;i+=4){ rr+=d[i]; gg+=d[i+1]; bb+=d[i+2]; n++ } rr/=n; gg/=n; bb/=n;
+  if(Math.max(rr,gg,bb) < 80){ toast('O meio do cartão está escuro demais. Confira se você tocou nas pontas do cartão branco.'); return false }
+  const t = Math.max(rr,gg,bb);
+  CR.wb = {r:t/Math.max(rr,1), g:t/Math.max(gg,1), b:t/Math.max(bb,1), x:p.x, y:p.y};
+  return true;
+}
 function toolTap(p){
+  if(CR.tool==='card'){
+    if(CR.pts.length>=2){ CR.pts = []; CR.cal = null; CR.wb = null; $('cal-info').textContent = CAL_DEFAULT }
+    CR.pts.push({x:p.x, y:p.y});
+    if(CR.pts.length===2){
+      applyCal();
+      if(CR.pts.length===2){
+        const m = {x:(CR.pts[0].x+CR.pts[1].x)/2, y:(CR.pts[0].y+CR.pts[1].y)/2};
+        if(sampleWB(m)){
+          $('tl-wb-clear').hidden = false;
+          setTool('move');
+          $('tl-help').textContent = 'Cartão marcado. Agora arraste o quadrado só para cima do tecido, sem pegar o cartão.';
+          toast('Cartão marcado. Agora mova o quadrado só para o tecido.');
+        }
+      }
+    }
+    drawCrop(); return;
+  }
   if(CR.tool==='measure'){
     if(CR.pts.length>=2){ CR.pts = []; CR.cal = null; $('cal-info').textContent = CAL_DEFAULT }
     CR.pts.push({x:p.x, y:p.y});
@@ -1461,7 +1502,7 @@ function toolTap(p){
     drawCrop();
   }
 }
-const CAL_DEFAULT = 'Uma estimativa com régua ou fita já basta. Para mais precisão, use “Medir com régua ou moeda”.';
+const CAL_DEFAULT = 'Sem o cartão branco, vale o número digitado. Com ele, tamanho e cor saem fiéis.';
 function drawOverlays(){
   if(CR.cal) updateInCmFromCal();
   if(CR.pts && CR.pts.length){
@@ -1502,14 +1543,13 @@ function resetCropTools(){
   $('ck-pat').checked = true; $('ck-str').checked = true;
   $('sv-tipo').value = defaultTipo();
   CR.tool = 'move';
-  ['move','measure','wb'].forEach(k=>$('tl-'+k).setAttribute('aria-pressed', k==='move'));
+  ['move','card'].forEach(k=>$('tl-'+k).setAttribute('aria-pressed', k==='move'));
   $('ref-row').hidden = true; $('tl-help').textContent = 'Arraste o quadrado para a parte mais uniforme do tecido.';
   ccv.style.cursor = 'move';
 }
 $('tl-move').onclick = ()=>setTool('move');
-$('tl-measure').onclick = ()=>setTool(CR.tool==='measure' ? 'move' : 'measure');
-$('tl-wb').onclick = ()=>setTool(CR.tool==='wb' ? 'move' : 'wb');
-$('tl-wb-clear').onclick = ()=>{ CR.wb = null; $('tl-wb-clear').hidden = true; drawCrop() };
+$('tl-card').onclick = ()=>setTool(CR.tool==='card' ? 'move' : 'card');
+$('tl-wb-clear').onclick = ()=>{ CR.wb = null; CR.cal = null; CR.pts = []; $('tl-wb-clear').hidden = true; $('cal-info').textContent = CAL_DEFAULT; drawCrop() };
 $('ref-sel').addEventListener('change',e=>{ if(+e.target.value>0) $('ref-cm').value = e.target.value; if(CR.pts && CR.pts.length===2) applyCal(); drawCrop() });
 $('ref-cm').addEventListener('input',()=>{ $('ref-sel').value = ['2.7','8.56'].includes(String($('ref-cm').value)) ? String($('ref-cm').value) : '0'; if(CR.pts && CR.pts.length===2) applyCal(); drawCrop() });
 $('in-cm').addEventListener('input',()=>{ CR.cal = null; CR.pts = []; $('cal-info').textContent = CAL_DEFAULT; drawCrop() });
@@ -1535,6 +1575,7 @@ function closeCropper(){ $('ov').hidden=true; if(CR.img) URL.revokeObjectURL(CR.
 $('crop-cancel').onclick = closeCropper;
 $('ov').addEventListener('keydown',e=>{ if(e.key==='Escape') closeCropper() });
 $('crop-ok').onclick = async ()=>{
+  if(cardInSel()){ toast('O cartão está dentro do quadrado. Mova o quadrado só para o tecido.'); return }
   let cm = Math.max(0.5, Math.min(60, parseFloat(String($('in-cm').value).replace(',','.'))||10));
   const wantSave = $('ck-save').checked, nome = $('in-nm').value.trim(), codigo = $('in-cd').value.trim();
   if(wantSave && !nome){ $('crop-err').textContent='Dê um nome ao tecido para salvar no mostruário.'; $('crop-err').hidden=false; $('in-nm').focus(); return }
