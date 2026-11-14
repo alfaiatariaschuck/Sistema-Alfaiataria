@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { CheckCircle2, Clock, Printer, Save, Trash2 } from "lucide-react";
+import { Camera, CheckCircle2, Clock, Printer, Save, Trash2 } from "lucide-react";
 import { Card, Field, Pill } from "../components/ui";
 import { CampoComOpcoes } from "../components/CampoComOpcoes";
 import { CampoPagamento } from "../components/CampoPagamento";
@@ -57,6 +57,7 @@ export default function DetalhePeca({
   estoqueTecidos,
   onDarBaixaEstoque,
   onDesfazerBaixaEstoque,
+  onAbrirProvador,
   custoAviamentosPorPecaBase = {},
   modelosAlfaiataria = [],
   onCriarModeloAlfaiataria,
@@ -129,6 +130,16 @@ export default function DetalhePeca({
         >
           <Printer size={15} /> Gerar ficha em PDF (para o Icaro)
         </button>
+        {onAbrirProvador && (
+          <button
+            type="button"
+            onClick={() => onAbrirProvador(p.cliente)}
+            className="flex items-center gap-2"
+            style={{ background: "transparent", border: `1px solid ${LINE}`, color: TEXT_MUTED, padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+          >
+            <Camera size={15} /> Provador de Tecidos
+          </button>
+        )}
         <button
           type="button"
           onClick={() => set("enviadoIcaro", !p.enviadoIcaro)}
@@ -173,6 +184,26 @@ export default function DetalhePeca({
         />
         <LinkAcompanhamento tipo="alfaiataria" pedidoId={p.id} />
       </div>
+
+      {p.configVisual && (
+        <Card style={{ padding: 16 }} className="mb-5">
+          <div className="flex items-start gap-3 flex-wrap">
+            {p.configVisual.imagemUrl && (
+              <img
+                src={p.configVisual.imagemUrl}
+                alt="Configuração escolhida pelo cliente"
+                style={{ width: 120, height: 150, objectFit: "cover", borderRadius: 8, border: `1px solid ${LINE}`, flexShrink: 0 }}
+              />
+            )}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="fx-serif mb-1" style={{ fontSize: 13, fontWeight: 600 }}>
+                Configuração escolhida no Provador
+              </div>
+              <div style={{ fontSize: 12, color: TEXT_MUTED, whiteSpace: "pre-line" }}>{p.configVisual.texto}</div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {mostrarFicha && (
         <FichaImprimivelAlfaiataria peca={p} onFechar={() => setMostrarFicha(false)} onMarcarEnviado={() => set("enviadoIcaro", true)} />

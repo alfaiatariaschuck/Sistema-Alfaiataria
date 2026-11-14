@@ -177,6 +177,10 @@ export default function Shell() {
   const [selecionado, setSelecionado] = useState(null);
   const [erroAutomacao, setErroAutomacao] = useState(null);
   const [selecionadaPeca, setSelecionadaPeca] = useState(null);
+  // Qual pedido/peça está com o Provador de Tecidos aberto em modal, pra
+  // "Enviar para o pedido" (fase 3) saber onde gravar a configuração
+  // escolhida — null = modal fechado. { origem: 'camisa'|'alfaiataria', id, cliente }
+  const [provadorModal, setProvadorModal] = useState(null);
   // Guarda de qual aba veio o clique que abriu o pedido/peça (ex: veio do
   // Dashboard, de Contas a Pagar etc.) — assim o botão "voltar" dentro do
   // pedido consegue te devolver pra aba de origem, e não só fechar pro
@@ -260,6 +264,7 @@ export default function Shell() {
     adicionar: adicionarTecidoProvador,
     atualizar: atualizarTecidoProvador,
     remover: removerTecidoProvador,
+    enviarConfiguracao: enviarConfiguracaoProvador,
   } = useProvadorTecidos();
 
   // Ponte com o Provador de Tecidos (iframe em public/provador/index.html,
@@ -286,6 +291,10 @@ export default function Shell() {
         }
         return;
       }
+      if (m.type === "provador:fechar") {
+        provadorStateRef.current.fecharModal?.();
+        return;
+      }
       const reply = (extra) => {
         try {
           e.source.postMessage({ source: "sistema-alfaiataria", type: m.type + ":result", reqId: m.reqId, ...extra }, "*");
@@ -303,6 +312,18 @@ export default function Shell() {
         } else if (m.type === "provador:remove") {
           await st.remover(m.payload.id);
           reply({});
+        } else if (m.type === "provador:enviar") {
+          const ctx = st.modal;
+          if (!ctx || !ctx.id) {
+            reply({ error: "Nenhum pedido/peça aberto no momento." });
+          } else {
+            const { pedido: pedidoCfg, texto, imagemDataUrl } = m.payload;
+            const imagemUrl = await st.enviarConfiguracao(ctx.origem, ctx.id, imagemDataUrl);
+            const valor = { pedido: pedidoCfg, texto, imagemUrl, criadoEm: new Date().toISOString() };
+            if (ctx.origem === "camisa") await st.atualizarCampoPedido(ctx.id, "configVisual", valor);
+            else await st.atualizarCampoPeca(ctx.id, "configVisual", valor);
+            reply({});
+          }
         }
       } catch (err) {
         reply({ error: err?.message || "erro desconhecido" });
@@ -694,6 +715,7 @@ export default function Shell() {
     clientesBase,
     nomesClientes,
     onIndicadorVinculado: recarregarNomesClientes,
+    onAbrirProvador: (cliente) => setProvadorModal({ origem: "camisa", id: selecionado, cliente }),
   };
 
   function atualizarMedidaPeca(pecaId, secKey, label, valor) {
@@ -754,7 +776,18 @@ export default function Shell() {
     clientesBase,
     nomesClientes,
     onIndicadorVinculado: recarregarNomesClientes,
+    onAbrirProvador: (cliente) => setProvadorModal({ origem: "alfaiataria", id: selecionadaPeca, cliente }),
   };
+
+  // Mantém o handler do postMessage (registrado uma vez, ver useEffect lá em
+  // cima) com acesso ao que ele precisa pra "Enviar para o pedido": os
+  // updaters de campo, o upload da imagem e o modal aberto no momento —
+  // tudo via ref, pra não precisar reinscrever o listener a cada render.
+  provadorStateRef.current.atualizarCampoPedido = atualizarCampoPedido;
+  provadorStateRef.current.atualizarCampoPeca = atualizarCampoPeca;
+  provadorStateRef.current.enviarConfiguracao = enviarConfiguracaoProvador;
+  provadorStateRef.current.modal = provadorModal;
+  provadorStateRef.current.fecharModal = () => setProvadorModal(null);
 
   return (
     <div style={{ background: CANVAS, minHeight: "100vh", fontFamily: "'Inter', sans-serif", color: INK }}>
@@ -1153,6 +1186,39 @@ export default function Shell() {
                     title="Provador de Tecidos"
                     style={{ width: "100%", height: "100%", border: "none" }}
                   />
+                </div>
+              )}
+              {provadorModal && (
+                <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    background: "rgba(20,27,45,.72)",
+                    zIndex: 60,
+                    display: "flex",
+                    flexDirection: "column",
+                    padding: 16,
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2" style={{ flexShrink: 0 }}>
+                    <span style={{ color: "#FFF", fontSize: 13, fontWeight: 600 }}>
+                      Provador de Tecidos — {provadorModal.cliente || "pedido"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setProvadorModal(null)}
+                      style={{ background: "#FFF", color: INK, padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                  <div style={{ flex: 1, background: "#FFF", borderRadius: 10, overflow: "hidden" }}>
+                    <iframe
+                      src={`/provador/index.html?attach=1&peca=${provadorModal.origem === "camisa" ? "camisa" : "blazer"}`}
+                      title="Provador de Tecidos — enviar para o pedido"
+                      style={{ width: "100%", height: "100%", border: "none" }}
+                    />
+                  </div>
                 </div>
               )}
               {tab === "pedidos-alfaiataria" && !loadingPecas && (

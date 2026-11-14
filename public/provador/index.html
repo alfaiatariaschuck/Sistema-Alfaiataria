@@ -1601,13 +1601,48 @@ $('btn-save').onclick=async()=>{
 };
 
 /* ---------- início ---------- */
+/* Modo "enviar para o pedido" (fase 3): aberto num modal do sistema com
+   ?attach=1&peca=camisa|blazer — pré-seleciona a peça certa e mostra o
+   botão extra "Enviar para o pedido" no Resumo. Sem esses parâmetros
+   (aba normal do menu, ou arquivo aberto sozinho), nada muda. */
+const QP = new URLSearchParams(location.search);
+const ATTACH_PECA = QP.get('peca');
+const ATTACH_MODE = QP.get('attach')==='1';
+if(ATTACH_PECA && PECAS[ATTACH_PECA]) S.model = PECAS[ATTACH_PECA].ult;
+function enableAttachUI(){
+  const box = $('rs-copy').parentElement;
+  const b = document.createElement('button');
+  b.className='btn pri'; b.type='button'; b.textContent='Enviar para o pedido';
+  b.onclick = async ()=>{
+    if(!S.fabric){ toast('Escolha um tecido antes de enviar.'); return }
+    b.disabled = true; const txtOrig = b.textContent; b.textContent='Enviando…';
+    try{
+      const ok = await checkBridge();
+      if(!ok){ toast('Esse provador não está aberto dentro do sistema.'); return }
+      const o = pedido(), texto = pedidoTexto(o);
+      const blob = await new Promise(r=>cv.toBlob(r,'image/jpeg',.9));
+      const imagemDataUrl = await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob) });
+      await bridgeCall('provador:enviar', {pedido:o, texto, imagemDataUrl});
+      toast('Enviado para o pedido.');
+      try{ window.parent.postMessage({source:BRIDGE_SRC, type:'provador:fechar'}, '*') }catch(e){}
+    }catch(e){ console.warn(e); toast('Não consegui enviar. Tente de novo.') }
+    finally{ b.disabled=false; b.textContent=txtOrig }
+  };
+  box.insertBefore(b, box.firstChild);
+}
+
 renderModels(); renderCompare(); setSource('cat'); renderSwatches();
 (async()=>{
-  try{ await loadModel('single') }catch(e){ $('loading').textContent='Não consegui carregar a peça. Recarregue a página.'; return }
-  const first = EXAMPLES[1]; await selectFabric(first);
-  loadModel('double').catch(()=>{});
+  try{ await loadModel(S.model) }catch(e){ $('loading').textContent='Não consegui carregar a peça. Recarregue a página.'; return }
+  if(ATTACH_PECA==='camisa'){
+    const lista = fabricsDe('camisa'); if(lista.length) await selectFabric(lista[0]);
+  } else {
+    const first = EXAMPLES[1]; await selectFabric(first);
+    loadModel('double').catch(()=>{});
+  }
 })();
 initStore();
+if(ATTACH_MODE) enableAttachUI();
 })();
 </script>
 

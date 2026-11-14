@@ -98,5 +98,20 @@ export function useProvadorTecidos() {
     setTecidos((prev) => prev.filter((f) => f.id !== id));
   }
 
-  return { tecidos, loading, recarregar, adicionar, atualizar, remover };
+  // Sobe a imagem final de uma configuração enviada pro pedido/peça (fase 3
+  // — "Enviar para o pedido" no provador) pro mesmo bucket do mostruário,
+  // num caminho próprio (configuracoes/...) pra não se misturar com os
+  // tecidos cadastrados. Retorna só a URL pública; quem chama grava o
+  // resto (texto, JSON da escolha) direto no campo configVisual do
+  // pedido/peça.
+  async function enviarConfiguracao(origem, id, imageDataUrl) {
+    const blob = dataUrlToBlob(imageDataUrl);
+    const path = `configuracoes/${origem}/${id}-${Date.now()}.jpg`;
+    const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg" });
+    if (error) throw error;
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    return data?.publicUrl || "";
+  }
+
+  return { tecidos, loading, recarregar, adicionar, atualizar, remover, enviarConfiguracao };
 }
