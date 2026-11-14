@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { BarChart3, Calculator, CalendarDays, Camera, ChevronRight, ClipboardList, Compass, LogOut, Plus, Receipt, Ruler, Trophy } from "lucide-react";
+import { BarChart3, Calculator, CalendarDays, Camera, ChevronRight, ClipboardList, Compass, LogOut, Plus, Ruler, Trophy } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { usePedidos } from "./hooks/usePedidos";
 import { useNomesClientes } from "./hooks/useNomesClientes";
@@ -15,7 +15,6 @@ import MinhaComissaoVendedor from "./pages/MinhaComissaoVendedor";
 import FunilVendas from "./components/FunilVendas";
 import AgendaComercial from "./components/AgendaComercial";
 import RankingIndicacao from "./pages/RankingIndicacao";
-import Orcamento from "./pages/Orcamento";
 
 // App enxuto pro vendedor: só a ficha de pedido de camisa (criar e
 // editar o que ele mesmo lançou) — nada de painéis, financeiro,
@@ -261,23 +260,6 @@ export default function ShellVendedor() {
         >
           <Camera size={15} /> Provador de Tecidos
         </button>
-        <button
-          onClick={() => {
-            setTab("orcamento");
-            setSelecionado(null);
-          }}
-          className="flex items-center gap-2"
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            fontWeight: 600,
-            fontSize: 13,
-            background: tab === "orcamento" ? INK : "#EDEAE0",
-            color: tab === "orcamento" ? "#FFF" : INK_SOFT,
-          }}
-        >
-          <Receipt size={15} /> Orçamento
-        </button>
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6">
@@ -287,22 +269,6 @@ export default function ShellVendedor() {
           <div style={{ height: "calc(100vh - 230px)", minHeight: 480, borderRadius: 10, overflow: "hidden", border: `1px solid ${LINE}` }}>
             <iframe src="/provador/index.html" title="Provador de Tecidos" style={{ width: "100%", height: "100%", border: "none" }} />
           </div>
-        )}
-
-        {tab === "orcamento" && (
-          // modelosCamisa, custoAviamentosPorPecaBase e estoqueTecidos ficam de
-          // fora de propósito. modelos_camisa/aviamentos são dono-only por RLS
-          // (schema_v41/v46) — o login do Deivid não enxerga essas linhas mesmo
-          // se eu pedir aqui, então o custo de aviamento não entra na conta dele
-          // e o selo de margem fica um pouco otimista (real pode ser mais
-          // baixa). estoqueTecidos foi deixado de fora à parte: o Orcamento usa
-          // esse valor pra autocompletar o R$/metro quando o código bate com o
-          // estoque (valorMetroDoEstoque em Orcamento.jsx), o que revelaria o
-          // custo de compra do tecido pro Deivid — justamente o dado que "ele
-          // não pode ver minha margem jamais" pede pra esconder. Avisar o
-          // Tales sobre os dois pontos antes de confiar o selo do Deivid como
-          // exato.
-          <Orcamento apenasCamisa modoApresentacao pecas={[]} equipe={[]} />
         )}
 
         {tab === "ranking-indicacao" && <RankingIndicacao clientesBase={clientesBase} podeMarcarEntregue={false} />}
