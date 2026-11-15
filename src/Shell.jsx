@@ -115,6 +115,7 @@ import CalendarioProvas from "./components/CalendarioProvas";
 
 const NAV = [
   { id: "provador", label: "Provador de Tecidos", icon: Camera, primary: true, grupo: "Provador de Tecidos" },
+  { id: "orcamento", label: "Orçamento", icon: Calculator, primary: true, grupo: "Orçamento" },
   { id: "dashboard", label: "Painel Camisaria", icon: LayoutDashboard, primary: true, grupo: "Camisaria" },
   { id: "painel-camisaria-fabiana", label: "Painel Camisaria Fabiana", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
   { id: "painel-camisaria-cleci", label: "Painel Camisaria Cleci", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
@@ -130,7 +131,6 @@ const NAV = [
   { id: "relatorio", label: "Relatório", icon: FileText, primary: false, grupo: "Camisaria" },
   { id: "vendedor", label: "Vendedor", icon: UserCheck, primary: false, grupo: "Camisaria" },
 
-  { id: "orcamento", label: "Orçamento", icon: Calculator, primary: true, grupo: "Alfaiataria" },
   { id: "painel-alfaiataria", label: "Painel Alfaiataria", icon: PieChart, primary: false, grupo: "Alfaiataria" },
   { id: "alfaiataria", label: "Pedido Alfaiataria", icon: Scissors, primary: true, grupo: "Alfaiataria" },
   { id: "pedidos-alfaiataria", label: "Pedidos Alfaiataria", icon: ListChecks, primary: true, grupo: "Alfaiataria" },
@@ -169,7 +169,7 @@ const NAV = [
   { id: "backup", label: "Backup", icon: ShieldCheck, primary: false, grupo: "Sistema" },
   { id: "config", label: "Configurações", icon: Settings, primary: false, grupo: "Sistema" },
 ];
-const GRUPOS_NAV = ["Provador de Tecidos", "Camisaria", "Alfaiataria", "Sapatos", "Geral", "Sistema"];
+const GRUPOS_NAV = ["Provador de Tecidos", "Orçamento", "Camisaria", "Alfaiataria", "Sapatos", "Geral", "Sistema"];
 const NAV_PRIMARIA = NAV.filter((n) => n.primary);
 const NAV_SECUNDARIA = NAV.filter((n) => !n.primary);
 
