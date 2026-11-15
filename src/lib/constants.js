@@ -331,7 +331,7 @@ export const PECA_SECOES = {
 
 // Características — aparecem para peças que incluem a seção "corpo" (paletó/blazer/traje)
 export const CARACTERISTICAS_TRAJE = [
-  { label: "Botões", opcoes: ["1 botão", "2 botões", "3 botões"], obs: "pode ser traje de um ou dois botões" },
+  { label: "Botões", opcoes: ["1 botão", "2 botões"], obs: "pode ser traje de um ou dois botões" },
   { label: "Lapela", opcoes: ["Bico", "Reta", "Xale"], obs: "todas as opções de lapela ficam disponíveis pra escolha" },
   { label: "Pesponto", opcoes: ["Com", "Sem"] },
   { label: "Construção", opcoes: ["Fullcanvas", "Half Canvas", "Fusionado"], obs: "todas as opções possíveis" },
