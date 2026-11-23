@@ -233,7 +233,9 @@ export default function DetalhePeca({
               onChange={(e) => {
                 const novoStatus = e.target.value;
                 set("status", novoStatus);
-                if (novoStatus === "Entregue" && !p.dataEntrega) set("dataEntrega", hojeISO());
+                // Não assume "hoje" sozinho — deixa o bloco abaixo perguntar a
+                // data real (pode ser retroativo, ex.: esqueceu de dar baixa
+                // na hora e só lembrou dias depois).
               }}
             >
               {STATUS_ALFAIATARIA.map((s) => (
@@ -355,25 +357,29 @@ export default function DetalhePeca({
             )}
           </div>
           {p.status === "Entregue" && (
-            <div className="mb-4 flex items-center gap-2 flex-wrap">
+            <div className="mb-4" style={!p.dataEntrega ? { background: "#F3E9D8", border: `1px solid ${BRASS}`, borderRadius: 8, padding: "10px 12px" } : undefined}>
               {!p.dataEntrega ? (
                 <>
-                  <button
-                    onClick={() => set("dataEntrega", hojeISO())}
-                    style={{ background: "#EDEAE0", color: BRASS, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
-                  >
-                    Marcar entrega (hoje)
-                  </button>
-                  <span style={{ fontSize: 12, color: TEXT_MUTED }}>ou já foi entregue antes:</span>
-                  <input
-                    type="date"
-                    onChange={(e) => e.target.value && set("dataEntrega", e.target.value)}
-                    style={{ ...inputStyle, fontSize: 12, padding: "5px 8px", width: 140 }}
-                    title="Peça marcada como Entregue sem data registrada — preencha a data real de entrega"
-                  />
+                  <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 8 }}>Que dia essa peça foi entregue?</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => set("dataEntrega", hojeISO())}
+                      style={{ background: "#EDEAE0", color: BRASS, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}
+                    >
+                      Hoje
+                    </button>
+                    <span style={{ fontSize: 12, color: TEXT_MUTED }}>ou escolha outra data (retroativo):</span>
+                    <input
+                      type="date"
+                      max={hojeISO()}
+                      onChange={(e) => e.target.value && set("dataEntrega", e.target.value)}
+                      style={{ ...inputStyle, fontSize: 12, padding: "5px 8px", width: 140 }}
+                      title="Peça marcada como Entregue sem data registrada — preencha a data real de entrega"
+                    />
+                  </div>
                 </>
               ) : (
-                <>
+                <div className="flex items-center gap-2 flex-wrap">
                   <span style={{ fontSize: 12, color: TEXT_MUTED }}>Entrega:</span>
                   <input
                     type="date"
@@ -382,7 +388,7 @@ export default function DetalhePeca({
                     style={{ ...inputStyle, fontSize: 12, padding: "5px 8px", width: 140 }}
                     title="Corrigir data de entrega"
                   />
-                </>
+                </div>
               )}
             </div>
           )}
