@@ -318,10 +318,22 @@ export function usePedidos() {
     // ficaria contando pausa pra sempre a partir de hoje.
     const diasDaPausaAberta = marcarEntrega && pedidoAtual.pausado && pedidoAtual.dataPausaInicio ? diasEntre(pedidoAtual.dataPausaInicio, hojeISO()) || 0 : 0;
     const retomarAoEntregar = marcarEntrega && pedidoAtual.pausado;
+    // Pagamento dividido (entrada + restante) não passava por
+    // atualizarSubcampo (só o "Recebido" único passa) — então nunca
+    // carimbava dataRecebimento, e um "marcar recebido" acidental virava
+    // impossível de achar depois (some da lista de Contas a Receber sem
+    // deixar rastro de quando). Carimba aqui também, quando a segunda
+    // metade confirma e a outra já estava recebida.
+    const outroCampoDividido = campo === "statusEntrada" ? "statusRestante" : campo === "statusRestante" ? "statusEntrada" : null;
+    const marcarRecebimentoDividido =
+      outroCampoDividido && valor === "Recebido" && pedidoAtual?.[outroCampoDividido] === "Recebido" && !pedidoAtual?.dataRecebimento;
+    const desmarcarRecebimentoDividido =
+      outroCampoDividido && valor !== "Recebido" && pedidoAtual?.[outroCampoDividido] === "Recebido" && !!pedidoAtual?.dataRecebimento;
     const patch = {
       [campo]: valor,
       ...(marcarEntrega ? { dataEntrega: hojeISO() } : {}),
       ...(retomarAoEntregar ? { pausado: false, dataPausaInicio: "", diasPausados: (pedidoAtual.diasPausados || 0) + diasDaPausaAberta } : {}),
+      ...(marcarRecebimentoDividido ? { dataRecebimento: hojeISO() } : desmarcarRecebimentoDividido ? { dataRecebimento: "" } : {}),
     };
 
     setPedidos((prev) => prev.map((p) => (p.id === pedidoId ? { ...p, ...patch } : p)));
@@ -330,6 +342,8 @@ export function usePedidos() {
     await comIndicador(async () => {
       const update = { [coluna]: valor === "" ? null : valor };
       if (marcarEntrega) update.data_entrega = patch.dataEntrega;
+      if (marcarRecebimentoDividido) update.data_recebimento = patch.dataRecebimento;
+      if (desmarcarRecebimentoDividido) update.data_recebimento = null;
       if (retomarAoEntregar) {
         update.pausado = false;
         update.data_pausa_inicio = null;

@@ -275,6 +275,16 @@ export function usePedidosAlfaiataria() {
     // Fabiana e pra despesa paga — aqui do lado da venda pro cliente.
     const marcarRecebimento = campo === "statusPagamentoVenda" && valor === "Recebido" && pecaAtual?.statusPagamentoVenda !== "Recebido";
     const desmarcarRecebimento = campo === "statusPagamentoVenda" && valor !== "Recebido" && pecaAtual?.statusPagamentoVenda === "Recebido";
+    // Mesmo problema do lado da camisaria: pagamento dividido (entrada +
+    // restante) nunca carimbava dataRecebimento, então um "marcar
+    // recebido" acidental sumia da lista de Contas a Receber sem deixar
+    // rastro de quando aconteceu. Carimba quando a segunda metade
+    // confirma e a outra já estava recebida.
+    const outroCampoDividido = campo === "statusEntrada" ? "statusRestante" : campo === "statusRestante" ? "statusEntrada" : null;
+    const marcarRecebimentoDividido =
+      outroCampoDividido && valor === "Recebido" && pecaAtual?.[outroCampoDividido] === "Recebido" && !pecaAtual?.dataRecebimento;
+    const desmarcarRecebimentoDividido =
+      outroCampoDividido && valor !== "Recebido" && pecaAtual?.[outroCampoDividido] === "Recebido" && !!pecaAtual?.dataRecebimento;
     // Editar a previsão de entrega diretamente é um ato deliberado — a
     // partir daqui ela vira "manual" (trava, não acompanha mais a fila/
     // equipe sozinha). Limpar o campo devolve pro automático.
@@ -284,6 +294,7 @@ export function usePedidosAlfaiataria() {
       ...(marcarEmProducao ? { situacao: "Em Produção" } : {}),
       ...(campo === "previsaoEntrega" ? { previsaoManual: !!valor } : {}),
       ...(marcarRecebimento ? { dataRecebimento: hojeISO() } : desmarcarRecebimento ? { dataRecebimento: "" } : {}),
+      ...(marcarRecebimentoDividido ? { dataRecebimento: hojeISO() } : desmarcarRecebimentoDividido ? { dataRecebimento: "" } : {}),
     };
 
     setPecas((prev) => prev.map((p) => (p.id === pecaId ? { ...p, ...patch } : p)));
@@ -306,6 +317,8 @@ export function usePedidosAlfaiataria() {
       if (marcarEntrega) update.data_entrega = patch.dataEntrega;
       if (marcarRecebimento) update.data_recebimento = patch.dataRecebimento;
       if (desmarcarRecebimento) update.data_recebimento = null;
+      if (marcarRecebimentoDividido) update.data_recebimento = patch.dataRecebimento;
+      if (desmarcarRecebimentoDividido) update.data_recebimento = null;
       if (marcarEmProducao) update.situacao = "Em Produção";
       const { error } = await supabase.from("pedidos_alfaiataria").update(update).eq("id", pecaId);
       if (error) setErro(error.message);

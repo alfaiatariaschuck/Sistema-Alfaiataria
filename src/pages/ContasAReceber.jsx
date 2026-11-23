@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, PiggyBank } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, History, PiggyBank, RotateCcw } from "lucide-react";
 import { Card, Empty, PageTitle, Pill, StatCard } from "../components/ui";
 import { BRASS, INK, LINE, LINHA_STYLE, TIPOS_SAIDA_SEM_VENDA, TEXT_MUTED, inputStyle } from "../lib/constants";
 import { brl, fmtData, hojeISO, statusPedidoSemVenda, valorRecebidoEfetivo } from "../lib/helpers";
@@ -18,6 +18,7 @@ export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo,
   const [mesCalendario, setMesCalendario] = useState(hojeInicial.getMonth());
   const [anoCalendario, setAnoCalendario] = useState(hojeInicial.getFullYear());
   const [mostrarSemData, setMostrarSemData] = useState(false);
+  const [mostrarRecebidos, setMostrarRecebidos] = useState(true);
 
   function recebidoEfetivo(item) {
     return valorRecebidoEfetivo({
@@ -34,7 +35,7 @@ export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo,
   // Junta pedidos de camisaria (aReceber) e peças de alfaiataria
   // (valorVenda) numa lista só, com o suficiente pra editar sem precisar
   // abrir o pedido/peça inteiro.
-  const itens = [
+  const todos = [
     ...(pedidos || [])
       .filter((p) => !statusPedidoSemVenda(p.status) && parseFloat(p.aReceber.valor) > 0)
       .map((p) => ({
@@ -50,6 +51,7 @@ export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo,
         valorRestante: p.valorRestante,
         statusRestante: p.statusRestante,
         dataCobranca: p.dataCobranca || "",
+        dataRecebimento: p.dataRecebimento || "",
       })),
     ...(pecas || [])
       .filter((p) => !TIPOS_SAIDA_SEM_VENDA.includes(p.tipoSaida) && parseFloat(p.valorVenda) > 0)
@@ -66,10 +68,20 @@ export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo,
         valorRestante: p.valorRestante,
         statusRestante: p.statusRestante,
         dataCobranca: p.dataCobranca || "",
+        dataRecebimento: p.dataRecebimento || "",
       })),
-  ]
-    .map((item) => ({ ...item, pendente: Math.max(0, item.valor - recebidoEfetivo(item)) }))
-    .filter((item) => item.pendente > 0.004);
+  ].map((item) => ({ ...item, pendente: Math.max(0, item.valor - recebidoEfetivo(item)) }));
+
+  const itens = todos.filter((item) => item.pendente > 0.004);
+
+  // Pra quando um "marcar recebido" sai sem querer e some da lista acima
+  // — aqui dá pra achar e, se foi engano, desfazer. Só entram os que têm
+  // o carimbo de quando foi recebido (dataRecebimento), senão a lista
+  // viraria um histórico sem fim de tudo que já foi pago desde sempre.
+  const recebidosRecentes = todos
+    .filter((item) => item.pendente <= 0.004 && item.dataRecebimento)
+    .sort((a, b) => b.dataRecebimento.localeCompare(a.dataRecebimento))
+    .slice(0, 20);
 
   const atrasados = [...itens].filter((i) => i.dataCobranca && i.dataCobranca < hoje).sort((a, b) => a.dataCobranca.localeCompare(b.dataCobranca));
   const semData = itens.filter((i) => !i.dataCobranca);
@@ -126,6 +138,25 @@ export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo,
     }
   }
 
+  // Volta pra Pendente — pro caso de ter marcado recebido sem querer. O
+  // carimbo de dataRecebimento some sozinho (mesma lógica de
+  // marcar/desmarcar já usada no marcarRecebido).
+  function desfazerRecebido(item) {
+    if (item.tipo === "camisa") {
+      if (item.pagamentoDividido) {
+        onAtualizarPedidoCampo(item.id, "statusEntrada", "Pendente");
+        onAtualizarPedidoCampo(item.id, "statusRestante", "Pendente");
+      } else {
+        onAtualizarPedidoSubcampo(item.id, "aReceber", "statusPagamento", "Pendente");
+      }
+    } else if (item.pagamentoDividido) {
+      onAtualizarPecaCampo(item.id, "statusEntrada", "Pendente");
+      onAtualizarPecaCampo(item.id, "statusRestante", "Pendente");
+    } else {
+      onAtualizarPecaCampo(item.id, "statusPagamentoVenda", "Pendente");
+    }
+  }
+
   function renderItem(item, { destacarAtraso } = {}) {
     return (
       <div key={`${item.tipo}-${item.id}`} className="py-2" style={{ borderBottom: `1px solid ${LINE}` }}>
@@ -172,6 +203,43 @@ export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo,
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "3fr 2fr" }}>
         <div>
+          {recebidosRecentes.length > 0 && (
+            <Card style={{ padding: 20 }} className="mb-6">
+              <button type="button" className="flex items-center justify-between w-full mb-1" onClick={() => setMostrarRecebidos((v) => !v)}>
+                <div className="fx-serif flex items-center gap-2" style={{ fontSize: 16, fontWeight: 600, color: VERDE }}>
+                  <History size={16} /> Recebidos recentemente ({recebidosRecentes.length})
+                </div>
+                <span style={{ fontSize: 11, color: BRASS, fontWeight: 600 }}>{mostrarRecebidos ? "ocultar ▲" : "ver ▼"}</span>
+              </button>
+              {mostrarRecebidos && (
+                <>
+                  <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8 }}>
+                    Marcou "recebido" sem querer? Acha aqui e desfaz.
+                  </div>
+                  {recebidosRecentes.map((item) => (
+                    <div key={`${item.tipo}-${item.id}`} className="py-2 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${LINE}` }}>
+                      <button onClick={() => abrir(item)} style={{ textAlign: "left" }} title="Abrir">
+                        <div className="flex items-center gap-1.5">
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>{item.cliente || "Sem nome"}</span>
+                          <Pill text={item.linha} style={LINHA_STYLE[item.linha]} />
+                        </div>
+                        <div style={{ fontSize: 11, color: TEXT_MUTED }}>recebido em {fmtData(item.dataRecebimento)}</div>
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="fx-mono" style={{ fontSize: 13, fontWeight: 600, color: VERDE }}>
+                          {brl(item.valor)}
+                        </span>
+                        <button onClick={() => desfazerRecebido(item)} title="Desfazer — voltar pra pendente" className="flex items-center gap-1" style={{ fontSize: 11, color: VERMELHO, fontWeight: 600 }}>
+                          <RotateCcw size={13} /> desfazer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </Card>
+          )}
+
           {atrasados.length > 0 && (
             <Card style={{ padding: 20 }} className="mb-6">
               <div className="fx-serif mb-1 flex items-center gap-2" style={{ fontSize: 16, fontWeight: 600, color: VERMELHO }}>
