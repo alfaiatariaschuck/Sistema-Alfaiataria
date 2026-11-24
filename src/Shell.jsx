@@ -1169,11 +1169,14 @@ export default function Shell() {
                 <ContasAReceber
                   pedidos={pedidos}
                   pecas={pecas}
+                  planos={planos}
                   onAtualizarPedidoCampo={atualizarCampo}
                   onAtualizarPedidoSubcampo={atualizarSubcampo}
                   onAtualizarPecaCampo={atualizarCampoPeca}
+                  onAtualizarPlanoCampo={atualizarCampoPlano}
                   irParaPedido={irPara}
                   irParaPeca={irParaPeca}
+                  irParaPlano={irParaPlano}
                 />
               )}
               {tab === "contabilidade" && (

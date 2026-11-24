@@ -177,6 +177,7 @@ export const FAIXAS_INDICACAO = [
 export const LINHA_STYLE = {
   Camisaria: { bg: "#EFE1CC", fg: "#A9793E" },
   Alfaiataria: { bg: "#E9E1F5", fg: "#5B3E96" },
+  Assinatura: { bg: "#DCEBDD", fg: "#2C6E31" },
 };
 
 export const FORNECEDORES_TECIDO = ["Imperiale", "Wtext", "LS Tecidos", "Markbel", "Erlu", "Dab Dab", "Cataguases", "LYC do Brasil"];

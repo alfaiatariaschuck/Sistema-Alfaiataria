@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { encontrarOuCriarCliente } from "../lib/clientes";
 import { DESC_LABELS, MEDIDA_LABELS } from "../lib/constants";
+import { hojeISO } from "../lib/helpers";
 
 function medidasVazias() {
   return Object.fromEntries(MEDIDA_LABELS.map((l) => [l, ""]));
@@ -25,6 +26,8 @@ export function planoVazio() {
     statusRestante: "Pendente",
     valorFabiana: "",
     formaPagamento: "",
+    dataCobranca: "",
+    dataRecebimento: "",
     medidas: medidasVazias(),
     descricao: descricaoVazia(),
     tecidos: [{ codigo: "", qtd: 1, numero: "", fornecedor: "", comprado: false }],
@@ -50,6 +53,8 @@ function rowParaPlano(row) {
     statusRestante: row.status_restante || "Pendente",
     valorFabiana: row.valor_pago_fabiana ?? "",
     formaPagamento: row.forma_pagamento || "",
+    dataCobranca: row.data_cobranca || "",
+    dataRecebimento: row.data_recebimento || "",
     medidas: { ...medidasVazias(), ...(row.medidas || {}) },
     descricao: { ...descricaoVazia(), ...(row.descricao || {}) },
     tecidos: row.tecidos || [],
@@ -74,6 +79,8 @@ const CAMPO_PARA_COLUNA = {
   statusRestante: "status_restante",
   valorFabiana: "valor_pago_fabiana",
   formaPagamento: "forma_pagamento",
+  dataCobranca: "data_cobranca",
+  dataRecebimento: "data_recebimento",
   medidas: "medidas",
   descricao: "descricao",
   tecidos: "tecidos",
@@ -130,6 +137,8 @@ export function usePlanosAssinatura() {
         status_restante: pl.statusRestante || null,
         valor_pago_fabiana: pl.valorFabiana === "" || pl.valorFabiana == null ? null : Number(pl.valorFabiana),
         forma_pagamento: pl.formaPagamento || null,
+        data_cobranca: pl.dataCobranca || null,
+        data_recebimento: pl.dataRecebimento || null,
         medidas: pl.medidas,
         descricao: pl.descricao,
         tecidos: pl.tecidos || [],
@@ -141,16 +150,44 @@ export function usePlanosAssinatura() {
   }
 
   async function atualizarCampo(planoId, campo, valor) {
-    setPlanos((prev) => prev.map((pl) => (pl.id === planoId ? { ...pl, [campo]: valor } : pl)));
+    // Mesmo carimbo de "quando foi recebido" que já existe nos pedidos —
+    // pro plano de assinatura ele é o que faz o valor total aparecer (e
+    // depois sumir, com rastro) em Contas a Receber. Cobre tanto o
+    // pagamento único quanto o dividido (entrada + restante).
+    const planoAtual = planos.find((pl) => pl.id === planoId);
+    const marcarRecebimento = campo === "statusPagamentoVenda" && valor === "Recebido" && planoAtual?.statusPagamentoVenda !== "Recebido";
+    const desmarcarRecebimento = campo === "statusPagamentoVenda" && valor !== "Recebido" && planoAtual?.statusPagamentoVenda === "Recebido";
+    const outroCampoDividido = campo === "statusEntrada" ? "statusRestante" : campo === "statusRestante" ? "statusEntrada" : null;
+    const marcarRecebimentoDividido =
+      outroCampoDividido && valor === "Recebido" && planoAtual?.[outroCampoDividido] === "Recebido" && !planoAtual?.dataRecebimento;
+    const desmarcarRecebimentoDividido =
+      outroCampoDividido && valor !== "Recebido" && planoAtual?.[outroCampoDividido] === "Recebido" && !!planoAtual?.dataRecebimento;
+    const patchRecebimento =
+      marcarRecebimento || marcarRecebimentoDividido
+        ? { dataRecebimento: hojeISO() }
+        : desmarcarRecebimento || desmarcarRecebimentoDividido
+          ? { dataRecebimento: "" }
+          : {};
+
+    setPlanos((prev) => prev.map((pl) => (pl.id === planoId ? { ...pl, [campo]: valor, ...patchRecebimento } : pl)));
     const coluna = CAMPO_PARA_COLUNA[campo];
     if (!coluna) return;
-    const valorFinal = ["quantidade", "qtEntregue", "valorReceber", "valorFabiana", "valorEntrada", "valorRestante"].includes(campo)
+    const CAMPOS_NUMERICOS = ["quantidade", "qtEntregue", "valorReceber", "valorFabiana", "valorEntrada", "valorRestante"];
+    const CAMPOS_DATA = ["dataVenda", "dataCobranca", "dataRecebimento"];
+    const valorFinal = CAMPOS_NUMERICOS.includes(campo)
       ? valor === ""
         ? null
         : Number(valor)
-      : valor;
+      : CAMPOS_DATA.includes(campo)
+        ? valor === ""
+          ? null
+          : valor
+        : valor;
     await comIndicador(async () => {
-      const { error } = await supabase.from("planos_assinatura").update({ [coluna]: valorFinal }).eq("id", planoId);
+      const update = { [coluna]: valorFinal };
+      if (marcarRecebimento || marcarRecebimentoDividido) update.data_recebimento = patchRecebimento.dataRecebimento;
+      if (desmarcarRecebimento || desmarcarRecebimentoDividido) update.data_recebimento = null;
+      const { error } = await supabase.from("planos_assinatura").update(update).eq("id", planoId);
       if (error) setErro(error.message);
     });
   }

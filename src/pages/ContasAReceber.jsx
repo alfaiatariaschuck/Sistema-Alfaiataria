@@ -12,7 +12,18 @@ const VERDE = "#2C6E31";
 // vencimento pronta; "Data para cobrar" é 100% manual, você decide
 // quando quer cobrar cada cliente (pedido sem essa data cai à parte,
 // em "sem data de cobrança", pra lembrar de definir uma).
-export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo, onAtualizarPedidoSubcampo, onAtualizarPecaCampo, irParaPedido, irParaPeca }) {
+export default function ContasAReceber({
+  pedidos,
+  pecas,
+  planos,
+  onAtualizarPedidoCampo,
+  onAtualizarPedidoSubcampo,
+  onAtualizarPecaCampo,
+  onAtualizarPlanoCampo,
+  irParaPedido,
+  irParaPeca,
+  irParaPlano,
+}) {
   const hoje = hojeISO();
   const hojeInicial = new Date(hoje + "T00:00:00");
   const [mesCalendario, setMesCalendario] = useState(hojeInicial.getMonth());
@@ -70,6 +81,27 @@ export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo,
         dataCobranca: p.dataCobranca || "",
         dataRecebimento: p.dataRecebimento || "",
       })),
+    // Plano de assinatura: cliente paga o valor total de uma vez (ex.:
+    // dia 30), mesmo a entrega saindo diluída 1 camisa/mês — então o
+    // valor a cobrar aqui é o total do plano, não o de cada emissão
+    // mensal (pedido do Tales, 24/11/2026).
+    ...(planos || [])
+      .filter((pl) => parseFloat(pl.valorReceber) > 0)
+      .map((pl) => ({
+        id: pl.id,
+        tipo: "plano",
+        linha: "Assinatura",
+        cliente: pl.cliente,
+        valor: parseFloat(pl.valorReceber) || 0,
+        status: pl.statusPagamentoVenda || "Pendente",
+        pagamentoDividido: pl.pagamentoDividido,
+        valorEntrada: pl.valorEntrada,
+        statusEntrada: pl.statusEntrada,
+        valorRestante: pl.valorRestante,
+        statusRestante: pl.statusRestante,
+        dataCobranca: pl.dataCobranca || "",
+        dataRecebimento: pl.dataRecebimento || "",
+      })),
   ].map((item) => ({ ...item, pendente: Math.max(0, item.valor - recebidoEfetivo(item)) }));
 
   const itens = todos.filter((item) => item.pendente > 0.004);
@@ -111,30 +143,33 @@ export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo,
 
   function abrir(item) {
     if (item.tipo === "camisa") irParaPedido(item.id);
+    else if (item.tipo === "plano") irParaPlano(item.id);
     else irParaPeca(item.id);
   }
 
+  // Cada origem (camisa/peça/plano) tem seu próprio setter de campo —
+  // esses três helpers escondem essa diferença do resto da tela.
+  function onAtualizarCampoPorTipo(item, campo, valor) {
+    if (item.tipo === "camisa") onAtualizarPedidoCampo(item.id, campo, valor);
+    else if (item.tipo === "plano") onAtualizarPlanoCampo(item.id, campo, valor);
+    else onAtualizarPecaCampo(item.id, campo, valor);
+  }
+
   function mudarDataCobranca(item, novaData) {
-    if (item.tipo === "camisa") onAtualizarPedidoCampo(item.id, "dataCobranca", novaData);
-    else onAtualizarPecaCampo(item.id, "dataCobranca", novaData);
+    onAtualizarCampoPorTipo(item, "dataCobranca", novaData);
   }
 
   // "Marcar recebido" fecha tudo de uma vez — se for pagamento dividido,
   // precisa marcar as duas partes (entrada e restante) como recebidas,
   // senão o saldo continua aparecendo como pendente.
   function marcarRecebido(item) {
-    if (item.tipo === "camisa") {
-      if (item.pagamentoDividido) {
-        onAtualizarPedidoCampo(item.id, "statusEntrada", "Recebido");
-        onAtualizarPedidoCampo(item.id, "statusRestante", "Recebido");
-      } else {
-        onAtualizarPedidoSubcampo(item.id, "aReceber", "statusPagamento", "Recebido");
-      }
-    } else if (item.pagamentoDividido) {
-      onAtualizarPecaCampo(item.id, "statusEntrada", "Recebido");
-      onAtualizarPecaCampo(item.id, "statusRestante", "Recebido");
+    if (item.pagamentoDividido) {
+      onAtualizarCampoPorTipo(item, "statusEntrada", "Recebido");
+      onAtualizarCampoPorTipo(item, "statusRestante", "Recebido");
+    } else if (item.tipo === "camisa") {
+      onAtualizarPedidoSubcampo(item.id, "aReceber", "statusPagamento", "Recebido");
     } else {
-      onAtualizarPecaCampo(item.id, "statusPagamentoVenda", "Recebido");
+      onAtualizarCampoPorTipo(item, "statusPagamentoVenda", "Recebido");
     }
   }
 
@@ -142,18 +177,13 @@ export default function ContasAReceber({ pedidos, pecas, onAtualizarPedidoCampo,
   // carimbo de dataRecebimento some sozinho (mesma lógica de
   // marcar/desmarcar já usada no marcarRecebido).
   function desfazerRecebido(item) {
-    if (item.tipo === "camisa") {
-      if (item.pagamentoDividido) {
-        onAtualizarPedidoCampo(item.id, "statusEntrada", "Pendente");
-        onAtualizarPedidoCampo(item.id, "statusRestante", "Pendente");
-      } else {
-        onAtualizarPedidoSubcampo(item.id, "aReceber", "statusPagamento", "Pendente");
-      }
-    } else if (item.pagamentoDividido) {
-      onAtualizarPecaCampo(item.id, "statusEntrada", "Pendente");
-      onAtualizarPecaCampo(item.id, "statusRestante", "Pendente");
+    if (item.pagamentoDividido) {
+      onAtualizarCampoPorTipo(item, "statusEntrada", "Pendente");
+      onAtualizarCampoPorTipo(item, "statusRestante", "Pendente");
+    } else if (item.tipo === "camisa") {
+      onAtualizarPedidoSubcampo(item.id, "aReceber", "statusPagamento", "Pendente");
     } else {
-      onAtualizarPecaCampo(item.id, "statusPagamentoVenda", "Pendente");
+      onAtualizarCampoPorTipo(item, "statusPagamentoVenda", "Pendente");
     }
   }
 
