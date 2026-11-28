@@ -118,25 +118,37 @@ function rowParaPedido(row) {
     tecidos: (row.tecidos || [])
       .slice()
       .sort((a, b) => a.ordem - b.ordem)
-      .map((t) => ({
-        id: t.id,
-        codigo: t.codigo || "",
-        nomenclatura: t.nomenclatura || "",
-        qtd: t.qtd ?? 1,
-        numero: t.numero || "",
-        fornecedor: t.fornecedor || "",
-        metragem: t.metragem || "",
-        valorMetro: t.valor_metro ?? "",
-        comprado: !!t.comprado,
-        metrosBaixados: t.metros_baixados ?? null,
-        pesponto: t.pesponto || "",
-        colarinho: t.colarinho || "",
-        colarinhoObs: t.colarinho_obs || "",
-        punho: t.punho || "",
-        monograma: t.monograma || "",
-        manga: t.manga || "",
-        vista: t.vista || "",
-      })),
+      .map((t) => {
+        // Pedidos de antes da mudança pra "característica por camisa"
+        // (14/11/2026) guardavam tudo num bloco único em
+        // pedidos.descricao, compartilhado por todas as camisas do
+        // pedido — não existe coluna por item pra eles. Em vez de
+        // aparecer em branco na ficha (perdendo a informação), cai de
+        // volta pro valor antigo quando o campo novo dessa camisa ainda
+        // está vazio. Os rótulos antigos (pré-renomeação) são
+        // diferentes dos de hoje: "Colarinho (estilo)" → colarinho,
+        // "Frente" → vista.
+        const antigo = row.descricao || {};
+        return {
+          id: t.id,
+          codigo: t.codigo || "",
+          nomenclatura: t.nomenclatura || "",
+          qtd: t.qtd ?? 1,
+          numero: t.numero || "",
+          fornecedor: t.fornecedor || "",
+          metragem: t.metragem || "",
+          valorMetro: t.valor_metro ?? "",
+          comprado: !!t.comprado,
+          metrosBaixados: t.metros_baixados ?? null,
+          pesponto: t.pesponto || antigo["Pesponto"] || "",
+          colarinho: t.colarinho || antigo["Colarinho (estilo)"] || "",
+          colarinhoObs: t.colarinho_obs || antigo["Colarinho - Observação"] || "",
+          punho: t.punho || antigo["Punho"] || "",
+          monograma: t.monograma || antigo["Monograma"] || "",
+          manga: t.manga || antigo["Manga"] || "",
+          vista: t.vista || antigo["Frente"] || "",
+        };
+      }),
     observacoes: row.observacoes || "",
     configVisual: row.config_visual || null,
     enviadoFabi: row.enviado_fabi === undefined ? true : !!row.enviado_fabi,
