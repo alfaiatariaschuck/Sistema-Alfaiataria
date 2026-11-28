@@ -121,7 +121,9 @@ const NAV = [
   { id: "painel-camisaria-cleci", label: "Painel Camisaria Cleci", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
   { id: "painel-camisaria-aline", label: "Painel Camisaria Aline", icon: LayoutDashboard, primary: false, grupo: "Camisaria" },
   { id: "novo", label: "Pedido Camisas", icon: Plus, primary: true, grupo: "Camisaria" },
-  { id: "pedidos", label: "Pedidos Tales", icon: ClipboardList, primary: true, grupo: "Camisaria" },
+  { id: "pedidos", label: "Pedidos Fabi", icon: ClipboardList, primary: true, grupo: "Camisaria" },
+  { id: "pedidos-aline", label: "Pedidos Aline", icon: ClipboardList, primary: false, grupo: "Camisaria" },
+  { id: "pedidos-cleci", label: "Pedidos Cleci", icon: ClipboardList, primary: false, grupo: "Camisaria" },
   { id: "pedidos-deivid", label: "Pedidos Deivid", icon: ClipboardList, primary: false, grupo: "Camisaria" },
   { id: "doacoes", label: "Doações", icon: Gift, primary: false, grupo: "Camisaria" },
   { id: "entregues-deivid", label: "Entregues Deivid", icon: Archive, primary: false, grupo: "Camisaria" },
@@ -439,9 +441,16 @@ export default function Shell() {
       .sort((a, b) => b.pedidos.length + b.pecas.length - (a.pedidos.length + a.pecas.length));
   }, [pedidos, pecas, clientesBase, historicoVendas, clientesComTelefone]);
 
+  // A lista de pedidos agora é separada por costureira (produção
+  // independente) — abrir um pedido de fora (busca, Contas a Receber
+  // etc.) precisa cair na aba certa, senão o pedido não aparece lá
+  // (cada aba só enxerga os pedidos dela).
   function irPara(id) {
     setTabAntesDoPedido(tab);
-    setTab("pedidos");
+    const pedido = pedidos.find((p) => p.id === id);
+    const costureira = pedido?.costureira || "Fabiana";
+    const tabDoPedido = costureira === "Aline" ? "pedidos-aline" : costureira === "Cleci" ? "pedidos-cleci" : "pedidos";
+    setTab(tabDoPedido);
     setSelecionado(id);
   }
 
@@ -496,7 +505,10 @@ export default function Shell() {
     const { id, clienteId } = await criarPedido(p);
     await salvarDadosPessoaisCliente(clienteId, p.dadosPessoais);
     await recarregarNomesClientes();
-    setTab("pedidos");
+    // Cada costureira tem sua própria aba agora — cai na dela, senão o
+    // pedido recém-criado não aparece na lista (ex.: Aline/Cleci caindo
+    // em "Pedidos Fabi", que só mostra os dela).
+    setTab(p.costureira === "Aline" ? "pedidos-aline" : p.costureira === "Cleci" ? "pedidos-cleci" : "pedidos");
     setSelecionado(id);
   }
 
@@ -1097,8 +1109,26 @@ export default function Shell() {
               )}
               {tab === "pedidos" && (
                 <Pedidos
-                  pedidos={pedidos.filter((p) => p.costureira !== "Milena")}
-                  titulo="Pedidos Tales"
+                  pedidos={pedidos.filter((p) => (p.costureira || "Fabiana") === "Fabiana")}
+                  titulo="Pedidos Fabi"
+                  selecionado={selecionado}
+                  setSelecionado={fecharOuAbrirPedido}
+                  {...acoesPedido}
+                />
+              )}
+              {tab === "pedidos-aline" && (
+                <Pedidos
+                  pedidos={pedidos.filter((p) => p.costureira === "Aline")}
+                  titulo="Pedidos Aline"
+                  selecionado={selecionado}
+                  setSelecionado={fecharOuAbrirPedido}
+                  {...acoesPedido}
+                />
+              )}
+              {tab === "pedidos-cleci" && (
+                <Pedidos
+                  pedidos={pedidos.filter((p) => p.costureira === "Cleci")}
+                  titulo="Pedidos Cleci"
                   selecionado={selecionado}
                   setSelecionado={fecharOuAbrirPedido}
                   {...acoesPedido}
