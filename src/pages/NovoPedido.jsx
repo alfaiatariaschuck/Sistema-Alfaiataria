@@ -34,6 +34,7 @@ export default function NovoPedido({
   const [erro, setErro] = useState(null);
   const [previsaoAuto, setPrevisaoAuto] = useState(null);
   const [valorFabianaAuto, setValorFabianaAuto] = useState(null);
+  const [costureiraAuto, setCostureiraAuto] = useState(null);
   const temposMedios = useMemo(() => temposMediosProducao(pedidos || []), [pedidos]);
   // Se o nome digitado em "Indicado por" já bate com um cliente
   // cadastrado, não precisa pedir CPF de novo — só pede quando é
@@ -152,6 +153,19 @@ export default function NovoPedido({
       if (!medidasVazias) return prev;
       return { ...prev, medidas: { ...prev.medidas, ...ultimo.medidas } };
     });
+
+    // Quem já fez a primeira camisa desse cliente já tem o molde pronto
+    // — lançar a recompra pra outra costureira significaria refazer o
+    // molde do zero à toa. Sugere a mesma de antes, mas sem travar: se
+    // você trocar na mão (ex.: ela não vai conseguir pegar dessa vez),
+    // a troca manual tem prioridade e a sugestão para de mexer.
+    if (ultimo.costureira) {
+      setP((prev) => {
+        const aindaEhSugestao = prev.costureira === "Fabiana" || prev.costureira === costureiraAuto;
+        return aindaEhSugestao ? { ...prev, costureira: ultimo.costureira } : prev;
+      });
+      setCostureiraAuto(ultimo.costureira);
+    }
     // eslint-disable-next-line
   }, [p.cliente]);
 
@@ -407,6 +421,11 @@ export default function NovoPedido({
                   </option>
                 ))}
               </select>
+              {p.recompra && p.costureira === costureiraAuto && (
+                <span style={{ fontSize: 10, color: TEXT_MUTED }}>
+                  Mesma de quando o cliente comprou antes — já tem o molde pronto. Troque se precisar.
+                </span>
+              )}
             </Field>
             <div className="fx-serif mb-2" style={{ fontSize: 14, fontWeight: 600 }}>
               Valor a pagar à {p.costureira}
