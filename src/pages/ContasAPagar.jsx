@@ -476,6 +476,7 @@ function GraficoFluxoCaixa({ semanas }) {
 export default function ContasAPagar({
   pedidos,
   pecas,
+  planos,
   despesas,
   previsoes,
   notas,
@@ -492,6 +493,7 @@ export default function ContasAPagar({
   onRemoverNota,
   irParaPedido,
   irParaPeca,
+  irParaPlano,
 }) {
   const [buscaCategoriaPagar, setBuscaCategoriaPagar] = useState("");
   const [dataIniJanela, setDataIniJanela] = useState(hojeISO());
@@ -676,6 +678,26 @@ export default function ContasAPagar({
           temPrevisao: !!p.previsaoEntrega || !!p.dataCobranca,
           dataRef: p.previsaoEntrega || p.dataPedido,
           dataCobranca: p.dataCobranca || null,
+        };
+      })
+      .filter((x) => x.pendente > 0),
+    // Plano de assinatura: cliente paga o valor total de uma vez (ex.:
+    // dia 30), mesmo a entrega saindo diluída 1 camisa/mês — sem isso
+    // aqui, a cobrança do plano aparecia em Contas a Receber mas nunca
+    // entrava na projeção de caixa (pedido do Tales, 28/11/2026).
+    ...(planos || [])
+      .filter((pl) => parseFloat(pl.valorReceber) > 0)
+      .map((pl) => {
+        const valor = parseFloat(pl.valorReceber) || 0;
+        const recebido = recebidoEfetivo(pl, valor, pl.statusPagamentoVenda || "Pendente");
+        return {
+          id: pl.id,
+          tipo: "plano",
+          nome: pl.cliente,
+          pendente: Math.max(0, valor - recebido),
+          temPrevisao: !!pl.dataCobranca,
+          dataRef: pl.dataVenda,
+          dataCobranca: pl.dataCobranca || null,
         };
       })
       .filter((x) => x.pendente > 0),
@@ -1305,6 +1327,7 @@ export default function ContasAPagar({
 
   function abrir(item) {
     if (item.tipo === "camisa") irParaPedido(item.id);
+    else if (item.tipo === "plano") irParaPlano(item.id);
     else irParaPeca(item.id);
   }
 

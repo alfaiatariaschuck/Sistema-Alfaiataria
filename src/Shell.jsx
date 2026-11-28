@@ -1147,6 +1147,7 @@ export default function Shell() {
                 <ContasAPagar
                   pedidos={pedidos}
                   pecas={pecas}
+                  planos={planos}
                   despesas={despesas}
                   previsoes={previsoes}
                   notas={notasVendaFutura}
@@ -1163,6 +1164,7 @@ export default function Shell() {
                   onRemoverNota={removerNota}
                   irParaPedido={irPara}
                   irParaPeca={irParaPeca}
+                  irParaPlano={irParaPlano}
                 />
               )}
               {tab === "contas-a-receber" && (
